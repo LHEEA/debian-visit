@@ -1,0 +1,5 @@
+visit (2.6.2-1) unstable; urgency=low
+
+  * Initial release. (Closes: #395573).
+
+ -- Alastair McKinstry <mckinstry@debian.org>  Tue, 06 Sep 2011 13:28:41 +0100

@@ -1,0 +1,13 @@
+Index: visit2.2.2/src/CMake/FindVisItMesa.cmake
+===================================================================
+--- visit2.2.2.orig/src/CMake/FindVisItMesa.cmake	2011-04-19 12:22:12.000000000 +0100
++++ visit2.2.2/src/CMake/FindVisItMesa.cmake	2011-04-19 12:22:53.000000000 +0100
+@@ -56,6 +56,8 @@
+ 
+ IF (WIN32)
+     SET_UP_THIRD_PARTY(MESA lib/${VISIT_MSVC_VERSION} include MesaGL32 osmesa32)
++ELSEIF(DEBIAN)
++    SET_UP_THIRD_PARTY(MESA lib include GL OSMesa)
+ ELSE (WIN32)
+     SET_UP_THIRD_PARTY(MESA lib include MesaGL OSMesa)
+ 

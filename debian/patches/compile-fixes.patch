@@ -1,0 +1,12 @@
+Index: visit2.2.2/src/visit_vtk/full/vtkCSGCell.h
+===================================================================
+--- visit2.2.2.orig/src/visit_vtk/full/vtkCSGCell.h	2011-04-19 13:04:14.000000000 +0100
++++ visit2.2.2/src/visit_vtk/full/vtkCSGCell.h	2011-04-19 13:04:30.000000000 +0100
+@@ -49,6 +49,7 @@
+ #include <visit_vtk_exports.h>
+ 
+ #include "vtkCell.h"
++#include "vtkPointLocator.h"
+ 
+ #define VTK_CSG_CELL 50
+ 

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=VisIt visualization tool
+GenericName=Data Viewer
+Comment=VisIt allows viewing of large data sets
+Type=Application
+Terminal=false
+Icon=visit2
+Categories=Education;Math;Science;
+Exec=visit

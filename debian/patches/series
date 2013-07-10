@@ -1,0 +1,6 @@
+hdf4-debian.patch
+gdal-debian.patch
+mesa-debian.patch
+vtk-debian.patch
+compile-fixes.patch
+multiarch-fixes.patch

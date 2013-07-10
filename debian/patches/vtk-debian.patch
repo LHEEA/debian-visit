@@ -1,0 +1,50 @@
+Index: visit2.2.2/src/CMake/FindVisItVTK.cmake
+===================================================================
+--- visit2.2.2.orig/src/CMake/FindVisItVTK.cmake	2011-01-19 20:23:48.000000000 +0000
++++ visit2.2.2/src/CMake/FindVisItVTK.cmake	2011-04-22 19:15:43.000000000 +0100
+@@ -113,8 +113,8 @@
+     vtkpng
+     vtksys
+     vtktiff
+-    vtkzlib
+ )
++# vtkzlib
+     IF(WIN32)
+         SET(LIBNAME ${VTK_RUNTIME_DIRS}/${VTKLIB}.${SO_EXT})
+         IF(EXISTS ${LIBNAME})
+Index: visit2.2.2/src/third_party_builtin/bow/CMakeLists.txt
+===================================================================
+--- visit2.2.2.orig/src/third_party_builtin/bow/CMakeLists.txt	2011-01-19 20:24:38.000000000 +0000
++++ visit2.2.2/src/third_party_builtin/bow/CMakeLists.txt	2011-04-22 19:15:43.000000000 +0100
+@@ -56,7 +56,7 @@
+ LINK_DIRECTORIES(${VTK_LIBRARY_DIRS})
+ 
+ ADD_LIBRARY(bow ${BOW_SOURCES})
+-TARGET_LINK_LIBRARIES(bow vtkzlib)
++TARGET_LINK_LIBRARIES(bow z)
+ 
+ VISIT_INSTALL_TARGETS(bow)
+ SET_TARGET_PROPERTIES(bow PROPERTIES FOLDER thirdparty_builtin/bow)
+Index: visit2.2.2/src/CMakeLists.txt
+===================================================================
+--- visit2.2.2.orig/src/CMakeLists.txt	2011-02-16 19:46:15.000000000 +0000
++++ visit2.2.2/src/CMakeLists.txt	2011-04-22 19:15:43.000000000 +0100
+@@ -812,7 +812,7 @@
+     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindJPEG.cmake)
+     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindSzip.cmake)
+   ELSE(WIN32)
+-      SET(ZLIB_LIB vtkzlib)
++      SET(ZLIB_LIB z)
+   ENDIF(WIN32)
+ ENDIF(CMAKE_HOST_UNIX)
+ 
+Index: visit2.2.2/src/CMake/FindXdmf.cmake
+===================================================================
+--- visit2.2.2.orig/src/CMake/FindXdmf.cmake	2011-04-22 19:22:32.000000000 +0100
++++ visit2.2.2/src/CMake/FindXdmf.cmake	2011-04-22 19:22:54.000000000 +0100
+@@ -48,4 +48,4 @@
+ 
+ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
+ 
+-SET_UP_THIRD_PARTY(XDMF lib include Xdmf vtklibxml2)
++SET_UP_THIRD_PARTY(XDMF lib include Xdmf xml2)

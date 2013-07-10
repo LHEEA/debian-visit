@@ -1,0 +1,2 @@
+debian/tmp/usr/*/*/include/visit/* /usr/include/visit
+debian/tmp/usr/*/*/include/*.cmake /usr/lib/visit

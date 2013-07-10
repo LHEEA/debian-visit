@@ -1,0 +1,39 @@
+Source: visit
+Section: science
+Priority: optional
+Maintainer: Alastair McKinstry <mckinstry@debian.org>
+Build-Depends: debhelper (>> 9), libgl1-mesa-dev, python-dev, libqt3-mt-dev, libvtk5-dev (>= 5.8.0~), libgdal1-dev, libhdf5-serial-dev | libhdf5-dev, libcfitsio3-dev, libcgns-dev, libnetcdf-dev, libhdf4-alt-dev, libgoogle-perftools-dev, imagemagick, gfortran, libosmesa6-dev, libsilo-dev, cmake (>= 2.8.0), python-vtk, libxdmf-dev,libadios-dev
+Standards-Version: 3.9.4
+Homepage: http://www.llnl.gov/visit/
+
+Package: visit
+Section: libs
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: interactive parallel visualization and graphical analysis tool
+ VisIt is a free interactive parallel visualization and graphical
+ analysis tool for viewing scientific data.  Users can quickly generate
+ visualizations from their data, animate them through time, manipulate
+ them, and save the resulting images for presentations.  VisIt contains
+ a rich set of visualization features so that you can view your data in
+ a variety of ways.  It can be used to visualize scalar and vector
+ fields defined on two- and three-dimensional (2D and 3D) structured and
+ unstructured meshes.
+ .
+ VisIt was designed to handle very large data set sizes in the terascale
+ range and yet can also handle small data sets in the kilobyte range.
+
+Package: libvisit-dev
+Section: libs
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Development files for the VisIt visualisation tool
+ This package contains libraries and header files needed to build against
+ VisIt.
+
+
+Package: visit-python
+Section: python
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Python files for the VisIt visualisation tool
+ This package contains libraries and header files needed to build against
+ VisIt.
