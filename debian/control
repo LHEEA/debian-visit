@@ -7,7 +7,6 @@ Standards-Version: 3.9.4
 Homepage: http://www.llnl.gov/visit/
 
 Package: visit
-Section: libs
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: interactive parallel visualization and graphical analysis tool
@@ -25,6 +24,7 @@ Description: interactive parallel visualization and graphical analysis tool
 
 Package: libvisit-dev
 Section: libs
+Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: Development files for the VisIt visualisation tool
  This package contains libraries and header files needed to build against
@@ -33,6 +33,7 @@ Description: Development files for the VisIt visualisation tool
 
 Package: visit-python
 Section: python
+Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: Python files for the VisIt visualisation tool
  This package contains libraries and header files needed to build against
