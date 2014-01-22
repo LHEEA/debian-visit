@@ -1,13 +1,13 @@
-Index: visit2.2.2/src/CMake/FindGDAL.cmake
+Index: visit-2.7.0/src/CMake/FindGDAL.cmake
 ===================================================================
---- visit2.2.2.orig/src/CMake/FindGDAL.cmake	2011-04-19 12:16:17.000000000 +0100
-+++ visit2.2.2/src/CMake/FindGDAL.cmake	2011-04-19 12:16:57.000000000 +0100
-@@ -64,6 +64,8 @@
-   ENDIF(EXISTS ${GDAL_LIBRARY_DIR}/gdal17.dll)
- ELSEIF(APPLE)
-   SET_UP_THIRD_PARTY(GDAL lib include gdal.1)
+--- visit-2.7.0.orig/src/CMake/FindGDAL.cmake	2014-01-22 12:05:31.000000000 +0000
++++ visit-2.7.0/src/CMake/FindGDAL.cmake	2014-01-22 12:06:17.000000000 +0000
+@@ -67,6 +67,8 @@
+                 )
+         ENDIF(EXISTS ${GDAL_LIBRARY_DIR}/gdal${VER}.dll)
+     ENDFOREACH(VER)
 +ELSEIF(DEBIAN)
 +  SET_UP_THIRD_PARTY(GDAL lib include gdal1.17.1)
  ELSE (WIN32)
-   SET_UP_THIRD_PARTY(GDAL lib include gdal)
+     SET_UP_THIRD_PARTY(GDAL lib include gdal)
  ENDIF (WIN32)

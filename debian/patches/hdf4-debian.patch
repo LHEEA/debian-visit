@@ -1,11 +1,11 @@
-Index: visit2.2.2/src/CMake/FindHDF4.cmake
+Index: visit-2.7.0/src/CMake/FindHDF4.cmake
 ===================================================================
---- visit2.2.2.orig/src/CMake/FindHDF4.cmake	2011-04-19 12:08:50.000000000 +0100
-+++ visit2.2.2/src/CMake/FindHDF4.cmake	2011-04-19 13:56:00.000000000 +0100
-@@ -52,6 +52,8 @@
-       SET(HDF4_INCLUDE_DIR "${HDF4_INCLUDE_DIR}/WIN32;${HDF4_INCLUDE_DIR}" CACHE PATH "HDF4 include directory" FORCE)
-     ENDIF (CMAKE_CL_64)
-   ENDIF (HDF4_FOUND)
+--- visit-2.7.0.orig/src/CMake/FindHDF4.cmake	2014-01-22 12:03:50.000000000 +0000
++++ visit-2.7.0/src/CMake/FindHDF4.cmake	2014-01-22 12:05:00.000000000 +0000
+@@ -46,6 +46,8 @@
+ 
+ IF (WIN32)
+   SET_UP_THIRD_PARTY(HDF4 lib include hdfdll mfhdfdll xdrdll)
 -ELSE (WIN32)
 -  SET_UP_THIRD_PARTY(HDF4 lib include mfhdf df)
 +ELSEIF(DEBIAN)
