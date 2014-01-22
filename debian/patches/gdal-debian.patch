@@ -7,7 +7,7 @@ Index: visit2.2.2/src/CMake/FindGDAL.cmake
  ELSEIF(APPLE)
    SET_UP_THIRD_PARTY(GDAL lib include gdal.1)
 +ELSEIF(DEBIAN)
-+  SET_UP_THIRD_PARTY(GDAL lib include gdal1.7.0)
++  SET_UP_THIRD_PARTY(GDAL lib include gdal1.17.1)
  ELSE (WIN32)
    SET_UP_THIRD_PARTY(GDAL lib include gdal)
  ENDIF (WIN32)
