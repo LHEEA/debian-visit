@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -200,7 +200,7 @@ class VisWindowColleagueProxy;
 //    Remove ScreenCapture; it is not accessible anymore.
 //
 //    Eric Brugger, Tue Dec  9 14:28:15 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
 //
 //    Dave Pugmire, Tue Aug 24 11:29:43 EDT 2010
 //    Add compact domains options.
@@ -247,8 +247,8 @@ class VISWINDOW_API VisWinRendering : public VisWinColleague
     virtual void             StartAxisArrayMode(void);
     virtual void             StopAxisArrayMode(void);
 
-    virtual void             StartAxisParallelMode(void);
-    virtual void             StopAxisParallelMode(void);
+    virtual void             StartParallelAxesMode(void);
+    virtual void             StopParallelAxesMode(void);
 
     virtual void             EnableUpdates(void);
     virtual void             MotionBegin(void);

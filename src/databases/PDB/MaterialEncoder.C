@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -288,7 +288,7 @@ MaterialEncoder::CreateMaterial(const int *dims, int ndims) const
     if(have_mixed)
     {
         retval = new avtMaterial(
-            matNames.size(),
+            (int)matNames.size(),
             matnos,
             names,
             ndims,
@@ -305,7 +305,7 @@ MaterialEncoder::CreateMaterial(const int *dims, int ndims) const
     else
     {
         retval = new avtMaterial(
-            matNames.size(),
+            (int)matNames.size(),
             matnos,
             names,
             ndims,

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,6 +58,9 @@ class ViewAxisArrayAttributes;
 //  Creation:   January 28, 2008
 //
 //  Modifications:
+//    Eric Brugger, Mon Nov  5 15:12:30 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -72,7 +75,7 @@ struct AVTVIEW_API avtViewAxisArray
     avtViewAxisArray     &operator=(const avtViewAxisArray &);
     bool                  operator==(const avtViewAxisArray &);
     void                  SetToDefault(void);
-    void                  SetViewInfoFromView(avtViewInfo &, int *);
+    void                  SetViewInfoFromView(avtViewInfo &, bool, int *);
     void                  SetViewport(double *newViewport);
 
     void                  GetViewport(double *) const;
@@ -84,6 +87,8 @@ struct AVTVIEW_API avtViewAxisArray
                                            ViewAxisArrayAttributes *) const;
 
   protected:
+    double                viewScale;
+
     void                  CheckAndCorrectDomainRange();
 };
 

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -99,7 +99,7 @@ ELSE(NOT APPLE)
     SET(MACOSX_BUNDLE_LONG_VERSION_STRING  "Synthetic Diagnostic version ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_SHORT_VERSION_STRING "Synthetic Diagnostic ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_BUNDLE_VERSION       ${VISIT_VERSION})
-    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC")
+    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC")
 ENDIF(NOT APPLE)
 
 SET(VIEWER_QT_LIBS 
@@ -127,7 +127,6 @@ ${viewer_exe_VPlot}
 avtdatabase_ser 
 avtdbatts
 avtfilters_ser 
-avtivp
 avtmath
 avtmir_ser 
 avtpipeline_ser

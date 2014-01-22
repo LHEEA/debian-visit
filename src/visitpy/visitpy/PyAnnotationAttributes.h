@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,7 @@
 //
 // Functions exposed to the VisIt module.
 //
+#define ANNOTATIONATTRIBUTES_NMETH 44
 void VISITPY_API           PyAnnotationAttributes_StartUp(AnnotationAttributes *subj, void *data);
 void VISITPY_API           PyAnnotationAttributes_CloseDown();
 VISITPY_API PyMethodDef *  PyAnnotationAttributes_GetMethodTable(int *nMethods);
@@ -56,6 +57,9 @@ void VISITPY_API           PyAnnotationAttributes_SetParent(PyObject *obj, PyObj
 void VISITPY_API           PyAnnotationAttributes_SetDefaults(const AnnotationAttributes *atts);
 std::string VISITPY_API    PyAnnotationAttributes_GetLogString();
 std::string VISITPY_API    PyAnnotationAttributes_ToString(const AnnotationAttributes *, const char *);
+VISITPY_API PyObject *     PyAnnotationAttributes_getattr(PyObject *self, char *name);
+int VISITPY_API            PyAnnotationAttributes_setattr(PyObject *self, char *name, PyObject *args);
+VISITPY_API extern PyMethodDef PyAnnotationAttributes_methods[ANNOTATIONATTRIBUTES_NMETH];
 
 #endif
 

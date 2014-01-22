@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1893,7 +1893,7 @@ avtTecplotFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         mesh->topologicalDimension = 0;
         mesh->spatialDimension = spatialDimension;
         mesh->meshType = AVT_POINT_MESH;
-        mesh->numBlocks = zoneTitles.size();
+        mesh->numBlocks = (int)zoneTitles.size();
         mesh->blockOrigin = 1;
         mesh->cellOrigin = 1;
         mesh->nodeOrigin = 1;
@@ -1922,7 +1922,7 @@ avtTecplotFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         mesh->topologicalDimension = topologicalDimension;
         mesh->spatialDimension = spatialDimension;
         mesh->meshType = DetermineAVTMeshType();
-        mesh->numBlocks = meshes.size();
+        mesh->numBlocks = (int)meshes.size();
         mesh->blockOrigin = 1;
         mesh->cellOrigin = 1;
         mesh->nodeOrigin = 1;
@@ -1968,7 +1968,7 @@ avtTecplotFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                                 variableNames[i].c_str(),
                                 variableNames[j].c_str());
                     }
-                    curveIndices[s] = curveNames.size();
+                    curveIndices[s] = (int)curveNames.size();
                     curveNames.push_back(s);
                     curveDomains.push_back(z);
                     curveFirstVar.push_back(i);

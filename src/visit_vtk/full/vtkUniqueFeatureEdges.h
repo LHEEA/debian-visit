@@ -61,14 +61,24 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef __vtkUniqueFeatureEdges_h
 #define __vtkUniqueFeatureEdges_h
 #include <visit_vtk_exports.h>
-#include "vtkPolyDataToPolyDataFilter.h"
 
-#include <vtkPointLocator.h>
+#include <vtkPolyDataAlgorithm.h>
 
-class VISIT_VTK_API vtkUniqueFeatureEdges : public vtkPolyDataToPolyDataFilter
+class vtkPointLocator;
+
+// ****************************************************************************
+//  Class: vtkUniqueFeatureEdges
+//
+//  Modifications:
+//    Eric Brugger, Wed Jan  9 12:28:48 PST 2013
+//    Modified to inherit from vtkPolyDataAlgorithm.
+//
+// ****************************************************************************
+
+class VISIT_VTK_API vtkUniqueFeatureEdges : public vtkPolyDataAlgorithm
 {
 public:
-  vtkTypeMacro(vtkUniqueFeatureEdges,vtkPolyDataToPolyDataFilter);
+  vtkTypeMacro(vtkUniqueFeatureEdges,vtkPolyDataAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
@@ -90,8 +100,8 @@ public:
 
   // Description:
   // Specify the feature angle for extracting feature edges.
-  vtkSetClampMacro(FeatureAngle,float,0.0,180.0);
-  vtkGetMacro(FeatureAngle,float);
+  vtkSetClampMacro(FeatureAngle,double,0.0,180.0);
+  vtkGetMacro(FeatureAngle,double);
 
   // Description:
   // Turn on/off the extraction of non-manifold edges.
@@ -123,11 +133,14 @@ protected:
   vtkUniqueFeatureEdges();
   ~vtkUniqueFeatureEdges();
 
-  // Usual data generation method
-  void Execute();
-  void ComputeInputUpdateExtents(vtkDataObject *output);
+  virtual int RequestData(vtkInformation *,
+                          vtkInformationVector **,
+                          vtkInformationVector *);
+  virtual int RequestUpdateExtent(vtkInformation *,
+                                  vtkInformationVector **,
+                                  vtkInformationVector *);
   
-  float FeatureAngle;
+  double FeatureAngle;
   int BoundaryEdges;
   int FeatureEdges;
   int NonManifoldEdges;
@@ -140,5 +153,3 @@ private:
 };
 
 #endif
-
-

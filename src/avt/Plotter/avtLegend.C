@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -790,7 +790,7 @@ avtLegend::Update()
     //
     // Set the title.
     //
-    int len = 0;
+    size_t len = 0;
     if (title != NULL)        len += strlen(title) + 1;
     if (databaseInfo != NULL) len += strlen(databaseInfo) + 1;
     if (varName != NULL)      len += strlen(varName) + 6;

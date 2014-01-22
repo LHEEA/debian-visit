@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -169,6 +169,9 @@ class ViewerState;
 //   Jonathan Byrd (Allinea Software), Sun Dec 18, 2011
 //   Added methods for connecting/disconnecting with DDT and for
 //   instructing DDT to focus on a specific domain
+//
+//   Kathleen Biagas, Wed Aug  7 13:05:32 PDT 2013
+//   Added SetPrecisionType.
 //
 // ****************************************************************************
 
@@ -393,6 +396,7 @@ public:
     void SetCreateMeshQualityExpressions(int flag);
     void SetCreateTimeDerivativeExpressions(int flag);
     void SetCreateVectorMagnitudeExpressions(int flag);
+    void SetPrecisionType(int flag);
     
     void SetSuppressMessages(int flag);
 
@@ -437,6 +441,9 @@ public:
 
     void DDTConnect(bool connect);
     void DDTFocus(int domain);
+
+    void ExportWindows(const intVector &windowIds, const std::string& format);
+    void ExportHostProfile(const std::string& profile, const std::string &filename, const bool& saveInUserDir = false);
 private:
     ViewerState *state;
 };

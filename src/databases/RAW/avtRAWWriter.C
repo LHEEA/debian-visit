@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,6 +48,7 @@
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkStructuredGrid.h>
+#include <vtkUnstructuredGrid.h>
 #ifndef MDSERVER
 #include <vtkRectilinearGridFacelistFilter.h>
 #include <vtkStructuredGridFacelistFilter.h>
@@ -185,7 +186,7 @@ avtRAWWriter::WriteChunk(vtkDataSet *ds, int chunk)
     {
         vtkRectilinearGridFacelistFilter *flf = 
             vtkRectilinearGridFacelistFilter::New();
-        flf->SetInput((vtkRectilinearGrid *)ds);
+        flf->SetInputData((vtkRectilinearGrid *)ds);
         flf->Update();
         pd = flf->GetOutput();
         pd->Register(NULL);
@@ -195,7 +196,7 @@ avtRAWWriter::WriteChunk(vtkDataSet *ds, int chunk)
     {
         vtkStructuredGridFacelistFilter *flf = 
             vtkStructuredGridFacelistFilter::New();
-        flf->SetInput((vtkStructuredGrid *)ds);
+        flf->SetInputData((vtkStructuredGrid *)ds);
         flf->Update();
         pd = flf->GetOutput();
         pd->Register(NULL);
@@ -205,7 +206,7 @@ avtRAWWriter::WriteChunk(vtkDataSet *ds, int chunk)
     {
         vtkUnstructuredGridFacelistFilter *flf = 
             vtkUnstructuredGridFacelistFilter::New();
-        flf->SetInput((vtkUnstructuredGrid *)ds);
+        flf->SetInputData((vtkUnstructuredGrid *)ds);
         flf->Update();
         pd = flf->GetOutput();
         pd->Register(NULL);

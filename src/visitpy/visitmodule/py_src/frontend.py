@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -215,9 +215,17 @@ class VisItModuleState(object):
         else:
             vcmd = "visit"
         if not vdir is None:
-            vcmd = pjoin(os.path.abspath(vdir),vcmd)
+            vdir = os.path.abspath(vdir)
+            # osx bundle case
+            if vdir.endswith(".app"):
+                vdir = pjoin(vdir,"Contents","Resources","bin")
+            # case where bin was omitted
+            if os.path.isfile(pjoin(vdir,"bin",vcmd)):
+                vdir = pjoin(vdir,"bin")
+            vcmd = pjoin(vdir,vcmd)
         for arg in args:
             vcmd += " %s" % str(arg)
+        #print "[visit command: %s]" % vcmd
         return vcmd
     @classmethod
     def __visit_module_path(cls,libpath):

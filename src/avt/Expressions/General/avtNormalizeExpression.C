@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,7 +108,7 @@ avtNormalizeExpression::~avtNormalizeExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtNormalizeExpression::DeriveVariable(vtkDataSet *in)
+avtNormalizeExpression::DeriveVariable(vtkDataSet *in, int currentDomainsIndex)
 {
     // The base class will set the variable of interest to be the
     // 'activeVariable'.  This is a by-product of how the base class sets its

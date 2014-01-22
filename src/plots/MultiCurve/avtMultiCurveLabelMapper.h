@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,7 @@
 
 #include <avtDecorationsMapper.h>
 #include <ColorAttributeList.h>
+#include <LineAttributes.h>
 
 #include <vector>
 
@@ -73,6 +74,10 @@ class     vtkDataSet;
 //    the points are in the same color as the curve, instead of always in
 //    black.
 //
+//    Eric Brugger, Tue Feb 19 16:15:46 PST 2013
+//    I added the ability to set a scale factor and the line width for the
+//    markers.
+//
 // ****************************************************************************
 
 class avtMultiCurveLabelMapper : public avtDecorationsMapper
@@ -82,6 +87,7 @@ class avtMultiCurveLabelMapper : public avtDecorationsMapper
     virtual                   ~avtMultiCurveLabelMapper();
 
     void                       SetScale(double);
+    void                       SetMarkerLineWidth(_LineWidth);
     void                       SetMarkerVisibility(bool);
     void                       SetIdVisibility(bool);
 
@@ -92,6 +98,7 @@ class avtMultiCurveLabelMapper : public avtDecorationsMapper
     bool                       markerVisibility;
     bool                       idVisibility;
     double                     scale;
+    _LineWidth                 markerLineWidth;
 
     ColorAttributeList         cal;
     std::vector<int>           colors;

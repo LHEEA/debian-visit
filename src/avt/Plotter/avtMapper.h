@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -52,6 +52,7 @@
 #include <string>
 
 class   vtkActor;
+class   vtkAlgorithmOutput;
 class   vtkDataObjectCollection;
 class   vtkDataSetMapper;
 
@@ -115,6 +116,9 @@ class   ColorAttribute;
 //
 //    Brad Whitlock, Wed Aug 22 11:32:25 PDT 2007
 //    Added reduced detail mode.
+//
+//    Kathleen Biagas, Wed Feb 6 19:38:27 PDT 2013
+//    Changed signature of InsertFilters.
 //
 // ****************************************************************************
 
@@ -186,7 +190,7 @@ class PLOTTER_API avtMapper : public avtTerminatingDatasetSink
     virtual void               InputIsReady(void);
 
     virtual void               SetUpFilters(int nDoms);
-    virtual vtkDataSet        *InsertFilters(vtkDataSet *, int dom);
+    virtual vtkAlgorithmOutput *InsertFilters(vtkDataSet *, int dom);
 
     virtual vtkDataSetMapper  *CreateMapper(void);
     virtual void               SetLabels(std::vector<std::string> &, bool);

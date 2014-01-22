@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -282,7 +282,11 @@ VisitLineTool::Disable()
 //    Disabled for AxisArray window mode.
 //
 //    Eric Brugger, Tue Dec  9 14:02:23 PST 2008
-//    Disabled for AxisParallel window mode.
+//    Disabled for ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 15:54:11 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -290,7 +294,8 @@ bool
 VisitLineTool::IsAvailable() const
 {
     return proxy.GetMode() != WINMODE_AXISARRAY &&
-           proxy.GetMode() != WINMODE_AXISPARALLEL && proxy.HasPlots();
+           proxy.GetMode() != WINMODE_PARALLELAXES &&
+           proxy.GetMode() != WINMODE_VERTPARALLELAXES && proxy.HasPlots();
 }
 
 // ****************************************************************************
@@ -531,7 +536,7 @@ VisitLineTool::UpdateLine()
     lineData = lineSource->GetOutput();
     lineData->Register(NULL);
 
-    lineMapper->SetInput(lineData);
+    lineMapper->SetInputData(lineData);
 }
 
 // ****************************************************************************
@@ -902,7 +907,7 @@ VisitLineTool::UpdateGuide(int pointIndex)
     CREATEQUAD(4,7,6,3);
 
     // Set the mapper's input to be the new dataset.
-    guideMapper->SetInput(guideData);
+    guideMapper->SetInputData(guideData);
 }
 
 // ****************************************************************************

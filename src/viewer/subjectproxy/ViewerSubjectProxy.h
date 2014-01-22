@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -172,10 +172,7 @@ class VIEWER_SUBJECT_PROXY_API ViewerSubjectProxy : public QObject, public Viewe
     virtual void SetPlotSILRestriction();
     virtual void Update(Subject *subj);
 
-
-
-    ViewerSubjectProxy();
-
+    ViewerSubjectProxy(int argc,char* argv[]);
     ViewerSubjectProxy(ViewerSubjectProxy* proxy);
 
     virtual ~ViewerSubjectProxy();

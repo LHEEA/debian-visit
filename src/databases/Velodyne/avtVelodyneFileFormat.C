@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -639,7 +639,7 @@ avtVelodyneFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
       avtMaterialMetaData *matmd = new avtMaterialMetaData;
       matmd->name = composeName( meshname, "mat", '_' );
       matmd->meshName = meshname;
-      matmd->numMaterials = mset.size();
+      matmd->numMaterials = (int)mset.size();
       char buf[1000];
       for( set<int>::const_iterator i=mset.begin(); i!=mset.end(); i++ ) {
     const string& mt = reader_->GetMaterialTitle(*i);

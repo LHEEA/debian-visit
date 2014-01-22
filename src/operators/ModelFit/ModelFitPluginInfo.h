@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,8 +40,8 @@
 //  File: ModelFitPluginInfo.h
 // ************************************************************************* //
 
-#ifndef RELATVIEW_PLUGIN_INFO_H
-#define RELATVIEW_PLUGIN_INFO_H
+#ifndef MODELFIT_PLUGIN_INFO_H
+#define MODELFIT_PLUGIN_INFO_H
 #include <OperatorPluginInfo.h>
 #include <operator_plugin_exports.h>
 
@@ -67,6 +67,7 @@ class ModelFitGeneralPluginInfo : public virtual GeneralOperatorPluginInfo
     virtual const char *GetVersion() const;
     virtual const char *GetID() const;
     virtual bool  EnabledByDefault() const;
+    virtual const char *GetCategoryName() const;
 };
 
 class ModelFitCommonPluginInfo : public virtual CommonOperatorPluginInfo, public virtual ModelFitGeneralPluginInfo
@@ -97,6 +98,10 @@ class ModelFitViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
                                         const ViewerPlot *plot,
                                         const bool fromDefault);
+    virtual void UpdateOperatorAtts(AttributeSubject *atts,
+                                    const ViewerPlot *plot);
+    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
+                                                  const ViewerPlot *plot);
     virtual QString *GetMenuName() const;
 
     static void InitializeGlobalObjects();

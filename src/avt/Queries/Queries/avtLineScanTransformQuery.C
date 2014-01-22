@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -208,6 +208,10 @@ avtLineScanTransformQuery::PostExecute(void)
 //  Programmer: David Bremer
 //  Creation:   August 8, 2006
 //
+//  Modifications:
+//    Kathleen Biagas, Fri Jan 25 16:37:37 PST 2013
+//    Call Update on filter, not data object. 
+//
 // ****************************************************************************
 
 void
@@ -242,9 +246,9 @@ avtLineScanTransformQuery::ExecuteLineScan(vtkPolyData *pd)
     vtkCleanPolyData *cpd = vtkCleanPolyData::New();  
     cpd->SetToleranceIsAbsolute(0);
     cpd->SetTolerance(1e-7);
-    cpd->SetInput(pd);
+    cpd->SetInputData(pd);
+    cpd->Update();
     vtkPolyData *output = cpd->GetOutput();
-    output->Update();
 
     UpdateProgress(extraMsg*currentNode+extraMsg/3, totalProg);
 

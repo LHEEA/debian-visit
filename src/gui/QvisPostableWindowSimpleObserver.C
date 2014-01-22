@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,7 @@
 #include <QLayout>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QToolButton>
 #include <QScrollArea>
 
 #include <GlobalAttributes.h>
@@ -305,6 +306,11 @@ QvisPostableWindowSimpleObserver::CreateEntireWindow()
         // grid layout.
         buttonLayout->setColumnStretch(1, 50);
     }
+    QPushButton *helpButton = new QPushButton(topCentral);
+    helpButton->setVisible(false);
+    helpButton->setText(tr("?"));
+    connect(helpButton, SIGNAL(clicked()), this, SLOT(help()));
+    buttonLayout->addWidget(helpButton, 1, 2);
 
     postButton = new QPushButton(tr("Post"), topCentral);
     // Make the window post itself when the post button is clicked.
@@ -319,6 +325,8 @@ QvisPostableWindowSimpleObserver::CreateEntireWindow()
     QPushButton *dismissButton = new QPushButton(tr("Dismiss"), topCentral);
     connect(dismissButton, SIGNAL(clicked()), this, SLOT(hide()));
     buttonLayout->addWidget(dismissButton, 1, 4);
+
+
     if(notepad != 0 && stretchWindow)
         vLayout->addStretch(0);
 

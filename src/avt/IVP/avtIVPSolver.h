@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -123,6 +123,12 @@ struct avtIVPStateHelper;
 class avtIVPStep: public std::vector<avtVector>
 {
 public:
+
+    avtIVPStep()
+    {
+        t0 = 0;
+        t1 = 0;
+    }
 
     unsigned int GetDegree() const 
     { 
@@ -268,7 +274,7 @@ public:
         // points from the last iteration above, hence we can simply copy them.
 
         std::copy( tmp, tmp+size(), begin() );
-        t1 = t0 + t*(t1 + t0);
+        t1 = t0 + t*(t1 - t0);
         delete [] tmp;
     }
 

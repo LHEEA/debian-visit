@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -583,7 +583,7 @@ NETCDFFileObject::ReadAttribute(const char *varname, const char *attname,
                 *type = t;
                 *ndims = 1;
                 int *d = new int[1];
-                d[0] = attsize;
+                d[0] = (int)attsize;
                 *dims = d;
                 *value = val;
             }
@@ -732,7 +732,7 @@ NETCDFFileObject::InqVariable(const char *varname, TypeEnum *type, int *ndims,
                 size_t realSize;
                 status = nc_inq_dimlen(GetFileHandle(), vardims[i], &realSize);
                 if(status == NC_NOERR)
-                    vardims[i] = realSize;
+                    vardims[i] = (int)realSize;
                 else
                     HandleError(status);
             }
@@ -1097,6 +1097,9 @@ NETCDFFileObject::HandleError(int status) const
 //   Brad Whitlock, Thu Jan  5 17:13:01 PST 2012
 //   Add short support.
 //
+//   Kathleen Biagas, Thu May 16 17:05:57 PDT 2013
+//   Pass the varid to PRINT_ATTR_VALUES function.
+//
 // ****************************************************************************
 
 void
@@ -1158,10 +1161,10 @@ NETCDFFileObject::PrintFileContents(ostream &os)
                    debug4 << "NC_DOUBLE";
                 debug4 << ", size=" << attsize;
 
-#define PRINT_ATTR_VALUES(T, FUNC) \
+#define PRINT_ATTR_VALUES(T, FUNC, varid) \
                         {\
                             T *value = new T[attsize];\
-                            FUNC(GetFileHandle(), i, attname, value);\
+                            FUNC(GetFileHandle(), varid, attname, value);\
                             if(attsize > 1)\
                             {\
                                 debug4 << ", value={";\
@@ -1191,13 +1194,13 @@ NETCDFFileObject::PrintFileContents(ostream &os)
                     delete [] value;
                 }
                 else if(atttype == NC_SHORT)
-                    PRINT_ATTR_VALUES(short, nc_get_att_short)
+                    PRINT_ATTR_VALUES(short, nc_get_att_short, NC_GLOBAL)
                 else if(atttype == NC_INT)
-                    PRINT_ATTR_VALUES(int, nc_get_att_int)
+                    PRINT_ATTR_VALUES(int, nc_get_att_int, NC_GLOBAL)
                 else if(atttype == NC_FLOAT)
-                    PRINT_ATTR_VALUES(float, nc_get_att_float)
+                    PRINT_ATTR_VALUES(float, nc_get_att_float, NC_GLOBAL)
                 else if(atttype == NC_DOUBLE)
-                    PRINT_ATTR_VALUES(double, nc_get_att_double)
+                    PRINT_ATTR_VALUES(double, nc_get_att_double, NC_GLOBAL)
             }
             else
                 HandleError(status);
@@ -1296,13 +1299,13 @@ NETCDFFileObject::PrintFileContents(ostream &os)
                             delete [] value;
                         }
                         else if(atttype == NC_SHORT)
-                            PRINT_ATTR_VALUES(short, nc_get_att_short)
+                            PRINT_ATTR_VALUES(short, nc_get_att_short, i)
                         else if(atttype == NC_INT)
-                            PRINT_ATTR_VALUES(int, nc_get_att_int)
+                            PRINT_ATTR_VALUES(int, nc_get_att_int, i)
                         else if(atttype == NC_FLOAT)
-                            PRINT_ATTR_VALUES(float, nc_get_att_float)
+                            PRINT_ATTR_VALUES(float, nc_get_att_float, i)
                         else if(atttype == NC_DOUBLE)
-                            PRINT_ATTR_VALUES(double, nc_get_att_double)
+                            PRINT_ATTR_VALUES(double, nc_get_att_double, i)
                     }
                     else
                         HandleError(status);

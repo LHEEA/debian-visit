@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,27 +51,25 @@
 #define __vtkLinesFromOriginalCells_h
 #include <visit_vtk_exports.h>
 
-#include "vtkPolyDataToPolyDataFilter.h"
+#include "vtkPolyDataAlgorithm.h"
 
-class VISIT_VTK_API vtkLinesFromOriginalCells : public vtkPolyDataToPolyDataFilter
+class VISIT_VTK_API vtkLinesFromOriginalCells : public vtkPolyDataAlgorithm
 {
 public:
   static vtkLinesFromOriginalCells *New();
-  vtkTypeMacro(vtkLinesFromOriginalCells,vtkPolyDataToPolyDataFilter);
+  vtkTypeMacro(vtkLinesFromOriginalCells,vtkPolyDataAlgorithm);
 
 protected:
   vtkLinesFromOriginalCells();
   ~vtkLinesFromOriginalCells();
 
-  // Usual data generation method
-  void Execute();
+  virtual int RequestData(vtkInformation *,
+                          vtkInformationVector **,
+                          vtkInformationVector *);
 
 private:
   vtkLinesFromOriginalCells(const vtkLinesFromOriginalCells&);
   void operator=(const vtkLinesFromOriginalCells&);
-
 };
 
 #endif
-
-

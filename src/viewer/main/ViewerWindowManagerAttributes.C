@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -731,7 +731,7 @@ ViewerWindowManagerAttributes::RemoveActionConfigurations(int index)
 int
 ViewerWindowManagerAttributes::GetNumActionConfigurations() const
 {
-    return actionConfigurations.size();
+    return (int)actionConfigurations.size();
 }
 
 // ****************************************************************************

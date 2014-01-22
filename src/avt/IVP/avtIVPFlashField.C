@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -123,7 +123,6 @@ avtIVPFlashField::operator()( const double &t,
     if (FindCell(t, p) != OK)
         return OUTSIDE_SPATIAL;
 
-  Result result;
   avtVector B, E;
   if (FindValue(B_vtkDataArray, B) && FindValue(E_vtkDataArray, E))
   {

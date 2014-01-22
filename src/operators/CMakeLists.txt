@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -90,16 +90,18 @@ DualMesh
 Edge
 Elevate
 ExternalSurface
+ExtractPointFunction2D
 Extrude
 FFT
 FiveFoldTetSubdivision
 Flux
-FTLE
 IndexSelect
+IntegralCurve
 InverseGhostZone
 Isosurface
 Isovolume
 Lagrangian
+LCS
 Lineout
 LineSampler
 Merge
@@ -108,7 +110,9 @@ MultiresControl
 OnionPeel
 PDF
 PersistentParticles
+Poincare
 Project
+RectilinearProject2D
 Reflect
 Replicate
 Resample
@@ -117,6 +121,7 @@ Slice
 Smooth
 SphereSlice
 Stagger
+StatisticalTrends
 SurfaceNormal
 ThreeSlice
 Threshold
@@ -127,9 +132,15 @@ Tube
 ZoneDump
 )
 
-LIST(FIND VTK_KITS "GEOVIS" ADD_CARTOGRAPHIC)
-IF(ADD_CARTOGRAPHIC GREATER "-1")
+#adding programmable operator only if Python is available..
+#IF(VISIT_PYTHON_FILTERS OR VISIT_PYTHON_SCRIPTING)
+#    LIST(APPEND REQUIRED_OPERATOR_PLUGINS Script)
+#ENDIF(VISIT_PYTHON_FILTERS OR VISIT_PYTHON_SCRIPTING)
+
+IF(TARGET vtkGeovisCore)
     LIST(APPEND REQUIRED_OPERATOR_PLUGINS CartographicProjection)
+ELSE()
+    MESSAGE(STATUS "CartographicProjection requires vtkGeovisCore")
 ENDIF()
 
 SET(OPTIONAL_OPERATOR_PLUGINS

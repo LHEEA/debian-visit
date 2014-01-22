@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -60,7 +60,7 @@ import llnl.visit.ColorAttribute;
 
 public class CurveAttributes extends AttributeSubject implements Plugin
 {
-    private static int CurveAttributes_numAdditionalAtts = 22;
+    private static int CurveAttributes_numAdditionalAtts = 28;
 
     // Enum values
     public final static int CURVECOLOR_CYCLE = 0;
@@ -76,6 +76,17 @@ public class CurveAttributes extends AttributeSubject implements Plugin
     public final static int SYMBOLTYPES_CIRCLE = 4;
     public final static int SYMBOLTYPES_PLUS = 5;
     public final static int SYMBOLTYPES_X = 6;
+
+    public final static int CURVEFILLMODE_NOFILL = 0;
+    public final static int CURVEFILLMODE_SOLID = 1;
+    public final static int CURVEFILLMODE_HORIZONTALGRADIENT = 2;
+    public final static int CURVEFILLMODE_VERTICALGRADIENT = 3;
+
+    public final static int POLARCOORDINATEORDER_R_THETA = 0;
+    public final static int POLARCOORDINATEORDER_THETA_R = 1;
+
+    public final static int ANGLEUNITS_RADIANS = 0;
+    public final static int ANGLEUNITS_DEGREES = 1;
 
 
     public CurveAttributes()
@@ -104,6 +115,12 @@ public class CurveAttributes extends AttributeSubject implements Plugin
         lineTimeCueWidth = 0;
         doCropTimeCue = false;
         timeForTimeCue = 0;
+        fillMode = CURVEFILLMODE_NOFILL;
+        fillColor1 = new ColorAttribute(255, 0, 0);
+        fillColor2 = new ColorAttribute(255, 100, 100);
+        polarToCartesian = false;
+        polarCoordinateOrder = POLARCOORDINATEORDER_R_THETA;
+        angleUnits = ANGLEUNITS_RADIANS;
     }
 
     public CurveAttributes(int nMoreFields)
@@ -132,6 +149,12 @@ public class CurveAttributes extends AttributeSubject implements Plugin
         lineTimeCueWidth = 0;
         doCropTimeCue = false;
         timeForTimeCue = 0;
+        fillMode = CURVEFILLMODE_NOFILL;
+        fillColor1 = new ColorAttribute(255, 0, 0);
+        fillColor2 = new ColorAttribute(255, 100, 100);
+        polarToCartesian = false;
+        polarCoordinateOrder = POLARCOORDINATEORDER_R_THETA;
+        angleUnits = ANGLEUNITS_RADIANS;
     }
 
     public CurveAttributes(CurveAttributes obj)
@@ -160,6 +183,12 @@ public class CurveAttributes extends AttributeSubject implements Plugin
         lineTimeCueWidth = obj.lineTimeCueWidth;
         doCropTimeCue = obj.doCropTimeCue;
         timeForTimeCue = obj.timeForTimeCue;
+        fillMode = obj.fillMode;
+        fillColor1 = new ColorAttribute(obj.fillColor1);
+        fillColor2 = new ColorAttribute(obj.fillColor2);
+        polarToCartesian = obj.polarToCartesian;
+        polarCoordinateOrder = obj.polarCoordinateOrder;
+        angleUnits = obj.angleUnits;
 
         SelectAll();
     }
@@ -198,7 +227,13 @@ public class CurveAttributes extends AttributeSubject implements Plugin
                 (lineTimeCueColor == obj.lineTimeCueColor) &&
                 (lineTimeCueWidth == obj.lineTimeCueWidth) &&
                 (doCropTimeCue == obj.doCropTimeCue) &&
-                (timeForTimeCue == obj.timeForTimeCue));
+                (timeForTimeCue == obj.timeForTimeCue) &&
+                (fillMode == obj.fillMode) &&
+                (fillColor1 == obj.fillColor1) &&
+                (fillColor2 == obj.fillColor2) &&
+                (polarToCartesian == obj.polarToCartesian) &&
+                (polarCoordinateOrder == obj.polarCoordinateOrder) &&
+                (angleUnits == obj.angleUnits));
     }
 
     public String GetName() { return "Curve"; }
@@ -337,6 +372,42 @@ public class CurveAttributes extends AttributeSubject implements Plugin
         Select(21);
     }
 
+    public void SetFillMode(int fillMode_)
+    {
+        fillMode = fillMode_;
+        Select(22);
+    }
+
+    public void SetFillColor1(ColorAttribute fillColor1_)
+    {
+        fillColor1 = fillColor1_;
+        Select(23);
+    }
+
+    public void SetFillColor2(ColorAttribute fillColor2_)
+    {
+        fillColor2 = fillColor2_;
+        Select(24);
+    }
+
+    public void SetPolarToCartesian(boolean polarToCartesian_)
+    {
+        polarToCartesian = polarToCartesian_;
+        Select(25);
+    }
+
+    public void SetPolarCoordinateOrder(int polarCoordinateOrder_)
+    {
+        polarCoordinateOrder = polarCoordinateOrder_;
+        Select(26);
+    }
+
+    public void SetAngleUnits(int angleUnits_)
+    {
+        angleUnits = angleUnits_;
+        Select(27);
+    }
+
     // Property getting methods
     public boolean        GetShowLines() { return showLines; }
     public int            GetLineStyle() { return lineStyle; }
@@ -360,6 +431,12 @@ public class CurveAttributes extends AttributeSubject implements Plugin
     public int            GetLineTimeCueWidth() { return lineTimeCueWidth; }
     public boolean        GetDoCropTimeCue() { return doCropTimeCue; }
     public double         GetTimeForTimeCue() { return timeForTimeCue; }
+    public int            GetFillMode() { return fillMode; }
+    public ColorAttribute GetFillColor1() { return fillColor1; }
+    public ColorAttribute GetFillColor2() { return fillColor2; }
+    public boolean        GetPolarToCartesian() { return polarToCartesian; }
+    public int            GetPolarCoordinateOrder() { return polarCoordinateOrder; }
+    public int            GetAngleUnits() { return angleUnits; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -408,6 +485,18 @@ public class CurveAttributes extends AttributeSubject implements Plugin
             buf.WriteBool(doCropTimeCue);
         if(WriteSelect(21, buf))
             buf.WriteDouble(timeForTimeCue);
+        if(WriteSelect(22, buf))
+            buf.WriteInt(fillMode);
+        if(WriteSelect(23, buf))
+            fillColor1.Write(buf);
+        if(WriteSelect(24, buf))
+            fillColor2.Write(buf);
+        if(WriteSelect(25, buf))
+            buf.WriteBool(polarToCartesian);
+        if(WriteSelect(26, buf))
+            buf.WriteInt(polarCoordinateOrder);
+        if(WriteSelect(27, buf))
+            buf.WriteInt(angleUnits);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -483,6 +572,26 @@ public class CurveAttributes extends AttributeSubject implements Plugin
         case 21:
             SetTimeForTimeCue(buf.ReadDouble());
             break;
+        case 22:
+            SetFillMode(buf.ReadInt());
+            break;
+        case 23:
+            fillColor1.Read(buf);
+            Select(23);
+            break;
+        case 24:
+            fillColor2.Read(buf);
+            Select(24);
+            break;
+        case 25:
+            SetPolarToCartesian(buf.ReadBool());
+            break;
+        case 26:
+            SetPolarCoordinateOrder(buf.ReadInt());
+            break;
+        case 27:
+            SetAngleUnits(buf.ReadInt());
+            break;
         }
     }
 
@@ -536,6 +645,31 @@ public class CurveAttributes extends AttributeSubject implements Plugin
         str = str + intToString("lineTimeCueWidth", lineTimeCueWidth, indent) + "\n";
         str = str + boolToString("doCropTimeCue", doCropTimeCue, indent) + "\n";
         str = str + doubleToString("timeForTimeCue", timeForTimeCue, indent) + "\n";
+        str = str + indent + "fillMode = ";
+        if(fillMode == CURVEFILLMODE_NOFILL)
+            str = str + "CURVEFILLMODE_NOFILL";
+        if(fillMode == CURVEFILLMODE_SOLID)
+            str = str + "CURVEFILLMODE_SOLID";
+        if(fillMode == CURVEFILLMODE_HORIZONTALGRADIENT)
+            str = str + "CURVEFILLMODE_HORIZONTALGRADIENT";
+        if(fillMode == CURVEFILLMODE_VERTICALGRADIENT)
+            str = str + "CURVEFILLMODE_VERTICALGRADIENT";
+        str = str + "\n";
+        str = str + indent + "fillColor1 = {" + fillColor1.Red() + ", " + fillColor1.Green() + ", " + fillColor1.Blue() + ", " + fillColor1.Alpha() + "}\n";
+        str = str + indent + "fillColor2 = {" + fillColor2.Red() + ", " + fillColor2.Green() + ", " + fillColor2.Blue() + ", " + fillColor2.Alpha() + "}\n";
+        str = str + boolToString("polarToCartesian", polarToCartesian, indent) + "\n";
+        str = str + indent + "polarCoordinateOrder = ";
+        if(polarCoordinateOrder == POLARCOORDINATEORDER_R_THETA)
+            str = str + "POLARCOORDINATEORDER_R_THETA";
+        if(polarCoordinateOrder == POLARCOORDINATEORDER_THETA_R)
+            str = str + "POLARCOORDINATEORDER_THETA_R";
+        str = str + "\n";
+        str = str + indent + "angleUnits = ";
+        if(angleUnits == ANGLEUNITS_RADIANS)
+            str = str + "ANGLEUNITS_RADIANS";
+        if(angleUnits == ANGLEUNITS_DEGREES)
+            str = str + "ANGLEUNITS_DEGREES";
+        str = str + "\n";
         return str;
     }
 
@@ -563,5 +697,11 @@ public class CurveAttributes extends AttributeSubject implements Plugin
     private int            lineTimeCueWidth;
     private boolean        doCropTimeCue;
     private double         timeForTimeCue;
+    private int            fillMode;
+    private ColorAttribute fillColor1;
+    private ColorAttribute fillColor2;
+    private boolean        polarToCartesian;
+    private int            polarCoordinateOrder;
+    private int            angleUnits;
 }
 

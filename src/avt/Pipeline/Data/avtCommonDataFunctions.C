@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -634,41 +634,6 @@ CGetVariableList(avtDataRepresentation &data, void *nv, bool &success)
 
 
 // ****************************************************************************
-//  Method: CUpdateData
-//
-//  Purpose:
-//    Updates the vtk input.  
-//
-//  Arguments:
-//    data      The data to be updated.
-//    <unused>
-//    modified  True if the data was modified.
-//
-//  Notes:
-//      This method is designed to be used as the function parameter of
-//      avtDataTree::Iterate.
-//
-//  Programmer: Kathleen Bonnell
-//  Creation:   April 18, 2001
-//
-// ****************************************************************************
-
-void
-CUpdateData(avtDataRepresentation &data, void *, bool &modified)
-{
-    if (!data.Valid())
-    {
-        EXCEPTION0(NoInputException);
-    }
-    vtkDataSet *ds = data.GetDataVTK();
-    unsigned long mtime = ds->GetMTime();
-    ds->Update();
-    if (mtime != ds->GetMTime())
-        modified = true;
-}
-
-
-// ****************************************************************************
 //  Method: CAddInputToAppendFilter
 //
 //  Purpose:
@@ -741,11 +706,11 @@ CAddInputToAppendFilter(avtDataRepresentation & data, void *arg, bool &)
     
     if (ds->GetDataObjectType() == VTK_POLY_DATA)
     {
-        pmap->pf->AddInput((vtkPolyData*)ds);
+        pmap->pf->AddInputData((vtkPolyData*)ds);
     }
     else if (pmap->compactAllGrids || ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
     {
-        pmap->af->AddInput(ds);
+        pmap->af->AddInputData(ds);
     }
 }
 

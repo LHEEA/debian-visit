@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,7 +108,7 @@ WriteOutRectilinearMesh(const char *fname, int dimI, int dimJ, int dimK)
 
     vtkDataSetWriter *wrtr = vtkDataSetWriter::New();
     wrtr->SetFileName(fname);
-    wrtr->SetInput(rgrid);
+    wrtr->SetInputData(rgrid);
     wrtr->Write();
  
     wrtr->Delete();
@@ -157,7 +157,7 @@ WriteOutCurvilinearMesh(const char *fname, int dimI, int dimJ, int dimK)
 
     vtkDataSetWriter *wrtr = vtkDataSetWriter::New();
     wrtr->SetFileName(fname);
-    wrtr->SetInput(sgrid);
+    wrtr->SetInputData(sgrid);
     wrtr->Write();
  
     wrtr->Delete();

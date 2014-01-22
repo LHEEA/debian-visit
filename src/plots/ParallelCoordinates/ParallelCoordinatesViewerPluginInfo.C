@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -227,7 +227,7 @@ ParallelCoordinatesViewerPluginInfo::Permits2DViewScaling() const
 
 void
 ParallelCoordinatesViewerPluginInfo::InitializePlotAtts(
-    AttributeSubject *atts, ViewerPlot *plot)
+    AttributeSubject *atts, const ViewerPlot *plot)
 {
     // If we had scalar names, we can just copy the default atts
     // and return.

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -502,7 +502,7 @@ avtDataAttributes::DestructSelf(void)
 //    Added component extents for array variables.
 //
 //    Eric Brugger, Tue Dec  9 16:19:10 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
 //
 //    Hank Childs, Tue Jan 20 12:03:05 CST 2009
 //    Added dynamicDomainDecomposition.
@@ -522,6 +522,10 @@ avtDataAttributes::DestructSelf(void)
 //
 //    Cyrus Harrison, Tue Feb  7 11:15:20 PST 2012
 //    Add print for presentGhostZoneTypes.
+//
+//    Eric Brugger, Mon Nov  5 15:10:17 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -625,8 +629,11 @@ avtDataAttributes::Print(ostream &out)
       case WINMODE_AXISARRAY:
         out << "The window mode is axis-array" << endl;
         break;
-      case WINMODE_AXISPARALLEL:
-        out << "The window mode is axis-parallel" << endl;
+      case WINMODE_PARALLELAXES:
+        out << "The window mode is parallel-axes" << endl;
+        break;
+      case WINMODE_VERTPARALLELAXES:
+        out << "The window mode is vertical-parallel-axes" << endl;
         break;
       case WINMODE_NONE:
         out << "The window mode is none" << endl;
@@ -2959,36 +2966,36 @@ avtDataAttributes::Write(avtDataObjectString &str,
         variables[i]->componentExtents->Write(str, wrtr);
     }
 
-    wrtr->WriteInt(str, meshname.size());
-    str.Append((char *) meshname.c_str(), meshname.size(),
+    wrtr->WriteInt(str, (int)meshname.size());
+    str.Append((char *) meshname.c_str(), (int)meshname.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
 
-    wrtr->WriteInt(str, filename.size());
-    str.Append((char *) filename.c_str(), filename.size(),
+    wrtr->WriteInt(str, (int)filename.size());
+    str.Append((char *) filename.c_str(), (int)filename.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
 
-    wrtr->WriteInt(str, fullDBName.size());
-    str.Append((char *) fullDBName.c_str(), fullDBName.size(),
+    wrtr->WriteInt(str, (int)fullDBName.size());
+    str.Append((char *) fullDBName.c_str(), (int)fullDBName.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
 
-    wrtr->WriteInt(str, xUnits.size());
-    str.Append((char *) xUnits.c_str(), xUnits.size(),
+    wrtr->WriteInt(str, (int)xUnits.size());
+    str.Append((char *) xUnits.c_str(), (int)xUnits.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
-    wrtr->WriteInt(str, yUnits.size());
-    str.Append((char *) yUnits.c_str(), yUnits.size(),
+    wrtr->WriteInt(str, (int)yUnits.size());
+    str.Append((char *) yUnits.c_str(), (int)yUnits.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
-    wrtr->WriteInt(str, zUnits.size());
-    str.Append((char *) zUnits.c_str(), zUnits.size(),
+    wrtr->WriteInt(str, (int)zUnits.size());
+    str.Append((char *) zUnits.c_str(), (int)zUnits.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
 
-    wrtr->WriteInt(str, xLabel.size());
-    str.Append((char *) xLabel.c_str(), xLabel.size(),
+    wrtr->WriteInt(str, (int)xLabel.size());
+    str.Append((char *) xLabel.c_str(), (int)xLabel.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
-    wrtr->WriteInt(str, yLabel.size());
-    str.Append((char *) yLabel.c_str(), yLabel.size(),
+    wrtr->WriteInt(str, (int)yLabel.size());
+    str.Append((char *) yLabel.c_str(), (int)yLabel.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
-    wrtr->WriteInt(str, zLabel.size());
-    str.Append((char *) zLabel.c_str(), zLabel.size(),
+    wrtr->WriteInt(str, (int)zLabel.size());
+    str.Append((char *) zLabel.c_str(), (int)zLabel.size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
 
     for (i = 0; i < 9 ; i++)
@@ -3000,9 +3007,9 @@ avtDataAttributes::Write(avtDataObjectString &str,
     for (i = 0; i < 16 ; i++)
         wrtr->WriteDouble(str, rectilinearGridTransform[i]);
 
-    wrtr->WriteInt(str, selectionsApplied.size());
-    for (i = 0; i < selectionsApplied.size(); i++)
-        wrtr->WriteInt(str, selectionsApplied[i] ? 1 : 0);
+    wrtr->WriteInt(str, (int)selectionsApplied.size());
+    for (size_t k = 0; k < selectionsApplied.size(); k++)
+        wrtr->WriteInt(str, selectionsApplied[k] ? 1 : 0);
 
     WriteLabels(str, wrtr);
     WriteInvTransform(str, wrtr);
@@ -3660,11 +3667,11 @@ void
 avtDataAttributes::WriteLabels(avtDataObjectString &str,
                                 const avtDataObjectWriter *wrtr)
 {
-    wrtr->WriteInt(str, labels.size());
-    for (int i = 0; i < labels.size(); i++)
+    wrtr->WriteInt(str, (int)labels.size());
+    for (size_t i = 0; i < labels.size(); i++)
     {
-       wrtr->WriteInt(str, labels[i].size());
-       str.Append((char *) labels[i].c_str(), labels[i].size(),
+       wrtr->WriteInt(str, (int)labels[i].size());
+       str.Append((char *) labels[i].c_str(), (int)labels[i].size(),
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
     }
 }
@@ -3905,9 +3912,9 @@ avtDataAttributes::GetVariableName(void) const
 const std::string &
 avtDataAttributes::GetVariableName(int index) const
 {
-    if (index < 0 || index >= variables.size())
+    if (index < 0 || index >= (int)variables.size())
     {
-        EXCEPTION2(BadIndexException, index, variables.size());
+        EXCEPTION2(BadIndexException, index, (int)variables.size());
     }
 
     return variables[index]->varname;
@@ -3947,9 +3954,9 @@ avtDataAttributes::GetVariableUnits(const char *varname) const
     else
     {
         int index = VariableNameToIndex(varname);
-        if (index < 0 || index >= variables.size())
+        if (index < 0 || index >= (int)variables.size())
         {
-            EXCEPTION2(BadIndexException, index, variables.size());
+            EXCEPTION2(BadIndexException, index, (int)variables.size());
         }
 
         return variables[index]->varunits;
@@ -3979,9 +3986,9 @@ avtDataAttributes::GetVariableUnits(const char *varname) const
 const std::string &
 avtDataAttributes::GetVariableUnits(int index) const
 {
-    if (index < 0 || index >= variables.size())
+    if (index < 0 || index >= (int)variables.size())
     {
-        EXCEPTION2(BadIndexException, index, variables.size());
+        EXCEPTION2(BadIndexException, index, (int)variables.size());
     }
 
     return variables[index]->varunits;

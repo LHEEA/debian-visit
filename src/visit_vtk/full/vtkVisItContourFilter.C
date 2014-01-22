@@ -39,7 +39,6 @@
 #include <vector>
 
 
-vtkCxxRevisionMacro(vtkVisItContourFilter, "$Revision: 1.00 $");
 vtkStandardNewMacro(vtkVisItContourFilter);
 
 vtkVisItContourFilter::vtkVisItContourFilter()
@@ -346,6 +345,9 @@ vtkVisItContourFilter::RectilinearGridExecute(vtkDataSet *input,
 //   Brad Whitlock, Wed Apr 11 11:37:18 PDT 2012
 //   When we can't contour a cell, insert faces too for polyhedral cells.
 //
+//   Kathleen Biagas, Fri Jan 25 16:04:46 PST 2013
+//   Call Update on the filter, not the data object.
+//
 ///////////////////////////////////////////////////////////////////////////////
 
 int 
@@ -490,9 +492,9 @@ vtkVisItContourFilter::UnstructuredGridExecute(vtkDataSet *input,
         sfv.ConstructPolyData(inPD, inCD, just_from_zoo, inPts);
 
         vtkAppendPolyData *appender = vtkAppendPolyData::New();
-        appender->AddInput(not_from_zoo);
-        appender->AddInput(just_from_zoo);
-        appender->GetOutput()->Update();
+        appender->AddInputData(not_from_zoo);
+        appender->AddInputData(just_from_zoo);
+        appender->Update();
 
         output->ShallowCopy(appender->GetOutput());
         appender->Delete();
@@ -523,7 +525,7 @@ vtkVisItContourFilter::ContourDataset(vtkDataSet *in_ds,
     contour->SetNumberOfContours(1);
     contour->SetValue(0, Isovalue);
 
-    contour->SetInput(in_ds);
+    contour->SetInputData(in_ds);
     contour->Update();
 
     out_pd->ShallowCopy(contour->GetOutput());

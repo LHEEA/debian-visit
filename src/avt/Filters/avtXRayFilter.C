@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1541,7 +1541,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
     }
     visitTimer->StopTimer(t1, "avtXRayFilter::LoopOverLines");
 
-    nLinesPerDataset = cells_matched.size();
+    nLinesPerDataset = (int)cells_matched.size();
 
     t1 = visitTimer->StartTimer();
     //
@@ -1727,7 +1727,7 @@ avtXRayFilter::CylindricalExecute(vtkDataSet *ds, int &nLinesPerDataset,
         }
     }
 
-    nLinesPerDataset = cells_matched.size();
+    nLinesPerDataset = (int)cells_matched.size();
 
     //
     // Copy the cell data.

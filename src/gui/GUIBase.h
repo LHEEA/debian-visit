@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,7 @@ class ViewerState;
 struct StatusSubject;
 struct QualifiedFilename;
 class SimpleObserver;
+class QvisHelpWindow;
 
 // ****************************************************************************
 // Class: GUIBase
@@ -182,6 +183,9 @@ protected:
                                             int dbState) const;
 
     QString GetPlotDescription(const QString &plotName) const;
+
+    static void RegisterHelpWindow(QvisHelpWindow* help);
+    static QvisHelpWindow* GetHelpWindow();
 private:
     static ViewerProxy       *viewer;
 protected:
@@ -191,6 +195,7 @@ protected:
     static bool              makeDefaultConfirm;
     static MessageAttributes *msgAttr;
     static FileServerList    *fileServer;
+    static QvisHelpWindow* helpWindow;
 };
 
 #endif

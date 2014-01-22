@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -101,6 +101,9 @@ YoungsMIR::~YoungsMIR()
 //    Jeremy Meredith, Mon Jan  4 15:09:23 EST 2010
 //    Added some timings.
 //
+//    Kathleen Biagas, Mon Jan 28 10:35:29 PST 2013
+//    Call update on the filter not the data object.
+//
 // ****************************************************************************
 bool
 YoungsMIR::ReconstructMesh(vtkDataSet *orig_ds, avtMaterial *orig_mat, int dim)
@@ -148,16 +151,16 @@ YoungsMIR::ReconstructMesh(vtkDataSet *orig_ds, avtMaterial *orig_mat, int dim)
     // gradient
     int th_grad = visitTimer->StartTimer();
     vtkCQS *cqs = vtkCQS::New();
-    cqs->SetInput(ds);
+    cqs->SetInputData(ds);
+    cqs->Update();
     ds = cqs->GetOutput();
-    ds->Update();
     ds->Register(NULL);
     cqs->Delete();
 
     for (int m=0; m<nmats; m++)
     {
         vtkDataSetGradient *grad = vtkDataSetGradient::New();
-        grad->SetInput(ds);
+        grad->SetInputData(ds);
 
         char str[256];
         sprintf(str, "material%05d", mapUsedMatToMat[m]);
@@ -167,8 +170,8 @@ YoungsMIR::ReconstructMesh(vtkDataSet *orig_ds, avtMaterial *orig_mat, int dim)
         sprintf(str2, "grad%05d", mapUsedMatToMat[m]);
         grad->SetGradientArrayName(str2);
 
+        grad->Update();
         ds = grad->GetOutput();
-        ds->Update();
         ds->Register(NULL);
         grad->Delete();
     }
@@ -177,9 +180,9 @@ YoungsMIR::ReconstructMesh(vtkDataSet *orig_ds, avtMaterial *orig_mat, int dim)
     // recenter the gradient!
     int th_recenter = visitTimer->StartTimer();
     vtkVisItPointDataToCellData *pd2cd = vtkVisItPointDataToCellData::New();
-    pd2cd->SetInput(ds);
+    pd2cd->SetInputData(ds);
+    pd2cd->Update();
     ds = pd2cd->GetOutput();
-    ds->Update();
     ds->Register(NULL);
     pd2cd->Delete();
     visitTimer->StopTimer(th_recenter, "MIR: Recenter gradients");
@@ -346,7 +349,7 @@ YoungsMIR::GetDataset(std::vector<int> mats, vtkDataSet *ds,
     {
         vtkAppendFilter *append = vtkAppendFilter::New();
         for (int i=0; i<matDS.size(); i++)
-            append->AddInput(matDS[i]);
+            append->AddInputData(matDS[i]);
 
         retval = append->GetOutput();
         append->Update();

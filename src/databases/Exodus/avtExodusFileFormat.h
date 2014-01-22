@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,15 +44,14 @@
 #define AVT_EXODUS_FILE_FORMAT_H
 
 #include <avtMTSDFileFormat.h>
+#include <avtTypes.h>
 
-#include <vector>
+#include <map>
 #include <string>
+#include <vector>
 
-
-class     vtkVisItExodusReader;
 
 class     avtVariableCache;
-
 
 // ****************************************************************************
 //  Class: avtExodusFileFormat
@@ -86,6 +85,8 @@ class     avtVariableCache;
 //    Eric Brugger, Fri Mar  9 14:42:04 PST 2007
 //    Added support for element block names.
 //
+//    Mark C. Miller, Mon Sep 16 15:04:12 PDT 2013
+//    Removed SetTimestep method.
 // ****************************************************************************
 
 class avtExodusFileFormat : public avtMTSDFileFormat
@@ -94,9 +95,6 @@ class avtExodusFileFormat : public avtMTSDFileFormat
                                 avtExodusFileFormat(const char *);
     virtual                    ~avtExodusFileFormat();
  
-    static int                  RegisterFileList(const char *const *, int);
-    void                        SetFileList(int fl) { fileList = fl; };
-
     virtual void                FreeUpResources(void);
     const char                 *GetType(void) { return "Exodus File Format"; };
 
@@ -109,32 +107,32 @@ class avtExodusFileFormat : public avtMTSDFileFormat
 
     virtual void                PopulateDatabaseMetaData(avtDatabaseMetaData*, int);
 
-    virtual void         *GetAuxiliaryData(const char *var, int, 
-                                           const char *type, void *args,
-                                           DestructorFunction &);
+    virtual void               *GetAuxiliaryData(const char *var, int, 
+                                    const char *type, void *args,
+                                    DestructorFunction &);
 
-  protected:
-    vtkVisItExodusReader            *reader;
+    static int                  RegisterFileList(const char *const *, int);
+    void                        SetFileList(int fl) { fileList = fl; };
+
+  private:
+    int                         GetFileHandle();
+    void                        GetTimesteps(int *ntimes, std::vector<double> *times);
+    void                        AddVar(avtDatabaseMetaData *md, char const *vname,
+                                    int topo_dim, int ncomps, avtCentering centering);
+
     int                         numBlocks;
-    std::vector<bool>           validBlock;
+    int                         numNodes; // this 'domain'
+    int                         numElems; // this 'domain'
     std::vector<int>            blockId;
     std::vector<std::string>    blockName;
-    std::vector<std::string>    pointVars;
-    std::vector<std::string>    cellVars;
-    avtVariableCache           *exodusCache;
-    bool                        readInFile;
     int                         fileList;
+    int                         ncExIIId;
+    std::map<int, int>          blockIdToMatMap;
 
     // Note: this needs to be a pointer because there are issues with 
     // constructors being called in shared libraries for static objects.
     static std::vector< std::vector<std::string> > *globalFileLists;
 
-    vtkVisItExodusReader            *GetReader(void);
-    void                        SetTimestep(int);
-    void                        LoadVariable(vtkVisItExodusReader *, const char *);
-    vtkDataSet                 *ForceRead(const char *);
-    void                        ReadInFile(void);
-    vtkDataSet                 *ReadMesh(int, const char *, bool);
 };
 
 

@@ -21,12 +21,13 @@
 #include "vtkCellData.h"
 #include "vtkDataSet.h"
 #include "vtkIdList.h"
+#include "vtkInformation.h"
+#include "vtkInformationVector.h"
 #include "vtkObjectFactory.h"
 #include "vtkPointData.h"
 #include "vtkRectilinearGrid.h"
 #include "vtkStructuredGrid.h"
 
-vtkCxxRevisionMacro(vtkVisItCellDataToPointData, "$Revision: 1.24 $");
 vtkStandardNewMacro(vtkVisItCellDataToPointData);
 
 // Instantiate object so that cell data is not passed to output.
@@ -39,7 +40,6 @@ vtkVisItCellDataToPointData::vtkVisItCellDataToPointData()
 
 // **************************************************************************** 
 //  Modifications:
-//
 //    Hank Childs, Wed Mar  9 16:23:01 PST 2005
 //    Fix minor UMR.
 //
@@ -51,9 +51,10 @@ vtkVisItCellDataToPointData::vtkVisItCellDataToPointData()
 //    Added templatized helper method to handle double-precision.
 //
 // **************************************************************************** 
+
 template <class Accessor> inline void
 vtkVisItCellDataToPointData_Copy(int ptId, double weight, int *ids, int nids,
-   Accessor var_out, Accessor var_in)
+    Accessor var_out, Accessor var_in)
 {
     double val = 0.;
     for (int m = 0 ; m < nids ; ++m)
@@ -63,12 +64,32 @@ vtkVisItCellDataToPointData_Copy(int ptId, double weight, int *ids, int nids,
     var_out.SetComponent(ptId, val);
 }
 
-void vtkVisItCellDataToPointData::Execute()
+// **************************************************************************** 
+//  Modifications:
+//    Eric Brugger, Wed Jan  9 14:48:17 PST 2013
+//    Modified to inherit from vtkDataSetAlgorithm.
+//
+// **************************************************************************** 
+
+int vtkVisItCellDataToPointData::RequestData(
+  vtkInformation *vtkNotUsed(request),
+  vtkInformationVector **inputVector,
+  vtkInformationVector *outputVector)
 {
-  vtkIdType cellId, ptId, i, j, k, l, m;
+  // get the info objects
+  vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
+  vtkInformation *outInfo = outputVector->GetInformationObject(0);
+
+  //
+  // Initialize some frequently used values.
+  //
+  vtkDataSet  *input = vtkDataSet::SafeDownCast(
+    inInfo->Get(vtkDataObject::DATA_OBJECT()));
+  vtkDataSet *output = vtkDataSet::SafeDownCast(
+    outInfo->Get(vtkDataObject::DATA_OBJECT()));
+
+  vtkIdType cellId, ptId, i, j, k, l;
   vtkIdType numCells, numPts;
-  vtkDataSet *input= this->GetInput();
-  vtkDataSet *output= this->GetOutput();
   vtkCellData *inPD=input->GetCellData();
   vtkPointData *outPD=output->GetPointData();
   vtkIdList *cellIds;
@@ -87,7 +108,7 @@ void vtkVisItCellDataToPointData::Execute()
     {
     vtkErrorMacro(<<"No input point data!");
     cellIds->Delete();
-    return;
+    return 1;
     }
   weights = new double[VTK_MAX_CELLS_PER_POINT];
   
@@ -261,6 +282,8 @@ void vtkVisItCellDataToPointData::Execute()
 
   cellIds->Delete();
   delete [] weights;
+
+  return 1;
 }
 
 void vtkVisItCellDataToPointData::PrintSelf(ostream& os, vtkIndent indent)

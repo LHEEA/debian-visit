@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -72,6 +72,13 @@ SIMV2_API void    simv2_set_command_callback(void*,void(*)(const char*,const cha
 SIMV2_API int     simv2_save_window(void*, const char *, int, int, int);
 SIMV2_API void    simv2_debug_logs(int level, const char *msg);
 SIMV2_API int     simv2_set_mpicomm(void *);
+
+SIMV2_API int     simv2_add_plot(void *, const char *, const char *, const char *, int *);
+SIMV2_API int     simv2_add_operator(void *, int, const char *, int *);
+SIMV2_API int     simv2_draw_plot(void *, int);
+SIMV2_API int     simv2_delete_plot(void *, int);
+SIMV2_API int     simv2_set_plot_options(void *, int, const char *, int, void *, int);
+SIMV2_API int     simv2_set_operator_options(void *, int, int, const char *, int, void *, int);
 
 #ifdef __cplusplus
 }

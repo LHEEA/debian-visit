@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define WINDOWINFORMATION_NMETH 56
+#define WINDOWINFORMATION_NMETH 60
 void VISITPY_API           PyWindowInformation_StartUp(WindowInformation *subj, void *data);
 void VISITPY_API           PyWindowInformation_CloseDown();
 VISITPY_API PyMethodDef *  PyWindowInformation_GetMethodTable(int *nMethods);

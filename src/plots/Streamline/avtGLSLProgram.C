@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,6 +41,7 @@
 // ************************************************************************* //
 
 #include <avtGLSLProgram.h>
+#include <avtOpenGLExtensionManager.h>
 #include <DebugStream.h>
 
 #include <cstring>
@@ -310,7 +311,7 @@ bool avtGLSLProgram::IsSupported()
         return supported = 0;
         
     return supported = 
-        glewIsSupported( "GL_VERSION_2_0" ) &&
-        glewIsSupported( "GL_ARB_shading_language_100" );
+        avt::glew::supported( "GL_VERSION_2_0" ) &&
+        avt::glew::supported( "GL_ARB_shading_language_100" );
 }
 

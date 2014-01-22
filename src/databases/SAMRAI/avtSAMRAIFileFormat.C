@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -431,6 +431,10 @@ avtSAMRAIFileFormat::~avtSAMRAIFileFormat()
 //  Programmer:  Mark C. Miller 
 //  Creation:    August 19, 2004 
 //
+//  Modifications
+//
+//    Mark C. Miller, Wed Feb  6 11:23:03 PST 2013
+//    Open using H5_CLOSE_SEMI
 // ****************************************************************************
 hid_t
 avtSAMRAIFileFormat::OpenFile(const char *fileName)
@@ -479,7 +483,10 @@ avtSAMRAIFileFormat::OpenFile(const char *fileName)
     //
     // Open the HDF5 file.
     //
-    h5files[fileIndex] = H5Fopen(filenames[fileIndex], H5F_ACC_RDONLY, H5P_DEFAULT);
+    hid_t fapl = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_fclose_degree(fapl, H5F_CLOSE_SEMI);
+    h5files[fileIndex] = H5Fopen(filenames[fileIndex], H5F_ACC_RDONLY, fapl);
+    H5Pclose(fapl);
                         
     //
     // Check to see if we got a valid handle.
@@ -503,6 +510,10 @@ avtSAMRAIFileFormat::OpenFile(const char *fileName)
 //  Programmer: Mark C. Miller 
 //  Creation:   August 19, 2004
 //
+//  Modifications
+//
+//    Mark C. Miller, Wed Feb  6 11:23:35 PST 2013
+//    Check and report errors on close.
 // ****************************************************************************
  
 void
@@ -511,7 +522,23 @@ avtSAMRAIFileFormat::CloseFile(int f)
     if (h5files[f] >= 0)
     {
         debug4 << "Closing HDF5 file " << filenames[f] << endl;
-        H5Fclose(h5files[f]);
+        herr_t err = H5Fclose(h5files[f]);
+        if (err < 0)
+        {
+            char msg[512];
+            static bool haveIssuedWarning = false;
+            SNPRINTF(msg, sizeof(msg), "Error closing HDF5 SAMRAI file \"%s\". "
+                "The file may have been left open holding HDF5 resources. "
+                "This may indicate a problem with the SAMRAI plugin or some other HDF5 based "
+                "plugin that has attempted to open this file. Please contact VisIt developers "
+                "if the problem persists.", filenames[f]);
+            if (!haveIssuedWarning)
+            {
+                haveIssuedWarning = true;
+                if (!avtCallback::IssueWarning(msg))
+                    cerr << msg << endl;
+            }
+        }
         UnregisterFile(f);
         h5files[f] = -1;
     }
@@ -1579,7 +1606,7 @@ avtSAMRAIFileFormat::GetMaterial(int patch, const char *matObjName)
     // one material
     if ((oneMat == true) && (matList.size() > 1))
     {
-        EXCEPTION2(UnexpectedValueException, 1, matList.size());
+        EXCEPTION2(UnexpectedValueException, 1, (int)matList.size());
     }
 
     // compute logical size in each dimension of this patch
@@ -2425,8 +2452,8 @@ avtSAMRAIFileFormat::GetCycleFromFilename(const char *f) const
 {
     if (f)
     {
-        const int len1 = strlen("00000/summary.samrai");
-        const int len2 = strlen(f);
+        const size_t len1 = strlen("00000/summary.samrai");
+        const size_t len2 = strlen(f);
         if (len2 > len1)
         {
             int cycle;

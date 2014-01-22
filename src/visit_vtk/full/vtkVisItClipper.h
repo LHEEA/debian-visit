@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -38,9 +38,9 @@
 
 #ifndef VTK_VISIT_CLIPPER_H
 #define VTK_VISIT_CLIPPER_H
-
 #include <visit_vtk_exports.h>
-#include "vtkDataSetToUnstructuredGridFilter.h"
+
+#include "vtkUnstructuredGridAlgorithm.h"
 
 class vtkImplicitFunction;
 class vtkUnstructuredGrid;
@@ -89,11 +89,10 @@ class vtkUnstructuredGrid;
 //
 // ****************************************************************************
 
-class VISIT_VTK_API vtkVisItClipper
-    : public vtkDataSetToUnstructuredGridFilter
+class VISIT_VTK_API vtkVisItClipper : public vtkUnstructuredGridAlgorithm
 {
   public:
-    vtkTypeRevisionMacro(vtkVisItClipper,vtkDataSetToUnstructuredGridFilter);
+    vtkTypeMacro(vtkVisItClipper,vtkUnstructuredGridAlgorithm);
     void PrintSelf(ostream& os, vtkIndent indent);
 
     static vtkVisItClipper *New();
@@ -108,7 +107,7 @@ class VISIT_VTK_API vtkVisItClipper
 
     void SetCellList(const vtkIdType *, vtkIdType);
     void SetPrecomputeClipScalars(const bool v);
-    virtual void ModifyClip(vtkIdType) {; };
+    virtual void ModifyClip(vtkDataSet *, vtkIdType) {; };
 
     struct FilterState
     {
@@ -139,8 +138,11 @@ class VISIT_VTK_API vtkVisItClipper
     vtkVisItClipper();
     ~vtkVisItClipper();
 
-    void Execute();
-    void GeneralExecute();
+    virtual int RequestData(vtkInformation *,
+                            vtkInformationVector **,
+                            vtkInformationVector *);
+    virtual int FillInputPortInformation(int port, vtkInformation *info);
+
     void ClipDataset(vtkDataSet *, vtkUnstructuredGrid *);
 
   private:
@@ -151,7 +153,4 @@ class VISIT_VTK_API vtkVisItClipper
     void operator=(const vtkVisItClipper&);  // Not implemented.
 };
 
-
 #endif
-
-

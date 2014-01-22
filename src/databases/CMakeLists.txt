@@ -1,6 +1,6 @@
-#*****************************************************************************
+#****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -139,6 +139,19 @@
 #    Added code to only build the paraDIS reader if boost 1.36.0 or later
 #    was installed on the system.
 #
+#    Brad Whitlock, Fri Apr 19 11:31:21 PDT 2013
+#    Reorder HDF5-related libraries so static linking will work. For example,
+#    since Silo depends on HDF5, Silo comes before HDF5 since the 
+#    THIRDPARTY_DEPENDENT_PLUGINS macro appends libraries to long list of 
+#    3rd party libraries needed for static linking.
+#
+#    Kathleen Biagas, Fri May 3 16:57:29 MST 2013
+#    Only build the EnSight reader if vtkIOEnSight, upon which it depends,
+#    is available.
+#
+#    Kathleen Biagas, Tue Jun 18 16:58:43 PDT 2013
+#    Skip paraDIS reader on Windows.
+#
 #****************************************************************************/
 
 IF(NOT WIN32)
@@ -189,15 +202,19 @@ ENDMACRO(THIRDPARTY_DEPENDENT_PLUGINS libname targets)
 # library are added to the mix.
 UNSET(TMP_THIRDPARTY_IO_LIBRARY_DIR)
 UNSET(TMP_THIRDPARTY_IO_LIB)
-THIRDPARTY_DEPENDENT_PLUGINS(ADIOS    ADIOS)
-THIRDPARTY_DEPENDENT_PLUGINS(ADVIO    Adventure)
-THIRDPARTY_DEPENDENT_PLUGINS(BOXLIB   Boxlib2D Boxlib3D)
-THIRDPARTY_DEPENDENT_PLUGINS(CCMIO    CCM)
-THIRDPARTY_DEPENDENT_PLUGINS(CFITSIO  FITS)
+
+# HDF5-related plugins (HDF5 comes last due to static link order)
+IF (NOT WIN32)
+    THIRDPARTY_DEPENDENT_PLUGINS(SILO     Cale KullLite PDB Silo SAMI Vista)
+ELSE (NOT WIN32)
+    THIRDPARTY_DEPENDENT_PLUGINS(SILO     Cale KullLite PDB Silo SAMI)
+ENDIF (NOT WIN32)
 THIRDPARTY_DEPENDENT_PLUGINS(CGNS     CGNS)
-THIRDPARTY_DEPENDENT_PLUGINS(EXODUSII Exodus TimeVaryingExodus)
-THIRDPARTY_DEPENDENT_PLUGINS(GDAL     GDAL)
-THIRDPARTY_DEPENDENT_PLUGINS(HDF4     Cosmos ZeusMP)
+THIRDPARTY_DEPENDENT_PLUGINS(FASTBIT  H5Part)
+THIRDPARTY_DEPENDENT_PLUGINS(H5PART   H5Part)
+THIRDPARTY_DEPENDENT_PLUGINS(NETCDF   NETCDF S3D Exodus )
+THIRDPARTY_DEPENDENT_PLUGINS(NETCDF_CXX  MFIXCDF)
+THIRDPARTY_DEPENDENT_PLUGINS(XDMF     Xdmf)
 IF(NOT XDMF_FOUND)
     SET(XDMF_READER VisItXdmf)
 ENDIF(NOT XDMF_FOUND)
@@ -225,19 +242,17 @@ Velodyne
 Vs
 ${XDMF_READER}
 )
+
+# Non-HDF5-related plugins
+THIRDPARTY_DEPENDENT_PLUGINS(ADIOS    ADIOS)
+THIRDPARTY_DEPENDENT_PLUGINS(ADVIO    Adventure)
+THIRDPARTY_DEPENDENT_PLUGINS(BOXLIB   Boxlib2D Boxlib3D)
+THIRDPARTY_DEPENDENT_PLUGINS(CCMIO    CCM)
+THIRDPARTY_DEPENDENT_PLUGINS(CFITSIO  FITS)
+THIRDPARTY_DEPENDENT_PLUGINS(GDAL     GDAL)
+THIRDPARTY_DEPENDENT_PLUGINS(HDF4     Cosmos ZeusMP)
 THIRDPARTY_DEPENDENT_PLUGINS(MDSPLUS  MDSplus)
-THIRDPARTY_DEPENDENT_PLUGINS(FASTBIT  H5Part)
-THIRDPARTY_DEPENDENT_PLUGINS(H5PART   H5Part)
 THIRDPARTY_DEPENDENT_PLUGINS(MILI     Mili)
-THIRDPARTY_DEPENDENT_PLUGINS(NETCDF   NETCDF S3D)
-THIRDPARTY_DEPENDENT_PLUGINS(NETCDF_CXX  MFIXCDF)
-IF (NOT WIN32)
-    THIRDPARTY_DEPENDENT_PLUGINS(SILO     Cale KullLite PDB Silo SAMI Vista)
-ELSE (NOT WIN32)
-    THIRDPARTY_DEPENDENT_PLUGINS(SILO     Cale KullLite PDB Silo SAMI)
-ENDIF (NOT WIN32)
-THIRDPARTY_DEPENDENT_PLUGINS(VISUS    ViSUS)
-THIRDPARTY_DEPENDENT_PLUGINS(XDMF     Xdmf)
 IF (WIN32)
     THIRDPARTY_DEPENDENT_PLUGINS(ZLIB     VCellMTMD)
 ENDIF (WIN32)
@@ -279,11 +294,11 @@ Cube
 Curve2D
 DDCMD
 Dyna3D
-EnSight
 ExtrudedVol
 Fluent
 FT2
 GGCM
+GHOST
 GMV
 GULP
 Gadget
@@ -303,6 +318,7 @@ PuReMD
 PLOT2D
 PLOT3D
 PlainText
+PLY
 Point3D
 ProteinDataBank
 RAW
@@ -327,23 +343,28 @@ volimage
 unv
 )
 
-IF (Boost_USABLE_PARADIS)
+IF(TARGET vtkIOEnSight)
+    LIST(APPEND REQUIRED_DATABASE_PLUGINS EnSight)
+ELSE()
+    MESSAGE(STATUS "EnSight plugin requires vtkIOEnSight")
+ENDIF(TARGET vtkIOEnSight)
+
+IF (Boost_USABLE_PARADIS AND NOT WIN32)
     LIST(APPEND REQUIRED_DATABASE_PLUGINS
         paraDIS
         paraDIS_tecplot
     )
-ENDIF (Boost_USABLE_PARADIS)
+ENDIF (Boost_USABLE_PARADIS AND NOT WIN32)
 
 IF (NOT WIN32)
     LIST(APPEND REQUIRED_DATABASE_PLUGINS 
         Claw
         STAR
-        VCellMTMD
         Vis5D
         ZipWrapper
     )
     IF(NOT VISIT_STATIC AND NOT VISIT_DBIO_ONLY)
-        LIST(APPEND REQUIRED_DATABASE_PLUGINS SimV1 SimV1Writer)
+        LIST(APPEND REQUIRED_DATABASE_PLUGINS VCellMTMD SimV1 SimV1Writer)
     ENDIF(NOT VISIT_STATIC AND NOT VISIT_DBIO_ONLY)
     SET(OPTIONAL_DATABASE_PLUGINS
         Hex
@@ -358,6 +379,7 @@ SET(MINIMAL_DATABASE_PLUGINS
 Curve2D
 RAW
 VTK
+PICS_Tester
 )
 
 # Select the plugins to build

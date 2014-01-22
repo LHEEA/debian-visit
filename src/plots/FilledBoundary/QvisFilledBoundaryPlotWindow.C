@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -665,7 +665,7 @@ QvisFilledBoundaryPlotWindow::UpdateMultipleArea()
 
         // Remove excess entries
         int numEntries = multipleColorList->count();
-        for(i = matNames.size(); i < numEntries; ++i)
+        for(i = (int)matNames.size(); i < numEntries; ++i)
         {
             QListWidgetItem *item = multipleColorList->takeItem(multipleColorList->count() - 1);
             if(item != 0)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,6 +50,7 @@
 #include <vtkIdList.h>
 #include <vtkIntArray.h>
 #include <vtkPointData.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkVisItUtility.h>
@@ -531,7 +532,9 @@ avtUnstructuredDomainBoundaries::ExchangeMeshT(vector<int>       domainNum,
         }
         outm->GetCellData()->AddArray(ghostCells);
         ghostCells->Delete();
-        outm->SetUpdateGhostLevel(0);
+        // FIX_ME_VTK6.0, ESB, is this correct?
+        vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(outm->GetInformation(), 0);
+        //outm->SetUpdateGhostLevel(0);
 
         // This call is in lieu of "BuildLinks", which has a memory leak.
         // This should be the non-leaking equivalent.

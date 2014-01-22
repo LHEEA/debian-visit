@@ -32,7 +32,7 @@
 class VISIT_VTK_API vtkVisItScalarTree : public vtkObject
 {
 public:
-  vtkTypeRevisionMacro(vtkVisItScalarTree,vtkObject);
+  vtkTypeMacro(vtkVisItScalarTree,vtkObject);
 
   // Description:
   // Instantiate scalar tree with maximum level of 20 and branching
@@ -49,12 +49,12 @@ public:
   // children per tree node. Smaller values (minimum is 2) mean deeper
   // trees and more memory overhead. Larger values mean shallower
   // trees, less memory usage, but worse performance.
-  vtkSetClampMacro(BranchingFactor,vtkIdType,2,VTK_LARGE_INTEGER);
+  vtkSetClampMacro(BranchingFactor,vtkIdType,2,VTK_INT_MAX);
   vtkGetMacro(BranchingFactor,vtkIdType);
 
   // Description:
   // Set the maximum allowable level for the tree. 
-  vtkSetClampMacro(MaxLevel,vtkIdType,1,VTK_LARGE_INTEGER);
+  vtkSetClampMacro(MaxLevel,vtkIdType,1,VTK_INT_MAX);
   vtkGetMacro(MaxLevel,vtkIdType);
 
   // Description:

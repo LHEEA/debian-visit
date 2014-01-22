@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -102,9 +102,6 @@ class AVTFILTERS_API avtCondenseDatasetFilter : public avtDataTreeIterator
     void                 BypassHeuristic(bool val) {bypassHeuristic = val; };
 
   protected:
-    vtkPolyDataRelevantPointsFilter         *rpfPD;
-    vtkUnstructuredGridRelevantPointsFilter *rpfUG;
-
     virtual vtkDataSet  *ExecuteData(vtkDataSet *, int, std::string);
     virtual bool         FilterUnderstandsTransformedRectMesh();
 

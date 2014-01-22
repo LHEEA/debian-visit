@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -56,6 +56,10 @@
 #
 #   Kathleen Biagas, Thu June 14 13:52:53 MST 2012
 #   Use GET_FILENAME_SHORTEXT on Windows, too.
+#
+#   Kathleen Biagas, Mon May 20 14:37:19 MST 2013
+#   On Windows, look for dll's in 'bin' directory if not found in 'lib'.
+#
 #****************************************************************************/
 
 #
@@ -89,7 +93,6 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
         GET_FILENAME_COMPONENT(curPATH ${LIBREALPATH} PATH)
         GET_FILENAME_COMPONENT(realNAME ${LIBREALPATH} NAME)
         STRING(REPLACE ${LIBEXT} "" curNAMEWE ${realNAME})
-
         SET(curNAME "${curPATH}/${curNAMEWE}")
         SET(dllNAME "${curNAME}.dll")
         SET(libNAME "${curNAME}.lib")
@@ -106,6 +109,25 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
             EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy
                             ${dllNAME}
                             ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ThirdParty)
+        ELSE() # try 'bin' directory
+            SET(dll_path "${curPATH}/../bin/${curNAMEWE}")
+            GET_FILENAME_COMPONENT(dll_path ${dll_path} ABSOLUTE)
+            
+            SET(newdllNAME "${dll_path}.dll")
+            IF(EXISTS ${newdllNAME})
+                INSTALL(FILES ${newdllNAME} 
+                    DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
+                    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
+                                GROUP_READ GROUP_WRITE GROUP_EXECUTE 
+                                WORLD_READ WORLD_EXECUTE
+                    CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+                    )
+                # On Windows, we also need to copy the file to the 
+                # binary dir so our out of source builds can run.
+                EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy
+                                ${newdllNAME}
+                                ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ThirdParty)
+            ENDIF(EXISTS ${newdllNAME})
         ENDIF(EXISTS ${dllNAME})
 
         IF(VISIT_INSTALL_THIRD_PARTY AND EXISTS ${libNAME})
@@ -184,34 +206,12 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
                                 FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
                                 CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
                             )
-
-                            # On Apple, we need to make the framework be executable relative
-                            GET_FILENAME_COMPONENT(frameworkNameWE ${curNAMEWithExt} NAME_WE)
-                            GET_FILENAME_COMPONENT(realFramework ${curNAMEWithExt}/${frameworkNameWE} REALPATH)
-                            STRING(REGEX MATCH "${frameworkNameWE}[A-Za-z0-9._/-]*" frameworkMatch ${realFramework})
-                            INSTALL(CODE 
-                                "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                    COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${frameworkMatch}\"
-                                    OUTPUT_VARIABLE OSXOUT)
-                                 MESSAGE(STATUS \"\${OSXOUT}\")
-                                ")
                         ELSE(IS_DIRECTORY ${curNAMEWithExt})
                             INSTALL(FILES ${curNAMEWithExt}
                                 DESTINATION ${VISIT_INSTALLED_VERSION_LIB}
                                 PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
                                 CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
                             )
-
-                            # On Apple, we need to make the library be executable relative.
-                            IF(APPLE)
-                                GET_FILENAME_COMPONENT(libName ${curNAMEWithExt} NAME)
-                                INSTALL(CODE 
-                                    "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                        COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${libName}\"
-                                        OUTPUT_VARIABLE OSXOUT)
-                                     MESSAGE(STATUS \"\${OSXOUT}\")
-                                    ")
-                            ENDIF(APPLE)
                         ENDIF(IS_DIRECTORY ${curNAMEWithExt})
                     ENDIF(EXISTS ${curNAMEWithExt})
                 ENDFOREACH(curNAMEWithExt)
@@ -230,17 +230,6 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
                         CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
                         PATTERN "Qt*_debug" EXCLUDE # Exclude Qt*_debug libraries in framework.
                     )
-
-                    # On Apple, we need to make the framework be executable relative
-                    GET_FILENAME_COMPONENT(frameworkNameWE ${tmpLIBFILE} NAME_WE)
-                    GET_FILENAME_COMPONENT(realFramework ${tmpLIBFILE}/${frameworkNameWE} REALPATH)
-                    STRING(REGEX MATCH "${frameworkNameWE}[A-Za-z0-9._/-]*" frameworkMatch ${realFramework})
-                    INSTALL(CODE 
-                        "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                            COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${frameworkMatch}\"
-                            OUTPUT_VARIABLE OSXOUT)
-                         MESSAGE(STATUS \"\${OSXOUT}\")
-                        ")
                 ELSE(IS_DIRECTORY ${tmpLIBFILE})
                     # Create an install target for just the library file
                     INSTALL(FILES ${tmpLIBFILE}
@@ -248,17 +237,6 @@ FUNCTION(THIRD_PARTY_INSTALL_LIBRARY LIBFILE)
                         PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
                         CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
                     )
-    
-                    # On Apple, we need to make the library be executable relative.
-                    IF(APPLE)
-                        GET_FILENAME_COMPONENT(libName ${tmpLIBFILE} NAME)
-                        INSTALL(CODE 
-                            "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${libName}\"
-                                OUTPUT_VARIABLE OSXOUT)
-                             MESSAGE(STATUS \"\${OSXOUT}\")
-                            ")
-                    ENDIF(APPLE)
                 ENDIF(IS_DIRECTORY ${tmpLIBFILE})
 #            MESSAGE("**We need to install lib ${tmpLIBFILE}")
             ENDIF((NOT ${curPATH} STREQUAL "/usr/lib") AND (NOT ${curPATH} MATCHES "^\\/opt\\/local\\/lib.*") AND (NOT ${curPATH} MATCHES "^\\/System\\/Library\\/Frameworks\\/.*") AND (NOT ${curPATH} MATCHES "^\\/Library\\/Frameworks\\/.*"))
@@ -318,15 +296,6 @@ FUNCTION(THIRD_PARTY_INSTALL_EXECUTABLE)
                            GROUP_READ GROUP_WRITE GROUP_EXECUTE
                            WORLD_READ WORLD_EXECUTE
             )
-            IF(APPLE)
-                GET_FILENAME_COMPONENT(pname ${exe}  NAME)
-                INSTALL(CODE
-                    "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                        COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${pname}\"
-                        OUTPUT_VARIABLE OSXOUT)
-                     MESSAGE(STATUS \"\${OSXOUT}\")
-                    ")
-            ENDIF(APPLE)
         ENDIF(EXISTS ${exe})
     ENDFOREACH(exe ${ARGN})
 ENDFUNCTION(THIRD_PARTY_INSTALL_EXECUTABLE exes)

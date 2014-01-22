@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,7 +49,6 @@
 #include <LineAttributes.h>
 
 class     vtkLookupTable;
-class     vtkPolyData;
 class     vtkVisItGlyph3D;
 class     vtkVisItPolyDataNormals;
 
@@ -104,12 +103,16 @@ class     vtkVisItPolyDataNormals;
 //    Brad Whitlock, Mon Jul 24 13:55:10 PST 2006
 //    Added override of SetFullFrameScaling.
 //
+//    Kathleen Biagas, Wed Feb 6 19:38:27 PST 2013
+//    Changed signature of InsertFilters.  Changed signature of constructor
+///   to accept vtkAlgorithmOutput for pipeline connections with vtk-6.
+//
 // ****************************************************************************
 
 class PLOTTER_API  avtVectorGlyphMapper : public avtMapper
 {
   public:
-                               avtVectorGlyphMapper(vtkPolyData *);
+                               avtVectorGlyphMapper(vtkAlgorithmOutput *);
     virtual                   ~avtVectorGlyphMapper();
 
     void                       SetLineWidth(_LineWidth lw);
@@ -134,7 +137,7 @@ class PLOTTER_API  avtVectorGlyphMapper : public avtMapper
     bool                       GetVarRange(double &, double &);
 
   protected:
-    vtkPolyData               *glyph;
+    vtkAlgorithmOutput        *glyph;
     vtkLookupTable            *lut;
     _LineWidth                 lineWidth;
     _LineStyle                 lineStyle;
@@ -157,7 +160,7 @@ class PLOTTER_API  avtVectorGlyphMapper : public avtMapper
     virtual void               CustomizeMappers(void);
     void                       SetMappersMinMax(void);
 
-    virtual vtkDataSet        *InsertFilters(vtkDataSet *, int);
+    virtual vtkAlgorithmOutput *InsertFilters(vtkDataSet *, int);
     virtual void               SetUpFilters(int);
 };
 

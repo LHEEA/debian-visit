@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -115,7 +115,7 @@ QvisColorButton::QvisColorButton(QWidget *parent, const void *data) :
 QvisColorButton::~QvisColorButton()
 {
     // Remove the "this" pointer from the vector.
-    int index;
+    size_t index;
     bool notFound = true;
     for(size_t i = 0; i < buttons.size() && notFound; ++i)
     {

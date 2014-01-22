@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define DATABINNINGATTRIBUTES_NMETH 50
+#define DATABINNINGATTRIBUTES_NMETH 52
 void           PyDataBinningAttributes_StartUp(DataBinningAttributes *subj, void *data);
 void           PyDataBinningAttributes_CloseDown();
 PyMethodDef *  PyDataBinningAttributes_GetMethodTable(int *nMethods);

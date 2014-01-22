@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -88,7 +88,7 @@ class VisitHotPointInteractor;
 //     Added new AxisArray window mode.
 //
 //     Eric Brugger, Tue Dec  9 14:17:09 PST 2008
-//     Added the AxisParallel window mode.
+//     Added the ParallelAxes window mode.
 //
 //     Jeremy Meredith, Tue Feb  2 13:43:43 EST 2010
 //     Added a new setting for when tools should update.
@@ -130,8 +130,8 @@ class VISWINDOW_API VisWinInteractions : public VisWinColleague
     virtual void             StopCurveMode();
     virtual void             StartAxisArrayMode();
     virtual void             StopAxisArrayMode();
-    virtual void             StartAxisParallelMode();
-    virtual void             StopAxisParallelMode();
+    virtual void             StartParallelAxesMode();
+    virtual void             StopParallelAxesMode();
 
     virtual void             NoPlots();
     virtual void             HasPlots();

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2011, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1129,7 +1129,7 @@ avtBATLFileFormat::GetMesh(int domain, const char *meshname)
             // Add all of the points to an array.
             //
             size_t nPts = xvals.size();
-            vtkRectilinearGrid *rg = vtkVisItUtility::Create1DRGrid(nPts,VTK_FLOAT);
+            vtkRectilinearGrid *rg = vtkVisItUtility::Create1DRGrid((int)nPts,VTK_FLOAT);
             vtkFloatArray    *valarray = vtkFloatArray::New();
             valarray->SetNumberOfComponents(1);
             valarray->SetNumberOfTuples(nPts);

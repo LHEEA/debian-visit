@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1419,11 +1419,23 @@ QvisFilePanel::DisplayVirtualDBInformation(const QualifiedFilename &file) const
 //   Cyrus Harrison, Thu Dec  4 08:09:20 PST 2008
 //   Made sure the current item is visible via scroll to item. 
 // 
+//   Jeremy Meredith, Tue Feb  5 16:00:12 EST 2013
+//   This can take a while if we have lots and lots of time steps.
+//   Don't update the selection if the file panel is not visible.  We
+//   will force it to update when we make the file panel visible
+//   again.  (Following the mantra of minimal change, at the moment,
+//   this is the only action I have added this check to, as it is the
+//   only one causing performance issues, even though one might argue
+//   other methods should have the same bypass check.)
+//
 // ****************************************************************************
 
 void
 QvisFilePanel::UpdateFileSelection()
 {
+    if (!isVisible())
+        return;
+
     // Set the text for the open file button.
     if(fileServer->GetOpenFile().Empty())
         openButton->setText(tr("Open"));

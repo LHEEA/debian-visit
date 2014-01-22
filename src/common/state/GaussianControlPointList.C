@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -505,7 +505,6 @@ GaussianControlPointList::SetFromNode(DataNode *parentNode)
     if(searchNode == 0)
         return;
 
-    DataNode *node;
     DataNode **children;
 
     // Clear all the GaussianControlPoints if we got any.
@@ -673,7 +672,7 @@ GaussianControlPointList::RemoveControlPoints(int index)
 int
 GaussianControlPointList::GetNumControlPoints() const
 {
-    return controlPoints.size();
+    return (int)controlPoints.size();
 }
 
 // ****************************************************************************

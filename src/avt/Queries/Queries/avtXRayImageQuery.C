@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -815,14 +815,10 @@ avtXRayImageQuery::WriteImage(int iImage, int nPixels, T *fbuf)
     double range = maxVal - minVal;
     
     vtkImageData *image = vtkImageData::New();
-    image->SetWholeExtent(0, nx-1, 0, ny-1, 0, 0);
-    image->SetUpdateExtent(0, nx-1, 0, ny-1, 0, 0);
     image->SetExtent(0, nx-1, 0, ny-1, 0, 0);
     image->SetSpacing(1., 1., 1.);
     image->SetOrigin(0., 0., 0.);
-    image->SetNumberOfScalarComponents(3);
-    image->SetScalarType(VTK_UNSIGNED_CHAR);
-    image->AllocateScalars();
+    image->AllocateScalars(VTK_UNSIGNED_CHAR, 3);
     unsigned char *pixels = (unsigned char *)image->GetScalarPointer(0, 0, 0);
 
     unsigned char pixel;
@@ -845,7 +841,7 @@ avtXRayImageQuery::WriteImage(int iImage, int nPixels, T *fbuf)
         char fileName[24];
         sprintf(fileName, "output%02d.bmp", iImage);
         writer->SetFileName(fileName);
-        writer->SetInput(image);
+        writer->SetInputData(image);
         writer->Write();
         writer->Delete();
     }
@@ -855,7 +851,7 @@ avtXRayImageQuery::WriteImage(int iImage, int nPixels, T *fbuf)
         char fileName[24];
         sprintf(fileName, "output%02d.jpg", iImage);
         writer->SetFileName(fileName);
-        writer->SetInput(image);
+        writer->SetInputData(image);
         writer->Write();
         writer->Delete();
     }
@@ -865,7 +861,7 @@ avtXRayImageQuery::WriteImage(int iImage, int nPixels, T *fbuf)
         char fileName[24];
         sprintf(fileName, "output%02d.png", iImage);
         writer->SetFileName(fileName);
-        writer->SetInput(image);
+        writer->SetInputData(image);
         writer->Write();
         writer->Delete();
     }
@@ -875,7 +871,7 @@ avtXRayImageQuery::WriteImage(int iImage, int nPixels, T *fbuf)
         char fileName[24];
         sprintf(fileName, "output%02d.tif", iImage);
         writer->SetFileName(fileName);
-        writer->SetInput(image);
+        writer->SetInputData(image);
         writer->Write();
         writer->Delete();
     }
@@ -922,7 +918,7 @@ avtXRayImageQuery::WriteFloats(int iImage, int nPixels, T *fbuf)
 // ****************************************************************************
 
 void
-avtXRayImageQuery::WriteBOVHeader(int iImage, int nx, int ny, char *type)
+avtXRayImageQuery::WriteBOVHeader(int iImage, int nx, int ny, const char *type)
 {
     char fileName[24];
     sprintf(fileName, "output%02d.bov", iImage);

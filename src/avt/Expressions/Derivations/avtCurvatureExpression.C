@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -111,7 +111,7 @@ avtCurvatureExpression::~avtCurvatureExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtCurvatureExpression::DeriveVariable(vtkDataSet *in_ds)
+avtCurvatureExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     if (in_ds->GetDataObjectType() != VTK_POLY_DATA)
     {
@@ -132,7 +132,7 @@ avtCurvatureExpression::DeriveVariable(vtkDataSet *in_ds)
     vtkCurvatures *curvatures = vtkCurvatures::New();
     curvatures->SetCurvatureType((doGauss ? VTK_CURVATURE_GAUSS 
                                           : VTK_CURVATURE_MEAN));
-    curvatures->SetInput(pd);
+    curvatures->SetInputData(pd);
     curvatures->Update();
 
     vtkPolyData *out = curvatures->GetOutput();

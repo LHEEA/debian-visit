@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -299,12 +299,14 @@ VisItLauncherMain(int argc, char *argv[])
     bool hostset = 0;
     bool envOnly = false;
     bool debugLaunch = false;
+    bool apitrace = false;
 
     string nps("2");
     stringVector componentArgs;
     stringVector engineArgs;
     string component("gui");
     string tmpArg;
+    string apitrace_component("");
     
 
     //
@@ -490,6 +492,20 @@ VisItLauncherMain(int argc, char *argv[])
             debugLaunch = true;
             componentArgs.push_back("-debuglaunch");
         }
+        else if(ARG("-apitrace"))
+        {
+            apitrace_component = string(argv[i+1]);
+            if (component == apitrace_component)
+            {
+                apitrace = true;
+            }
+            else
+            {
+                componentArgs.push_back("-apitrace");
+                componentArgs.push_back(apitrace_component);
+            }
+            ++i;
+        }
         else
         {
             if (!BEGINSWITHQUOTE(argv[i]) && HASSPACE(argv[i]))
@@ -571,6 +587,16 @@ VisItLauncherMain(int argc, char *argv[])
     stringVector command;
     command.reserve(20);
     string quote("\"");
+
+    if (apitrace)
+    {
+        string apitrace_path = WinGetEnv("APITRACE_EXE");
+        command.push_back(apitrace_path);
+        command.push_back("trace");
+        command.push_back("--api");
+        command.push_back("gl");
+    }
+
     if (component == "engine_par")
     {
         // first look for an EnvVar set by the installer
@@ -1255,7 +1281,7 @@ AddPath(char *tmp, const char *visitpath, const char *visitdev)
 
            if (!skiptoken)
            {
-               int len = strlen(token);
+               size_t len = strlen(token);
                sprintf(path, ";%s", token);
                path += (len + 1);
            }

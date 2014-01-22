@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -505,6 +505,9 @@ avtFacelistFilter::FindFaces(vtkDataSet *in_ds, int domain, std::string label,
 //    Brad Whitlock, Tue Jan 22 13:55:12 PST 2013
 //    Also use extents for VOI when processing structured grids.
 //
+//    Kathleen Biagas, Fri Jan 25 16:04:46 PST 2013
+//    Call Update on the filter, not the data object.
+//
 // ****************************************************************************
 
 avtDataTree_p
@@ -540,7 +543,7 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
                                // for transformed grids.
         if (mustCreatePolyData || forceFaceConsolidation || tooSmall)
         {
-            rf->SetInput(rgrid);
+            rf->SetInputData(rgrid);
             rf->Update();
             out_ds = rf->GetOutput();
         }
@@ -558,13 +561,13 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
             voi[4] = extents[4]; 
             voi[5] = extents[5];
             imin->SetVOI(voi);
-            imin->SetInput(rgrid);
+            imin->SetInputData(rgrid);
             imin->Update();
             vtkVisItExtractRectilinearGrid *imax = 
                                          vtkVisItExtractRectilinearGrid::New();
             voi[0] = voi[1] = extents[1];
             imax->SetVOI(voi);
-            imax->SetInput(rgrid);
+            imax->SetInputData(rgrid);
             imax->Update();
 
             vtkVisItExtractRectilinearGrid *jmin = 
@@ -575,14 +578,14 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
             voi[4] = extents[4]; 
             voi[5] = extents[5];
             jmin->SetVOI(voi);
-            jmin->SetInput(rgrid);
+            jmin->SetInputData(rgrid);
             jmin->Update();
 
             vtkVisItExtractRectilinearGrid *jmax = 
                                          vtkVisItExtractRectilinearGrid::New();
             voi[2] = voi[3] = extents[3];
             jmax->SetVOI(voi);
-            jmax->SetInput(rgrid);
+            jmax->SetInputData(rgrid);
             jmax->Update();
 
             vtkVisItExtractRectilinearGrid *kmin = 
@@ -593,13 +596,13 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
             voi[3] = extents[3];
             voi[4] = voi[5] = extents[4]; 
             kmin->SetVOI(voi);
-            kmin->SetInput(rgrid);
+            kmin->SetInputData(rgrid);
             kmin->Update();
             vtkVisItExtractRectilinearGrid *kmax = 
                                          vtkVisItExtractRectilinearGrid::New();
             voi[4] = voi[5] = extents[5];
             kmax->SetVOI(voi);
-            kmax->SetInput(rgrid);
+            kmax->SetInputData(rgrid);
             kmax->Update();
 
             vtkDataSet *ds_list[6];
@@ -630,7 +633,7 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
         bool tooSmall = (numPolys < 500);
         if (mustCreatePolyData || tooSmall)
         {
-            sf->SetInput(sgrid);
+            sf->SetInputData(sgrid);
             sf->Update();
             out_ds = sf->GetOutput();
         }
@@ -648,13 +651,13 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
             voi[4] = extents[4] + 0; 
             voi[5] = extents[4] + dims[2];
             imin->SetVOI(voi);
-            imin->SetInput(sgrid);
+            imin->SetInputData(sgrid);
             imin->Update();
 
             vtkVisItExtractGrid *imax = vtkVisItExtractGrid::New();
             voi[0] = voi[1] = extents[0] + dims[0]-1;
             imax->SetVOI(voi);
-            imax->SetInput(sgrid);
+            imax->SetInputData(sgrid);
             imax->Update();
 
             vtkVisItExtractGrid *jmin = vtkVisItExtractGrid::New();
@@ -665,13 +668,13 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
             voi[4] = extents[4] + 0; 
             voi[5] = extents[4] + dims[2];
             jmin->SetVOI(voi);
-            jmin->SetInput(sgrid);
+            jmin->SetInputData(sgrid);
             jmin->Update();
 
             vtkVisItExtractGrid *jmax = vtkVisItExtractGrid::New();
             voi[2] = voi[3] = extents[2] + dims[1]-1;
             jmax->SetVOI(voi);
-            jmax->SetInput(sgrid);
+            jmax->SetInputData(sgrid);
             jmax->Update();
 
             vtkVisItExtractGrid *kmin = vtkVisItExtractGrid::New();
@@ -682,13 +685,13 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
             voi[4] = extents[4] + 0; 
             voi[5] = extents[4] + 0;
             kmin->SetVOI(voi);
-            kmin->SetInput(sgrid);
+            kmin->SetInputData(sgrid);
             kmin->Update();
 
             vtkVisItExtractGrid *kmax = vtkVisItExtractGrid::New();
             voi[4] = voi[5] = extents[4] + dims[2]-1;
             kmax->SetVOI(voi);
-            kmax->SetInput(sgrid);
+            kmax->SetInputData(sgrid);
             kmax->Update();
 
             vtkDataSet *ds_list[6];
@@ -747,7 +750,7 @@ avtFacelistFilter::Take3DFaces(vtkDataSet *in_ds, int domain,std::string label,
         {
             debug5 << "Ugrid forced to calculate facelist for domain "
                    << domain << endl;
-            uf->SetInput((vtkUnstructuredGrid *) in_ds);
+            uf->SetInputData((vtkUnstructuredGrid *) in_ds);
             uf->Update();
             out_ds = uf->GetOutput();
         }
@@ -904,9 +907,9 @@ avtFacelistFilter::Take2DFaces(vtkDataSet *in_ds, bool forceFaceConsolidation,
         vtkRectilinearGridFacelistFilter *rf = 
                                        vtkRectilinearGridFacelistFilter::New();
         rf->SetForceFaceConsolidation(forceFaceConsolidation ? 1 : 0);
-        rf->SetInput((vtkRectilinearGrid *) in_ds);
+        rf->SetInputData((vtkRectilinearGrid *) in_ds);
         rf->SetOutput(out_ds);
-        out_ds->Update();
+        rf->Update();
         rf->SetOutput(NULL);
         //out_ds->SetSource(NULL);
         rf->Delete();

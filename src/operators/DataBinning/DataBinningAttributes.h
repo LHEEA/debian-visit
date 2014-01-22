@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -154,6 +154,7 @@ public:
     void SetVarForReduction(const std::string &varForReduction_);
     void SetEmptyVal(double emptyVal_);
     void SetOutputType(OutputType outputType_);
+    void SetRemoveEmptyValFromCurve(bool removeEmptyValFromCurve_);
 
     // Property getting methods
     NumDimensions     GetNumDimensions() const;
@@ -184,6 +185,7 @@ public:
           std::string &GetVarForReduction();
     double            GetEmptyVal() const;
     OutputType        GetOutputType() const;
+    bool              GetRemoveEmptyValFromCurve() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -251,6 +253,7 @@ public:
         ID_varForReduction,
         ID_emptyVal,
         ID_outputType,
+        ID_removeEmptyValFromCurve,
         ID__LAST
     };
 
@@ -279,11 +282,12 @@ private:
     std::string varForReduction;
     double      emptyVal;
     int         outputType;
+    bool        removeEmptyValFromCurve;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define DATABINNINGATTRIBUTES_TMFS "iisbddiisbddiisbddiiisdi"
+#define DATABINNINGATTRIBUTES_TMFS "iisbddiisbddiisbddiiisdib"
 
 #endif

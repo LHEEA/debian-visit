@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -182,11 +182,16 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     }
     SNPRINTF(tmpStr, 1000, "%spointDensity = %d\n", prefix, atts->GetPointDensity());
     str += tmpStr;
-    const char *fieldType_names = "Default, M3DC12DField, M3DC13DField, NIMRODField, FlashField";
+    const char *fieldType_names = "Default, FlashField, M3DC12DField, M3DC13DField, Nek5000Field, "
+        "NIMRODField";
     switch (atts->GetFieldType())
     {
       case PoincareAttributes::Default:
           SNPRINTF(tmpStr, 1000, "%sfieldType = %sDefault  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::FlashField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sFlashField  # %s\n", prefix, prefix, fieldType_names);
           str += tmpStr;
           break;
       case PoincareAttributes::M3DC12DField:
@@ -197,18 +202,23 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
           SNPRINTF(tmpStr, 1000, "%sfieldType = %sM3DC13DField  # %s\n", prefix, prefix, fieldType_names);
           str += tmpStr;
           break;
-      case PoincareAttributes::NIMRODField:
-          SNPRINTF(tmpStr, 1000, "%sfieldType = %sNIMRODField  # %s\n", prefix, prefix, fieldType_names);
+      case PoincareAttributes::Nek5000Field:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sNek5000Field  # %s\n", prefix, prefix, fieldType_names);
           str += tmpStr;
           break;
-      case PoincareAttributes::FlashField:
-          SNPRINTF(tmpStr, 1000, "%sfieldType = %sFlashField  # %s\n", prefix, prefix, fieldType_names);
+      case PoincareAttributes::NIMRODField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sNIMRODField  # %s\n", prefix, prefix, fieldType_names);
           str += tmpStr;
           break;
       default:
           break;
     }
 
+    if(atts->GetForceNodeCenteredData())
+        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 0\n", prefix);
+    str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sfieldConstant = %g\n", prefix, atts->GetFieldConstant());
     str += tmpStr;
     {   const double *velocitySource = atts->GetVelocitySource();
@@ -227,7 +237,7 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
         SNPRINTF(tmpStr, 1000, ")\n");
         str += tmpStr;
     }
-    const char *integrationType_names = "Euler, Leapfrog, DormandPrince, AdamsBashforth, Reserved_4, "
+    const char *integrationType_names = "Euler, Leapfrog, DormandPrince, AdamsBashforth, RK4, "
         "M3DC12DIntegrator";
     switch (atts->GetIntegrationType())
     {
@@ -247,8 +257,8 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
           SNPRINTF(tmpStr, 1000, "%sintegrationType = %sAdamsBashforth  # %s\n", prefix, prefix, integrationType_names);
           str += tmpStr;
           break;
-      case PoincareAttributes::Reserved_4:
-          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sReserved_4  # %s\n", prefix, prefix, integrationType_names);
+      case PoincareAttributes::RK4:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sRK4  # %s\n", prefix, prefix, integrationType_names);
           str += tmpStr;
           break;
       case PoincareAttributes::M3DC12DIntegrator:
@@ -473,6 +483,13 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
           break;
     }
 
+    if(atts->GetShowRationalSurfaces())
+        SNPRINTF(tmpStr, 1000, "%sshowRationalSurfaces = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sshowRationalSurfaces = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%sRationalSurfaceMaxIterations = %d\n", prefix, atts->GetRationalSurfaceMaxIterations());
+    str += tmpStr;
     if(atts->GetShowOPoints())
         SNPRINTF(tmpStr, 1000, "%sshowOPoints = 1\n", prefix);
     else
@@ -540,7 +557,8 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%spointSizePixels = %d\n", prefix, atts->GetPointSizePixels());
     str += tmpStr;
-    const char *pointType_names = "Box, Axis, Icosahedron, Point, Sphere";
+    const char *pointType_names = "Box, Axis, Icosahedron, Octahedron, Tetrahedron, "
+        "SphereGeometry, Point, Sphere";
     switch (atts->GetPointType())
     {
       case PoincareAttributes::Box:
@@ -553,6 +571,18 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
           break;
       case PoincareAttributes::Icosahedron:
           SNPRINTF(tmpStr, 1000, "%spointType = %sIcosahedron  # %s\n", prefix, prefix, pointType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Octahedron:
+          SNPRINTF(tmpStr, 1000, "%spointType = %sOctahedron  # %s\n", prefix, prefix, pointType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::Tetrahedron:
+          SNPRINTF(tmpStr, 1000, "%spointType = %sTetrahedron  # %s\n", prefix, prefix, pointType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::SphereGeometry:
+          SNPRINTF(tmpStr, 1000, "%spointType = %sSphereGeometry  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
       case PoincareAttributes::Point:
@@ -577,35 +607,78 @@ PyPoincareAttributes_ToString(const PoincareAttributes *atts, const char *prefix
     else
         SNPRINTF(tmpStr, 1000, "%slightingFlag = 0\n", prefix);
     str += tmpStr;
-    const char *streamlineAlgorithmType_names = "LoadOnDemand, ParallelStaticDomains, MasterSlave";
-    switch (atts->GetStreamlineAlgorithmType())
+    const char *parallelizationAlgorithmType_names = "LoadOnDemand, ParallelStaticDomains, MasterSlave, VisItSelects";
+    switch (atts->GetParallelizationAlgorithmType())
     {
       case PoincareAttributes::LoadOnDemand:
-          SNPRINTF(tmpStr, 1000, "%sstreamlineAlgorithmType = %sLoadOnDemand  # %s\n", prefix, prefix, streamlineAlgorithmType_names);
+          SNPRINTF(tmpStr, 1000, "%sparallelizationAlgorithmType = %sLoadOnDemand  # %s\n", prefix, prefix, parallelizationAlgorithmType_names);
           str += tmpStr;
           break;
       case PoincareAttributes::ParallelStaticDomains:
-          SNPRINTF(tmpStr, 1000, "%sstreamlineAlgorithmType = %sParallelStaticDomains  # %s\n", prefix, prefix, streamlineAlgorithmType_names);
+          SNPRINTF(tmpStr, 1000, "%sparallelizationAlgorithmType = %sParallelStaticDomains  # %s\n", prefix, prefix, parallelizationAlgorithmType_names);
           str += tmpStr;
           break;
       case PoincareAttributes::MasterSlave:
-          SNPRINTF(tmpStr, 1000, "%sstreamlineAlgorithmType = %sMasterSlave  # %s\n", prefix, prefix, streamlineAlgorithmType_names);
+          SNPRINTF(tmpStr, 1000, "%sparallelizationAlgorithmType = %sMasterSlave  # %s\n", prefix, prefix, parallelizationAlgorithmType_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::VisItSelects:
+          SNPRINTF(tmpStr, 1000, "%sparallelizationAlgorithmType = %sVisItSelects  # %s\n", prefix, prefix, parallelizationAlgorithmType_names);
           str += tmpStr;
           break;
       default:
           break;
     }
 
-    SNPRINTF(tmpStr, 1000, "%smaxStreamlineProcessCount = %d\n", prefix, atts->GetMaxStreamlineProcessCount());
+    SNPRINTF(tmpStr, 1000, "%smaxProcessCount = %d\n", prefix, atts->GetMaxProcessCount());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%smaxDomainCacheSize = %d\n", prefix, atts->GetMaxDomainCacheSize());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%sworkGroupSize = %d\n", prefix, atts->GetWorkGroupSize());
     str += tmpStr;
-    if(atts->GetForceNodeCenteredData())
-        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 1\n", prefix);
+    if(atts->GetPathlines())
+        SNPRINTF(tmpStr, 1000, "%spathlines = 1\n", prefix);
     else
-        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 0\n", prefix);
+        SNPRINTF(tmpStr, 1000, "%spathlines = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetPathlinesOverrideStartingTimeFlag())
+        SNPRINTF(tmpStr, 1000, "%spathlinesOverrideStartingTimeFlag = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%spathlinesOverrideStartingTimeFlag = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%spathlinesOverrideStartingTime = %g\n", prefix, atts->GetPathlinesOverrideStartingTime());
+    str += tmpStr;
+    const char *pathlinesCMFE_names = "CONN_CMFE, POS_CMFE";
+    switch (atts->GetPathlinesCMFE())
+    {
+      case PoincareAttributes::CONN_CMFE:
+          SNPRINTF(tmpStr, 1000, "%spathlinesCMFE = %sCONN_CMFE  # %s\n", prefix, prefix, pathlinesCMFE_names);
+          str += tmpStr;
+          break;
+      case PoincareAttributes::POS_CMFE:
+          SNPRINTF(tmpStr, 1000, "%spathlinesCMFE = %sPOS_CMFE  # %s\n", prefix, prefix, pathlinesCMFE_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    if(atts->GetIssueTerminationWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueTerminationWarnings = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sissueTerminationWarnings = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetIssueStiffnessWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueStiffnessWarnings = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sissueStiffnessWarnings = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetIssueCriticalPointsWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueCriticalPointsWarnings = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sissueCriticalPointsWarnings = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%scriticalPointThreshold = %g\n", prefix, atts->GetCriticalPointThreshold());
     str += tmpStr;
     return str;
 }
@@ -986,15 +1059,15 @@ PoincareAttributes_SetFieldType(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the fieldType in the object.
-    if(ival >= 0 && ival < 5)
+    if(ival >= 0 && ival < 6)
         obj->data->SetFieldType(PoincareAttributes::FieldType(ival));
     else
     {
         fprintf(stderr, "An invalid fieldType value was given. "
-                        "Valid values are in the range of [0,4]. "
+                        "Valid values are in the range of [0,5]. "
                         "You can also use the following names: "
-                        "Default, M3DC12DField, M3DC13DField, NIMRODField, FlashField"
-                        ".");
+                        "Default, FlashField, M3DC12DField, M3DC13DField, Nek5000Field, "
+                        "NIMRODField.");
         return NULL;
     }
 
@@ -1007,6 +1080,30 @@ PoincareAttributes_GetFieldType(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
     PyObject *retval = PyInt_FromLong(long(obj->data->GetFieldType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetForceNodeCenteredData(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the forceNodeCenteredData in the object.
+    obj->data->SetForceNodeCenteredData(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetForceNodeCenteredData(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetForceNodeCenteredData()?1L:0L);
     return retval;
 }
 
@@ -1105,7 +1202,7 @@ PoincareAttributes_SetIntegrationType(PyObject *self, PyObject *args)
         fprintf(stderr, "An invalid integrationType value was given. "
                         "Valid values are in the range of [0,5]. "
                         "You can also use the following names: "
-                        "Euler, Leapfrog, DormandPrince, AdamsBashforth, Reserved_4, "
+                        "Euler, Leapfrog, DormandPrince, AdamsBashforth, RK4, "
                         "M3DC12DIntegrator.");
         return NULL;
     }
@@ -1890,6 +1987,54 @@ PoincareAttributes_GetDataValue(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
+PoincareAttributes_SetShowRationalSurfaces(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the showRationalSurfaces in the object.
+    obj->data->SetShowRationalSurfaces(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetShowRationalSurfaces(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetShowRationalSurfaces()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetRationalSurfaceMaxIterations(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the RationalSurfaceMaxIterations in the object.
+    obj->data->SetRationalSurfaceMaxIterations((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetRationalSurfaceMaxIterations(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetRationalSurfaceMaxIterations()));
+    return retval;
+}
+
+/*static*/ PyObject *
 PoincareAttributes_SetShowOPoints(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
@@ -2340,15 +2485,15 @@ PoincareAttributes_SetPointType(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the pointType in the object.
-    if(ival >= 0 && ival < 5)
+    if(ival >= 0 && ival < 8)
         obj->data->SetPointType(PoincareAttributes::PointType(ival));
     else
     {
         fprintf(stderr, "An invalid pointType value was given. "
-                        "Valid values are in the range of [0,4]. "
+                        "Valid values are in the range of [0,7]. "
                         "You can also use the following names: "
-                        "Box, Axis, Icosahedron, Point, Sphere"
-                        ".");
+                        "Box, Axis, Icosahedron, Octahedron, Tetrahedron, "
+                        "SphereGeometry, Point, Sphere.");
         return NULL;
     }
 
@@ -2413,7 +2558,7 @@ PoincareAttributes_GetLightingFlag(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetStreamlineAlgorithmType(PyObject *self, PyObject *args)
+PoincareAttributes_SetParallelizationAlgorithmType(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -2421,15 +2566,15 @@ PoincareAttributes_SetStreamlineAlgorithmType(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the streamlineAlgorithmType in the object.
-    if(ival >= 0 && ival < 3)
-        obj->data->SetStreamlineAlgorithmType(PoincareAttributes::StreamlineAlgorithmType(ival));
+    // Set the parallelizationAlgorithmType in the object.
+    if(ival >= 0 && ival < 4)
+        obj->data->SetParallelizationAlgorithmType(PoincareAttributes::ParallelizationAlgorithmType(ival));
     else
     {
-        fprintf(stderr, "An invalid streamlineAlgorithmType value was given. "
-                        "Valid values are in the range of [0,2]. "
+        fprintf(stderr, "An invalid parallelizationAlgorithmType value was given. "
+                        "Valid values are in the range of [0,3]. "
                         "You can also use the following names: "
-                        "LoadOnDemand, ParallelStaticDomains, MasterSlave.");
+                        "LoadOnDemand, ParallelStaticDomains, MasterSlave, VisItSelects.");
         return NULL;
     }
 
@@ -2438,15 +2583,15 @@ PoincareAttributes_SetStreamlineAlgorithmType(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetStreamlineAlgorithmType(PyObject *self, PyObject *args)
+PoincareAttributes_GetParallelizationAlgorithmType(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetStreamlineAlgorithmType()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetParallelizationAlgorithmType()));
     return retval;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetMaxStreamlineProcessCount(PyObject *self, PyObject *args)
+PoincareAttributes_SetMaxProcessCount(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -2454,18 +2599,18 @@ PoincareAttributes_SetMaxStreamlineProcessCount(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the maxStreamlineProcessCount in the object.
-    obj->data->SetMaxStreamlineProcessCount((int)ival);
+    // Set the maxProcessCount in the object.
+    obj->data->SetMaxProcessCount((int)ival);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetMaxStreamlineProcessCount(PyObject *self, PyObject *args)
+PoincareAttributes_GetMaxProcessCount(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxStreamlineProcessCount()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxProcessCount()));
     return retval;
 }
 
@@ -2518,7 +2663,7 @@ PoincareAttributes_GetWorkGroupSize(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-PoincareAttributes_SetForceNodeCenteredData(PyObject *self, PyObject *args)
+PoincareAttributes_SetPathlines(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
 
@@ -2526,18 +2671,195 @@ PoincareAttributes_SetForceNodeCenteredData(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the forceNodeCenteredData in the object.
-    obj->data->SetForceNodeCenteredData(ival != 0);
+    // Set the pathlines in the object.
+    obj->data->SetPathlines(ival != 0);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-PoincareAttributes_GetForceNodeCenteredData(PyObject *self, PyObject *args)
+PoincareAttributes_GetPathlines(PyObject *self, PyObject *args)
 {
     PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(obj->data->GetForceNodeCenteredData()?1L:0L);
+    PyObject *retval = PyInt_FromLong(obj->data->GetPathlines()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetPathlinesOverrideStartingTimeFlag(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the pathlinesOverrideStartingTimeFlag in the object.
+    obj->data->SetPathlinesOverrideStartingTimeFlag(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetPathlinesOverrideStartingTimeFlag(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetPathlinesOverrideStartingTimeFlag()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetPathlinesOverrideStartingTime(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the pathlinesOverrideStartingTime in the object.
+    obj->data->SetPathlinesOverrideStartingTime(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetPathlinesOverrideStartingTime(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetPathlinesOverrideStartingTime());
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetPathlinesCMFE(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the pathlinesCMFE in the object.
+    if(ival >= 0 && ival < 2)
+        obj->data->SetPathlinesCMFE(PoincareAttributes::PathlinesCMFE(ival));
+    else
+    {
+        fprintf(stderr, "An invalid pathlinesCMFE value was given. "
+                        "Valid values are in the range of [0,1]. "
+                        "You can also use the following names: "
+                        "CONN_CMFE, POS_CMFE.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetPathlinesCMFE(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetPathlinesCMFE()));
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetIssueTerminationWarnings(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the issueTerminationWarnings in the object.
+    obj->data->SetIssueTerminationWarnings(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetIssueTerminationWarnings(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueTerminationWarnings()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetIssueStiffnessWarnings(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the issueStiffnessWarnings in the object.
+    obj->data->SetIssueStiffnessWarnings(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetIssueStiffnessWarnings(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueStiffnessWarnings()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetIssueCriticalPointsWarnings(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the issueCriticalPointsWarnings in the object.
+    obj->data->SetIssueCriticalPointsWarnings(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetIssueCriticalPointsWarnings(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueCriticalPointsWarnings()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_SetCriticalPointThreshold(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the criticalPointThreshold in the object.
+    obj->data->SetCriticalPointThreshold(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+PoincareAttributes_GetCriticalPointThreshold(PyObject *self, PyObject *args)
+{
+    PoincareAttributesObject *obj = (PoincareAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetCriticalPointThreshold());
     return retval;
 }
 
@@ -2567,6 +2889,8 @@ PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"GetPointDensity", PoincareAttributes_GetPointDensity, METH_VARARGS},
     {"SetFieldType", PoincareAttributes_SetFieldType, METH_VARARGS},
     {"GetFieldType", PoincareAttributes_GetFieldType, METH_VARARGS},
+    {"SetForceNodeCenteredData", PoincareAttributes_SetForceNodeCenteredData, METH_VARARGS},
+    {"GetForceNodeCenteredData", PoincareAttributes_GetForceNodeCenteredData, METH_VARARGS},
     {"SetFieldConstant", PoincareAttributes_SetFieldConstant, METH_VARARGS},
     {"GetFieldConstant", PoincareAttributes_GetFieldConstant, METH_VARARGS},
     {"SetVelocitySource", PoincareAttributes_SetVelocitySource, METH_VARARGS},
@@ -2627,6 +2951,10 @@ PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"GetColorTableName", PoincareAttributes_GetColorTableName, METH_VARARGS},
     {"SetDataValue", PoincareAttributes_SetDataValue, METH_VARARGS},
     {"GetDataValue", PoincareAttributes_GetDataValue, METH_VARARGS},
+    {"SetShowRationalSurfaces", PoincareAttributes_SetShowRationalSurfaces, METH_VARARGS},
+    {"GetShowRationalSurfaces", PoincareAttributes_GetShowRationalSurfaces, METH_VARARGS},
+    {"SetRationalSurfaceMaxIterations", PoincareAttributes_SetRationalSurfaceMaxIterations, METH_VARARGS},
+    {"GetRationalSurfaceMaxIterations", PoincareAttributes_GetRationalSurfaceMaxIterations, METH_VARARGS},
     {"SetShowOPoints", PoincareAttributes_SetShowOPoints, METH_VARARGS},
     {"GetShowOPoints", PoincareAttributes_GetShowOPoints, METH_VARARGS},
     {"SetOPointMaxIterations", PoincareAttributes_SetOPointMaxIterations, METH_VARARGS},
@@ -2669,16 +2997,30 @@ PyMethodDef PyPoincareAttributes_methods[POINCAREATTRIBUTES_NMETH] = {
     {"GetLegendFlag", PoincareAttributes_GetLegendFlag, METH_VARARGS},
     {"SetLightingFlag", PoincareAttributes_SetLightingFlag, METH_VARARGS},
     {"GetLightingFlag", PoincareAttributes_GetLightingFlag, METH_VARARGS},
-    {"SetStreamlineAlgorithmType", PoincareAttributes_SetStreamlineAlgorithmType, METH_VARARGS},
-    {"GetStreamlineAlgorithmType", PoincareAttributes_GetStreamlineAlgorithmType, METH_VARARGS},
-    {"SetMaxStreamlineProcessCount", PoincareAttributes_SetMaxStreamlineProcessCount, METH_VARARGS},
-    {"GetMaxStreamlineProcessCount", PoincareAttributes_GetMaxStreamlineProcessCount, METH_VARARGS},
+    {"SetParallelizationAlgorithmType", PoincareAttributes_SetParallelizationAlgorithmType, METH_VARARGS},
+    {"GetParallelizationAlgorithmType", PoincareAttributes_GetParallelizationAlgorithmType, METH_VARARGS},
+    {"SetMaxProcessCount", PoincareAttributes_SetMaxProcessCount, METH_VARARGS},
+    {"GetMaxProcessCount", PoincareAttributes_GetMaxProcessCount, METH_VARARGS},
     {"SetMaxDomainCacheSize", PoincareAttributes_SetMaxDomainCacheSize, METH_VARARGS},
     {"GetMaxDomainCacheSize", PoincareAttributes_GetMaxDomainCacheSize, METH_VARARGS},
     {"SetWorkGroupSize", PoincareAttributes_SetWorkGroupSize, METH_VARARGS},
     {"GetWorkGroupSize", PoincareAttributes_GetWorkGroupSize, METH_VARARGS},
-    {"SetForceNodeCenteredData", PoincareAttributes_SetForceNodeCenteredData, METH_VARARGS},
-    {"GetForceNodeCenteredData", PoincareAttributes_GetForceNodeCenteredData, METH_VARARGS},
+    {"SetPathlines", PoincareAttributes_SetPathlines, METH_VARARGS},
+    {"GetPathlines", PoincareAttributes_GetPathlines, METH_VARARGS},
+    {"SetPathlinesOverrideStartingTimeFlag", PoincareAttributes_SetPathlinesOverrideStartingTimeFlag, METH_VARARGS},
+    {"GetPathlinesOverrideStartingTimeFlag", PoincareAttributes_GetPathlinesOverrideStartingTimeFlag, METH_VARARGS},
+    {"SetPathlinesOverrideStartingTime", PoincareAttributes_SetPathlinesOverrideStartingTime, METH_VARARGS},
+    {"GetPathlinesOverrideStartingTime", PoincareAttributes_GetPathlinesOverrideStartingTime, METH_VARARGS},
+    {"SetPathlinesCMFE", PoincareAttributes_SetPathlinesCMFE, METH_VARARGS},
+    {"GetPathlinesCMFE", PoincareAttributes_GetPathlinesCMFE, METH_VARARGS},
+    {"SetIssueTerminationWarnings", PoincareAttributes_SetIssueTerminationWarnings, METH_VARARGS},
+    {"GetIssueTerminationWarnings", PoincareAttributes_GetIssueTerminationWarnings, METH_VARARGS},
+    {"SetIssueStiffnessWarnings", PoincareAttributes_SetIssueStiffnessWarnings, METH_VARARGS},
+    {"GetIssueStiffnessWarnings", PoincareAttributes_GetIssueStiffnessWarnings, METH_VARARGS},
+    {"SetIssueCriticalPointsWarnings", PoincareAttributes_SetIssueCriticalPointsWarnings, METH_VARARGS},
+    {"GetIssueCriticalPointsWarnings", PoincareAttributes_GetIssueCriticalPointsWarnings, METH_VARARGS},
+    {"SetCriticalPointThreshold", PoincareAttributes_SetCriticalPointThreshold, METH_VARARGS},
+    {"GetCriticalPointThreshold", PoincareAttributes_GetCriticalPointThreshold, METH_VARARGS},
     {NULL, NULL}
 };
 
@@ -2748,15 +3090,19 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
         return PoincareAttributes_GetFieldType(self, NULL);
     if(strcmp(name, "Default") == 0)
         return PyInt_FromLong(long(PoincareAttributes::Default));
+    if(strcmp(name, "FlashField") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::FlashField));
     if(strcmp(name, "M3DC12DField") == 0)
         return PyInt_FromLong(long(PoincareAttributes::M3DC12DField));
     if(strcmp(name, "M3DC13DField") == 0)
         return PyInt_FromLong(long(PoincareAttributes::M3DC13DField));
+    if(strcmp(name, "Nek5000Field") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Nek5000Field));
     if(strcmp(name, "NIMRODField") == 0)
         return PyInt_FromLong(long(PoincareAttributes::NIMRODField));
-    if(strcmp(name, "FlashField") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::FlashField));
 
+    if(strcmp(name, "forceNodeCenteredData") == 0)
+        return PoincareAttributes_GetForceNodeCenteredData(self, NULL);
     if(strcmp(name, "fieldConstant") == 0)
         return PoincareAttributes_GetFieldConstant(self, NULL);
     if(strcmp(name, "velocitySource") == 0)
@@ -2771,8 +3117,8 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(PoincareAttributes::DormandPrince));
     if(strcmp(name, "AdamsBashforth") == 0)
         return PyInt_FromLong(long(PoincareAttributes::AdamsBashforth));
-    if(strcmp(name, "Reserved_4") == 0)
-        return PyInt_FromLong(long(PoincareAttributes::Reserved_4));
+    if(strcmp(name, "RK4") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::RK4));
     if(strcmp(name, "M3DC12DIntegrator") == 0)
         return PyInt_FromLong(long(PoincareAttributes::M3DC12DIntegrator));
 
@@ -2893,6 +3239,10 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
     if(strcmp(name, "WindingPointOrderModulo") == 0)
         return PyInt_FromLong(long(PoincareAttributes::WindingPointOrderModulo));
 
+    if(strcmp(name, "showRationalSurfaces") == 0)
+        return PoincareAttributes_GetShowRationalSurfaces(self, NULL);
+    if(strcmp(name, "RationalSurfaceMaxIterations") == 0)
+        return PoincareAttributes_GetRationalSurfaceMaxIterations(self, NULL);
     if(strcmp(name, "showOPoints") == 0)
         return PoincareAttributes_GetShowOPoints(self, NULL);
     if(strcmp(name, "OPointMaxIterations") == 0)
@@ -2946,6 +3296,12 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(PoincareAttributes::Axis));
     if(strcmp(name, "Icosahedron") == 0)
         return PyInt_FromLong(long(PoincareAttributes::Icosahedron));
+    if(strcmp(name, "Octahedron") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Octahedron));
+    if(strcmp(name, "Tetrahedron") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::Tetrahedron));
+    if(strcmp(name, "SphereGeometry") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::SphereGeometry));
     if(strcmp(name, "Point") == 0)
         return PyInt_FromLong(long(PoincareAttributes::Point));
     if(strcmp(name, "Sphere") == 0)
@@ -2955,23 +3311,44 @@ PyPoincareAttributes_getattr(PyObject *self, char *name)
         return PoincareAttributes_GetLegendFlag(self, NULL);
     if(strcmp(name, "lightingFlag") == 0)
         return PoincareAttributes_GetLightingFlag(self, NULL);
-    if(strcmp(name, "streamlineAlgorithmType") == 0)
-        return PoincareAttributes_GetStreamlineAlgorithmType(self, NULL);
+    if(strcmp(name, "parallelizationAlgorithmType") == 0)
+        return PoincareAttributes_GetParallelizationAlgorithmType(self, NULL);
     if(strcmp(name, "LoadOnDemand") == 0)
         return PyInt_FromLong(long(PoincareAttributes::LoadOnDemand));
     if(strcmp(name, "ParallelStaticDomains") == 0)
         return PyInt_FromLong(long(PoincareAttributes::ParallelStaticDomains));
     if(strcmp(name, "MasterSlave") == 0)
         return PyInt_FromLong(long(PoincareAttributes::MasterSlave));
+    if(strcmp(name, "VisItSelects") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::VisItSelects));
 
-    if(strcmp(name, "maxStreamlineProcessCount") == 0)
-        return PoincareAttributes_GetMaxStreamlineProcessCount(self, NULL);
+    if(strcmp(name, "maxProcessCount") == 0)
+        return PoincareAttributes_GetMaxProcessCount(self, NULL);
     if(strcmp(name, "maxDomainCacheSize") == 0)
         return PoincareAttributes_GetMaxDomainCacheSize(self, NULL);
     if(strcmp(name, "workGroupSize") == 0)
         return PoincareAttributes_GetWorkGroupSize(self, NULL);
-    if(strcmp(name, "forceNodeCenteredData") == 0)
-        return PoincareAttributes_GetForceNodeCenteredData(self, NULL);
+    if(strcmp(name, "pathlines") == 0)
+        return PoincareAttributes_GetPathlines(self, NULL);
+    if(strcmp(name, "pathlinesOverrideStartingTimeFlag") == 0)
+        return PoincareAttributes_GetPathlinesOverrideStartingTimeFlag(self, NULL);
+    if(strcmp(name, "pathlinesOverrideStartingTime") == 0)
+        return PoincareAttributes_GetPathlinesOverrideStartingTime(self, NULL);
+    if(strcmp(name, "pathlinesCMFE") == 0)
+        return PoincareAttributes_GetPathlinesCMFE(self, NULL);
+    if(strcmp(name, "CONN_CMFE") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::CONN_CMFE));
+    if(strcmp(name, "POS_CMFE") == 0)
+        return PyInt_FromLong(long(PoincareAttributes::POS_CMFE));
+
+    if(strcmp(name, "issueTerminationWarnings") == 0)
+        return PoincareAttributes_GetIssueTerminationWarnings(self, NULL);
+    if(strcmp(name, "issueStiffnessWarnings") == 0)
+        return PoincareAttributes_GetIssueStiffnessWarnings(self, NULL);
+    if(strcmp(name, "issueCriticalPointsWarnings") == 0)
+        return PoincareAttributes_GetIssueCriticalPointsWarnings(self, NULL);
+    if(strcmp(name, "criticalPointThreshold") == 0)
+        return PoincareAttributes_GetCriticalPointThreshold(self, NULL);
 
     return Py_FindMethod(PyPoincareAttributes_methods, self, name);
 }
@@ -3008,6 +3385,8 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = PoincareAttributes_SetPointDensity(self, tuple);
     else if(strcmp(name, "fieldType") == 0)
         obj = PoincareAttributes_SetFieldType(self, tuple);
+    else if(strcmp(name, "forceNodeCenteredData") == 0)
+        obj = PoincareAttributes_SetForceNodeCenteredData(self, tuple);
     else if(strcmp(name, "fieldConstant") == 0)
         obj = PoincareAttributes_SetFieldConstant(self, tuple);
     else if(strcmp(name, "velocitySource") == 0)
@@ -3068,6 +3447,10 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = PoincareAttributes_SetColorTableName(self, tuple);
     else if(strcmp(name, "dataValue") == 0)
         obj = PoincareAttributes_SetDataValue(self, tuple);
+    else if(strcmp(name, "showRationalSurfaces") == 0)
+        obj = PoincareAttributes_SetShowRationalSurfaces(self, tuple);
+    else if(strcmp(name, "RationalSurfaceMaxIterations") == 0)
+        obj = PoincareAttributes_SetRationalSurfaceMaxIterations(self, tuple);
     else if(strcmp(name, "showOPoints") == 0)
         obj = PoincareAttributes_SetShowOPoints(self, tuple);
     else if(strcmp(name, "OPointMaxIterations") == 0)
@@ -3110,16 +3493,30 @@ PyPoincareAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = PoincareAttributes_SetLegendFlag(self, tuple);
     else if(strcmp(name, "lightingFlag") == 0)
         obj = PoincareAttributes_SetLightingFlag(self, tuple);
-    else if(strcmp(name, "streamlineAlgorithmType") == 0)
-        obj = PoincareAttributes_SetStreamlineAlgorithmType(self, tuple);
-    else if(strcmp(name, "maxStreamlineProcessCount") == 0)
-        obj = PoincareAttributes_SetMaxStreamlineProcessCount(self, tuple);
+    else if(strcmp(name, "parallelizationAlgorithmType") == 0)
+        obj = PoincareAttributes_SetParallelizationAlgorithmType(self, tuple);
+    else if(strcmp(name, "maxProcessCount") == 0)
+        obj = PoincareAttributes_SetMaxProcessCount(self, tuple);
     else if(strcmp(name, "maxDomainCacheSize") == 0)
         obj = PoincareAttributes_SetMaxDomainCacheSize(self, tuple);
     else if(strcmp(name, "workGroupSize") == 0)
         obj = PoincareAttributes_SetWorkGroupSize(self, tuple);
-    else if(strcmp(name, "forceNodeCenteredData") == 0)
-        obj = PoincareAttributes_SetForceNodeCenteredData(self, tuple);
+    else if(strcmp(name, "pathlines") == 0)
+        obj = PoincareAttributes_SetPathlines(self, tuple);
+    else if(strcmp(name, "pathlinesOverrideStartingTimeFlag") == 0)
+        obj = PoincareAttributes_SetPathlinesOverrideStartingTimeFlag(self, tuple);
+    else if(strcmp(name, "pathlinesOverrideStartingTime") == 0)
+        obj = PoincareAttributes_SetPathlinesOverrideStartingTime(self, tuple);
+    else if(strcmp(name, "pathlinesCMFE") == 0)
+        obj = PoincareAttributes_SetPathlinesCMFE(self, tuple);
+    else if(strcmp(name, "issueTerminationWarnings") == 0)
+        obj = PoincareAttributes_SetIssueTerminationWarnings(self, tuple);
+    else if(strcmp(name, "issueStiffnessWarnings") == 0)
+        obj = PoincareAttributes_SetIssueStiffnessWarnings(self, tuple);
+    else if(strcmp(name, "issueCriticalPointsWarnings") == 0)
+        obj = PoincareAttributes_SetIssueCriticalPointsWarnings(self, tuple);
+    else if(strcmp(name, "criticalPointThreshold") == 0)
+        obj = PoincareAttributes_SetCriticalPointThreshold(self, tuple);
 
     if(obj != NULL)
         Py_DECREF(obj);

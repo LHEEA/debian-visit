@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -100,8 +100,8 @@ avtMacroExpressionFilter::ProcessArguments(ArgsExpr *args,
                                            ExprPipelineState *state)
 {
     std::vector<ArgExpr*> *arguments = args->GetArgs();
-    int nArgs = arguments->size();
-    for (int i = 0 ; i < nArgs ; i++)
+    size_t nArgs = arguments->size();
+    for (size_t i = 0 ; i < nArgs ; i++)
     {
         expression_arguments.push_back((*arguments)[i]->GetText());
     }

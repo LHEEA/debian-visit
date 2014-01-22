@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,7 @@
 
 #include <Connection.h>
 #include <deque>
+#include <JSONNode.h>
 
 // ****************************************************************************
 // Class: SocketConnection
@@ -86,16 +87,17 @@ public:
     virtual bool NeedsRead(bool blocking = false) const;
     virtual int  GetDescriptor() const;
 protected:
-    //int Write(MapNode* mapnode);
-    //void WriteToBuffer(MapNode* mapnode,bool write,int id, int& totalLen, int& totalSize);
-//    int Write(int id,MapNode *mapnode,JSONNode* data);
-//    void WriteToBuffer(MapNode *mapnode, JSONNode* data,
-//                                       bool write,
-//                                       int id,
-//                                       int& totalLen,
-//                                       int &totalSize);
     int Write(int id,MapNode *mapnode);
     void WriteToBuffer(MapNode *mapnode,
+                       bool write,
+                       int id,
+                       int& totalLen,
+                       int &totalSize);
+    int Write(int id,
+              JSONNode& node,
+              JSONNode& metadata);
+    void WriteToBuffer(const JSONNode& node,
+                       const JSONNode& metadata,
                        bool write,
                        int id,
                        int& totalLen,

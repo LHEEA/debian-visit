@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,12 +37,16 @@
 *****************************************************************************/
 
 #include <QPushButton>
+#include <QToolButton>
 #include <QLayout>
 #include <QScrollArea>
+#include <QDockWidget>
+#include <QTextEdit>
 
 #include <QvisPostableWindow.h>
 #include <QvisNotepadArea.h>
 #include <DataNode.h>
+#include <QvisHelpWindow.h>
 
 //
 // Static members.
@@ -105,6 +109,7 @@ QvisPostableWindow::QvisPostableWindow(const QString &captionString,
     dismissButton = 0;    
     notepad = n;
     addLayoutStretch = true;
+
 }
 
 // ****************************************************************************
@@ -578,6 +583,30 @@ QvisPostableWindow::unpost()
 }
 
 // ****************************************************************************
+// Method: QvisPostableWindow::help
+//
+// Purpose:
+//   This is a Qt slot function that shows help the window
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Jul 28 15:54:48 PST 2000
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisPostableWindow::help()
+{
+    if(!GetHelpWindow()) return;
+
+    QString window = windowTitle();
+    window = window.remove("attributes");
+
+    GetHelpWindow()->openHelp(window.trimmed());
+}
+
+// ****************************************************************************
 // Method: QvisPostableWindow::hide
 //
 // Purpose: 
@@ -763,10 +792,16 @@ QvisPostableWindow::CreateEntireWindow()
     QHBoxLayout *buttonLayout = new QHBoxLayout(0);
     vLayout->addLayout(buttonLayout);
     buttonLayout->addStretch();
+    helpButton = new QPushButton(this);
+    helpButton->setVisible(false);
+    helpButton->setText(tr("?"));
+    connect(helpButton, SIGNAL(clicked()), this, SLOT(help()));
+    buttonLayout->addWidget(helpButton);
     postButton = new QPushButton(tr("Post"));
     buttonLayout->addWidget(postButton);
     dismissButton = new QPushButton(tr("Dismiss"));
     buttonLayout->addWidget(dismissButton);
+
     if(notepad != 0 && addLayoutStretch)
         vLayout->addStretch(0);
 

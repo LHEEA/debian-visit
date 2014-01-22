@@ -59,6 +59,16 @@
 #   Eric Brugger, Wed Mar 20 11:48:51 PDT 2013
 #   Deleted gremlin. Replaced termite with hitit.
 #
+#   Eric Brugger, Thu Jun 20 10:36:14 PDT 2013
+#   I modified the hitit build since it is now an x86_64 system instead
+#   of an i686 system.
+#
+#   Eric Brugger, Tue Jul  9 11:23:43 PDT 2013
+#   I changed the gateway node to login to cielo.
+#
+#   Eric Brugger, Tue Oct 22 11:06:24 PDT 2013
+#   I modified many of the builds to use cmake 2.8.10.2.
+#
 #-----------------------------------------------------------------------
 
 test=no
@@ -159,10 +169,10 @@ gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/misc/gapps/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-i686_gcc-4.1/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/misc/gapps/visit/thirdparty_shared/2.7.0/cmake/2.8.10.2/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 4 >> ../../buildlog 2>&1
 make package >> ../../buildlog 2>&1
-mv visit\$ver2.linux-intel.tar.gz ../..
+mv visit\$ver2.linux-x86_64.tar.gz ../..
 cd ../..
 rm -f resultlog
 echo "        build of visit on hitit"      > resultlog 2>&1
@@ -211,7 +221,7 @@ gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/usr/gapps/visit/thirdparty_shared_2_6_0/cmake/2.8.8/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/usr/gapps/visit/thirdparty_shared/2.7.0/cmake/2.8.10.2/linux-x86_64_gcc-4.4/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 6 >> ../../buildlog 2>&1
 make -j 6 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -261,7 +271,7 @@ gunzip -c $dist.tar.gz | tar xvf - > buildlog 2>&1
 cd $dist/src
 ver=\`cat VERSION\`
 ver2=\`echo \$ver | tr "." "_"\`
-/usr/projects/views/visit/thirdparty_shared_2_6_2/cmake/2.8.8/linux-x86_64_gcc-4.7/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
+/usr/projects/views/visit/thirdparty_shared/2.7.0/cmake/2.8.10.2/linux-x86_64_gcc-4.7/bin/cmake . -DCMAKE_BUILD_TYPE:STRING=Release -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON >> ../../buildlog 2>&1
 make -j 6 >> ../../buildlog 2>&1
 make -j 6 package >> ../../buildlog 2>&1
 mv visit\$ver2.linux-x86_64.tar.gz ../..
@@ -285,9 +295,9 @@ then
    if [ $test = no ]
    then
       echo "Building on cielo"
-      scp cielo red-fta05.lanl.gov:cielo_buildit
-      scp $dist.tar.gz red-fta05.lanl.gov:cielo_$dist.tar.gz
-      ssh red-fta05.lanl.gov "ssh ci-fe2 'chmod 750 cielo_buildit;module swap PrgEnv-pgi PrgEnv-gnu;./cielo_buildit'" &
+      scp cielo rfta15.lanl.gov:cielo_buildit
+      scp $dist.tar.gz rfta15.lanl.gov:cielo_$dist.tar.gz
+      ssh rfta15.lanl.gov "ssh ci-fe2 'chmod 750 cielo_buildit;module swap PrgEnv-pgi PrgEnv-gnu;./cielo_buildit'" &
    fi
 fi
 

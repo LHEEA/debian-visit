@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -728,7 +728,7 @@ avtSiloWriter::ConstructMultivar(DBfile *dbfile, const string &sname,
     {
         minVals = minsMap->second;
         maxVals = dataMaxs[sname];
-        ncomps = minVals.size() / nblocks; 
+        ncomps = (int)minVals.size() / nblocks; 
         extents = new double[nblocks * ncomps * 2];
     }
 
@@ -1528,8 +1528,6 @@ void
 avtSiloWriter::WriteCurvilinearMesh(DBfile *dbfile, vtkStructuredGrid *sg,
                                     int chunk)
 {
-    int  i, j;
-
     int ndims = GetInput()->GetInfo().GetAttributes().GetSpatialDimension();
 
     //
@@ -1563,7 +1561,7 @@ avtSiloWriter::WriteCurvilinearMesh(DBfile *dbfile, vtkStructuredGrid *sg,
         EXCEPTION0(ImproperUseException);
     }
 
-    for(i = 0; i < ndims; ++i)
+    for(int i = 0; i < ndims; ++i)
     {
         spatialMins.push_back(mins[i]);
         spatialMaxs.push_back(maxs[i]);
@@ -1572,7 +1570,7 @@ avtSiloWriter::WriteCurvilinearMesh(DBfile *dbfile, vtkStructuredGrid *sg,
     int dims[3];
     sg->GetDimensions(dims);
     int nzones = 1;
-    for (i = 0 ; i < ndims ; i++)
+    for (int i = 0 ; i < ndims ; i++)
         if (dims[i] > 1)
             nzones *= (dims[i]-1);
     zoneCounts.push_back(nzones);
@@ -2018,6 +2016,9 @@ ReorderUcdvarUsingGhostZones(vtkDataArray *arr, const unsigned char *gz)
 //    Brad Whitlock, Tue May 19 11:50:57 PDT 2009
 //    Added support for reordering data using ghost zones.
 //
+//    Kathleen Biagas, Mon Aug 12 15:56:25 PDT 2013
+//    arr2 may not be float, so don't cast to float.
+//
 // ****************************************************************************
 
 void
@@ -2075,12 +2076,12 @@ avtSiloWriter::WriteUcdvarsHelper(DBfile *dbfile, vtkDataSetAttributes *ds,
              if (isPointMesh && centering == DB_NODECENT)
                  DBPutPointvar1(dbfile, (char *) varName.c_str(),
                           (char *) meshName.c_str(),
-                          (float *) arr2->GetVoidPointer(0),
+                          arr2->GetVoidPointer(0),
                           nTuples, GetSiloType(arr2), optlist); 
              else
                  DBPutUcdvar1(dbfile, (char *) varName.c_str(),
                           (char *) meshName.c_str(),
-                          (float *) arr2->GetVoidPointer(0), nTuples, NULL, 0,
+                          arr2->GetVoidPointer(0), nTuples, NULL, 0,
                           GetSiloType(arr2), centering, optlist);
          }
          else
@@ -2175,6 +2176,9 @@ avtSiloWriter::WriteUcdvars(DBfile *dbfile, vtkPointData *pd,
 //    Brad Whitlock, Fri Mar 6 14:39:51 PST 2009
 //    Allow for subdirectories.
 //
+//    Kathleen Biagas, Mon Aug 12 15:57:39 PDT 2013
+//    Allow for double-precision.
+//
 // ****************************************************************************
 
 void
@@ -2216,57 +2220,96 @@ avtSiloWriter::WriteQuadvarsHelper(DBfile *dbfile, vtkDataSetAttributes *ds,
              // find min,max in this variable
              double dimMin = +DBL_MAX;
              double dimMax = -DBL_MAX;
-             float *ptr    = (float *) arr->GetVoidPointer(0);
              for (k = 0 ; k < nTuples ; k++)
              {
-                 if (ptr[k] < dimMin)
-                     dimMin = ptr[k];
-                 if (ptr[k] > dimMax)
-                     dimMax = ptr[k];
+                 double val = arr->GetTuple1(k);
+                 if (val < dimMin)
+                     dimMin = val;
+                 if (val > dimMax)
+                     dimMax = val;
              }
              varMins.push_back(dimMin);
              varMaxs.push_back(dimMax);
 
              DBPutQuadvar1(dbfile, (char *) varName.c_str(),
                            (char *) meshName.c_str(),
-                           (float *) ptr, dims, ndims, NULL,
-                           0, DB_FLOAT, centering, optlist);
+                           arr->GetVoidPointer(0), dims, ndims, NULL,
+                           0, GetSiloType(arr), centering, optlist);
          }
          else
          {
-             float **vars     = new float*[ncomps];
-             float *ptr       = (float *) arr->GetVoidPointer(0);
-             char  **varnames = new char*[ncomps];
-             for (j = 0 ; j < ncomps ; j++)
+             if (arr->GetDataType() == VTK_DOUBLE)
              {
-                 double dimMin = +DBL_MAX;
-                 double dimMax = -DBL_MAX;
-                 vars[j] = new float[nTuples];
-                 varnames[j] = new char[1024];
-                 sprintf(varnames[j], "%s_comp%d", arr->GetName(), j);
-                 for (k = 0 ; k < nTuples ; k++)
+                 char  **varnames = new char*[ncomps];
+                 double **vars = new double*[ncomps];
+                 for (j = 0 ; j < ncomps ; j++)
                  {
-                     vars[j][k] = ptr[k*ncomps + j];
-                     if (vars[j][k] < dimMin)
-                         dimMin = vars[j][k];
-                     if (vars[j][k] > dimMax)
-                         dimMax = vars[j][k];
+                     double dimMin = +DBL_MAX;
+                     double dimMax = -DBL_MAX;
+                     vars[j] = new double[nTuples];
+                     varnames[j] = new char[1024];
+                     sprintf(varnames[j], "%s_comp%d", arr->GetName(), j);
+                     for (k = 0 ; k < nTuples ; k++)
+                     {
+                         vars[j][k] = arr->GetComponent(k, j);
+                         if (vars[j][k] < dimMin)
+                             dimMin = vars[j][k];
+                         if (vars[j][k] > dimMax)
+                             dimMax = vars[j][k];
+                     }
+                     varMins.push_back(dimMin);
+                     varMaxs.push_back(dimMax);
                  }
-                 varMins.push_back(dimMin);
-                 varMaxs.push_back(dimMax);
-             }
 
-             DBPutQuadvar(dbfile, (char *) varName.c_str(),
-                          (char *) meshName.c_str(),
-                          ncomps, varnames, vars, dims, ndims, NULL, 0, 
-                          DB_FLOAT, centering, optlist);
-             for (j = 0 ; j < ncomps ; j++)
-             {
-                  delete [] vars[j];
-                  delete [] varnames[j];
+                 DBPutQuadvar(dbfile, (char *) varName.c_str(),
+                              (char *) meshName.c_str(),
+                              ncomps, varnames, vars, dims, ndims, NULL, 0, 
+                              DB_DOUBLE, centering, optlist);
+
+                 for (j = 0 ; j < ncomps ; j++)
+                 {
+                      delete [] vars[j];
+                      delete [] varnames[j];
+                 }
+                 delete [] vars;
+                 delete [] varnames;
              }
-             delete [] vars;
-             delete [] varnames;
+             else
+             {
+                 char  **varnames = new char*[ncomps];
+                 float **vars     = new float*[ncomps];
+                 for (j = 0 ; j < ncomps ; j++)
+                 {
+                     double dimMin = +DBL_MAX;
+                     double dimMax = -DBL_MAX;
+                     vars[j] = new float[nTuples];
+                     varnames[j] = new char[1024];
+                     sprintf(varnames[j], "%s_comp%d", arr->GetName(), j);
+                     for (k = 0 ; k < nTuples ; k++)
+                     {
+                         vars[j][k] = (float)arr->GetComponent(k, j);
+                         if (vars[j][k] < dimMin)
+                             dimMin = vars[j][k];
+                         if (vars[j][k] > dimMax)
+                             dimMax = vars[j][k];
+                     }
+                     varMins.push_back(dimMin);
+                     varMaxs.push_back(dimMax);
+                 }
+
+                 DBPutQuadvar(dbfile, (char *) varName.c_str(),
+                              (char *) meshName.c_str(),
+                              ncomps, varnames, vars, dims, ndims, NULL, 0, 
+                              DB_FLOAT, centering, optlist);
+
+                 for (j = 0 ; j < ncomps ; j++)
+                 {
+                      delete [] vars[j];
+                      delete [] varnames[j];
+                 }
+                 delete [] vars;
+                 delete [] varnames;
+             }
          }
 
          EndVar(dbfile, nlevels);

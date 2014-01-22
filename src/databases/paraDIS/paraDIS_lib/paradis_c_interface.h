@@ -9,17 +9,16 @@
 #include <boost/cstdint.hpp>
 using boost::int8_t;
 using boost::int32_t;
+using boost::uint8_t;
 using boost::uint32_t;
 
 #ifdef __cplusplus
 extern "C" {
 #endif  
-  /*! 
-    purely for testing -- reduce the datamax by 0.5
-  */ 
-  void paraDIS_TestRestrictSubspace(void);
+  static uint32_t WRAPPED_NODE = -42424242; 
+  static uint32_t END_OF_NODELIST = 42424242; 
   
-  void paraDIS_init(void); 
+  void *paraDIS_init(void *ds=NULL); 
   
   void paraDIS_close(void); 
 
@@ -28,10 +27,16 @@ extern "C" {
   void paraDIS_SetThreshold(double threshold); 
   
   void paraDIS_EnableDebugOutput(int truth); 
+
+  void paraDIS_EnableStatsOutput(int truth); 
+  
+  void paraDIS_EnableTagFileOutput(int truth); 
+  
+  void paraDIS_EnableVTKFileOutput(int truth); 
   
   void paraDIS_SetDataFile(const char *filename); 
   
-  void paraDIS_Clear(void); 
+  void paraDIS_SetOutputDir(const char *dir); 
   
   /*!
     read the head of the data and return the bounding box. return 0 on failure, 1 on success
@@ -51,34 +56,62 @@ extern "C" {
 
   uint32_t paraDIS_GetNumNodes(void);
   
+  int paraDIS_TestNode(uint32_t nodenum);
+
   void paraDIS_printNodeVerbose(uint32_t nodenum);
 
   void paraDIS_GetNodeLocation(uint32_t nodenum, float loc[3]);
   
   int8_t paraDIS_GetNodeType(uint32_t nodenum);
 
+  int8_t paraDIS_NodeIsLoop(uint32_t nodenum); 
+    
+  int8_t paraDIS_NodeIsTypeM(uint32_t nodenum);
+    
+  int8_t paraDIS_NodeIsTypeN(uint32_t nodenum);
+ 
   int8_t paraDIS_GetNumNodeNeighbors(uint32_t nodenum);
 
   /*!
-    The domain refers to the simulation domain
+    The hash function is simple and readable:  
+    domain * 1000,000 + nodeID so (3,32) -->  3000032
   */ 
-  int32_t  paraDIS_GetNodeSimulationDomain(uint32_t nodenum);
+  int64_t  paraDIS_GetNodeHash(uint32_t nodenum);
   
-  /*! 
-    Return the ID within the simulation ID for the node (not the index into the readers node array)
-  */ 
-  int32_t  paraDIS_GetNodeSimulationID(uint32_t nodenum);
-  
+   
   uint32_t paraDIS_GetNumArmSegments(void);
   
-  void paraDIS_printArmSegmentVerbose(uint32_t segnum);
+  int paraDIS_TestSegment(uint32_t segnum);
 
   int32_t paraDIS_GetEndpointIndex(uint32_t segmentnum, int endpointnum);
-
+  
   int8_t paraDIS_GetSegmentBurgersType(uint32_t segmentnum);
   
+  int32_t paraDIS_GetSegmentSimulationIndex(uint32_t segmentnum);
+  
+  int32_t paraDIS_GetSegmentArmID(uint32_t segmentnum);
+  
+  int32_t paraDIS_GetSegmentMetaArmID(uint32_t segmentnum);
+  
+  int8_t paraDIS_GetSegmentMetaArmType(uint32_t metaArmNum);
+
   int8_t paraDIS_GetSegmentMNType(uint32_t segmentnum);
   
+  int8_t paraDIS_GetSegmentDuplicates(uint32_t segmentnum);
+
+  void paraDIS_EnableMetaArmSearch(void);
+
+  uint32_t paraDIS_GetNumMetaArms(void);
+
+  int32_t paraDIS_GetMetaArmID(uint32_t metaArmNum);
+
+  int8_t paraDIS_GetMetaArmType(uint32_t metaArmNum);
+
+  uint32_t paraDIS_GetMetaArmNumSegments(uint32_t metaArmNum, bool wrapEndpoints);
+
+  float *paraDIS_GetMetaArmPoints(uint32_t metaArmNum, bool wrapEndpoints); 
+
+  bool paraDIS_EndBuffCheck(float *bufp); 
 
 #ifdef __cplusplus
 } /* end extern "C" */ 

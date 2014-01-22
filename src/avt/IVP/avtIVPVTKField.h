@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -125,7 +125,7 @@ class IVP_API avtIVPVTKField: public avtIVPField
                                          const std::string& name );
 
     virtual Result    IsInside( const double& t, const avtVector &pt ) const;
-    unsigned int      GetDimension() const;
+    unsigned int      GetDimension() const {return 3;}
     virtual void      GetExtents( double extents[6] ) const;
     virtual void      GetTimeRange( double range[2] ) const;
 

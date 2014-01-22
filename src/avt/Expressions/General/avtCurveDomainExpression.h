@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,7 +78,7 @@ class EXPRESSION_API avtCurveDomainExpression
   protected:
 
     virtual vtkDataSet      *ExecuteData(vtkDataSet *, int, std::string);
-    virtual vtkDataArray    *DeriveVariable(vtkDataSet *) { return NULL;}
+    virtual vtkDataArray    *DeriveVariable(vtkDataSet *, int currentDomainsIndex) { return NULL;}
     virtual avtVarType       GetVariableType(void) { return AVT_CURVE; };
 };
 

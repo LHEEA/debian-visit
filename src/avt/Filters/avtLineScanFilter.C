@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -446,6 +446,10 @@ AssignToProc(int val, int nlines)
 //
 //    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
 //    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
+//
+//    Kathleen Biagas, Fri Jan 25 16:04:46 PST 2013
+//    Call Update on the filter, not the data object.
+//
 // ****************************************************************************
 
 void
@@ -533,7 +537,7 @@ avtLineScanFilter::PostExecute(void)
         if (pd_msg[i] != NULL)
         {
             vtkDataSetWriter *writer = vtkDataSetWriter::New();
-            writer->SetInput(pd_msg[i]);
+            writer->SetInputData(pd_msg[i]);
             writer->SetWriteToOutputString(1);
             writer->SetFileTypeToBinary();
             writer->Write();
@@ -602,15 +606,15 @@ avtLineScanFilter::PostExecute(void)
             charArray->SetArray((char *) recvmessages[i],recvcount[i], iOwnIt);
             reader->SetReadFromInputString(1);
             reader->SetInputArray(charArray);
-            appender->AddInput(reader->GetOutput());
+            appender->AddInputConnection(reader->GetOutputPort());
             reader->Delete();
             charArray->Delete();
         }
     }
     if (appender->GetTotalNumberOfInputConnections() >= 1)
     {
+        appender->Update();
         vtkPolyData *output = appender->GetOutput();
-        output->Update();
         avtDataTree_p newtree = new avtDataTree(output, -1);
         SetOutputDataTree(newtree);
     }
@@ -641,9 +645,9 @@ avtLineScanFilter::PostExecute(void)
 #else
     vtkAppendPolyData *appender = vtkAppendPolyData::New();
     for (int i = 0 ; i < nLeaves ; i++)
-        appender->AddInput((vtkPolyData *) leaves[i]);
+        appender->AddInputData((vtkPolyData *) leaves[i]);
+    appender->Update();
     vtkPolyData *output = appender->GetOutput();
-    output->Update();
     avtDataTree_p newtree = new avtDataTree(output, -1);
     SetOutputDataTree(newtree);
     appender->Delete();

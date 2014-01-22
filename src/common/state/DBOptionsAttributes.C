@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1440,7 +1440,7 @@ DBOptionsAttributes::SetEnumStrings(const std::string &name,
     if (eIndex < 0)
         EXCEPTION0(BadDeclareFormatString);
 
-    int numEnums = optEnums.size();
+    int numEnums = (int)optEnums.size();
     std::vector<std::string> newList;
     int idx = 0;
     for (int i = 0 ; i < numEnums ; i++)

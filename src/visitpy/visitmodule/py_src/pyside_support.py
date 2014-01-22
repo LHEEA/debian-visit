@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -86,15 +86,15 @@ class ProcessCLIInput(Thread):
                         try:
                             i,o,e = select.select([sys.stdin],[],[],0.0001)
                             for s in i:
-                                if s == sys.stdin:
-                                    self.qtapp.exit(0)
+                                if s == sys.stdin: self.qtapp.exit(0)
                         except:
+                            if sys.stdin.closed : break
                             pass
                     else:
                         import msvcrt
-                        if msvcrt.kbhit():
-                            self.qtapp.exit(0)
+                        if msvcrt.kbhit(): self.qtapp.exit(0)
             except:
+                if sys.stdin.closed : break
                 pass
 
 def GetPySideViewerInstance():

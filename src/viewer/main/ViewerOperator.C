@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -589,4 +589,49 @@ ViewerOperator::SetFromNode(DataNode *parentNode, const std::string &configVersi
 
     // Let the operator try to initialize its attributes.
     operatorAtts->SetFromNode(operatorNode);
+}
+
+// New method that can be called from ViewerPlot::SetVariableName
+
+
+// ****************************************************************************
+// Method: ViewerOperator::UpdateOperatorAtts
+//
+// Purpose: Updates the attributes be set based on the operator
+//   expression variable.
+//
+// Arguments:
+//
+// Programmer: Allen Sanderson
+// Creation:   Wed Apr 10 13:10:51 PST 2013
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ViewerOperator::UpdateOperatorAtts()
+{
+    viewerPluginInfo->UpdateOperatorAtts(operatorAtts, plot);
+}
+
+// ****************************************************************************
+// Method: ViewerOperator::UpdateOperatorAtts
+//
+// Purpose: Updates the attributes be set based on the operator
+//   expression variable.
+//
+// Arguments:
+//
+// Programmer: Allen Sanderson
+// Creation:   Wed Apr 10 13:10:51 PST 2013
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+std::string
+ViewerOperator::GetOperatorVarDescription()
+{
+  return viewerPluginInfo->GetOperatorVarDescription(operatorAtts, plot);
 }

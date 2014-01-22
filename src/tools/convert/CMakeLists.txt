@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -104,9 +104,9 @@ ${ICET_LIBRARY_DIR}
 )
 
 SET(VTK_EXTRA_LIBS
-${VTK_JPEG_LIBRARIES}
-${VTK_PNG_LIBRARIES}
-${VTK_ZLIB_LIBRARIES} 
+vtkjpeg
+vtkpng
+${VTKZLIB_LIB}
 ${VTK_FREETYPE_LIBRARIES}
 vtkftgl
 )
@@ -147,7 +147,6 @@ ELSE(VISIT_DBIO_ONLY)
         avtdbin_ser 
         avtexpressions_ser
         avtfilters_ser 
-        avtivp
         avtmath
         avtmir_ser
         avtpipeline_ser
@@ -209,7 +208,6 @@ IF(VISIT_PARALLEL)
             avtdbin_par 
             avtexpressions_par
             avtfilters_par 
-            avtivp
             avtmath
             avtmir_par
             avtpipeline_par

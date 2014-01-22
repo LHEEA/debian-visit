@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -156,6 +156,9 @@ avtNamedSelectionFilter::ExecuteData(vtkDataSet *in_ds, int dom, std::string)
 //    Brad Whitlock, Mon Jun 20 17:06:33 PST 2011
 //    I moved this code out from another function to make it more general.
 //
+//    Kathleen Biagas, Mon Jan 28 10:56:30 PST 2013
+//    Call upate on filter not data object.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -179,12 +182,12 @@ avtNamedSelectionFilter::SelectedData(vtkDataSet *in_ds,
         ds->GetCellData()->AddArray(arr);
         arr->Delete();
         vtkThreshold *thres = vtkThreshold::New();
-        thres->SetInput(ds);
+        thres->SetInputData(ds);
         thres->ThresholdBetween(0.5, 1.5);
         thres->SetInputArrayToProcess(0, 0, 0, 
               vtkDataObject::FIELD_ASSOCIATION_CELLS, "_avt_thresh_var");
+        thres->Update();
         rv = thres->GetOutput();
-        rv->Update();
         ManageMemory(rv);
         thres->Delete();
         ds->Delete();

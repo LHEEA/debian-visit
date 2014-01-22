@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -505,7 +505,6 @@ HostProfileList::SetFromNode(DataNode *parentNode)
     if(searchNode == 0)
         return;
 
-    DataNode *node;
     DataNode **children;
 
     // Clear all the MachineProfiles if we got any.
@@ -673,7 +672,7 @@ HostProfileList::RemoveMachines(int index)
 int
 HostProfileList::GetNumMachines() const
 {
-    return machines.size();
+    return (int)machines.size();
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -42,9 +42,21 @@
 
 #include <ModelFitPluginInfo.h>
 #include <ModelFitAtts.h>
-#include <avtDatabaseMetaData.h>
 
-#include <ParsingExprList.h>
+#include <Expression.h>
+#include <ExpressionList.h>
+#include <avtDatabaseMetaData.h>
+#include <avtMeshMetaData.h>
+#include <avtSubsetsMetaData.h>
+#include <avtScalarMetaData.h>
+#include <avtVectorMetaData.h>
+#include <avtTensorMetaData.h>
+#include <avtSymmetricTensorMetaData.h>
+#include <avtArrayMetaData.h>
+#include <avtMaterialMetaData.h>
+#include <avtSpeciesMetaData.h>
+#include <avtCurveMetaData.h>
+#include <avtLabelMetaData.h>
 
 // ****************************************************************************
 //  Method: ModelFitCommonPluginInfo::AllocAttributes
@@ -86,8 +98,6 @@ ModelFitCommonPluginInfo::CopyAttributes(AttributeSubject *to,
 {
     *((ModelFitAtts *) to) = *((ModelFitAtts *) from);
 }
-
-
 // ****************************************************************************
 // Method:  ModelFitCommonPluginInfo::GetCreatedExpressions
 //
@@ -106,10 +116,11 @@ ModelFitCommonPluginInfo::CopyAttributes(AttributeSubject *to,
 //   we have any meshes in our file.
 //   
 // ****************************************************************************
+#include <string.h>
+
 ExpressionList *
 ModelFitCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMetaData *md)
 {
-    int i;
     int numMeshes = md->GetNumMeshes();
     if (numMeshes == 0)
         return NULL;
@@ -150,3 +161,4 @@ ModelFitCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMetaData *md)
 
     return expressions;
 }
+

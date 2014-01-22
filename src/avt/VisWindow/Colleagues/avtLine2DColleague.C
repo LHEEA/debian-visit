@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -139,7 +139,7 @@ avtLine2DColleague::avtLine2DColleague(VisWindowColleagueProxy &m):
 
     // Create the mapper.
     mapper = vtkPolyDataMapper2D::New();
-    mapper->SetInput(lineData);
+    mapper->SetInputData(lineData);
 
     //
     // Create and position the actor.
@@ -515,27 +515,27 @@ avtLine2DColleague::SetOptions(const AnnotationObject &annot)
         allData = vtkAppendPolyData::New();
 
     if(beginArrowStyle == 1)
-        allData->AddInput(beginArrowLine);
+        allData->AddInputData(beginArrowLine);
     else if(beginArrowStyle == 2)
-        allData->AddInput(beginArrowSolid);
+        allData->AddInputData(beginArrowSolid);
 
     if(endArrowStyle && !allData)
         allData = vtkAppendPolyData::New();
 
     if(endArrowStyle == 1)
-        allData->AddInput(endArrowLine);
+        allData->AddInputData(endArrowLine);
     else if(endArrowStyle == 2)
-        allData->AddInput(endArrowSolid);
+        allData->AddInputData(endArrowSolid);
 
     //
     // Set the mapper.
     //
     if(allData)
     {
-        allData->AddInput(lineData);
-        mapper->SetInput(allData->GetOutput());
+        allData->AddInputData(lineData);
+        mapper->SetInputData(allData->GetOutput());
     }
-    else mapper->SetInput(lineData);
+    else mapper->SetInputData(lineData);
 
     //
     // Set the object's visibility.

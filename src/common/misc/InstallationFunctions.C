@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -576,7 +576,7 @@ WriteKeyToRoot(HKEY which_root, const char *ver, const char *key,
     sprintf(regkey, "Software\\Classes\\VisIt%s", ver);
     if(RegOpenKeyEx(which_root, regkey, 0, KEY_SET_VALUE, &hkey) == ERROR_SUCCESS)
     {
-        DWORD strSize = strlen(keyval);
+        DWORD strSize = (DWORD)strlen(keyval);
         if(RegSetValueEx(hkey, key, NULL, REG_SZ,
            (const unsigned char *)keyval, strSize) == ERROR_SUCCESS)
         {
@@ -728,8 +728,8 @@ GetVisItInstallationDirectory(const char *version)
             if (GetModuleFileName(NULL, tmpdir, MAX_PATH) != 0)
             {
                 std::string visitpath(tmpdir);
-                int lastSlash = visitpath.rfind("\\");
-                if(lastSlash != -1)
+                size_t lastSlash = visitpath.rfind("\\");
+                if(lastSlash != std::string::npos)
                     installDir = visitpath.substr(0, lastSlash);
                 else
                     installDir = visitpath;
@@ -1016,8 +1016,8 @@ ReadInstallationInfo(std::string &distName, std::string &configName, std::string
         // determine the distName based on the archNames.
         if(!platformDetermined)
         {
-            int lastSlash = arch.rfind("/");
-            if(lastSlash != -1)
+            size_t lastSlash = arch.rfind("/");
+            if(lastSlash != std::string::npos)
             {
                 arch = arch.substr(lastSlash+1, arch.length() - lastSlash - 1);
                 for(size_t i = 0; i < NARCH; ++i)

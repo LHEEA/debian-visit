@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -52,8 +52,15 @@ ADD_EXECUTABLE(text2polys text2polys.C arial_font.C)
 ADD_EXECUTABLE(time_annotation time_annotation.C arial_font.C)
 
 # Specify the libraries to link against
-TARGET_LINK_LIBRARIES(text2polys vtkCommon vtkRendering vtkGraphics vtkFiltering vtkIO)
-TARGET_LINK_LIBRARIES(time_annotation vtkCommon vtkRendering vtkGraphics vtkFiltering vtkIO)
+TARGET_LINK_LIBRARIES(text2polys vtkIOLegacy)
+IF(HAVE_LIB_R)
+TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkRenderingFreeTypeOpenGL vtkInteractionStyle vtkFiltersStatisticsGnuR)
+ELSE(HAVE_LIB_R)
+TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkRenderingFreeTypeOpenGL vtkInteractionStyle)
+ENDIF(HAVE_LIB_R)
+# add vtk definitions
+ADD_TARGET_DEFINITIONS(time_annotation "${VTK_DEFINITIONS}")
+
 
 VISIT_INSTALL_TARGETS(text2polys time_annotation)
 VISIT_TOOLS_ADD_FOLDER(annotations text2polys time_annotation)

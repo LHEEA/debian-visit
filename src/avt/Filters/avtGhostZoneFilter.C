@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -254,7 +254,7 @@ avtGhostZoneFilter::ExecuteData(vtkDataSet *in_ds, int domain, std::string)
     vtkDataSetRemoveGhostCells *filter = vtkDataSetRemoveGhostCells::New();
     filter->SetGhostNodeTypesToRemove(ghostNodeTypesToRemove);
     filter->SetGhostZoneTypesToRemove(ghostZoneTypesToRemove);
-    filter->SetInput(in_ds);
+    filter->SetInputData(in_ds);
 
     //
     // Set up filter so that all cells with ghost level >=1

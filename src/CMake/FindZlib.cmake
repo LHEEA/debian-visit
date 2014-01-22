@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -38,6 +38,16 @@
 #   Kathleen Bonnell, Fri Dec 10 14:36:52 PST 2010
 #   Set ZLIB_LIB to full path.
 #
+#   Brad Whitlock, Thu Apr 18 14:38:02 PDT 2013
+#   Look for zlib on other platforms if VISIT_ZLIB_DIR is set.
+#
+#   Kathleen Biagas, Wed Jun  5 16:47:21 PDT 2013
+#   Always set VTKZLIB_LIB on windows if the vtkzlib target exists.
+#
+#   Kathleen Biagas, Fri Aug  9 11:01:29 PDT 2013
+#   IF this file finds zlib, set HAVE_ZLIB_H. CHECK_INCLUDE_FILES might not 
+#   find it, especially on windows.
+#
 #****************************************************************************/
 
 # Use the ZLIB_DIR hint from the config-site .cmake file 
@@ -45,10 +55,30 @@
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-  SET_UP_THIRD_PARTY(ZLIB lib/${VISIT_MSVC_VERSION} include zlib1)
-  IF (ZLIB_FOUND)
-      # use full path here, instead of just lib file.
-      SET(ZLIB_LIB "${ZLIB_LIBRARY_DIR}/${ZLIB_LIB}" CACHE STRING "zlib library" FORCE)
-  ENDIF (ZLIB_FOUND)
+    SET_UP_THIRD_PARTY(ZLIB lib/${VISIT_MSVC_VERSION} include zlib1)
+    IF (ZLIB_FOUND)
+        # use full path here, instead of just lib file.
+        SET(ZLIB_LIB "${ZLIB_LIBRARY_DIR}/${ZLIB_LIB}" CACHE STRING "zlib library" FORCE)
+        SET(HAVE_ZLIB_H true CACHE BOOL "have zlib header" FORCE)
+    ENDIF (ZLIB_FOUND)
+    IF(TARGET vtkzlib)
+        SET(VTKZLIB_LIB vtkzlib)
+    ENDIF(TARGET vtkzlib)
+ELSE(WIN32)
+    IF(VISIT_ZLIB_DIR)
+        # We've told VisIt where to look for zlib. Let's also assume that by doing 
+        # this, we also told VTK where to find system zlib so we will not be using
+        # VTK's zlib
+        SET_UP_THIRD_PARTY(ZLIB lib include z)
+        IF (ZLIB_FOUND)
+            # use full path here, instead of just lib file.
+            SET(ZLIB_LIB "${ZLIB_LIBRARY_DIR}/${ZLIB_LIB}" CACHE STRING "zlib library" FORCE)
+            SET(HAVE_ZLIB_H true CACHE BOOL "have zlib header" FORCE)
+        ENDIF (ZLIB_FOUND)
+    ELSE(VISIT_ZLIB_DIR)
+        SET(ZLIB_LIB z)
+        SET(ZLIB_FOUND 1)
+        SET(VTKZLIB_LIB vtkzlib)
+    ENDIF(VISIT_ZLIB_DIR)
 ENDIF (WIN32)
 

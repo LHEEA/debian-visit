@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1129,7 +1129,7 @@ visit_AddArgument(PyObject *self, PyObject *args)
         if(!PyArg_ParseTuple(args, "s", &arg))
             return NULL;
 
-        if(strcmp(arg,"-pyuiembedded") == 0 || strcmp(arg,"-uifile") == 0 )
+        if(strcmp(arg,"-pyuiembedded") == 0)
             viewerEmbedded = true;
 
         //GetViewerProxy()->AddArgument(arg);
@@ -1276,7 +1276,7 @@ visit_Launch(PyObject *self, PyObject *args)
     // Execute any client methods that came in during the Synchronize.
     //
     debug1 << "Launch: 8, executing cached client methods." << endl;
-    int size = 0;
+    size_t size = 0;
     do
     {
         ClientMethod *m = 0;
@@ -3356,7 +3356,7 @@ OpenClientHelper(PyObject *self, PyObject *args, int componentNumber)
 
         PyErr_Clear();
     }
-    if(componentNumber == 2)
+    else if(componentNumber == 2)
     {
         clientName = "CLI";
         program = "visit";
@@ -3385,6 +3385,11 @@ OpenClientHelper(PyObject *self, PyObject *args, int componentNumber)
                     VisItErrorFunc(OCEError);
                     return NULL;
                 }
+            }
+            else
+            {
+                VisItErrorFunc(OCEError);
+                return NULL;
             }
         }
         else
@@ -5253,6 +5258,69 @@ visit_SetCloneWindowOnFirstRef(PyObject *self, PyObject *args)
     MUTEX_LOCK();
         GetViewerState()->GetGlobalAttributes()->SetCloneWindowOnFirstRef(flag);
         GetViewerState()->GetGlobalAttributes()->Notify();
+    MUTEX_UNLOCK();
+    int errorFlag = Synchronize();
+
+    // Return the success value.
+    return PyLong_FromLong(long(errorFlag == 0));
+}
+
+// ****************************************************************************
+// Function: visit_SetPrecisionType
+//
+// Purpose:
+//   Sets the precision type for the pipeline.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   July 29, 2013
+//
+// Modifications:
+//
+// ****************************************************************************
+#ifdef WIN32
+#define strcasecmp stricmp
+#endif
+STATIC PyObject *
+visit_SetPrecisionType(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    int flag = -1;
+    char *sflag = NULL;
+
+    if (!PyArg_ParseTuple(args, "i", &flag))
+    {
+        if (!PyArg_ParseTuple(args, "s",&sflag))
+        {
+            VisItErrorFunc("SetPrecisionType: Cannot parse object!");
+            return NULL;
+        }
+        else
+        {
+            if (strcasecmp(sflag, "float") == 0)
+                flag = 0;
+            else if (strcasecmp(sflag, "native") == 0)
+                flag = 1;
+            else if (strcasecmp(sflag, "double") == 0)
+                flag = 2;
+            else
+            {
+                VisItErrorFunc("usage: SetPrecisionType(\"float | native | double\"");
+                return NULL;
+            }
+        }
+        PyErr_Clear();
+    }
+    if (flag < 0 || flag > 2)
+    {
+        VisItErrorFunc("usage: SetPrecisionType(0 | 1 | 2");
+        return NULL;
+    }
+
+    MUTEX_LOCK();
+        GetViewerMethods()->SetPrecisionType(flag);
     MUTEX_UNLOCK();
     int errorFlag = Synchronize();
 
@@ -7234,7 +7302,7 @@ visit_ListPlots(PyObject *self, PyObject *args)
         if(info != 0)
         {
              char tmpStr[2048];
-             int  strLen = 0;
+             size_t  strLen = 0;
 
              int j;
              SNPRINTF(tmpStr, sizeof(tmpStr),
@@ -14192,7 +14260,7 @@ visit_CreateAnnotationObject(PyObject *self, PyObject *args)
             AnnotationObjectRef ref;
             ref.object = localCopy;
             ref.refCount = 1;
-            ref.index = localObjectMap.size();
+            ref.index = (int)localObjectMap.size();
           
             localObjectMap[newObject.GetObjectName()] = ref;
 
@@ -14290,7 +14358,7 @@ visit_GetAnnotationObject(PyObject *self, PyObject *args)
                 AnnotationObjectRef ref;
                 ref.object = localCopy;
                 ref.refCount = 1;
-                ref.index = localObjectMap.size();
+                ref.index = (int)localObjectMap.size();
 
                 localObjectMap[newObject.GetObjectName()] = ref;
             }
@@ -15797,7 +15865,18 @@ visit_exec_client_method(void *data)
         keepGoing = false;
         // Make the interpreter quit.
         viewerInitiatedQuit = true;
+        if(acquireLock)
+            VisItUnlockPythonInterpreter(myThreadState);
+
+        PyGILState_STATE state = PyGILState_Ensure();
+        if(PyOS_ReadlineFunctionPointer || _PyOS_ReadlineTState)
+        {
+            PyOS_Readline(0,0,0);
+            PyOS_ReadlineFunctionPointer = NULL;
+            PyThreadState_Delete(_PyOS_ReadlineTState);
+        }
         PyRun_SimpleString("import sys; sys.exit(0)");
+        PyGILState_Release(state);
     }
     else if(m->GetMethodName() == "Interpret")
     {
@@ -15807,27 +15886,84 @@ visit_exec_client_method(void *data)
         for(size_t i = 0; i < code.size(); ++i)
         {
             char *buf = NULL;
-            // Handle ClientMethod specially if we're not in a local namespace.
-            if(strncmp(code[i].c_str(), "ClientMethod(", 13) == 0)
-            {
-                if(!localNameSpace)
+
+            /// hktodo: remove this raw input abstraction,
+            /// currently I want this separated from regular interpret logic
+            if(code[i].find("raw:") == 0) {
+                std::ostringstream c;
+                c << "exec(\"" << code[i].substr(4) << "\")"; /// remove the prefix
+                PyRun_SimpleString(c.str().c_str());
+            }
+            else {
+                // Handle ClientMethod specially if we're not in a local namespace.
+                if(strncmp(code[i].c_str(), "ClientMethod(", 13) == 0)
                 {
-                    int len = code[i].size() + 6 + 1;
-                    buf = new char[len];
-                    SNPRINTF(buf, len, "visit.%s", code[i].c_str());
+                    if(!localNameSpace)
+                    {
+                        int len = code[i].size() + 6 + 1;
+                        buf = new char[len];
+                        SNPRINTF(buf, len, "visit.%s", code[i].c_str());
+                    }
                 }
+                if(buf == NULL)
+                {
+                    int len = code[i].size() + 1;
+                    buf = new char[len];
+                    strcpy(buf, code[i].c_str());
+                }
+                PyRun_SimpleString(buf);
+                delete [] buf;
             }
-            if(buf == NULL)
-            {
-                int len = code[i].size() + 1;
-                buf = new char[len];
-                strcpy(buf, code[i].c_str());
-            }
-            PyRun_SimpleString(buf);
-            delete [] buf;
         }
     }
+    else if(m->GetMethodName() == "WriteState")
+    {
+        std::string command = "";
+        std::string result = "";
 
+
+        command += "import cStringIO\n";
+        command += "__tmpOut__ = cStringIO.StringIO()\n";
+        command += "WriteScript(__tmpOut__)\n";
+        command += "__tmpOut__.seek(0)\n";
+        command += "__tmpRes__ = __tmpOut__.read()\n";
+        command += "__tmpOut__.close()\n";
+
+        PyRun_SimpleString(command.c_str());
+
+        PyObject* mod = PyImport_AddModule("__main__");
+        PyObject* dict = PyModule_GetDict(mod);
+
+        PyObject* key = PyString_FromString("__tmpRes__");
+        PyObject* res = PyDict_GetItem(dict, key);
+
+        result = PyString_AsString(res);
+
+        // Send the macro to the clients.
+
+        if(result.size() > 0)
+        {
+            //if(onNewThread)
+            GetViewerProxy()->SetXferUpdate(true);
+
+            // We don't want to get here re-entrantly so disable the client
+            // method observer temporarily.
+            clientMethodObserver->SetUpdate(false);
+
+            stringVector args;
+            args.push_back(result);
+
+            ClientMethod *newM = GetViewerState()->GetClientMethod();
+            newM->ClearArgs();
+            newM->SetMethodName("AcceptRecordedMacro");
+            newM->SetStringArgs(args);
+            newM->Notify();
+
+            //if(onNewThread)
+            GetViewerProxy()->SetXferUpdate(false);
+
+        }
+    }
     if(acquireLock)
         VisItUnlockPythonInterpreter(myThreadState);
 
@@ -15937,6 +16073,7 @@ ExecuteClientMethod(ClientMethod *method, bool onNewThread)
         info->DeclareMethod("MacroStart", "");
         info->DeclareMethod("MacroPause", "");
         info->DeclareMethod("MacroEnd",   "");
+        info->DeclareMethod("WriteState",   "");
         info->SelectAll();
 
         // If onNewThread is true then we got into this method on the 2nd
@@ -16796,6 +16933,7 @@ AddProxyMethods()
     AddMethod("SetPlotOrderToLast", visit_SetPlotOrderToLast, visit_SetPlotOrderToLast_doc);
     AddMethod("SetPlotSILRestriction", visit_SetPlotSILRestriction,
                                               visit_SetPlotSILRestriction_doc);
+    AddMethod("SetPrecisionType", visit_SetPrecisionType, visit_SetPrecisionType_doc);
     AddMethod("SetPreferredFileFormats", visit_SetPreferredFileFormats,
               visit_SetPreferredFileFormats_doc);
     AddMethod("SetPrinterAttributes", visit_SetPrinterAttributes,
@@ -17646,7 +17784,7 @@ InitializeViewerProxy(ViewerProxy* proxy)
     //
     for(int i = 1; i < cli_argc; ++i)
     {
-        if(strcmp(cli_argv[i],"-pyuiembedded") == 0 || strcmp(cli_argv[i],"-uifile") == 0)
+        if(strcmp(cli_argv[i],"-pyuiembedded") == 0)
             viewerEmbedded = true; //do not show window if it is embedded..
         GetViewerProxy()->AddArgument(cli_argv[i]);
     }
@@ -17731,7 +17869,7 @@ ReadVisItPluginDir(const char *visitProgram)
     char *VISITPLUGINDIR = NULL;
     char line[2000];
     char *command =  NULL;
-    int vpdLen = 0;
+    size_t vpdLen = 0;
     const char *vpd = "VISITPLUGINDIR=";
     vpdLen = strlen(vpd);
 
@@ -17756,7 +17894,7 @@ ReadVisItPluginDir(const char *visitProgram)
         if(strncmp(line, vpd, vpdLen) == 0)
         {
             char *value = NULL, *end = NULL;
-            int len;
+            size_t len;
             value = line + vpdLen + 1;
             len = strlen(value);
             /* Trim off the newlines at the end.*/
@@ -18413,6 +18551,7 @@ static void *
 visit_eventloop(void *)
 #endif
 {
+    bool viewerQuit = false;
     // This is the event loop for the messaging thread. If it needs to read
     // input from the viewer, it does so and executes the Notify method of
     // all subjects that changed.
@@ -18444,6 +18583,7 @@ visit_eventloop(void *)
                 // Indicate that there is no viewer.
                 //
                 noViewer = true;
+                viewerQuit = true;
 
 #ifndef POLLING_SYNCHRONIZE
                 SYNC_WAKE_MAIN_THREAD();
@@ -18458,6 +18598,20 @@ visit_eventloop(void *)
     }
 
     viewerBlockingRead = false;
+
+    /// HKTODO: should the python client quit if the viewer is killed?
+    if(viewerQuit)
+    {
+        PyGILState_STATE state = PyGILState_Ensure();
+        if(PyOS_ReadlineFunctionPointer || _PyOS_ReadlineTState)
+        {
+            PyOS_Readline(0,0,0);
+            PyOS_ReadlineFunctionPointer = NULL;
+            PyThreadState_Delete(_PyOS_ReadlineTState);
+        }
+        PyRun_SimpleString("import sys; sys.exit(0)");
+        PyGILState_Release(state);
+    }
 
     return NULL;
 }
@@ -18503,7 +18657,7 @@ visit_eventloop(void *)
 //   the macro allows us to put it where we want.
 //
 //   Hari Krishnan, Brad Whitlock, Tue Mar 5 14:47:PST 2013
-//   Do not synchronize when using embedded viewer. It would cause deadlock.
+//   Do not synchronize when using embedded viewer. It will cause deadlock.
 //
 // ****************************************************************************
 
@@ -18516,6 +18670,7 @@ Synchronize()
     messageObserver->ClearError();
 
     // Return if the thread initialization failed.
+    // or if viewer is embedded
     if(!moduleUseThreads || viewerEmbedded)
         return 0;
 

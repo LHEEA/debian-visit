@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,7 +84,7 @@ class EXPRESSION_API avtNeighborExpression : public avtSingleInputExpressionFilt
 
     // Used to fullfill parent's requirement, but unused since
     // ExecuteData exists for this derived class.
-    virtual vtkDataArray     *DeriveVariable(vtkDataSet *) { return NULL; }
+    virtual vtkDataArray     *DeriveVariable(vtkDataSet *, int currentDomainsIndex) { return NULL; }
 
     virtual vtkDataSet      *ExecuteData(vtkDataSet *, int, std::string);
     virtual void             UpdateDataObjectInfo(void);

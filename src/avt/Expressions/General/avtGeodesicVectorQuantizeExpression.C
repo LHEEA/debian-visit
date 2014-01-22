@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -119,7 +119,7 @@ avtGeodesicVectorQuantizeExpression::~avtGeodesicVectorQuantizeExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtGeodesicVectorQuantizeExpression::DeriveVariable(vtkDataSet *in_ds)
+avtGeodesicVectorQuantizeExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     vtkDataArray *var;
     const char *varname = varnames[0];
@@ -236,7 +236,7 @@ avtGeodesicVectorQuantizeExpression::ProcessArguments(ArgsExpr *args,
 {
     // Check the number of arguments
     std::vector<ArgExpr*> *arguments = args->GetArgs();
-    nargs = arguments->size();
+    nargs = (int)arguments->size();
 
     if (nargs > 2)
         EXCEPTION2(ExpressionException, outputVariableName,
@@ -304,7 +304,7 @@ avtGeodesicVectorQuantizeExpression::UpdateDataObjectInfo(void)
     }
 
     avtDataAttributes &outAtts = GetOutput()->GetInfo().GetAttributes();
-    outAtts.SetVariableDimension(subnames.size(), outputVariableName);
+    outAtts.SetVariableDimension((int)subnames.size(), outputVariableName);
     outAtts.SetVariableSubnames(subnames, outputVariableName);
 }
 

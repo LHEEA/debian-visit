@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -96,7 +96,7 @@ class EXPRESSION_API avtUnaryMathExpression : public avtSingleInputExpressionFil
     virtual bool              NullInputIsExpected(void) { return false; };
 
   protected:
-    virtual vtkDataArray     *DeriveVariable(vtkDataSet *);
+    virtual vtkDataArray     *DeriveVariable(vtkDataSet *, int currentDomainsIndex);
     virtual void              DoOperation(vtkDataArray *in, vtkDataArray *out,
                                           int ncomponents, int ntuples) = 0;
     virtual vtkDataArray     *CreateArray(vtkDataArray *);

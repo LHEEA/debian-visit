@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -490,6 +490,9 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
 //    Brad Whitlock, Tue Jun  5 17:11:18 PDT 2012
 //    Pass MachineProfile down into Create.
 //
+//    Kathleen Biagas, Wed Aug  7 13:02:34 PDT 2013
+//    Send precision type to newly created engine.
+//
 // ****************************************************************************
 
 bool
@@ -691,6 +694,11 @@ ViewerEngineManager::CreateEngineEx(const EngineKey &ek,
         // Tell the new engine what the default file open options are.
         newEngine.proxy->GetEngineMethods()->SetDefaultFileOpenOptions(*defaultFileOpenOptions);
 
+        // Tell the new engine the requested floating point precision
+        newEngine.proxy->GetEngineMethods()->SetPrecisionType(
+            ViewerWindowManager::Instance()->GetClientAtts()->
+                    GetPrecisionType());
+
         // Now that the new engine is in the list, tell the GUI.
         UpdateEngineList();
 
@@ -847,6 +855,11 @@ ViewerEngineManager::CreateEngineEx(const EngineKey &ek,
 //    Brad Whitlock, Tue Jun  5 17:11:02 PDT 2012
 //    Use profile to launch.
 //
+//    Brad Whitlock, Tue Aug 20 11:12:34 PDT 2013
+//    Use original value for ssh tunneling to set into simData to ensure that
+//    host/port arguments are translated in SimConnectThroughLauncher when we
+//    do ssh tunneling.
+//
 // ****************************************************************************
 
 bool
@@ -905,15 +918,6 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
     {
         MachineProfile profile = GetMachineProfile(ek.HostName());
 
-        // We don't set up tunnels when connecting to a simulation,
-        // just when launching the VCL
-        profile.SetTunnelSSH(false);
-
-        // We don't use a gateway when connecting to a simulation,
-        // just when launching the VCL
-        profile.SetUseGateway(false);
-        profile.SetGatewayHost("");
-
         //
         // Launch the engine.
         //
@@ -930,6 +934,15 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
         simData.d = CreateConnectionProgressDialog(ek.HostName());
         simData.tunnel = profile.GetTunnelSSH();
         SetupConnectionProgressDialog(newEngine.proxy, simData.d);
+
+        // We don't set up tunnels when connecting to a simulation,
+        // just when launching the VCL
+        profile.SetTunnelSSH(false);
+        
+        // We don't use a gateway when connecting to a simulation,
+        // just when launching the VCL
+        profile.SetUseGateway(false);
+        profile.SetGatewayHost("");
 
         newEngine.proxy->Create(profile,
                                 SimConnectThroughLauncher, (void *)&simData,
@@ -3320,6 +3333,27 @@ ViewerEngineManager::UpdateDefaultFileOpenOptions(FileOpenOptions *opts)
     {
         it->second.proxy->GetEngineMethods()->SetDefaultFileOpenOptions(*defaultFileOpenOptions);
     }    
+}
+
+
+// ****************************************************************************
+//  Method: ViewerEngineManager::UpdatePrecisionType
+//
+//  Purpose:
+//      Sets the precision type.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   August 1, 2013
+//
+// ****************************************************************************
+
+void
+ViewerEngineManager::UpdatePrecisionType(const int pType)
+{
+    for (EngineMap::iterator it = engines.begin() ; it != engines.end(); it++)
+    {
+        it->second.proxy->GetEngineMethods()->SetPrecisionType(pType);
+    }
 }
 
 

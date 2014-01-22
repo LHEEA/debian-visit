@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,6 +48,8 @@
 #include <VolumeAttributes.h>
 
 #include <avtImage.h>
+#include <vtkMatrix4x4.h>
+#include <vtkCamera.h>
 
 class     WindowAttributes;
 
@@ -88,6 +90,7 @@ class avtVolumeFilter : public avtDatasetToDatasetFilter
                                   { return "Volume rendering"; };
 
     avtImage_p               RenderImage(avtImage_p, const WindowAttributes &);
+    avtImage_p               RenderImageRaycastingSLIVR(avtImage_p opaque_image, const WindowAttributes &);
     int                      GetNumberOfStages(const WindowAttributes &);
 
   protected:

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -80,7 +80,7 @@ class EXPRESSION_API avtConstantFunctionExpression
     virtual const char   *GetDescription() { return "Assigning constant."; }
     virtual void          ProcessArguments(ArgsExpr*, ExprPipelineState *);
   protected:
-    virtual vtkDataArray *DeriveVariable(vtkDataSet *);
+    virtual vtkDataArray *DeriveVariable(vtkDataSet *, int currentDomainsIndex);
     virtual bool          IsPointVariable()  { return nodal; }
     virtual int           GetVariableDimension() { return 1; }
     virtual int           NumVariableArguments(void) { return 2; }

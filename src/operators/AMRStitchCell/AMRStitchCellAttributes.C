@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -94,6 +94,11 @@ AMRStitchCellAttributes::CreateType_FromString(const std::string &s, AMRStitchCe
 
 void AMRStitchCellAttributes::Init()
 {
+    CreateCellsOfType = DualGridAndStitchCells;
+    AddCaseNo = false;
+    OnlyProcessListedDomains = false;
+    OnlyProcessLevel = false;
+    Level = 0;
 
     AMRStitchCellAttributes::SelectAll();
 }

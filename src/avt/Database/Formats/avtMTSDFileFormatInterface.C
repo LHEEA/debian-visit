@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -486,6 +486,9 @@ avtMTSDFileFormatInterface::GetFilename(int ts)
 //    Make use of argument for whether we should force reading of all
 //    cycles and times.
 //
+//   Dave Pugmire, Fri Feb  8 17:22:01 EST 2013
+//   Added support for ensemble databases. (multiple time values)
+//
 // ****************************************************************************
 
 void
@@ -548,12 +551,15 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
             cycles.insert(cycles.end(),tmp.begin(),tmp.end());
         }
         bool cyclesLookGood = true;
-        for (i = 0; i < cycles.size(); i++)
+        if (!isEnsemble)
         {
-            if ((i != 0) && (cycles[i] <= cycles[i-1]))
+            for (i = 0; i < cycles.size(); i++)
             {
-                cyclesLookGood = false;
-                break;
+                if ((i != 0) && (cycles[i] <= cycles[i-1]))
+                {
+                    cyclesLookGood = false;
+                    break;
+                }
             }
         }
         if (cycles.size() != nTotalTimesteps)
@@ -602,16 +608,20 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
             times.insert(times.end(),tmp.begin(),tmp.end());
         }
         bool timesLookGood = true;
-        for (i = 0; i < times.size(); i++)
+        if (!isEnsemble)
         {
-            if ((i != 0) && (times[i] <= times[i-1]))
+            for (i = 0; i < times.size(); i++)
             {
-                timesLookGood = false;
-                break;
+                if ((i != 0) && (times[i] <= times[i-1]))
+                {
+                    timesLookGood = false;
+                    break;
+                }
             }
         }
         if (times.size() != nTotalTimesteps)
             timesLookGood = false;
+
         if (0 && timesLookGood == false)
         {
             vector<double> timesFromMassCall = times;
@@ -703,12 +713,15 @@ avtMTSDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
         cycles.insert(cycles.end(),tmp.begin(),tmp.end());
     }
     bool cyclesLookGood = true;
-    for (int i = 0; i < cycles.size(); i++)
+    if (!isEnsemble)
     {
-        if ((i != 0) && (cycles[i] <= cycles[i-1]))
+        for (int i = 0; i < cycles.size(); i++)
         {
-            cyclesLookGood = false;
-            break;
+            if ((i != 0) && (cycles[i] <= cycles[i-1]))
+            {
+                cyclesLookGood = false;
+                break;
+            }
         }
     }
     if (cycles.size() != nTotalTimesteps)
@@ -871,15 +884,15 @@ int
 avtMTSDFileFormatInterface::GetTimestepGroupForTimestep(int ts)
 {
     int group = 0;
-    while (group < tsPerGroup.size() &&
+    while (group < (int)tsPerGroup.size() &&
            tsPerGroup[group] <= ts)
     {
         ts -= tsPerGroup[group];
         ++group;
     }
-    if (group >= tsPerGroup.size())
+    if (group >= (int)tsPerGroup.size())
     {
-        EXCEPTION2(BadIndexException, group, tsPerGroup.size());
+        EXCEPTION2(BadIndexException, group, (int)tsPerGroup.size());
     }
     return group;
 }

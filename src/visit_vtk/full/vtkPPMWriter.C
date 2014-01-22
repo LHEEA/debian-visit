@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,13 +56,16 @@ vtkPPMWriter::vtkPPMWriter()
   this->FileLowerLeft = 1;
 }
 
-void vtkPPMWriter::WriteFileHeader(ofstream *file, vtkImageData *cache)
+void vtkPPMWriter::WriteFileHeader(ofstream *file, vtkImageData *cache, int wExt[6])
 {
-  int min0, max0, min1, max1, min2, max2;
+  int min0 = wExt[0], 
+      max0 = wExt[1], 
+      min1 = wExt[2], 
+      max1 = wExt[3], 
+      min2 = wExt[4], 
+      max2 = wExt[5];
   int width, height;
   
-  // Find the length of the rows to write.
-  cache->GetWholeExtent(min0, max0, min1, max1, min2, max2);
   width = (max0 - min0 + 1);
   height = (max1 - min1 + 1);
 
@@ -75,7 +78,7 @@ void vtkPPMWriter::WriteFileHeader(ofstream *file, vtkImageData *cache)
 
 
 void vtkPPMWriter::WriteFile(ofstream *file, vtkImageData *data,
-                             int extent[6])
+                             int extent[6], int wExt[6])
 {
   int idx1;
   int rowLength, i; // in bytes
@@ -85,7 +88,6 @@ void vtkPPMWriter::WriteFile(ofstream *file, vtkImageData *data,
   unsigned long target;
   float progress = this->Progress;
   float area;
-  int *wExtent;
   
   bpp = data->GetNumberOfScalarComponents();
   
@@ -106,11 +108,10 @@ void vtkPPMWriter::WriteFile(ofstream *file, vtkImageData *data,
   // Row length of x axis
   rowLength = extent[1] - extent[0] + 1;
 
-  wExtent = this->GetInput()->GetWholeExtent();
   area = ((extent[5] - extent[4] + 1)*(extent[3] - extent[2] + 1)*
           (extent[1] - extent[0] + 1)) / 
-    ((wExtent[5] -wExtent[4] + 1)*(wExtent[3] -wExtent[2] + 1)*
-     (wExtent[1] -wExtent[0] + 1));
+    ((wExt[5] -wExt[4] + 1)*(wExt[3] -wExt[2] + 1)*
+     (wExt[1] -wExt[0] + 1));
     
   target = (unsigned long)((extent[5]-extent[4]+1)*
                            (extent[3]-extent[2]+1)/(50.0*area));

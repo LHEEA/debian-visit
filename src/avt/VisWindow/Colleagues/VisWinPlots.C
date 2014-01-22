@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,7 +108,7 @@ VisWinPlots::VisWinPlots(VisWindowColleagueProxy &p) : VisWinColleague(p)
 {
     bboxGrid = vtkOutlineSource::New();
     bboxMapper = vtkPolyDataMapper::New();
-    bboxMapper->SetInput(bboxGrid->GetOutput());
+    bboxMapper->SetInputConnection(bboxGrid->GetOutputPort());
 
     bbox = vtkActor::New();
     bbox->SetMapper(bboxMapper);
@@ -486,7 +486,7 @@ VisWinPlots::CheckPlot(avtActor_p &p)
         }
 
         EXCEPTION3(PlotDimensionalityException, mediator.GetMode(), 
-            p->GetWindowMode(), plots.size());
+            p->GetWindowMode(), (int)plots.size());
     }
 }
 

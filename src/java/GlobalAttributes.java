@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -58,7 +58,13 @@ import java.lang.Integer;
 
 public class GlobalAttributes extends AttributeSubject
 {
-    private static int GlobalAttributes_numAdditionalAtts = 24;
+    private static int GlobalAttributes_numAdditionalAtts = 26;
+
+    // Enum values
+    public final static int PRECISIONTYPE_FLOAT = 0;
+    public final static int PRECISIONTYPE_NATIVE = 1;
+    public final static int PRECISIONTYPE_DOUBLE = 2;
+
 
     public GlobalAttributes()
     {
@@ -88,6 +94,8 @@ public class GlobalAttributes extends AttributeSubject
         saveCrashRecoveryFile = true;
         ignoreExtentsFromDbs = false;
         expandNewPlots = false;
+        userRestoreSessionFile = false;
+        precisionType = PRECISIONTYPE_NATIVE;
     }
 
     public GlobalAttributes(int nMoreFields)
@@ -118,6 +126,8 @@ public class GlobalAttributes extends AttributeSubject
         saveCrashRecoveryFile = true;
         ignoreExtentsFromDbs = false;
         expandNewPlots = false;
+        userRestoreSessionFile = false;
+        precisionType = PRECISIONTYPE_NATIVE;
     }
 
     public GlobalAttributes(GlobalAttributes obj)
@@ -158,6 +168,8 @@ public class GlobalAttributes extends AttributeSubject
         saveCrashRecoveryFile = obj.saveCrashRecoveryFile;
         ignoreExtentsFromDbs = obj.ignoreExtentsFromDbs;
         expandNewPlots = obj.expandNewPlots;
+        userRestoreSessionFile = obj.userRestoreSessionFile;
+        precisionType = obj.precisionType;
 
         SelectAll();
     }
@@ -218,7 +230,9 @@ public class GlobalAttributes extends AttributeSubject
                 (userDirForSessionFiles == obj.userDirForSessionFiles) &&
                 (saveCrashRecoveryFile == obj.saveCrashRecoveryFile) &&
                 (ignoreExtentsFromDbs == obj.ignoreExtentsFromDbs) &&
-                (expandNewPlots == obj.expandNewPlots));
+                (expandNewPlots == obj.expandNewPlots) &&
+                (userRestoreSessionFile == obj.userRestoreSessionFile) &&
+                (precisionType == obj.precisionType));
     }
 
     // Property setting methods
@@ -366,6 +380,18 @@ public class GlobalAttributes extends AttributeSubject
         Select(23);
     }
 
+    public void SetUserRestoreSessionFile(boolean userRestoreSessionFile_)
+    {
+        userRestoreSessionFile = userRestoreSessionFile_;
+        Select(24);
+    }
+
+    public void SetPrecisionType(int precisionType_)
+    {
+        precisionType = precisionType_;
+        Select(25);
+    }
+
     // Property getting methods
     public Vector  GetSources() { return sources; }
     public Vector  GetWindows() { return windows; }
@@ -391,6 +417,8 @@ public class GlobalAttributes extends AttributeSubject
     public boolean GetSaveCrashRecoveryFile() { return saveCrashRecoveryFile; }
     public boolean GetIgnoreExtentsFromDbs() { return ignoreExtentsFromDbs; }
     public boolean GetExpandNewPlots() { return expandNewPlots; }
+    public boolean GetUserRestoreSessionFile() { return userRestoreSessionFile; }
+    public int     GetPrecisionType() { return precisionType; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -443,6 +471,10 @@ public class GlobalAttributes extends AttributeSubject
             buf.WriteBool(ignoreExtentsFromDbs);
         if(WriteSelect(23, buf))
             buf.WriteBool(expandNewPlots);
+        if(WriteSelect(24, buf))
+            buf.WriteBool(userRestoreSessionFile);
+        if(WriteSelect(25, buf))
+            buf.WriteInt(precisionType);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -521,6 +553,12 @@ public class GlobalAttributes extends AttributeSubject
         case 23:
             SetExpandNewPlots(buf.ReadBool());
             break;
+        case 24:
+            SetUserRestoreSessionFile(buf.ReadBool());
+            break;
+        case 25:
+            SetPrecisionType(buf.ReadInt());
+            break;
         }
     }
 
@@ -551,6 +589,15 @@ public class GlobalAttributes extends AttributeSubject
         str = str + boolToString("saveCrashRecoveryFile", saveCrashRecoveryFile, indent) + "\n";
         str = str + boolToString("ignoreExtentsFromDbs", ignoreExtentsFromDbs, indent) + "\n";
         str = str + boolToString("expandNewPlots", expandNewPlots, indent) + "\n";
+        str = str + boolToString("userRestoreSessionFile", userRestoreSessionFile, indent) + "\n";
+        str = str + indent + "precisionType = ";
+        if(precisionType == PRECISIONTYPE_FLOAT)
+            str = str + "PRECISIONTYPE_FLOAT";
+        if(precisionType == PRECISIONTYPE_NATIVE)
+            str = str + "PRECISIONTYPE_NATIVE";
+        if(precisionType == PRECISIONTYPE_DOUBLE)
+            str = str + "PRECISIONTYPE_DOUBLE";
+        str = str + "\n";
         return str;
     }
 
@@ -580,5 +627,7 @@ public class GlobalAttributes extends AttributeSubject
     private boolean saveCrashRecoveryFile;
     private boolean ignoreExtentsFromDbs;
     private boolean expandNewPlots;
+    private boolean userRestoreSessionFile;
+    private int     precisionType;
 }
 

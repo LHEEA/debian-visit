@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -85,6 +85,8 @@ public:
                               avtIVPSolver *solver, SerializeFlags serializeFlags);
     virtual bool    UseFixedTerminationTime(void) { return doTime; };
     virtual double  FixedTerminationTime(void)    { return maxTime; };
+    virtual bool    UseFixedTerminationDistance(void) { return doDistance; };
+    virtual double  FixedTerminationDistance(void)    { return maxDistance; };
 
     bool            TerminatedBecauseOfMaxSteps(void) 
                                  { return terminatedBecauseOfMaxSteps; };
@@ -95,11 +97,12 @@ public:
     avtStreamlineIC( const avtStreamlineIC& );
     avtStreamlineIC& operator=( const avtStreamlineIC& );
     
-  public:
     virtual bool     CheckForTermination(avtIVPStep& step, avtIVPField *);
 
-    unsigned int     numSteps;
+  public:
     unsigned int     maxSteps;
+  protected:
+    unsigned int     numSteps;
     bool             doDistance;
     double           maxDistance;
     bool             doTime;

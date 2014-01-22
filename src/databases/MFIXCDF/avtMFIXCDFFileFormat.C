@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -90,7 +90,6 @@ using std::vector;
 using std::ostringstream;
 
 void checkFile(NcFile* ncFile, const char* fname, int iSz, int jSz, int kSz)
-throw(InvalidFilesException)
 {
     NcDim* iDim= ncFile->get_dim("x");
     if (iDim->size() != iSz-1)
@@ -127,7 +126,6 @@ throw(InvalidFilesException)
 }
 
 NcFile* openFile( const char* filename )
-throw(InvalidFilesException)
 {
     NcFile* ncFile= new NcFile(filename, NcFile::ReadOnly);
     if (!ncFile->is_valid())
@@ -490,7 +488,7 @@ avtMFIXCDFFileFormat::GetAuxiliaryData(const char * var,
             retval = (void *)mat;
             df = avtMaterial::Destruct;
         }
-        CATCH2(InvalidFilesException, e)
+        CATCH(InvalidFilesException)
         {
             // Clean up.
             delete meshFile;
@@ -1056,7 +1054,8 @@ avtMFIXCDFFileFormat::GetMesh(int domain, const char *meshname)
             }
         rgrid->GetCellData()->AddArray(ghostCells);
         ghostCells->Delete(); // held alive by ref count
-        rgrid->SetUpdateGhostLevel(0);
+        rgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
 
         return rgrid;
 
@@ -1126,7 +1125,8 @@ avtMFIXCDFFileFormat::GetMesh(int domain, const char *meshname)
 
         rgrid->GetCellData()->AddArray(ghostCells);
         ghostCells->Delete(); // held alive by ref count
-        rgrid->SetUpdateGhostLevel(0);
+        rgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
 
         return rgrid;
     }
@@ -1206,7 +1206,8 @@ avtMFIXCDFFileFormat::GetMesh(int domain, const char *meshname)
 
         sgrid->GetCellData()->AddArray(ghostCells);
         ghostCells->Delete(); // held alive by ref count
-        sgrid->SetUpdateGhostLevel(0);
+        sgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
 
         return sgrid;
     }
@@ -1298,7 +1299,8 @@ avtMFIXCDFFileFormat::GetMesh(int domain, const char *meshname)
                 buf[index] |= zRightGhost;
             }
         sgrid->GetCellData()->AddArray(ghostCells);
-        sgrid->SetUpdateGhostLevel(0);
+        sgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
 
         return sgrid;
     }

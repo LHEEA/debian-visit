@@ -61,7 +61,7 @@ class vtkPoints;
 class VISIT_VTK_LIGHT_API vtkVisItCellLocator : public vtkLocator
 {
 public:
-  vtkTypeRevisionMacro(vtkVisItCellLocator,vtkLocator);
+  vtkTypeMacro(vtkVisItCellLocator,vtkLocator);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
@@ -71,7 +71,7 @@ public:
 
   // Description:
   // Specify the average number of cells in each octant.
-  vtkSetClampMacro(NumberOfCellsPerBucket,int,1,VTK_LARGE_INTEGER);
+  vtkSetClampMacro(NumberOfCellsPerBucket,int,1,VTK_INT_MAX);
   vtkGetMacro(NumberOfCellsPerBucket,int);
 
   // Description:

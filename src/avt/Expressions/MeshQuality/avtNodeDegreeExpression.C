@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -109,7 +109,7 @@ VIntFind(const std::vector<int>&v, int val)
 {
     for (size_t i = 0; i < v.size(); i++)
         if (v[i] == val)
-            return i;
+            return (int)i;
     return -1;
 }
 
@@ -171,7 +171,7 @@ void GlobalPointAssign2(vtkCell *cell, int adj[], int _a, int _b)
 // ****************************************************************************
 
 vtkDataArray *
-avtNodeDegreeExpression::DeriveVariable(vtkDataSet *in_ds)
+avtNodeDegreeExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     vtkIdType nPoints = in_ds->GetNumberOfPoints();
     
@@ -317,7 +317,7 @@ avtNodeDegreeExpression::DeriveVariable(vtkDataSet *in_ds)
     dv->SetNumberOfValues(nPoints);
     for(vtkIdType i = 0 ; i < nPoints ; i++)
     {
-        dv->SetValue(i, connectivity[i].size());
+        dv->SetValue(i, (int)connectivity[i].size());
     }
 
     return dv;

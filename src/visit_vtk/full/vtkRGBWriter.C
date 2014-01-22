@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,7 +107,7 @@ vtkRGBWriter::vtkRGBWriter()
   this->FileLowerLeft = 1;
 }
 
-void vtkRGBWriter::WriteFileHeader(ofstream *, vtkImageData *)
+void vtkRGBWriter::WriteFileHeader(ofstream *, vtkImageData *, int wExt[6])
 {
     // Do nothing since we need to actually compress the data BEFORE
     // writing the file. It does not look possible to rewind the file
@@ -116,7 +116,7 @@ void vtkRGBWriter::WriteFileHeader(ofstream *, vtkImageData *)
 
 
 void vtkRGBWriter::WriteFile(ofstream *file, vtkImageData *data,
-                 int extent[6])
+                 int extent[6], int wExt[6])
 {
     int i, bpp = data->GetNumberOfScalarComponents();
   
@@ -197,12 +197,10 @@ void vtkRGBWriter::WriteFile(ofstream *file, vtkImageData *data,
     unsigned long target;
     float progress = this->Progress;
     float area;
-    int *wExtent;
-    wExtent = this->GetInput()->GetWholeExtent();
     area = ((extent[5] - extent[4] + 1)*(extent[3] - extent[2] + 1)*
             (extent[1] - extent[0] + 1)) / 
-           ((wExtent[5] -wExtent[4] + 1)*(wExtent[3] -wExtent[2] + 1)*
-            (wExtent[1] -wExtent[0] + 1));
+           ((wExt[5] -wExt[4] + 1)*(wExt[3] -wExt[2] + 1)*
+            (wExt[1] -wExt[0] + 1));
     
     target = (unsigned long)((extent[5]-extent[4]+1)*
               (extent[3]-extent[2]+1)/(50.0*area));

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -40,6 +40,10 @@
 // ************************************************************************* //
 
 #include <avtCarpetHDF5FileFormat.h>
+
+//#define H5_USE_16_API 1
+#include <hdf5.h>
+#include <visit-hdf5.h>
 
 #include <string>
 #include <map>
@@ -950,7 +954,7 @@ avtCarpetHDF5FileFormat::multi_file::multi_file(const char* fname) : refcount(1)
          }
       }
    }
-   n_timesteps = cycles.size();
+   n_timesteps = (int)cycles.size();
    
    
    sort(cycles.begin(), cycles.end());

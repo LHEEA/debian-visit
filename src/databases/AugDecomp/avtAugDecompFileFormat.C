@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -324,7 +324,7 @@ avtAugDecompFileFormat::GetAuxiliaryData(const char *var, int timestep,
     void *rv = NULL;
     if (strcmp(type, AUXILIARY_DATA_MATERIAL) == 0)
     {
-        avtMaterial *mat = new avtMaterial(subset_names.size(), subset_names, 
+        avtMaterial *mat = new avtMaterial((int)subset_names.size(), subset_names, 
                                            zone_counts[domain], &(subset_vals[domain][0]),
                                            0, NULL, NULL, NULL, NULL);
         df = avtMaterial::Destruct;

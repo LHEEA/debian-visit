@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -125,7 +125,7 @@ avtExternallyRenderedImagesActor::avtExternallyRenderedImagesActor()
     visualQueueActor->SetMapper(visualQueueMapper);
 
     lastNonDummyImage     = NULL;
-    myMapper->SetInput(dummyImage);
+    myMapper->SetInputData(dummyImage);
     myMapper->SetColorWindow(255);
     myMapper->SetColorLevel(127);
     myActor               = vtkActor2D::New();
@@ -340,7 +340,7 @@ avtExternallyRenderedImagesActor::PrepareForRender(vtkCamera *cam)
       avtImage_p img;
       CopyTo(img, dob);
       avtImageRepresentation& imgRep = img->GetImage();
-      myMapper->SetInput(imgRep.GetImageVTK());
+      myMapper->SetInputData(imgRep.GetImageVTK());
 
       // update the last non dummy image
       if (lastNonDummyImage != NULL)
@@ -355,11 +355,11 @@ avtExternallyRenderedImagesActor::PrepareForRender(vtkCamera *cam)
    {
       // if we got back nothing, put up the dummy (blank) image
       if (*dob == NULL)
-         myMapper->SetInput(dummyImage);
+         myMapper->SetInputData(dummyImage);
 
       // if we got 'no-change' put up the last non dummy image
       if (*dob == *dummyDob)
-         myMapper->SetInput(lastNonDummyImage);
+         myMapper->SetInputData(lastNonDummyImage);
    }
 }
 
@@ -502,7 +502,7 @@ avtExternallyRenderedImagesActor::DisableExternalRenderRequests(bool bClearImage
    makeExternalRenderRequests = false;
    
    if (bClearImage)
-       myMapper->SetInput(dummyImage);
+       myMapper->SetInputData(dummyImage);
    
    return oldMode; 
 }
@@ -654,7 +654,7 @@ avtExternallyRenderedImagesActor::RemoveFromRenderer(vtkRenderer *ren)
 void
 avtExternallyRenderedImagesActor::UseBlankImage()
 {
-    myMapper->SetInput(dummyImage);
+    myMapper->SetInputData(dummyImage);
 }
 
 

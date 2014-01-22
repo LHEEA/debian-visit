@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,8 +107,8 @@ class avtHistogramFilter : public avtDataTreeIterator
     virtual void              UpdateDataObjectInfo(void);
     virtual void              PreExecute();
     virtual void              PostExecute();
-    virtual avtContract_p
-                              ModifyContract(avtContract_p);
+    virtual avtContract_p     ModifyContract(avtContract_p);
+    virtual bool              ThreadSafe(void);
 
     virtual void              FreqzExecute(vtkDataSet *);
     virtual void              WeightedExecute(vtkDataSet *);

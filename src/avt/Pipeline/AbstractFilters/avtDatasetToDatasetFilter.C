@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -382,13 +382,18 @@ avtDatasetToDatasetFilter::SetActiveVariable(const char *varname)
 //  Programmer: Hank Childs          <Added Header>
 //  Creation:   September 22, 2003   <Header Creation Date>
 //
+//  Modifications:
+//
+//    Hank Childs, Sun Aug  4 11:31:50 PDT 2013
+//    Add check to make sure activeVariable is not NULL.
+//
 // ****************************************************************************
 
 void
 avtDatasetToDatasetFilter::AddSecondaryVariable(const char *var)
 {
     // Are we already asking for this in the activeVariable?
-    if (strcmp(activeVariable, var) == 0)
+    if (activeVariable != NULL && strcmp(activeVariable, var) == 0)
         return;
 
     // Search through the existing secondary variables and see if it's

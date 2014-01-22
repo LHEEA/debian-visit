@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,17 +76,15 @@ PyFTLEAttributes_ToString(const FTLEAttributes *atts, const char *prefix)
     std::string str; 
     char tmpStr[1000]; 
 
-    SNPRINTF(tmpStr, 1000, "%sintegrationTime = %g\n", prefix, atts->GetIntegrationTime());
-    str += tmpStr;
-    const char *regionType_names = "NativeResolutionOfMesh, RegularGrid";
-    switch (atts->GetRegionType())
+    const char *sourceType_names = "NativeMesh, RegularGrid";
+    switch (atts->GetSourceType())
     {
-      case FTLEAttributes::NativeResolutionOfMesh:
-          SNPRINTF(tmpStr, 1000, "%sregionType = %sNativeResolutionOfMesh  # %s\n", prefix, prefix, regionType_names);
+      case FTLEAttributes::NativeMesh:
+          SNPRINTF(tmpStr, 1000, "%ssourceType = %sNativeMesh  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
       case FTLEAttributes::RegularGrid:
-          SNPRINTF(tmpStr, 1000, "%sregionType = %sRegularGrid  # %s\n", prefix, prefix, regionType_names);
+          SNPRINTF(tmpStr, 1000, "%ssourceType = %sRegularGrid  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
       default:
@@ -109,11 +107,21 @@ PyFTLEAttributes_ToString(const FTLEAttributes *atts, const char *prefix)
         SNPRINTF(tmpStr, 1000, ")\n");
         str += tmpStr;
     }
-    if(atts->GetUseDataSetStart())
-        SNPRINTF(tmpStr, 1000, "%sUseDataSetStart = 1\n", prefix);
-    else
-        SNPRINTF(tmpStr, 1000, "%sUseDataSetStart = 0\n", prefix);
-    str += tmpStr;
+    const char *UseDataSetStart_names = "Full, Subset";
+    switch (atts->GetUseDataSetStart())
+    {
+      case FTLEAttributes::Full:
+          SNPRINTF(tmpStr, 1000, "%sUseDataSetStart = %sFull  # %s\n", prefix, prefix, UseDataSetStart_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::Subset:
+          SNPRINTF(tmpStr, 1000, "%sUseDataSetStart = %sSubset  # %s\n", prefix, prefix, UseDataSetStart_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
     {   const double *StartPosition = atts->GetStartPosition();
         SNPRINTF(tmpStr, 1000, "%sStartPosition = (", prefix);
         str += tmpStr;
@@ -130,11 +138,21 @@ PyFTLEAttributes_ToString(const FTLEAttributes *atts, const char *prefix)
         SNPRINTF(tmpStr, 1000, ")\n");
         str += tmpStr;
     }
-    if(atts->GetUseDataSetEnd())
-        SNPRINTF(tmpStr, 1000, "%sUseDataSetEnd = 1\n", prefix);
-    else
-        SNPRINTF(tmpStr, 1000, "%sUseDataSetEnd = 0\n", prefix);
-    str += tmpStr;
+    const char *UseDataSetEnd_names = "Full, Subset";
+    switch (atts->GetUseDataSetEnd())
+    {
+      case FTLEAttributes::Full:
+          SNPRINTF(tmpStr, 1000, "%sUseDataSetEnd = %sFull  # %s\n", prefix, prefix, UseDataSetEnd_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::Subset:
+          SNPRINTF(tmpStr, 1000, "%sUseDataSetEnd = %sSubset  # %s\n", prefix, prefix, UseDataSetEnd_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
     {   const double *EndPosition = atts->GetEndPosition();
         SNPRINTF(tmpStr, 1000, "%sEndPosition = (", prefix);
         str += tmpStr;
@@ -151,36 +169,257 @@ PyFTLEAttributes_ToString(const FTLEAttributes *atts, const char *prefix)
         SNPRINTF(tmpStr, 1000, ")\n");
         str += tmpStr;
     }
-    const char *direction_names = "Forward, Backward";
-    switch (atts->GetDirection())
+    const char *integrationDirection_names = "Forward, Backward, Both";
+    switch (atts->GetIntegrationDirection())
     {
       case FTLEAttributes::Forward:
-          SNPRINTF(tmpStr, 1000, "%sdirection = %sForward  # %s\n", prefix, prefix, direction_names);
+          SNPRINTF(tmpStr, 1000, "%sintegrationDirection = %sForward  # %s\n", prefix, prefix, integrationDirection_names);
           str += tmpStr;
           break;
       case FTLEAttributes::Backward:
-          SNPRINTF(tmpStr, 1000, "%sdirection = %sBackward  # %s\n", prefix, prefix, direction_names);
+          SNPRINTF(tmpStr, 1000, "%sintegrationDirection = %sBackward  # %s\n", prefix, prefix, integrationDirection_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::Both:
+          SNPRINTF(tmpStr, 1000, "%sintegrationDirection = %sBoth  # %s\n", prefix, prefix, integrationDirection_names);
           str += tmpStr;
           break;
       default:
           break;
     }
 
-    const char *flowType_names = "Unsteady, Steady";
-    switch (atts->GetFlowType())
+    SNPRINTF(tmpStr, 1000, "%smaxSteps = %d\n", prefix, atts->GetMaxSteps());
+    str += tmpStr;
+    const char *terminationType_names = "Time, Distance, Size";
+    switch (atts->GetTerminationType())
     {
-      case FTLEAttributes::Unsteady:
-          SNPRINTF(tmpStr, 1000, "%sflowType = %sUnsteady  # %s\n", prefix, prefix, flowType_names);
+      case FTLEAttributes::Time:
+          SNPRINTF(tmpStr, 1000, "%sterminationType = %sTime  # %s\n", prefix, prefix, terminationType_names);
           str += tmpStr;
           break;
-      case FTLEAttributes::Steady:
-          SNPRINTF(tmpStr, 1000, "%sflowType = %sSteady  # %s\n", prefix, prefix, flowType_names);
+      case FTLEAttributes::Distance:
+          SNPRINTF(tmpStr, 1000, "%sterminationType = %sDistance  # %s\n", prefix, prefix, terminationType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::Size:
+          SNPRINTF(tmpStr, 1000, "%sterminationType = %sSize  # %s\n", prefix, prefix, terminationType_names);
           str += tmpStr;
           break;
       default:
           break;
     }
 
+    if(atts->GetTerminateBySize())
+        SNPRINTF(tmpStr, 1000, "%sterminateBySize = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sterminateBySize = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%stermSize = %g\n", prefix, atts->GetTermSize());
+    str += tmpStr;
+    if(atts->GetTerminateByDistance())
+        SNPRINTF(tmpStr, 1000, "%sterminateByDistance = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sterminateByDistance = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%stermDistance = %g\n", prefix, atts->GetTermDistance());
+    str += tmpStr;
+    if(atts->GetTerminateByTime())
+        SNPRINTF(tmpStr, 1000, "%sterminateByTime = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sterminateByTime = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%stermTime = %g\n", prefix, atts->GetTermTime());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%smaxStepLength = %g\n", prefix, atts->GetMaxStepLength());
+    str += tmpStr;
+    if(atts->GetLimitMaximumTimestep())
+        SNPRINTF(tmpStr, 1000, "%slimitMaximumTimestep = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%slimitMaximumTimestep = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%smaxTimeStep = %g\n", prefix, atts->GetMaxTimeStep());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%srelTol = %g\n", prefix, atts->GetRelTol());
+    str += tmpStr;
+    const char *absTolSizeType_names = "Absolute, FractionOfBBox";
+    switch (atts->GetAbsTolSizeType())
+    {
+      case FTLEAttributes::Absolute:
+          SNPRINTF(tmpStr, 1000, "%sabsTolSizeType = %sAbsolute  # %s\n", prefix, prefix, absTolSizeType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::FractionOfBBox:
+          SNPRINTF(tmpStr, 1000, "%sabsTolSizeType = %sFractionOfBBox  # %s\n", prefix, prefix, absTolSizeType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    SNPRINTF(tmpStr, 1000, "%sabsTolAbsolute = %g\n", prefix, atts->GetAbsTolAbsolute());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%sabsTolBBox = %g\n", prefix, atts->GetAbsTolBBox());
+    str += tmpStr;
+    const char *fieldType_names = "Default, FlashField, M3DC12DField, M3DC13DField, Nek5000Field, "
+        "NIMRODField";
+    switch (atts->GetFieldType())
+    {
+      case FTLEAttributes::Default:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sDefault  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::FlashField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sFlashField  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::M3DC12DField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sM3DC12DField  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::M3DC13DField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sM3DC13DField  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::Nek5000Field:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sNek5000Field  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::NIMRODField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sNIMRODField  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    SNPRINTF(tmpStr, 1000, "%sfieldConstant = %g\n", prefix, atts->GetFieldConstant());
+    str += tmpStr;
+    {   const double *velocitySource = atts->GetVelocitySource();
+        SNPRINTF(tmpStr, 1000, "%svelocitySource = (", prefix);
+        str += tmpStr;
+        for(int i = 0; i < 3; ++i)
+        {
+            SNPRINTF(tmpStr, 1000, "%g", velocitySource[i]);
+            str += tmpStr;
+            if(i < 2)
+            {
+                SNPRINTF(tmpStr, 1000, ", ");
+                str += tmpStr;
+            }
+        }
+        SNPRINTF(tmpStr, 1000, ")\n");
+        str += tmpStr;
+    }
+    const char *integrationType_names = "Euler, Leapfrog, DormandPrince, AdamsBashforth, RK4, "
+        "M3DC12DIntegrator";
+    switch (atts->GetIntegrationType())
+    {
+      case FTLEAttributes::Euler:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sEuler  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::Leapfrog:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sLeapfrog  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::DormandPrince:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sDormandPrince  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::AdamsBashforth:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sAdamsBashforth  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::RK4:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sRK4  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::M3DC12DIntegrator:
+          SNPRINTF(tmpStr, 1000, "%sintegrationType = %sM3DC12DIntegrator  # %s\n", prefix, prefix, integrationType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    const char *parallelizationAlgorithmType_names = "LoadOnDemand, ParallelStaticDomains, MasterSlave, VisItSelects";
+    switch (atts->GetParallelizationAlgorithmType())
+    {
+      case FTLEAttributes::LoadOnDemand:
+          SNPRINTF(tmpStr, 1000, "%sparallelizationAlgorithmType = %sLoadOnDemand  # %s\n", prefix, prefix, parallelizationAlgorithmType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::ParallelStaticDomains:
+          SNPRINTF(tmpStr, 1000, "%sparallelizationAlgorithmType = %sParallelStaticDomains  # %s\n", prefix, prefix, parallelizationAlgorithmType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::MasterSlave:
+          SNPRINTF(tmpStr, 1000, "%sparallelizationAlgorithmType = %sMasterSlave  # %s\n", prefix, prefix, parallelizationAlgorithmType_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::VisItSelects:
+          SNPRINTF(tmpStr, 1000, "%sparallelizationAlgorithmType = %sVisItSelects  # %s\n", prefix, prefix, parallelizationAlgorithmType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    SNPRINTF(tmpStr, 1000, "%smaxProcessCount = %d\n", prefix, atts->GetMaxProcessCount());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%smaxDomainCacheSize = %d\n", prefix, atts->GetMaxDomainCacheSize());
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%sworkGroupSize = %d\n", prefix, atts->GetWorkGroupSize());
+    str += tmpStr;
+    if(atts->GetPathlines())
+        SNPRINTF(tmpStr, 1000, "%spathlines = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%spathlines = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetPathlinesOverrideStartingTimeFlag())
+        SNPRINTF(tmpStr, 1000, "%spathlinesOverrideStartingTimeFlag = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%spathlinesOverrideStartingTimeFlag = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%spathlinesOverrideStartingTime = %g\n", prefix, atts->GetPathlinesOverrideStartingTime());
+    str += tmpStr;
+    const char *pathlinesCMFE_names = "CONN_CMFE, POS_CMFE";
+    switch (atts->GetPathlinesCMFE())
+    {
+      case FTLEAttributes::CONN_CMFE:
+          SNPRINTF(tmpStr, 1000, "%spathlinesCMFE = %sCONN_CMFE  # %s\n", prefix, prefix, pathlinesCMFE_names);
+          str += tmpStr;
+          break;
+      case FTLEAttributes::POS_CMFE:
+          SNPRINTF(tmpStr, 1000, "%spathlinesCMFE = %sPOS_CMFE  # %s\n", prefix, prefix, pathlinesCMFE_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    if(atts->GetForceNodeCenteredData())
+        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetIssueTerminationWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueTerminationWarnings = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sissueTerminationWarnings = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetIssueStiffnessWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueStiffnessWarnings = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sissueStiffnessWarnings = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetIssueCriticalPointsWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueCriticalPointsWarnings = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sissueCriticalPointsWarnings = 0\n", prefix);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%scriticalPointThreshold = %g\n", prefix, atts->GetCriticalPointThreshold());
+    str += tmpStr;
     return str;
 }
 
@@ -194,31 +433,7 @@ FTLEAttributes_Notify(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-FTLEAttributes_SetIntegrationTime(PyObject *self, PyObject *args)
-{
-    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
-
-    double dval;
-    if(!PyArg_ParseTuple(args, "d", &dval))
-        return NULL;
-
-    // Set the integrationTime in the object.
-    obj->data->SetIntegrationTime(dval);
-
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-/*static*/ PyObject *
-FTLEAttributes_GetIntegrationTime(PyObject *self, PyObject *args)
-{
-    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
-    PyObject *retval = PyFloat_FromDouble(obj->data->GetIntegrationTime());
-    return retval;
-}
-
-/*static*/ PyObject *
-FTLEAttributes_SetRegionType(PyObject *self, PyObject *args)
+FTLEAttributes_SetSourceType(PyObject *self, PyObject *args)
 {
     FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
 
@@ -226,15 +441,15 @@ FTLEAttributes_SetRegionType(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the regionType in the object.
+    // Set the sourceType in the object.
     if(ival >= 0 && ival < 2)
-        obj->data->SetRegionType(FTLEAttributes::Region(ival));
+        obj->data->SetSourceType(FTLEAttributes::SourceType(ival));
     else
     {
-        fprintf(stderr, "An invalid regionType value was given. "
+        fprintf(stderr, "An invalid sourceType value was given. "
                         "Valid values are in the range of [0,1]. "
                         "You can also use the following names: "
-                        "NativeResolutionOfMesh, RegularGrid.");
+                        "NativeMesh, RegularGrid.");
         return NULL;
     }
 
@@ -243,10 +458,10 @@ FTLEAttributes_SetRegionType(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-FTLEAttributes_GetRegionType(PyObject *self, PyObject *args)
+FTLEAttributes_GetSourceType(PyObject *self, PyObject *args)
 {
     FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetRegionType()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetSourceType()));
     return retval;
 }
 
@@ -314,7 +529,16 @@ FTLEAttributes_SetUseDataSetStart(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the UseDataSetStart in the object.
-    obj->data->SetUseDataSetStart(ival != 0);
+    if(ival >= 0 && ival < 2)
+        obj->data->SetUseDataSetStart(FTLEAttributes::Extents(ival));
+    else
+    {
+        fprintf(stderr, "An invalid UseDataSetStart value was given. "
+                        "Valid values are in the range of [0,1]. "
+                        "You can also use the following names: "
+                        "Full, Subset.");
+        return NULL;
+    }
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -324,7 +548,7 @@ FTLEAttributes_SetUseDataSetStart(PyObject *self, PyObject *args)
 FTLEAttributes_GetUseDataSetStart(PyObject *self, PyObject *args)
 {
     FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(obj->data->GetUseDataSetStart()?1L:0L);
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetUseDataSetStart()));
     return retval;
 }
 
@@ -392,7 +616,16 @@ FTLEAttributes_SetUseDataSetEnd(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the UseDataSetEnd in the object.
-    obj->data->SetUseDataSetEnd(ival != 0);
+    if(ival >= 0 && ival < 2)
+        obj->data->SetUseDataSetEnd(FTLEAttributes::Extents(ival));
+    else
+    {
+        fprintf(stderr, "An invalid UseDataSetEnd value was given. "
+                        "Valid values are in the range of [0,1]. "
+                        "You can also use the following names: "
+                        "Full, Subset.");
+        return NULL;
+    }
 
     Py_INCREF(Py_None);
     return Py_None;
@@ -402,7 +635,7 @@ FTLEAttributes_SetUseDataSetEnd(PyObject *self, PyObject *args)
 FTLEAttributes_GetUseDataSetEnd(PyObject *self, PyObject *args)
 {
     FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(obj->data->GetUseDataSetEnd()?1L:0L);
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetUseDataSetEnd()));
     return retval;
 }
 
@@ -461,7 +694,7 @@ FTLEAttributes_GetEndPosition(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-FTLEAttributes_SetDirection(PyObject *self, PyObject *args)
+FTLEAttributes_SetIntegrationDirection(PyObject *self, PyObject *args)
 {
     FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
 
@@ -469,15 +702,15 @@ FTLEAttributes_SetDirection(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the direction in the object.
-    if(ival >= 0 && ival < 2)
-        obj->data->SetDirection(FTLEAttributes::Direction(ival));
+    // Set the integrationDirection in the object.
+    if(ival >= 0 && ival < 3)
+        obj->data->SetIntegrationDirection(FTLEAttributes::IntegrationDirection(ival));
     else
     {
-        fprintf(stderr, "An invalid direction value was given. "
-                        "Valid values are in the range of [0,1]. "
+        fprintf(stderr, "An invalid integrationDirection value was given. "
+                        "Valid values are in the range of [0,2]. "
                         "You can also use the following names: "
-                        "Forward, Backward.");
+                        "Forward, Backward, Both.");
         return NULL;
     }
 
@@ -486,15 +719,15 @@ FTLEAttributes_SetDirection(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-FTLEAttributes_GetDirection(PyObject *self, PyObject *args)
+FTLEAttributes_GetIntegrationDirection(PyObject *self, PyObject *args)
 {
     FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetDirection()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetIntegrationDirection()));
     return retval;
 }
 
 /*static*/ PyObject *
-FTLEAttributes_SetFlowType(PyObject *self, PyObject *args)
+FTLEAttributes_SetMaxSteps(PyObject *self, PyObject *args)
 {
     FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
 
@@ -502,15 +735,39 @@ FTLEAttributes_SetFlowType(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the flowType in the object.
-    if(ival >= 0 && ival < 2)
-        obj->data->SetFlowType(FTLEAttributes::FlowType(ival));
+    // Set the maxSteps in the object.
+    obj->data->SetMaxSteps((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetMaxSteps(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxSteps()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetTerminationType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the terminationType in the object.
+    if(ival >= 0 && ival < 3)
+        obj->data->SetTerminationType(FTLEAttributes::TerminationType(ival));
     else
     {
-        fprintf(stderr, "An invalid flowType value was given. "
-                        "Valid values are in the range of [0,1]. "
+        fprintf(stderr, "An invalid terminationType value was given. "
+                        "Valid values are in the range of [0,2]. "
                         "You can also use the following names: "
-                        "Unsteady, Steady.");
+                        "Time, Distance, Size.");
         return NULL;
     }
 
@@ -519,10 +776,807 @@ FTLEAttributes_SetFlowType(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-FTLEAttributes_GetFlowType(PyObject *self, PyObject *args)
+FTLEAttributes_GetTerminationType(PyObject *self, PyObject *args)
 {
     FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetFlowType()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetTerminationType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetTerminateBySize(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the terminateBySize in the object.
+    obj->data->SetTerminateBySize(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetTerminateBySize(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetTerminateBySize()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetTermSize(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the termSize in the object.
+    obj->data->SetTermSize(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetTermSize(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetTermSize());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetTerminateByDistance(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the terminateByDistance in the object.
+    obj->data->SetTerminateByDistance(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetTerminateByDistance(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetTerminateByDistance()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetTermDistance(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the termDistance in the object.
+    obj->data->SetTermDistance(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetTermDistance(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetTermDistance());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetTerminateByTime(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the terminateByTime in the object.
+    obj->data->SetTerminateByTime(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetTerminateByTime(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetTerminateByTime()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetTermTime(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the termTime in the object.
+    obj->data->SetTermTime(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetTermTime(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetTermTime());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetMaxStepLength(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the maxStepLength in the object.
+    obj->data->SetMaxStepLength(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetMaxStepLength(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetMaxStepLength());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetLimitMaximumTimestep(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the limitMaximumTimestep in the object.
+    obj->data->SetLimitMaximumTimestep(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetLimitMaximumTimestep(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetLimitMaximumTimestep()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetMaxTimeStep(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the maxTimeStep in the object.
+    obj->data->SetMaxTimeStep(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetMaxTimeStep(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetMaxTimeStep());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetRelTol(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the relTol in the object.
+    obj->data->SetRelTol(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetRelTol(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetRelTol());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetAbsTolSizeType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the absTolSizeType in the object.
+    if(ival >= 0 && ival < 2)
+        obj->data->SetAbsTolSizeType(FTLEAttributes::SizeType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid absTolSizeType value was given. "
+                        "Valid values are in the range of [0,1]. "
+                        "You can also use the following names: "
+                        "Absolute, FractionOfBBox.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetAbsTolSizeType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetAbsTolSizeType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetAbsTolAbsolute(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the absTolAbsolute in the object.
+    obj->data->SetAbsTolAbsolute(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetAbsTolAbsolute(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetAbsTolAbsolute());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetAbsTolBBox(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the absTolBBox in the object.
+    obj->data->SetAbsTolBBox(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetAbsTolBBox(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetAbsTolBBox());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetFieldType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the fieldType in the object.
+    if(ival >= 0 && ival < 6)
+        obj->data->SetFieldType(FTLEAttributes::FieldType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid fieldType value was given. "
+                        "Valid values are in the range of [0,5]. "
+                        "You can also use the following names: "
+                        "Default, FlashField, M3DC12DField, M3DC13DField, Nek5000Field, "
+                        "NIMRODField.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetFieldType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetFieldType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetFieldConstant(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the fieldConstant in the object.
+    obj->data->SetFieldConstant(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetFieldConstant(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetFieldConstant());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetVelocitySource(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double *dvals = obj->data->GetVelocitySource();
+    if(!PyArg_ParseTuple(args, "ddd", &dvals[0], &dvals[1], &dvals[2]))
+    {
+        PyObject     *tuple;
+        if(!PyArg_ParseTuple(args, "O", &tuple))
+            return NULL;
+
+        if(PyTuple_Check(tuple))
+        {
+            if(PyTuple_Size(tuple) != 3)
+                return NULL;
+
+            PyErr_Clear();
+            for(int i = 0; i < PyTuple_Size(tuple); ++i)
+            {
+                PyObject *item = PyTuple_GET_ITEM(tuple, i);
+                if(PyFloat_Check(item))
+                    dvals[i] = PyFloat_AS_DOUBLE(item);
+                else if(PyInt_Check(item))
+                    dvals[i] = double(PyInt_AS_LONG(item));
+                else if(PyLong_Check(item))
+                    dvals[i] = PyLong_AsDouble(item);
+                else
+                    dvals[i] = 0.;
+            }
+        }
+        else
+            return NULL;
+    }
+
+    // Mark the velocitySource in the object as modified.
+    obj->data->SelectVelocitySource();
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetVelocitySource(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    // Allocate a tuple the with enough entries to hold the velocitySource.
+    PyObject *retval = PyTuple_New(3);
+    const double *velocitySource = obj->data->GetVelocitySource();
+    for(int i = 0; i < 3; ++i)
+        PyTuple_SET_ITEM(retval, i, PyFloat_FromDouble(velocitySource[i]));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetIntegrationType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the integrationType in the object.
+    if(ival >= 0 && ival < 6)
+        obj->data->SetIntegrationType(FTLEAttributes::IntegrationType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid integrationType value was given. "
+                        "Valid values are in the range of [0,5]. "
+                        "You can also use the following names: "
+                        "Euler, Leapfrog, DormandPrince, AdamsBashforth, RK4, "
+                        "M3DC12DIntegrator.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetIntegrationType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetIntegrationType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetParallelizationAlgorithmType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the parallelizationAlgorithmType in the object.
+    if(ival >= 0 && ival < 4)
+        obj->data->SetParallelizationAlgorithmType(FTLEAttributes::ParallelizationAlgorithmType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid parallelizationAlgorithmType value was given. "
+                        "Valid values are in the range of [0,3]. "
+                        "You can also use the following names: "
+                        "LoadOnDemand, ParallelStaticDomains, MasterSlave, VisItSelects.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetParallelizationAlgorithmType(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetParallelizationAlgorithmType()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetMaxProcessCount(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the maxProcessCount in the object.
+    obj->data->SetMaxProcessCount((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetMaxProcessCount(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxProcessCount()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetMaxDomainCacheSize(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the maxDomainCacheSize in the object.
+    obj->data->SetMaxDomainCacheSize((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetMaxDomainCacheSize(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetMaxDomainCacheSize()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetWorkGroupSize(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the workGroupSize in the object.
+    obj->data->SetWorkGroupSize((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetWorkGroupSize(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetWorkGroupSize()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetPathlines(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the pathlines in the object.
+    obj->data->SetPathlines(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetPathlines(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetPathlines()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetPathlinesOverrideStartingTimeFlag(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the pathlinesOverrideStartingTimeFlag in the object.
+    obj->data->SetPathlinesOverrideStartingTimeFlag(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetPathlinesOverrideStartingTimeFlag(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetPathlinesOverrideStartingTimeFlag()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetPathlinesOverrideStartingTime(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the pathlinesOverrideStartingTime in the object.
+    obj->data->SetPathlinesOverrideStartingTime(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetPathlinesOverrideStartingTime(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetPathlinesOverrideStartingTime());
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetPathlinesCMFE(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the pathlinesCMFE in the object.
+    if(ival >= 0 && ival < 2)
+        obj->data->SetPathlinesCMFE(FTLEAttributes::PathlinesCMFE(ival));
+    else
+    {
+        fprintf(stderr, "An invalid pathlinesCMFE value was given. "
+                        "Valid values are in the range of [0,1]. "
+                        "You can also use the following names: "
+                        "CONN_CMFE, POS_CMFE.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetPathlinesCMFE(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetPathlinesCMFE()));
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetForceNodeCenteredData(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the forceNodeCenteredData in the object.
+    obj->data->SetForceNodeCenteredData(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetForceNodeCenteredData(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetForceNodeCenteredData()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetIssueTerminationWarnings(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the issueTerminationWarnings in the object.
+    obj->data->SetIssueTerminationWarnings(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetIssueTerminationWarnings(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueTerminationWarnings()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetIssueStiffnessWarnings(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the issueStiffnessWarnings in the object.
+    obj->data->SetIssueStiffnessWarnings(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetIssueStiffnessWarnings(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueStiffnessWarnings()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetIssueCriticalPointsWarnings(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the issueCriticalPointsWarnings in the object.
+    obj->data->SetIssueCriticalPointsWarnings(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetIssueCriticalPointsWarnings(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueCriticalPointsWarnings()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_SetCriticalPointThreshold(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the criticalPointThreshold in the object.
+    obj->data->SetCriticalPointThreshold(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+FTLEAttributes_GetCriticalPointThreshold(PyObject *self, PyObject *args)
+{
+    FTLEAttributesObject *obj = (FTLEAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetCriticalPointThreshold());
     return retval;
 }
 
@@ -530,10 +1584,8 @@ FTLEAttributes_GetFlowType(PyObject *self, PyObject *args)
 
 PyMethodDef PyFTLEAttributes_methods[FTLEATTRIBUTES_NMETH] = {
     {"Notify", FTLEAttributes_Notify, METH_VARARGS},
-    {"SetIntegrationTime", FTLEAttributes_SetIntegrationTime, METH_VARARGS},
-    {"GetIntegrationTime", FTLEAttributes_GetIntegrationTime, METH_VARARGS},
-    {"SetRegionType", FTLEAttributes_SetRegionType, METH_VARARGS},
-    {"GetRegionType", FTLEAttributes_GetRegionType, METH_VARARGS},
+    {"SetSourceType", FTLEAttributes_SetSourceType, METH_VARARGS},
+    {"GetSourceType", FTLEAttributes_GetSourceType, METH_VARARGS},
     {"SetResolution", FTLEAttributes_SetResolution, METH_VARARGS},
     {"GetResolution", FTLEAttributes_GetResolution, METH_VARARGS},
     {"SetUseDataSetStart", FTLEAttributes_SetUseDataSetStart, METH_VARARGS},
@@ -544,10 +1596,72 @@ PyMethodDef PyFTLEAttributes_methods[FTLEATTRIBUTES_NMETH] = {
     {"GetUseDataSetEnd", FTLEAttributes_GetUseDataSetEnd, METH_VARARGS},
     {"SetEndPosition", FTLEAttributes_SetEndPosition, METH_VARARGS},
     {"GetEndPosition", FTLEAttributes_GetEndPosition, METH_VARARGS},
-    {"SetDirection", FTLEAttributes_SetDirection, METH_VARARGS},
-    {"GetDirection", FTLEAttributes_GetDirection, METH_VARARGS},
-    {"SetFlowType", FTLEAttributes_SetFlowType, METH_VARARGS},
-    {"GetFlowType", FTLEAttributes_GetFlowType, METH_VARARGS},
+    {"SetIntegrationDirection", FTLEAttributes_SetIntegrationDirection, METH_VARARGS},
+    {"GetIntegrationDirection", FTLEAttributes_GetIntegrationDirection, METH_VARARGS},
+    {"SetMaxSteps", FTLEAttributes_SetMaxSteps, METH_VARARGS},
+    {"GetMaxSteps", FTLEAttributes_GetMaxSteps, METH_VARARGS},
+    {"SetTerminationType", FTLEAttributes_SetTerminationType, METH_VARARGS},
+    {"GetTerminationType", FTLEAttributes_GetTerminationType, METH_VARARGS},
+    {"SetTerminateBySize", FTLEAttributes_SetTerminateBySize, METH_VARARGS},
+    {"GetTerminateBySize", FTLEAttributes_GetTerminateBySize, METH_VARARGS},
+    {"SetTermSize", FTLEAttributes_SetTermSize, METH_VARARGS},
+    {"GetTermSize", FTLEAttributes_GetTermSize, METH_VARARGS},
+    {"SetTerminateByDistance", FTLEAttributes_SetTerminateByDistance, METH_VARARGS},
+    {"GetTerminateByDistance", FTLEAttributes_GetTerminateByDistance, METH_VARARGS},
+    {"SetTermDistance", FTLEAttributes_SetTermDistance, METH_VARARGS},
+    {"GetTermDistance", FTLEAttributes_GetTermDistance, METH_VARARGS},
+    {"SetTerminateByTime", FTLEAttributes_SetTerminateByTime, METH_VARARGS},
+    {"GetTerminateByTime", FTLEAttributes_GetTerminateByTime, METH_VARARGS},
+    {"SetTermTime", FTLEAttributes_SetTermTime, METH_VARARGS},
+    {"GetTermTime", FTLEAttributes_GetTermTime, METH_VARARGS},
+    {"SetMaxStepLength", FTLEAttributes_SetMaxStepLength, METH_VARARGS},
+    {"GetMaxStepLength", FTLEAttributes_GetMaxStepLength, METH_VARARGS},
+    {"SetLimitMaximumTimestep", FTLEAttributes_SetLimitMaximumTimestep, METH_VARARGS},
+    {"GetLimitMaximumTimestep", FTLEAttributes_GetLimitMaximumTimestep, METH_VARARGS},
+    {"SetMaxTimeStep", FTLEAttributes_SetMaxTimeStep, METH_VARARGS},
+    {"GetMaxTimeStep", FTLEAttributes_GetMaxTimeStep, METH_VARARGS},
+    {"SetRelTol", FTLEAttributes_SetRelTol, METH_VARARGS},
+    {"GetRelTol", FTLEAttributes_GetRelTol, METH_VARARGS},
+    {"SetAbsTolSizeType", FTLEAttributes_SetAbsTolSizeType, METH_VARARGS},
+    {"GetAbsTolSizeType", FTLEAttributes_GetAbsTolSizeType, METH_VARARGS},
+    {"SetAbsTolAbsolute", FTLEAttributes_SetAbsTolAbsolute, METH_VARARGS},
+    {"GetAbsTolAbsolute", FTLEAttributes_GetAbsTolAbsolute, METH_VARARGS},
+    {"SetAbsTolBBox", FTLEAttributes_SetAbsTolBBox, METH_VARARGS},
+    {"GetAbsTolBBox", FTLEAttributes_GetAbsTolBBox, METH_VARARGS},
+    {"SetFieldType", FTLEAttributes_SetFieldType, METH_VARARGS},
+    {"GetFieldType", FTLEAttributes_GetFieldType, METH_VARARGS},
+    {"SetFieldConstant", FTLEAttributes_SetFieldConstant, METH_VARARGS},
+    {"GetFieldConstant", FTLEAttributes_GetFieldConstant, METH_VARARGS},
+    {"SetVelocitySource", FTLEAttributes_SetVelocitySource, METH_VARARGS},
+    {"GetVelocitySource", FTLEAttributes_GetVelocitySource, METH_VARARGS},
+    {"SetIntegrationType", FTLEAttributes_SetIntegrationType, METH_VARARGS},
+    {"GetIntegrationType", FTLEAttributes_GetIntegrationType, METH_VARARGS},
+    {"SetParallelizationAlgorithmType", FTLEAttributes_SetParallelizationAlgorithmType, METH_VARARGS},
+    {"GetParallelizationAlgorithmType", FTLEAttributes_GetParallelizationAlgorithmType, METH_VARARGS},
+    {"SetMaxProcessCount", FTLEAttributes_SetMaxProcessCount, METH_VARARGS},
+    {"GetMaxProcessCount", FTLEAttributes_GetMaxProcessCount, METH_VARARGS},
+    {"SetMaxDomainCacheSize", FTLEAttributes_SetMaxDomainCacheSize, METH_VARARGS},
+    {"GetMaxDomainCacheSize", FTLEAttributes_GetMaxDomainCacheSize, METH_VARARGS},
+    {"SetWorkGroupSize", FTLEAttributes_SetWorkGroupSize, METH_VARARGS},
+    {"GetWorkGroupSize", FTLEAttributes_GetWorkGroupSize, METH_VARARGS},
+    {"SetPathlines", FTLEAttributes_SetPathlines, METH_VARARGS},
+    {"GetPathlines", FTLEAttributes_GetPathlines, METH_VARARGS},
+    {"SetPathlinesOverrideStartingTimeFlag", FTLEAttributes_SetPathlinesOverrideStartingTimeFlag, METH_VARARGS},
+    {"GetPathlinesOverrideStartingTimeFlag", FTLEAttributes_GetPathlinesOverrideStartingTimeFlag, METH_VARARGS},
+    {"SetPathlinesOverrideStartingTime", FTLEAttributes_SetPathlinesOverrideStartingTime, METH_VARARGS},
+    {"GetPathlinesOverrideStartingTime", FTLEAttributes_GetPathlinesOverrideStartingTime, METH_VARARGS},
+    {"SetPathlinesCMFE", FTLEAttributes_SetPathlinesCMFE, METH_VARARGS},
+    {"GetPathlinesCMFE", FTLEAttributes_GetPathlinesCMFE, METH_VARARGS},
+    {"SetForceNodeCenteredData", FTLEAttributes_SetForceNodeCenteredData, METH_VARARGS},
+    {"GetForceNodeCenteredData", FTLEAttributes_GetForceNodeCenteredData, METH_VARARGS},
+    {"SetIssueTerminationWarnings", FTLEAttributes_SetIssueTerminationWarnings, METH_VARARGS},
+    {"GetIssueTerminationWarnings", FTLEAttributes_GetIssueTerminationWarnings, METH_VARARGS},
+    {"SetIssueStiffnessWarnings", FTLEAttributes_SetIssueStiffnessWarnings, METH_VARARGS},
+    {"GetIssueStiffnessWarnings", FTLEAttributes_GetIssueStiffnessWarnings, METH_VARARGS},
+    {"SetIssueCriticalPointsWarnings", FTLEAttributes_SetIssueCriticalPointsWarnings, METH_VARARGS},
+    {"GetIssueCriticalPointsWarnings", FTLEAttributes_GetIssueCriticalPointsWarnings, METH_VARARGS},
+    {"SetCriticalPointThreshold", FTLEAttributes_SetCriticalPointThreshold, METH_VARARGS},
+    {"GetCriticalPointThreshold", FTLEAttributes_GetCriticalPointThreshold, METH_VARARGS},
     {NULL, NULL}
 };
 
@@ -576,12 +1690,10 @@ FTLEAttributes_compare(PyObject *v, PyObject *w)
 PyObject *
 PyFTLEAttributes_getattr(PyObject *self, char *name)
 {
-    if(strcmp(name, "integrationTime") == 0)
-        return FTLEAttributes_GetIntegrationTime(self, NULL);
-    if(strcmp(name, "regionType") == 0)
-        return FTLEAttributes_GetRegionType(self, NULL);
-    if(strcmp(name, "NativeResolutionOfMesh") == 0)
-        return PyInt_FromLong(long(FTLEAttributes::NativeResolutionOfMesh));
+    if(strcmp(name, "sourceType") == 0)
+        return FTLEAttributes_GetSourceType(self, NULL);
+    if(strcmp(name, "NativeMesh") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::NativeMesh));
     if(strcmp(name, "RegularGrid") == 0)
         return PyInt_FromLong(long(FTLEAttributes::RegularGrid));
 
@@ -589,26 +1701,147 @@ PyFTLEAttributes_getattr(PyObject *self, char *name)
         return FTLEAttributes_GetResolution(self, NULL);
     if(strcmp(name, "UseDataSetStart") == 0)
         return FTLEAttributes_GetUseDataSetStart(self, NULL);
+    if(strcmp(name, "Full") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Full));
+    if(strcmp(name, "Subset") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Subset));
+
     if(strcmp(name, "StartPosition") == 0)
         return FTLEAttributes_GetStartPosition(self, NULL);
     if(strcmp(name, "UseDataSetEnd") == 0)
         return FTLEAttributes_GetUseDataSetEnd(self, NULL);
+    if(strcmp(name, "Full") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Full));
+    if(strcmp(name, "Subset") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Subset));
+
     if(strcmp(name, "EndPosition") == 0)
         return FTLEAttributes_GetEndPosition(self, NULL);
-    if(strcmp(name, "direction") == 0)
-        return FTLEAttributes_GetDirection(self, NULL);
+    if(strcmp(name, "integrationDirection") == 0)
+        return FTLEAttributes_GetIntegrationDirection(self, NULL);
     if(strcmp(name, "Forward") == 0)
         return PyInt_FromLong(long(FTLEAttributes::Forward));
     if(strcmp(name, "Backward") == 0)
         return PyInt_FromLong(long(FTLEAttributes::Backward));
+    if(strcmp(name, "Both") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Both));
 
-    if(strcmp(name, "flowType") == 0)
-        return FTLEAttributes_GetFlowType(self, NULL);
-    if(strcmp(name, "Unsteady") == 0)
-        return PyInt_FromLong(long(FTLEAttributes::Unsteady));
-    if(strcmp(name, "Steady") == 0)
-        return PyInt_FromLong(long(FTLEAttributes::Steady));
+    if(strcmp(name, "maxSteps") == 0)
+        return FTLEAttributes_GetMaxSteps(self, NULL);
+    if(strcmp(name, "terminationType") == 0)
+        return FTLEAttributes_GetTerminationType(self, NULL);
+    if(strcmp(name, "Time") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Time));
+    if(strcmp(name, "Distance") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Distance));
+    if(strcmp(name, "Size") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Size));
 
+    if(strcmp(name, "terminateBySize") == 0)
+        return FTLEAttributes_GetTerminateBySize(self, NULL);
+    if(strcmp(name, "termSize") == 0)
+        return FTLEAttributes_GetTermSize(self, NULL);
+    if(strcmp(name, "terminateByDistance") == 0)
+        return FTLEAttributes_GetTerminateByDistance(self, NULL);
+    if(strcmp(name, "termDistance") == 0)
+        return FTLEAttributes_GetTermDistance(self, NULL);
+    if(strcmp(name, "terminateByTime") == 0)
+        return FTLEAttributes_GetTerminateByTime(self, NULL);
+    if(strcmp(name, "termTime") == 0)
+        return FTLEAttributes_GetTermTime(self, NULL);
+    if(strcmp(name, "maxStepLength") == 0)
+        return FTLEAttributes_GetMaxStepLength(self, NULL);
+    if(strcmp(name, "limitMaximumTimestep") == 0)
+        return FTLEAttributes_GetLimitMaximumTimestep(self, NULL);
+    if(strcmp(name, "maxTimeStep") == 0)
+        return FTLEAttributes_GetMaxTimeStep(self, NULL);
+    if(strcmp(name, "relTol") == 0)
+        return FTLEAttributes_GetRelTol(self, NULL);
+    if(strcmp(name, "absTolSizeType") == 0)
+        return FTLEAttributes_GetAbsTolSizeType(self, NULL);
+    if(strcmp(name, "Absolute") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Absolute));
+    if(strcmp(name, "FractionOfBBox") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::FractionOfBBox));
+
+    if(strcmp(name, "absTolAbsolute") == 0)
+        return FTLEAttributes_GetAbsTolAbsolute(self, NULL);
+    if(strcmp(name, "absTolBBox") == 0)
+        return FTLEAttributes_GetAbsTolBBox(self, NULL);
+    if(strcmp(name, "fieldType") == 0)
+        return FTLEAttributes_GetFieldType(self, NULL);
+    if(strcmp(name, "Default") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Default));
+    if(strcmp(name, "FlashField") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::FlashField));
+    if(strcmp(name, "M3DC12DField") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::M3DC12DField));
+    if(strcmp(name, "M3DC13DField") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::M3DC13DField));
+    if(strcmp(name, "Nek5000Field") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Nek5000Field));
+    if(strcmp(name, "NIMRODField") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::NIMRODField));
+
+    if(strcmp(name, "fieldConstant") == 0)
+        return FTLEAttributes_GetFieldConstant(self, NULL);
+    if(strcmp(name, "velocitySource") == 0)
+        return FTLEAttributes_GetVelocitySource(self, NULL);
+    if(strcmp(name, "integrationType") == 0)
+        return FTLEAttributes_GetIntegrationType(self, NULL);
+    if(strcmp(name, "Euler") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Euler));
+    if(strcmp(name, "Leapfrog") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::Leapfrog));
+    if(strcmp(name, "DormandPrince") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::DormandPrince));
+    if(strcmp(name, "AdamsBashforth") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::AdamsBashforth));
+    if(strcmp(name, "RK4") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::RK4));
+    if(strcmp(name, "M3DC12DIntegrator") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::M3DC12DIntegrator));
+
+    if(strcmp(name, "parallelizationAlgorithmType") == 0)
+        return FTLEAttributes_GetParallelizationAlgorithmType(self, NULL);
+    if(strcmp(name, "LoadOnDemand") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::LoadOnDemand));
+    if(strcmp(name, "ParallelStaticDomains") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::ParallelStaticDomains));
+    if(strcmp(name, "MasterSlave") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::MasterSlave));
+    if(strcmp(name, "VisItSelects") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::VisItSelects));
+
+    if(strcmp(name, "maxProcessCount") == 0)
+        return FTLEAttributes_GetMaxProcessCount(self, NULL);
+    if(strcmp(name, "maxDomainCacheSize") == 0)
+        return FTLEAttributes_GetMaxDomainCacheSize(self, NULL);
+    if(strcmp(name, "workGroupSize") == 0)
+        return FTLEAttributes_GetWorkGroupSize(self, NULL);
+    if(strcmp(name, "pathlines") == 0)
+        return FTLEAttributes_GetPathlines(self, NULL);
+    if(strcmp(name, "pathlinesOverrideStartingTimeFlag") == 0)
+        return FTLEAttributes_GetPathlinesOverrideStartingTimeFlag(self, NULL);
+    if(strcmp(name, "pathlinesOverrideStartingTime") == 0)
+        return FTLEAttributes_GetPathlinesOverrideStartingTime(self, NULL);
+    if(strcmp(name, "pathlinesCMFE") == 0)
+        return FTLEAttributes_GetPathlinesCMFE(self, NULL);
+    if(strcmp(name, "CONN_CMFE") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::CONN_CMFE));
+    if(strcmp(name, "POS_CMFE") == 0)
+        return PyInt_FromLong(long(FTLEAttributes::POS_CMFE));
+
+    if(strcmp(name, "forceNodeCenteredData") == 0)
+        return FTLEAttributes_GetForceNodeCenteredData(self, NULL);
+    if(strcmp(name, "issueTerminationWarnings") == 0)
+        return FTLEAttributes_GetIssueTerminationWarnings(self, NULL);
+    if(strcmp(name, "issueStiffnessWarnings") == 0)
+        return FTLEAttributes_GetIssueStiffnessWarnings(self, NULL);
+    if(strcmp(name, "issueCriticalPointsWarnings") == 0)
+        return FTLEAttributes_GetIssueCriticalPointsWarnings(self, NULL);
+    if(strcmp(name, "criticalPointThreshold") == 0)
+        return FTLEAttributes_GetCriticalPointThreshold(self, NULL);
 
     return Py_FindMethod(PyFTLEAttributes_methods, self, name);
 }
@@ -623,10 +1856,8 @@ PyFTLEAttributes_setattr(PyObject *self, char *name, PyObject *args)
     Py_INCREF(args);
     PyObject *obj = NULL;
 
-    if(strcmp(name, "integrationTime") == 0)
-        obj = FTLEAttributes_SetIntegrationTime(self, tuple);
-    else if(strcmp(name, "regionType") == 0)
-        obj = FTLEAttributes_SetRegionType(self, tuple);
+    if(strcmp(name, "sourceType") == 0)
+        obj = FTLEAttributes_SetSourceType(self, tuple);
     else if(strcmp(name, "Resolution") == 0)
         obj = FTLEAttributes_SetResolution(self, tuple);
     else if(strcmp(name, "UseDataSetStart") == 0)
@@ -637,10 +1868,72 @@ PyFTLEAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = FTLEAttributes_SetUseDataSetEnd(self, tuple);
     else if(strcmp(name, "EndPosition") == 0)
         obj = FTLEAttributes_SetEndPosition(self, tuple);
-    else if(strcmp(name, "direction") == 0)
-        obj = FTLEAttributes_SetDirection(self, tuple);
-    else if(strcmp(name, "flowType") == 0)
-        obj = FTLEAttributes_SetFlowType(self, tuple);
+    else if(strcmp(name, "integrationDirection") == 0)
+        obj = FTLEAttributes_SetIntegrationDirection(self, tuple);
+    else if(strcmp(name, "maxSteps") == 0)
+        obj = FTLEAttributes_SetMaxSteps(self, tuple);
+    else if(strcmp(name, "terminationType") == 0)
+        obj = FTLEAttributes_SetTerminationType(self, tuple);
+    else if(strcmp(name, "terminateBySize") == 0)
+        obj = FTLEAttributes_SetTerminateBySize(self, tuple);
+    else if(strcmp(name, "termSize") == 0)
+        obj = FTLEAttributes_SetTermSize(self, tuple);
+    else if(strcmp(name, "terminateByDistance") == 0)
+        obj = FTLEAttributes_SetTerminateByDistance(self, tuple);
+    else if(strcmp(name, "termDistance") == 0)
+        obj = FTLEAttributes_SetTermDistance(self, tuple);
+    else if(strcmp(name, "terminateByTime") == 0)
+        obj = FTLEAttributes_SetTerminateByTime(self, tuple);
+    else if(strcmp(name, "termTime") == 0)
+        obj = FTLEAttributes_SetTermTime(self, tuple);
+    else if(strcmp(name, "maxStepLength") == 0)
+        obj = FTLEAttributes_SetMaxStepLength(self, tuple);
+    else if(strcmp(name, "limitMaximumTimestep") == 0)
+        obj = FTLEAttributes_SetLimitMaximumTimestep(self, tuple);
+    else if(strcmp(name, "maxTimeStep") == 0)
+        obj = FTLEAttributes_SetMaxTimeStep(self, tuple);
+    else if(strcmp(name, "relTol") == 0)
+        obj = FTLEAttributes_SetRelTol(self, tuple);
+    else if(strcmp(name, "absTolSizeType") == 0)
+        obj = FTLEAttributes_SetAbsTolSizeType(self, tuple);
+    else if(strcmp(name, "absTolAbsolute") == 0)
+        obj = FTLEAttributes_SetAbsTolAbsolute(self, tuple);
+    else if(strcmp(name, "absTolBBox") == 0)
+        obj = FTLEAttributes_SetAbsTolBBox(self, tuple);
+    else if(strcmp(name, "fieldType") == 0)
+        obj = FTLEAttributes_SetFieldType(self, tuple);
+    else if(strcmp(name, "fieldConstant") == 0)
+        obj = FTLEAttributes_SetFieldConstant(self, tuple);
+    else if(strcmp(name, "velocitySource") == 0)
+        obj = FTLEAttributes_SetVelocitySource(self, tuple);
+    else if(strcmp(name, "integrationType") == 0)
+        obj = FTLEAttributes_SetIntegrationType(self, tuple);
+    else if(strcmp(name, "parallelizationAlgorithmType") == 0)
+        obj = FTLEAttributes_SetParallelizationAlgorithmType(self, tuple);
+    else if(strcmp(name, "maxProcessCount") == 0)
+        obj = FTLEAttributes_SetMaxProcessCount(self, tuple);
+    else if(strcmp(name, "maxDomainCacheSize") == 0)
+        obj = FTLEAttributes_SetMaxDomainCacheSize(self, tuple);
+    else if(strcmp(name, "workGroupSize") == 0)
+        obj = FTLEAttributes_SetWorkGroupSize(self, tuple);
+    else if(strcmp(name, "pathlines") == 0)
+        obj = FTLEAttributes_SetPathlines(self, tuple);
+    else if(strcmp(name, "pathlinesOverrideStartingTimeFlag") == 0)
+        obj = FTLEAttributes_SetPathlinesOverrideStartingTimeFlag(self, tuple);
+    else if(strcmp(name, "pathlinesOverrideStartingTime") == 0)
+        obj = FTLEAttributes_SetPathlinesOverrideStartingTime(self, tuple);
+    else if(strcmp(name, "pathlinesCMFE") == 0)
+        obj = FTLEAttributes_SetPathlinesCMFE(self, tuple);
+    else if(strcmp(name, "forceNodeCenteredData") == 0)
+        obj = FTLEAttributes_SetForceNodeCenteredData(self, tuple);
+    else if(strcmp(name, "issueTerminationWarnings") == 0)
+        obj = FTLEAttributes_SetIssueTerminationWarnings(self, tuple);
+    else if(strcmp(name, "issueStiffnessWarnings") == 0)
+        obj = FTLEAttributes_SetIssueStiffnessWarnings(self, tuple);
+    else if(strcmp(name, "issueCriticalPointsWarnings") == 0)
+        obj = FTLEAttributes_SetIssueCriticalPointsWarnings(self, tuple);
+    else if(strcmp(name, "criticalPointThreshold") == 0)
+        obj = FTLEAttributes_SetCriticalPointThreshold(self, tuple);
 
     if(obj != NULL)
         Py_DECREF(obj);

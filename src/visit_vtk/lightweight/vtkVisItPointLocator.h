@@ -54,7 +54,7 @@ public:
   // 25 points per bucket.
   static vtkVisItPointLocator *New();
 
-  vtkTypeRevisionMacro(vtkVisItPointLocator,vtkLocator);
+  vtkTypeMacro(vtkVisItPointLocator,vtkLocator);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
@@ -64,7 +64,7 @@ public:
 
   // Description:
   // Specify the average number of points in each bucket.
-  vtkSetClampMacro(NumberOfPointsPerBucket,int,1,VTK_LARGE_INTEGER);
+  vtkSetClampMacro(NumberOfPointsPerBucket,int,1,VTK_INT_MAX);
   vtkGetMacro(NumberOfPointsPerBucket,int);
 
   // Description:

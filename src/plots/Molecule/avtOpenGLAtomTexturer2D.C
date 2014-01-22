@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,18 +48,8 @@
 // the GLEW library is available so we can use shaders.
 //
 
-#ifndef VTK_IMPLEMENT_MESA_CXX
-  #include <visit-config.h>
-  #include <avtGLEWInitializer.h>
-  #if defined(__APPLE__) && (defined(VTK_USE_CARBON) || defined(VTK_USE_COCOA))
-    #include <OpenGL/gl.h>
-  #else
-    #if defined(_WIN32)
-       #include <windows.h>
-    #endif
-    #include <GL/gl.h>
-  #endif
-#endif
+#include <visit-config.h>
+#include <avtOpenGLExtensionManager.h>
 
 #define SPHERE_TEX_W 256
 #define SPHERE_TEX_H 256

@@ -5,24 +5,40 @@
 #include <vector>
 #include <iomanip> 
 #include <istream>
+#ifdef RC_CPP_VISIT_BUILD
 #include "DebugStream.h"
-#include "stringutil.h"  // for doubleToString
+#define rcdebug1 debug1
+#define rcdebug2 debug2
+#define rcdebug3 debug3
+#define rcdebug4 debug4
+#define rcdebug5 debug5
+#else
+#include "RCDebugStream.h"
+#endif
+#include "stringutil.h"
 
 namespace rclib {
-  using namespace std; // HOOKS_IGNORE
+  using namespace std;
   template <class T>
     struct Point {
       /*!
         default constructor
       */ 
       Point() {
-          int i=3; 
-          while (i--) mXYZ[i] = 0; 
+        Init(); 
         }
-      /*! 
+      /*!
+        default constructor
+      */ 
+      Point(vector<T> t) {
+        Init(); 
+        mXYZ = t; 
+        }
+       /*! 
         construct from three elements
       */ 
       Point(T t1, T t2, T t3) {
+        Init(); 
         mXYZ[0] = t1; 
         mXYZ[1] = t2; 
         mXYZ[2] = t3; 
@@ -30,28 +46,43 @@ namespace rclib {
       /*! 
         Yet another constructor
       */ 
-      Point(T t[3]) { int i=3;   while (i--) mXYZ[i] = t[i];  }      
-      /*! 
+      Point(const T t[3]) {  
+        Init(); 
+        int i=3;   
+        while (i--) mXYZ[i] = t[i]; 
+      }      
+ 
+ 
+     /*! 
         Yet another constructor -- e.g. to allow Point<float>(100).  Hopefully, does not cause problems with accidental construction per Effective C++.  
       */ 
       Point(T t) {
+        Init(); 
         int i=3; while (i--) mXYZ[i] = t; 
       } 
       /*! 
         Copy constructor
       */ 
       Point(const Point<T>&p) {
+        Init(); 
         *this = p; 
+      }
+      /*!
+        necessary bookkeeping for vectors
+      */ 
+      void Init(void) {
+        mXYZ.resize(3,0); 
       }
       /*!
         Accessor -- assumes xyz is allocated
       */ 
-      void Get(float *xyz) const {
+      void Get(T *xyz) const {
         int i=3; while (i--) {
           xyz[i] = mXYZ[i]; 
         }
         return;
       }
+
 
       /*!
         Assignment
@@ -224,7 +255,7 @@ namespace rclib {
       /*!
         The meat of the matter -- kept public for ease of use.  
       */ 
-      T mXYZ[3]; 
+      vector<T> mXYZ; 
     }; // end template struct Point
   template <class T> 
     const Point<T> operator +(const Point<T>&lhs, const Point<T>&rhs) {
@@ -321,18 +352,18 @@ namespace rclib {
       }
       if (newOrientation[axisNum] != 0) {
         if (newAxis != -1)  {
-          debug2 << "AxisSwitch: newOrientation is not aligned with an axis" << endl; 
+          rcdebug2 << "AxisSwitch: newOrientation is not aligned with an axis" << endl; 
           return false; 
         }
         newAxis = axisNum;
       }
     }
     if (newAxis == -1 || oldAxis == -1) {
-      debug2 << "AxisSwitch: One or both orientations do not align with an axis" << endl; 
+      rcdebug2 << "AxisSwitch: One or both orientations do not align with an axis" << endl; 
       return false; 
     }
     // So we're just switching axes, which is a trivial transformation computationally: 
-    debug1 << "AxisSwitch: old and new orientations are aligned with an axis, so transforming with simple axis rotation" << endl; 
+    rcdebug1 << "AxisSwitch: old and new orientations are aligned with an axis, so transforming with simple axis rotation" << endl; 
     int shft = newAxis - oldAxis; // spin in direction of axis "rotation"
     // declaring vector<Point<T> >::iterator is to make a declaration that itself depends on a template, so must use "typename" keyword to convince the compiler that I'm really declaring a type.  See Stroustrop sec 13.5, p 857
     typename vector<Point<T> >::iterator pos = pointsToRotate.begin(), endpos = pointsToRotate.end();
@@ -345,7 +376,7 @@ namespace rclib {
         tmpPt[newaxis] = (*pos)[axis]; 
       }
       firsttime = false; 
-      debug5 << "Point " << pos->Stringify() << " rotated to " << tmpPt.Stringify() << endl; 
+      rcdebug5 << "Point " << pos->Stringify() << " rotated to " << tmpPt.Stringify() << endl; 
       
       *pos = tmpPt; 
       
@@ -361,20 +392,20 @@ namespace rclib {
     void RotatePoints(Point<T> oldOrientation, Point<T> newOrientation, 
                         vector<Point<T> > &pointsToRotate) {
     
-    debug2 << "RotateCylinder( " << oldOrientation.Stringify() << " ---> " << newOrientation.Stringify() << " )" << endl; 
+    rcdebug2 << "RotateCylinder( " << oldOrientation.Stringify() << " ---> " << newOrientation.Stringify() << " )" << endl; 
     
     if (!oldOrientation || !newOrientation) {
       string err = string ("Error:  oldOrientation and newOrientation must both be nonzero, but oldOrientation is ") + oldOrientation.Stringify() + " and newOrientation is " + newOrientation.Stringify(); 
       throw err; 
     }
     if (oldOrientation == newOrientation) {
-      debug2 <<"newOrientation == oldOrientation, nothing to do" << endl; 
+      rcdebug2 <<"newOrientation == oldOrientation, nothing to do" << endl; 
       return; 
     }
     
     // First, if both old and new orientations are aligned along axes, then it's very simple: 
     if  (AxisSwitch(oldOrientation, newOrientation, pointsToRotate)) {
-      debug2 << "RotateCylinder done: AxisSwitch succeeded" << endl;
+      rcdebug2 << "RotateCylinder done: AxisSwitch succeeded" << endl;
       return;
     }
     

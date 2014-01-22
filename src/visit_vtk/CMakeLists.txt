@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -42,4 +42,9 @@ PROJECT(visit_vtk)
 
 ADD_SUBDIRECTORY(lightweight)
 ADD_SUBDIRECTORY(full)
+
+# if mesa is enabled, add our external mesa rendering lib
+IF(MESA_FOUND)
+    ADD_SUBDIRECTORY(osmesa)
+ENDIF(MESA_FOUND)
 

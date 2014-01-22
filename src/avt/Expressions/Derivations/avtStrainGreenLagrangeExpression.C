@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -96,7 +96,7 @@ avtStrainGreenLagrangeExpression::~avtStrainGreenLagrangeExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtStrainGreenLagrangeExpression::DeriveVariable (vtkDataSet *in_ds)
+avtStrainGreenLagrangeExpression::DeriveVariable (vtkDataSet *in_ds, int currentDomainsIndex)
 {
     char msg[1024];
     double vals[3];

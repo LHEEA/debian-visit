@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,7 +50,7 @@ class DBOptionsAttributes;
 // Read options
 const char *const PARADIS_MATERIAL_SET_CHOICE = "Material Set To Use";
 const char *const PARADIS_NN_ARM_THRESHOLD = "NN arm threshold (-1.0 means no threshold)"; 
-const char *const PARADIS_VERBOSITY = "ParaDIS reader verbosity (0-5)"; 
+const char *const PARADIS_VERBOSITY = "ParaDIS 2.3.4 reader verbosity (0-5)"; 
 const char *const PARADIS_DEBUG_FILE = "Debug file name"; 
 const char *const PARADIS_ENABLE_DEBUG_OUTPUT = "Create special debug output files";
 

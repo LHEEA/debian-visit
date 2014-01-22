@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -579,7 +579,7 @@ DatabasePluginManager::GetMatchingPluginIds(const char *filename, bool searchAll
     //
     string file_and_path = filename; 
     const char *fap = file_and_path.c_str();
-    int len = strlen(fap);
+    int len = (int)strlen(fap);
     int lastSlash = -1;
     for (i = len-1 ; i >= 0 ; i--)
     {
@@ -600,7 +600,7 @@ DatabasePluginManager::GetMatchingPluginIds(const char *filename, bool searchAll
     {
         string id = searchAll ? GetAllID(i) : GetEnabledID(i);
         vector<string> patterns = PluginFilePatterns(id);
-        int nPatterns = patterns.size();
+        int nPatterns = (int)patterns.size();
         bool foundMatch = false;
         for (int j=0; j<nPatterns && !foundMatch; j++)
         {

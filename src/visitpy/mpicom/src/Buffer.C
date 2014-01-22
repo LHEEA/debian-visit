@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -509,10 +509,12 @@ Buffer::PickleInit()
         return;
 
     pickleModule = PyImport_ImportModule("pickle");  // new ref
-    pickleDict   = PyModule_GetDict(pickleModule); // borrowed ref
-    pickleDumps  = PyDict_GetItemString(pickleDict, "dumps"); // borrowed ref
-    pickleLoads  = PyDict_GetItemString(pickleDict, "loads"); // borrowed ref
-
+    if( pickleModule )
+    {
+        pickleDict   = PyModule_GetDict(pickleModule); // borrowed ref
+        pickleDumps  = PyDict_GetItemString(pickleDict, "dumps"); // borrowed ref
+        pickleLoads  = PyDict_GetItemString(pickleDict, "loads"); // borrowed ref
+    }
 }
 
 /*****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -153,6 +153,118 @@ CurveAttributes::SymbolTypes_FromString(const std::string &s, CurveAttributes::S
     return false;
 }
 
+//
+// Enum conversion methods for CurveAttributes::CurveFillMode
+//
+
+static const char *CurveFillMode_strings[] = {
+"NoFill", "Solid", "HorizontalGradient", 
+"VerticalGradient"};
+
+std::string
+CurveAttributes::CurveFillMode_ToString(CurveAttributes::CurveFillMode t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 4) index = 0;
+    return CurveFillMode_strings[index];
+}
+
+std::string
+CurveAttributes::CurveFillMode_ToString(int t)
+{
+    int index = (t < 0 || t >= 4) ? 0 : t;
+    return CurveFillMode_strings[index];
+}
+
+bool
+CurveAttributes::CurveFillMode_FromString(const std::string &s, CurveAttributes::CurveFillMode &val)
+{
+    val = CurveAttributes::NoFill;
+    for(int i = 0; i < 4; ++i)
+    {
+        if(s == CurveFillMode_strings[i])
+        {
+            val = (CurveFillMode)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for CurveAttributes::PolarCoordinateOrder
+//
+
+static const char *PolarCoordinateOrder_strings[] = {
+"R_Theta", "Theta_R"};
+
+std::string
+CurveAttributes::PolarCoordinateOrder_ToString(CurveAttributes::PolarCoordinateOrder t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return PolarCoordinateOrder_strings[index];
+}
+
+std::string
+CurveAttributes::PolarCoordinateOrder_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return PolarCoordinateOrder_strings[index];
+}
+
+bool
+CurveAttributes::PolarCoordinateOrder_FromString(const std::string &s, CurveAttributes::PolarCoordinateOrder &val)
+{
+    val = CurveAttributes::R_Theta;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == PolarCoordinateOrder_strings[i])
+        {
+            val = (PolarCoordinateOrder)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for CurveAttributes::AngleUnits
+//
+
+static const char *AngleUnits_strings[] = {
+"Radians", "Degrees"};
+
+std::string
+CurveAttributes::AngleUnits_ToString(CurveAttributes::AngleUnits t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return AngleUnits_strings[index];
+}
+
+std::string
+CurveAttributes::AngleUnits_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return AngleUnits_strings[index];
+}
+
+bool
+CurveAttributes::AngleUnits_FromString(const std::string &s, CurveAttributes::AngleUnits &val)
+{
+    val = CurveAttributes::Radians;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == AngleUnits_strings[i])
+        {
+            val = (AngleUnits)i;
+            return true;
+        }
+    }
+    return false;
+}
+
 // ****************************************************************************
 // Method: CurveAttributes::CurveAttributes
 //
@@ -188,6 +300,10 @@ void CurveAttributes::Init()
     lineTimeCueWidth = 0;
     doCropTimeCue = false;
     timeForTimeCue = 0;
+    fillMode = NoFill;
+    polarToCartesian = false;
+    polarCoordinateOrder = R_Theta;
+    angleUnits = Radians;
 
     CurveAttributes::SelectAll();
 }
@@ -231,6 +347,12 @@ void CurveAttributes::Copy(const CurveAttributes &obj)
     lineTimeCueWidth = obj.lineTimeCueWidth;
     doCropTimeCue = obj.doCropTimeCue;
     timeForTimeCue = obj.timeForTimeCue;
+    fillMode = obj.fillMode;
+    fillColor1 = obj.fillColor1;
+    fillColor2 = obj.fillColor2;
+    polarToCartesian = obj.polarToCartesian;
+    polarCoordinateOrder = obj.polarCoordinateOrder;
+    angleUnits = obj.angleUnits;
 
     CurveAttributes::SelectAll();
 }
@@ -258,7 +380,8 @@ const AttributeGroup::private_tmfs_t CurveAttributes::TmfsStruct = {CURVEATTRIBU
 CurveAttributes::CurveAttributes() : 
     AttributeSubject(CurveAttributes::TypeMapFormatString),
     curveColor(0, 0, 0), ballTimeCueColor(0, 0, 0), 
-    lineTimeCueColor(0, 0, 0)
+    lineTimeCueColor(0, 0, 0), fillColor1(255, 0, 0), 
+    fillColor2(255, 100, 100)
 {
     CurveAttributes::Init();
 }
@@ -281,7 +404,8 @@ CurveAttributes::CurveAttributes() :
 CurveAttributes::CurveAttributes(private_tmfs_t tmfs) : 
     AttributeSubject(tmfs.tmfs),
     curveColor(0, 0, 0), ballTimeCueColor(0, 0, 0), 
-    lineTimeCueColor(0, 0, 0)
+    lineTimeCueColor(0, 0, 0), fillColor1(255, 0, 0), 
+    fillColor2(255, 100, 100)
 {
     CurveAttributes::Init();
 }
@@ -413,7 +537,13 @@ CurveAttributes::operator == (const CurveAttributes &obj) const
             (lineTimeCueColor == obj.lineTimeCueColor) &&
             (lineTimeCueWidth == obj.lineTimeCueWidth) &&
             (doCropTimeCue == obj.doCropTimeCue) &&
-            (timeForTimeCue == obj.timeForTimeCue));
+            (timeForTimeCue == obj.timeForTimeCue) &&
+            (fillMode == obj.fillMode) &&
+            (fillColor1 == obj.fillColor1) &&
+            (fillColor2 == obj.fillColor2) &&
+            (polarToCartesian == obj.polarToCartesian) &&
+            (polarCoordinateOrder == obj.polarCoordinateOrder) &&
+            (angleUnits == obj.angleUnits));
 }
 
 // ****************************************************************************
@@ -548,28 +678,34 @@ CurveAttributes::NewInstance(bool copy) const
 void
 CurveAttributes::SelectAll()
 {
-    Select(ID_showLines,        (void *)&showLines);
-    Select(ID_lineStyle,        (void *)&lineStyle);
-    Select(ID_lineWidth,        (void *)&lineWidth);
-    Select(ID_showPoints,       (void *)&showPoints);
-    Select(ID_symbol,           (void *)&symbol);
-    Select(ID_pointSize,        (void *)&pointSize);
-    Select(ID_pointFillMode,    (void *)&pointFillMode);
-    Select(ID_pointStride,      (void *)&pointStride);
-    Select(ID_symbolDensity,    (void *)&symbolDensity);
-    Select(ID_curveColorSource, (void *)&curveColorSource);
-    Select(ID_curveColor,       (void *)&curveColor);
-    Select(ID_showLegend,       (void *)&showLegend);
-    Select(ID_showLabels,       (void *)&showLabels);
-    Select(ID_designator,       (void *)&designator);
-    Select(ID_doBallTimeCue,    (void *)&doBallTimeCue);
-    Select(ID_ballTimeCueColor, (void *)&ballTimeCueColor);
-    Select(ID_timeCueBallSize,  (void *)&timeCueBallSize);
-    Select(ID_doLineTimeCue,    (void *)&doLineTimeCue);
-    Select(ID_lineTimeCueColor, (void *)&lineTimeCueColor);
-    Select(ID_lineTimeCueWidth, (void *)&lineTimeCueWidth);
-    Select(ID_doCropTimeCue,    (void *)&doCropTimeCue);
-    Select(ID_timeForTimeCue,   (void *)&timeForTimeCue);
+    Select(ID_showLines,            (void *)&showLines);
+    Select(ID_lineStyle,            (void *)&lineStyle);
+    Select(ID_lineWidth,            (void *)&lineWidth);
+    Select(ID_showPoints,           (void *)&showPoints);
+    Select(ID_symbol,               (void *)&symbol);
+    Select(ID_pointSize,            (void *)&pointSize);
+    Select(ID_pointFillMode,        (void *)&pointFillMode);
+    Select(ID_pointStride,          (void *)&pointStride);
+    Select(ID_symbolDensity,        (void *)&symbolDensity);
+    Select(ID_curveColorSource,     (void *)&curveColorSource);
+    Select(ID_curveColor,           (void *)&curveColor);
+    Select(ID_showLegend,           (void *)&showLegend);
+    Select(ID_showLabels,           (void *)&showLabels);
+    Select(ID_designator,           (void *)&designator);
+    Select(ID_doBallTimeCue,        (void *)&doBallTimeCue);
+    Select(ID_ballTimeCueColor,     (void *)&ballTimeCueColor);
+    Select(ID_timeCueBallSize,      (void *)&timeCueBallSize);
+    Select(ID_doLineTimeCue,        (void *)&doLineTimeCue);
+    Select(ID_lineTimeCueColor,     (void *)&lineTimeCueColor);
+    Select(ID_lineTimeCueWidth,     (void *)&lineTimeCueWidth);
+    Select(ID_doCropTimeCue,        (void *)&doCropTimeCue);
+    Select(ID_timeForTimeCue,       (void *)&timeForTimeCue);
+    Select(ID_fillMode,             (void *)&fillMode);
+    Select(ID_fillColor1,           (void *)&fillColor1);
+    Select(ID_fillColor2,           (void *)&fillColor2);
+    Select(ID_polarToCartesian,     (void *)&polarToCartesian);
+    Select(ID_polarCoordinateOrder, (void *)&polarCoordinateOrder);
+    Select(ID_angleUnits,           (void *)&angleUnits);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -740,6 +876,46 @@ CurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceA
         node->AddNode(new DataNode("timeForTimeCue", timeForTimeCue));
     }
 
+    if(completeSave || !FieldsEqual(ID_fillMode, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("fillMode", CurveFillMode_ToString(fillMode)));
+    }
+
+        DataNode *fillColor1Node = new DataNode("fillColor1");
+        if(fillColor1.CreateNode(fillColor1Node, completeSave, true))
+        {
+            addToParent = true;
+            node->AddNode(fillColor1Node);
+        }
+        else
+            delete fillColor1Node;
+        DataNode *fillColor2Node = new DataNode("fillColor2");
+        if(fillColor2.CreateNode(fillColor2Node, completeSave, true))
+        {
+            addToParent = true;
+            node->AddNode(fillColor2Node);
+        }
+        else
+            delete fillColor2Node;
+    if(completeSave || !FieldsEqual(ID_polarToCartesian, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("polarToCartesian", polarToCartesian));
+    }
+
+    if(completeSave || !FieldsEqual(ID_polarCoordinateOrder, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("polarCoordinateOrder", PolarCoordinateOrder_ToString(polarCoordinateOrder)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_angleUnits, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("angleUnits", AngleUnits_ToString(angleUnits)));
+    }
+
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -862,6 +1038,60 @@ CurveAttributes::SetFromNode(DataNode *parentNode)
         SetDoCropTimeCue(node->AsBool());
     if((node = searchNode->GetNode("timeForTimeCue")) != 0)
         SetTimeForTimeCue(node->AsDouble());
+    if((node = searchNode->GetNode("fillMode")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 4)
+                SetFillMode(CurveFillMode(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            CurveFillMode value;
+            if(CurveFillMode_FromString(node->AsString(), value))
+                SetFillMode(value);
+        }
+    }
+    if((node = searchNode->GetNode("fillColor1")) != 0)
+        fillColor1.SetFromNode(node);
+    if((node = searchNode->GetNode("fillColor2")) != 0)
+        fillColor2.SetFromNode(node);
+    if((node = searchNode->GetNode("polarToCartesian")) != 0)
+        SetPolarToCartesian(node->AsBool());
+    if((node = searchNode->GetNode("polarCoordinateOrder")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetPolarCoordinateOrder(PolarCoordinateOrder(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            PolarCoordinateOrder value;
+            if(PolarCoordinateOrder_FromString(node->AsString(), value))
+                SetPolarCoordinateOrder(value);
+        }
+    }
+    if((node = searchNode->GetNode("angleUnits")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetAngleUnits(AngleUnits(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            AngleUnits value;
+            if(AngleUnits_FromString(node->AsString(), value))
+                SetAngleUnits(value);
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1020,6 +1250,48 @@ CurveAttributes::SetTimeForTimeCue(double timeForTimeCue_)
 {
     timeForTimeCue = timeForTimeCue_;
     Select(ID_timeForTimeCue, (void *)&timeForTimeCue);
+}
+
+void
+CurveAttributes::SetFillMode(CurveAttributes::CurveFillMode fillMode_)
+{
+    fillMode = fillMode_;
+    Select(ID_fillMode, (void *)&fillMode);
+}
+
+void
+CurveAttributes::SetFillColor1(const ColorAttribute &fillColor1_)
+{
+    fillColor1 = fillColor1_;
+    Select(ID_fillColor1, (void *)&fillColor1);
+}
+
+void
+CurveAttributes::SetFillColor2(const ColorAttribute &fillColor2_)
+{
+    fillColor2 = fillColor2_;
+    Select(ID_fillColor2, (void *)&fillColor2);
+}
+
+void
+CurveAttributes::SetPolarToCartesian(bool polarToCartesian_)
+{
+    polarToCartesian = polarToCartesian_;
+    Select(ID_polarToCartesian, (void *)&polarToCartesian);
+}
+
+void
+CurveAttributes::SetPolarCoordinateOrder(CurveAttributes::PolarCoordinateOrder polarCoordinateOrder_)
+{
+    polarCoordinateOrder = polarCoordinateOrder_;
+    Select(ID_polarCoordinateOrder, (void *)&polarCoordinateOrder);
+}
+
+void
+CurveAttributes::SetAngleUnits(CurveAttributes::AngleUnits angleUnits_)
+{
+    angleUnits = angleUnits_;
+    Select(ID_angleUnits, (void *)&angleUnits);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1182,6 +1454,54 @@ CurveAttributes::GetTimeForTimeCue() const
     return timeForTimeCue;
 }
 
+CurveAttributes::CurveFillMode
+CurveAttributes::GetFillMode() const
+{
+    return CurveFillMode(fillMode);
+}
+
+const ColorAttribute &
+CurveAttributes::GetFillColor1() const
+{
+    return fillColor1;
+}
+
+ColorAttribute &
+CurveAttributes::GetFillColor1()
+{
+    return fillColor1;
+}
+
+const ColorAttribute &
+CurveAttributes::GetFillColor2() const
+{
+    return fillColor2;
+}
+
+ColorAttribute &
+CurveAttributes::GetFillColor2()
+{
+    return fillColor2;
+}
+
+bool
+CurveAttributes::GetPolarToCartesian() const
+{
+    return polarToCartesian;
+}
+
+CurveAttributes::PolarCoordinateOrder
+CurveAttributes::GetPolarCoordinateOrder() const
+{
+    return PolarCoordinateOrder(polarCoordinateOrder);
+}
+
+CurveAttributes::AngleUnits
+CurveAttributes::GetAngleUnits() const
+{
+    return AngleUnits(angleUnits);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Select property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1210,6 +1530,18 @@ CurveAttributes::SelectLineTimeCueColor()
     Select(ID_lineTimeCueColor, (void *)&lineTimeCueColor);
 }
 
+void
+CurveAttributes::SelectFillColor1()
+{
+    Select(ID_fillColor1, (void *)&fillColor1);
+}
+
+void
+CurveAttributes::SelectFillColor2()
+{
+    Select(ID_fillColor2, (void *)&fillColor2);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Keyframing methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1234,28 +1566,34 @@ CurveAttributes::GetFieldName(int index) const
 {
     switch (index)
     {
-    case ID_showLines:        return "showLines";
-    case ID_lineStyle:        return "lineStyle";
-    case ID_lineWidth:        return "lineWidth";
-    case ID_showPoints:       return "showPoints";
-    case ID_symbol:           return "symbol";
-    case ID_pointSize:        return "pointSize";
-    case ID_pointFillMode:    return "pointFillMode";
-    case ID_pointStride:      return "pointStride";
-    case ID_symbolDensity:    return "symbolDensity";
-    case ID_curveColorSource: return "curveColorSource";
-    case ID_curveColor:       return "curveColor";
-    case ID_showLegend:       return "showLegend";
-    case ID_showLabels:       return "showLabels";
-    case ID_designator:       return "designator";
-    case ID_doBallTimeCue:    return "doBallTimeCue";
-    case ID_ballTimeCueColor: return "ballTimeCueColor";
-    case ID_timeCueBallSize:  return "timeCueBallSize";
-    case ID_doLineTimeCue:    return "doLineTimeCue";
-    case ID_lineTimeCueColor: return "lineTimeCueColor";
-    case ID_lineTimeCueWidth: return "lineTimeCueWidth";
-    case ID_doCropTimeCue:    return "doCropTimeCue";
-    case ID_timeForTimeCue:   return "timeForTimeCue";
+    case ID_showLines:            return "showLines";
+    case ID_lineStyle:            return "lineStyle";
+    case ID_lineWidth:            return "lineWidth";
+    case ID_showPoints:           return "showPoints";
+    case ID_symbol:               return "symbol";
+    case ID_pointSize:            return "pointSize";
+    case ID_pointFillMode:        return "pointFillMode";
+    case ID_pointStride:          return "pointStride";
+    case ID_symbolDensity:        return "symbolDensity";
+    case ID_curveColorSource:     return "curveColorSource";
+    case ID_curveColor:           return "curveColor";
+    case ID_showLegend:           return "showLegend";
+    case ID_showLabels:           return "showLabels";
+    case ID_designator:           return "designator";
+    case ID_doBallTimeCue:        return "doBallTimeCue";
+    case ID_ballTimeCueColor:     return "ballTimeCueColor";
+    case ID_timeCueBallSize:      return "timeCueBallSize";
+    case ID_doLineTimeCue:        return "doLineTimeCue";
+    case ID_lineTimeCueColor:     return "lineTimeCueColor";
+    case ID_lineTimeCueWidth:     return "lineTimeCueWidth";
+    case ID_doCropTimeCue:        return "doCropTimeCue";
+    case ID_timeForTimeCue:       return "timeForTimeCue";
+    case ID_fillMode:             return "fillMode";
+    case ID_fillColor1:           return "fillColor1";
+    case ID_fillColor2:           return "fillColor2";
+    case ID_polarToCartesian:     return "polarToCartesian";
+    case ID_polarCoordinateOrder: return "polarCoordinateOrder";
+    case ID_angleUnits:           return "angleUnits";
     default:  return "invalid index";
     }
 }
@@ -1280,28 +1618,34 @@ CurveAttributes::GetFieldType(int index) const
 {
     switch (index)
     {
-    case ID_showLines:        return FieldType_bool;
-    case ID_lineStyle:        return FieldType_linestyle;
-    case ID_lineWidth:        return FieldType_linewidth;
-    case ID_showPoints:       return FieldType_bool;
-    case ID_symbol:           return FieldType_enum;
-    case ID_pointSize:        return FieldType_double;
-    case ID_pointFillMode:    return FieldType_enum;
-    case ID_pointStride:      return FieldType_int;
-    case ID_symbolDensity:    return FieldType_int;
-    case ID_curveColorSource: return FieldType_enum;
-    case ID_curveColor:       return FieldType_color;
-    case ID_showLegend:       return FieldType_bool;
-    case ID_showLabels:       return FieldType_bool;
-    case ID_designator:       return FieldType_string;
-    case ID_doBallTimeCue:    return FieldType_bool;
-    case ID_ballTimeCueColor: return FieldType_color;
-    case ID_timeCueBallSize:  return FieldType_double;
-    case ID_doLineTimeCue:    return FieldType_bool;
-    case ID_lineTimeCueColor: return FieldType_color;
-    case ID_lineTimeCueWidth: return FieldType_int;
-    case ID_doCropTimeCue:    return FieldType_bool;
-    case ID_timeForTimeCue:   return FieldType_double;
+    case ID_showLines:            return FieldType_bool;
+    case ID_lineStyle:            return FieldType_linestyle;
+    case ID_lineWidth:            return FieldType_linewidth;
+    case ID_showPoints:           return FieldType_bool;
+    case ID_symbol:               return FieldType_enum;
+    case ID_pointSize:            return FieldType_double;
+    case ID_pointFillMode:        return FieldType_enum;
+    case ID_pointStride:          return FieldType_int;
+    case ID_symbolDensity:        return FieldType_int;
+    case ID_curveColorSource:     return FieldType_enum;
+    case ID_curveColor:           return FieldType_color;
+    case ID_showLegend:           return FieldType_bool;
+    case ID_showLabels:           return FieldType_bool;
+    case ID_designator:           return FieldType_string;
+    case ID_doBallTimeCue:        return FieldType_bool;
+    case ID_ballTimeCueColor:     return FieldType_color;
+    case ID_timeCueBallSize:      return FieldType_double;
+    case ID_doLineTimeCue:        return FieldType_bool;
+    case ID_lineTimeCueColor:     return FieldType_color;
+    case ID_lineTimeCueWidth:     return FieldType_int;
+    case ID_doCropTimeCue:        return FieldType_bool;
+    case ID_timeForTimeCue:       return FieldType_double;
+    case ID_fillMode:             return FieldType_enum;
+    case ID_fillColor1:           return FieldType_color;
+    case ID_fillColor2:           return FieldType_color;
+    case ID_polarToCartesian:     return FieldType_bool;
+    case ID_polarCoordinateOrder: return FieldType_enum;
+    case ID_angleUnits:           return FieldType_enum;
     default:  return FieldType_unknown;
     }
 }
@@ -1326,28 +1670,34 @@ CurveAttributes::GetFieldTypeName(int index) const
 {
     switch (index)
     {
-    case ID_showLines:        return "bool";
-    case ID_lineStyle:        return "linestyle";
-    case ID_lineWidth:        return "linewidth";
-    case ID_showPoints:       return "bool";
-    case ID_symbol:           return "enum";
-    case ID_pointSize:        return "double";
-    case ID_pointFillMode:    return "enum";
-    case ID_pointStride:      return "int";
-    case ID_symbolDensity:    return "int";
-    case ID_curveColorSource: return "enum";
-    case ID_curveColor:       return "color";
-    case ID_showLegend:       return "bool";
-    case ID_showLabels:       return "bool";
-    case ID_designator:       return "string";
-    case ID_doBallTimeCue:    return "bool";
-    case ID_ballTimeCueColor: return "color";
-    case ID_timeCueBallSize:  return "double";
-    case ID_doLineTimeCue:    return "bool";
-    case ID_lineTimeCueColor: return "color";
-    case ID_lineTimeCueWidth: return "int";
-    case ID_doCropTimeCue:    return "bool";
-    case ID_timeForTimeCue:   return "double";
+    case ID_showLines:            return "bool";
+    case ID_lineStyle:            return "linestyle";
+    case ID_lineWidth:            return "linewidth";
+    case ID_showPoints:           return "bool";
+    case ID_symbol:               return "enum";
+    case ID_pointSize:            return "double";
+    case ID_pointFillMode:        return "enum";
+    case ID_pointStride:          return "int";
+    case ID_symbolDensity:        return "int";
+    case ID_curveColorSource:     return "enum";
+    case ID_curveColor:           return "color";
+    case ID_showLegend:           return "bool";
+    case ID_showLabels:           return "bool";
+    case ID_designator:           return "string";
+    case ID_doBallTimeCue:        return "bool";
+    case ID_ballTimeCueColor:     return "color";
+    case ID_timeCueBallSize:      return "double";
+    case ID_doLineTimeCue:        return "bool";
+    case ID_lineTimeCueColor:     return "color";
+    case ID_lineTimeCueWidth:     return "int";
+    case ID_doCropTimeCue:        return "bool";
+    case ID_timeForTimeCue:       return "double";
+    case ID_fillMode:             return "enum";
+    case ID_fillColor1:           return "color";
+    case ID_fillColor2:           return "color";
+    case ID_polarToCartesian:     return "bool";
+    case ID_polarCoordinateOrder: return "enum";
+    case ID_angleUnits:           return "enum";
     default:  return "invalid index";
     }
 }
@@ -1484,6 +1834,36 @@ CurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (timeForTimeCue == obj.timeForTimeCue);
         }
         break;
+    case ID_fillMode:
+        {  // new scope
+        retval = (fillMode == obj.fillMode);
+        }
+        break;
+    case ID_fillColor1:
+        {  // new scope
+        retval = (fillColor1 == obj.fillColor1);
+        }
+        break;
+    case ID_fillColor2:
+        {  // new scope
+        retval = (fillColor2 == obj.fillColor2);
+        }
+        break;
+    case ID_polarToCartesian:
+        {  // new scope
+        retval = (polarToCartesian == obj.polarToCartesian);
+        }
+        break;
+    case ID_polarCoordinateOrder:
+        {  // new scope
+        retval = (polarCoordinateOrder == obj.polarCoordinateOrder);
+        }
+        break;
+    case ID_angleUnits:
+        {  // new scope
+        retval = (angleUnits == obj.angleUnits);
+        }
+        break;
     default: retval = false;
     }
 
@@ -1494,9 +1874,20 @@ CurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 // User-defined methods.
 ///////////////////////////////////////////////////////////////////////////////
 
+// ****************************************************************************
+//
+// Modifications:
+//    Kathleen Biagas, Wed Sep 11 17:16:26 PDT 2013
+//    Return true if converting coordinates.
+//
+// ****************************************************************************
+
 bool
 CurveAttributes::ChangesRequireRecalculation(const CurveAttributes &obj) const
 {
+    if (polarToCartesian != obj.polarToCartesian) return true;
+    if (angleUnits != obj.angleUnits && obj.polarToCartesian) return true;
+    if (polarCoordinateOrder != obj.polarCoordinateOrder && obj.polarToCartesian) return true;
     return false;
 }
 

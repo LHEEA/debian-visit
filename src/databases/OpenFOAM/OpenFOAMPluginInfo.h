@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -82,6 +82,8 @@ class OpenFOAMCommonPluginInfo : public virtual CommonDatabasePluginInfo, public
     virtual DatabaseType              GetDatabaseType();
     virtual avtDatabase              *SetupDatabase(const char * const *list,
                                                     int nList, int nBlock);
+    virtual DBOptionsAttributes *GetReadOptions() const;
+    virtual DBOptionsAttributes *GetWriteOptions() const;
 };
 
 class OpenFOAMMDServerPluginInfo : public virtual MDServerDatabasePluginInfo, public virtual OpenFOAMCommonPluginInfo

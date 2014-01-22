@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -211,7 +211,6 @@ public:
 
     // User-defined methods
     const ColorAttribute GetDiscernibleBackgroundColor() const;
-    virtual void ProcessOldVersions(DataNode *parentNode, const char *configVersion);
 
     // IDs that can be used to identify fields in case statements
     enum {

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -358,6 +358,12 @@ ResampleGrid(vtkRectilinearGrid *rgrid, float *ptr, float *samples, int numCompo
 //    Hank Childs, Mon Dec 10 11:37:32 PST 2012
 //    Add support for double precision.
 //
+//    Mark C. Miller, Sun Dec 16 17:34:17 PST 2012
+//    Fix potential leak of ptr array on early returns.
+//
+//    Brad Whitlock, Fri Apr 12 15:42:36 PDT 2013
+//    Use gzFile instead of void* for gz_handle.
+//
 // ****************************************************************************
 
 void
@@ -587,12 +593,14 @@ avtBOVWriter::WriteChunk(vtkDataSet *ds, int chunk)
         //
         if(stem.empty())
         {
+            if (deletePtr) delete [] ptr;
             EXCEPTION1(InvalidFilesException,
                        "Could not figure out stem filename.");
         }
         FILE *file_handle = fopen(stem.c_str(), "w");
         if(file_handle == NULL)
         {
+            if (deletePtr) delete [] ptr;
             EXCEPTION1(InvalidFilesException,
                        "Could not open stem file.  Do you lack write access "
                        "on the destination filesystem?");
@@ -632,7 +640,7 @@ avtBOVWriter::WriteChunk(vtkDataSet *ds, int chunk)
                         char fmt[1024];
                         sprintf(fmt, "%s_%%0.%dd.bof.gz", stem.c_str(), numDecimals);
                         sprintf(str, fmt, brick);
-                        void *gz_handle = gzopen(str, "w");
+                        gzFile gz_handle = gzopen(str, "w");
                         gzwrite(gz_handle, samples, 
                                 vals_per_bricklet*sizeof(float));
                         gzclose(gz_handle);

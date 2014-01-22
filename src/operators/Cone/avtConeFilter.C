@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,13 +54,15 @@
 #include <vtkIdList.h>
 #include <vtkImplicitBoolean.h>
 #include <vtkImplicitFunction.h>
+#include <vtkInformation.h>
+#include <vtkInformationVector.h>
 #include <vtkMath.h>
 #include <vtkMatrixToLinearTransform.h>
 #include <vtkObjectFactory.h>
 #include <vtkPlane.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
-#include <vtkPolyDataToPolyDataFilter.h>
+#include <vtkPolyDataAlgorithm.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkTransform.h>
 #include <vtkTransformPolyDataFilter.h>
@@ -88,30 +90,54 @@ void      ProjectExtents(double *, vtkTransformPolyDataFilter *, vtkVisItCutter 
 // It also make assumptions about cells that are incident to the origin and
 // bloats them out in a way that makes "prettier pictures".
 //
-class vtkPolarTransformFilter : public vtkPolyDataToPolyDataFilter
+class vtkPolarTransformFilter : public vtkPolyDataAlgorithm
 {
 public:
+  vtkTypeMacro(vtkPolarTransformFilter,vtkPolyDataAlgorithm);
+  void PrintSelf(ostream& os, vtkIndent indent);
+
   static vtkPolarTransformFilter *New();
+
 protected:
   vtkPolarTransformFilter() {;};
   ~vtkPolarTransformFilter() {;};
 
-  void Execute();
+  virtual int RequestData(vtkInformation *,
+                          vtkInformationVector **,
+                          vtkInformationVector *);
+
 private:
   vtkPolarTransformFilter(const vtkPolarTransformFilter&);  //Not implemented.
   void operator=(const vtkPolarTransformFilter&);  // Not implemented.
 };
 
+
 vtkStandardNewMacro(vtkPolarTransformFilter);
 
-void
-vtkPolarTransformFilter::Execute(void)
+
+int
+vtkPolarTransformFilter::RequestData(
+    vtkInformation *vtkNotUsed(request),
+    vtkInformationVector **inputVector,
+    vtkInformationVector *outputVector)
 {
+    vtkDebugMacro(<<"Executing vtkPolarTransformFilter");
+
+    // get the info objects
+    vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
+    vtkInformation *outInfo = outputVector->GetInformationObject(0);
+
+    //
+    // Initialize some frequently used values.
+    //
+    vtkPolyData *input  = vtkPolyData::SafeDownCast(
+        inInfo->Get(vtkDataObject::DATA_OBJECT()));
+    vtkPolyData *output = vtkPolyData::SafeDownCast(
+        outInfo->Get(vtkDataObject::DATA_OBJECT()));
+
     int   i, j;
 
     // This assumes that the data has already been projected to 2D.
-    vtkPolyData *input = this->GetInput();
-    vtkPolyData *output = this->GetOutput();
     vtkIdType nPts   = input->GetNumberOfPoints();
     vtkIdType nCells = input->GetNumberOfCells();
 
@@ -290,6 +316,20 @@ vtkPolarTransformFilter::Execute(void)
     outPD->Squeeze();
     output->Squeeze();
     newPts->Delete();
+
+    return 1;
+}
+
+
+// ****************************************************************************
+//  Method: vtkPolarTransformFilter::PrintSelf
+//
+// ****************************************************************************
+
+void
+vtkPolarTransformFilter::PrintSelf(ostream& os, vtkIndent indent)
+{
+    this->Superclass::PrintSelf(os,indent);
 }
 
 
@@ -304,25 +344,45 @@ vtkPolarTransformFilter::Execute(void)
 //    Use vtkVisitCutter (instead of vtkCutter), since it has logic to better
 //    handle CellData.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Moved the creation of objects to CreateVTKObjects. This was done for the
+//    threading of VisIt.
+//
 // ****************************************************************************
 
 avtConeFilter::avtConeFilter()
 {
-    cone = vtkCone::New();
-    plane = vtkPlane::New();
-    allFunctions = vtkImplicitBoolean::New();
-    allFunctions->AddFunction(cone);
-    allFunctions->AddFunction(plane);
-    allFunctions->SetOperationTypeToIntersection();
-    cutter = vtkVisItCutter::New();
-    cutter->SetCutFunction(allFunctions);
-    transform = vtkTransformPolyDataFilter::New();
-    polar = vtkPolarTransformFilter::New();
+}
+
+// ****************************************************************************
+//  Method: avtConeFilter constructor
+//
+//  Purpose:
+//      Create all VTK objects.
+//
+//  Programmer: David Camp
+//  Creation:   Thu May 23 12:52:53 PDT 2013
+//
+//  Modifications:
+//
+// ****************************************************************************
+void avtConeFilter::CreateVTKObjects(avtConeFilterVTKObjects &obj)
+{
+    obj.cone = vtkCone::New();
+    obj.plane = vtkPlane::New();
+    obj.allFunctions = vtkImplicitBoolean::New();
+    obj.allFunctions->AddFunction(obj.cone);
+    obj.allFunctions->AddFunction(obj.plane);
+    obj.allFunctions->SetOperationTypeToIntersection();
+    obj.cutter = vtkVisItCutter::New();
+    obj.cutter->SetCutFunction(obj.allFunctions);
+    obj.transform = vtkTransformPolyDataFilter::New();
+    obj.polar = vtkPolarTransformFilter::New();
 
     //
     // We have enough information to set up the clipOffSides in entirety.
     //
-    clipOffSides = vtkClipPolyData::New();
+    obj.clipOffSides = vtkClipPolyData::New();
     vtkImplicitBoolean *clipPlane = vtkImplicitBoolean::New();
 
     vtkPlane *leftPlane = vtkPlane::New();
@@ -338,8 +398,8 @@ avtConeFilter::avtConeFilter()
     clipPlane->SetOperationTypeToUnion();  // I think this should be
                                            // intersection, but that doesn't
                                            // work.  Union does.
-    clipOffSides->SetClipFunction(clipPlane);
-    clipOffSides->DebugOn();
+    obj.clipOffSides->SetClipFunction(clipPlane);
+    obj.clipOffSides->DebugOn();
 
     leftPlane->Delete();
     rightPlane->Delete();
@@ -348,17 +408,21 @@ avtConeFilter::avtConeFilter()
     //
     // We may want to clip off the end of the cone (if the user specifies to).
     //
-    clipByLength = vtkClipPolyData::New();
-    planeToClipByLength = vtkPlane::New();
-    clipByLength->SetClipFunction(planeToClipByLength);
+    obj.clipByLength = vtkClipPolyData::New();
+    obj.planeToClipByLength = vtkPlane::New();
+    obj.clipByLength->SetClipFunction(obj.planeToClipByLength);
 
     //
     // We have to play tricks in terms of splitting points to make our cone
     // look good after it is split.
     //
-    clipBottom = vtkClipPolyData::New();
-    planeToClipBottom = vtkPlane::New();
-    clipBottom->SetClipFunction(planeToClipBottom);
+    obj.clipBottom = vtkClipPolyData::New();
+    obj.planeToClipBottom = vtkPlane::New();
+    obj.clipBottom->SetClipFunction(obj.planeToClipBottom);
+
+    SetUpCone(obj);
+    SetUpProjection(obj);
+    SetUpClipping(obj);
 }
 
 
@@ -374,60 +438,77 @@ avtConeFilter::avtConeFilter()
 
 avtConeFilter::~avtConeFilter()
 {
-    if (clipOffSides != NULL)
+}
+
+// ****************************************************************************
+//  Method: avtConeFilter destructor
+//
+//  Purpose:
+//      Destroy all VTK objects.
+//
+//  Programmer: David Camp
+//  Creation:   Thu May 23 12:52:53 PDT 2013
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void avtConeFilter::DestroyVTKObjects(avtConeFilterVTKObjects &obj)
+{
+    if (obj.clipOffSides != NULL)
     {
-        clipOffSides->Delete();
-        clipOffSides = NULL;
+        obj.clipOffSides->Delete();
+        obj.clipOffSides = NULL;
     }
-    if (cone != NULL)
+    if (obj.cone != NULL)
     {
-        cone->Delete();
-        cone = NULL;
+        obj.cone->Delete();
+        obj.cone = NULL;
     }
-    if (cutter != NULL)
+    if (obj.cutter != NULL)
     {
-        cutter->Delete();
-        cutter = NULL;
+        obj.cutter->Delete();
+        obj.cutter = NULL;
     }
-    if (allFunctions != NULL)
+    if (obj.allFunctions != NULL)
     {
-        allFunctions->Delete();
-        allFunctions = NULL;
+        obj.allFunctions->Delete();
+        obj.allFunctions = NULL;
     }
-    if (plane != NULL)
+    if (obj.plane != NULL)
     {
-        plane->Delete();
-        plane = NULL;
+        obj.plane->Delete();
+        obj.plane = NULL;
     }
-    if (polar != NULL)
+    if (obj.polar != NULL)
     {
-        polar->Delete();
-        polar = NULL;
+        obj.polar->Delete();
+        obj.polar = NULL;
     }
-    if (transform != NULL)
+    if (obj.transform != NULL)
     {
-        transform->Delete();
-        transform = NULL;
+        obj.transform->Delete();
+        obj.transform = NULL;
     }
-    if (clipBottom != NULL)
+    if (obj.clipBottom != NULL)
     {
-        clipBottom->Delete();
-        clipBottom = NULL;
+        obj.clipBottom->Delete();
+        obj.clipBottom = NULL;
     }
-    if (planeToClipBottom != NULL)
+    if (obj.planeToClipBottom != NULL)
     {
-        planeToClipBottom->Delete();
-        planeToClipBottom = NULL;
+        obj.planeToClipBottom->Delete();
+        obj.planeToClipBottom = NULL;
     }
-    if (clipByLength != NULL)
+    if (obj.clipByLength != NULL)
     {
-        clipByLength->Delete();
-        clipByLength = NULL;
+        obj.clipByLength->Delete();
+        obj.clipByLength = NULL;
     }
-    if (planeToClipByLength != NULL)
+    if (obj.planeToClipByLength != NULL)
     {
-        planeToClipByLength->Delete();
-        planeToClipByLength = NULL;
+        obj.planeToClipByLength->Delete();
+        obj.planeToClipByLength = NULL;
     }
 }
 
@@ -463,6 +544,9 @@ avtConeFilter::Create()
 //    Kathleen Bonnell, Tue May 20 16:02:52 PDT 2003 
 //    Added tests for bad normal, upAxis.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Moved the SetUp* functions to the VTK create function.
+//
 // ****************************************************************************
 
 void
@@ -485,9 +569,6 @@ avtConeFilter::SetAtts(const AttributeGroup *a)
             return;
         }
     }
-    SetUpCone();
-    SetUpProjection();
-    SetUpClipping();
 }
 
 
@@ -500,12 +581,16 @@ avtConeFilter::SetAtts(const AttributeGroup *a)
 //  Programmer: Hank Childs
 //  Creation:   May 31, 2002
 //
+//  Modifications:
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Changed function to be thread safe, by passing in object to work on.
+//
 // ****************************************************************************
 
 void
-avtConeFilter::SetUpCone(void)
+avtConeFilter::SetUpCone(avtConeFilterVTKObjects &obj)
 {
-    cone->SetAngle(atts.GetAngle());
+    obj.cone->SetAngle(atts.GetAngle());
 
     //
     // The VTK cone must be set up as something that goes along the x-axis.
@@ -539,7 +624,7 @@ avtConeFilter::SetUpCone(void)
         double angle = vtkMath::DegreesFromRadians(-acos(dot));
         trans->RotateWXYZ(angle, cross[0], cross[1], cross[2]);
     }
-    cone->SetTransform(trans);
+    obj.cone->SetTransform(trans);
     trans->Translate(-origin[0], -origin[1], -origin[2]);
     trans->Delete();
 
@@ -547,8 +632,8 @@ avtConeFilter::SetUpCone(void)
     // VTK only seems to be happy if we use the "-" normal.  I'm not sure why
     // this is.
     //
-    plane->SetNormal(-normal[0], -normal[1], -normal[2]);
-    plane->SetOrigin(origin[0], origin[1], origin[2]);
+    obj.plane->SetNormal(-normal[0], -normal[1], -normal[2]);
+    obj.plane->SetOrigin(origin[0], origin[1], origin[2]);
 }
 
 
@@ -577,10 +662,13 @@ avtConeFilter::SetUpCone(void)
 //    Kathleen Bonnell, Fri May 13 15:03:26 PDT 2005
 //    Fix memory leak. 
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Changed function to be thread safe, by passing in object to work on.
+//
 // ****************************************************************************
 
 void
-avtConeFilter::SetUpProjection(void)
+avtConeFilter::SetUpProjection(avtConeFilterVTKObjects &obj)
 {
     const double *Cnormal = atts.GetNormal();
     const double *Cupaxis = atts.GetUpAxis();
@@ -674,7 +762,7 @@ avtConeFilter::SetUpProjection(void)
     mtlt->SetInput(result_transposed);
     result_transposed->Delete();
  
-    transform->SetTransform(mtlt);
+    obj.transform->SetTransform(mtlt);
     mtlt->Delete();
 
     float zdim[4];
@@ -698,10 +786,14 @@ avtConeFilter::SetUpProjection(void)
 //  Programmer: Hank Childs
 //  Creation:   June 3, 2002
 //
+//  Modifications:
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Changed function to be thread safe, by passing in object to work on.
+//
 // ****************************************************************************
 
 void
-avtConeFilter::SetUpClipping(void)
+avtConeFilter::SetUpClipping(avtConeFilterVTKObjects &obj)
 {
     //
     // If we clip by a small amount away from the origin, our conversion to
@@ -718,8 +810,8 @@ avtConeFilter::SetUpClipping(void)
     fnormal[0] = normal[0];
     fnormal[1] = normal[1];
     fnormal[2] = normal[2];
-    planeToClipBottom->SetOrigin(shiftedOrigin);
-    planeToClipBottom->SetNormal(fnormal);
+    obj.planeToClipBottom->SetOrigin(shiftedOrigin);
+    obj.planeToClipBottom->SetNormal(fnormal);
 
     //
     // The user may decide to cut off the cone after a certain length.  At the
@@ -734,8 +826,8 @@ avtConeFilter::SetUpClipping(void)
     fnormal[0] = -normal[0];
     fnormal[1] = -normal[1];
     fnormal[2] = -normal[2];
-    planeToClipByLength->SetOrigin(shiftedOrigin);
-    planeToClipByLength->SetNormal(fnormal);
+    obj.planeToClipByLength->SetOrigin(shiftedOrigin);
+    obj.planeToClipByLength->SetNormal(fnormal);
 }
 
 
@@ -782,23 +874,30 @@ avtConeFilter::Equivalent(const AttributeGroup *a)
 //    Kathleen Bonnell, Fri Dec 13 16:41:12 PST 2002   
 //    Use NewInstance instead of MakeObject, in order to match vtk's new api. 
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Changed function to be thread safe.
+//
 // ****************************************************************************
 
 vtkDataSet *
 avtConeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 {
     vtkDataSet *rv = NULL;
+    vtkPolyDataAlgorithm *outputFilter = NULL;
+
+    avtConeFilterVTKObjects obj;
+    CreateVTKObjects(obj);
 
     //
     // First clip to the cone.
     //
-    cutter->SetInput(in_ds);
-    vtkPolyData *cur_ds = cutter->GetOutput();
+    obj.cutter->SetInputData(in_ds);
+    outputFilter = obj.cutter;
 
     if (atts.GetCutByLength())
     {
-        clipByLength->SetInput(cur_ds);
-        cur_ds = clipByLength->GetOutput();
+        obj.clipByLength->SetInputConnection(outputFilter->GetOutputPort());
+        outputFilter = obj.clipByLength;
     }
 
     //
@@ -808,31 +907,35 @@ avtConeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     switch (atts.GetRepresentation())
     {
       case ConeAttributes::ThreeD:
-        rv = cur_ds;
         break;
 
       case ConeAttributes::Flattened:
-        transform->SetInput(cur_ds);
-        rv = transform->GetOutput();
+        obj.transform->SetInputConnection(outputFilter->GetOutputPort());
+        outputFilter = obj.transform;
         break;
 
       case ConeAttributes::R_Theta:
-        clipBottom->SetInput(cur_ds);
-        transform->SetInput(clipBottom->GetOutput());
-        polar->SetInput(transform->GetOutput());
-        clipOffSides->SetInput(polar->GetOutput());
-        rv = clipOffSides->GetOutput();
+        obj.clipBottom->SetInputConnection(outputFilter->GetOutputPort());
+        obj.transform->SetInputConnection(obj.clipBottom->GetOutputPort());
+        obj.polar->SetInputConnection(obj.transform->GetOutputPort());
+        obj.clipOffSides->SetInputConnection(obj.polar->GetOutputPort());
+        outputFilter = obj.clipOffSides;
         break;
 
       default:
+        DestroyVTKObjects(obj);
         EXCEPTION0(ImproperUseException);
     }
 
-    rv->Update();
+    outputFilter->Update();
+    rv = outputFilter->GetOutput();
+    // FIX_ME_VTK6.0, ESB, what does this logic do??
     vtkDataSet *ds = (vtkDataSet *) rv->NewInstance();
     ds->ShallowCopy(rv);
     ManageMemory(ds);
     ds->Delete();
+
+    DestroyVTKObjects(obj);
     return ds;
 }
 
@@ -866,10 +969,13 @@ avtConeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 void
 avtConeFilter::UpdateDataObjectInfo(void)
 {
+    avtConeFilterVTKObjects obj;
+    CreateVTKObjects(obj);
+
     avtDataAttributes &inAtts      = GetInput()->GetInfo().GetAttributes();
     avtDataAttributes &outAtts     = GetOutput()->GetInfo().GetAttributes();
     avtDataValidity   &outValidity = GetOutput()->GetInfo().GetValidity();
- 
+
     outAtts.SetTopologicalDimension(inAtts.GetTopologicalDimension()-1);
     outValidity.InvalidateZones();
     outValidity.ZonesSplit();
@@ -898,41 +1004,41 @@ avtConeFilter::UpdateDataObjectInfo(void)
         outValidity.SetPointsWereTransformed(true);
         outAtts.SetCanUseInvTransform(false);
         outAtts.SetCanUseTransform(false);
- 
+
         double b[6];
- 
+
         if (inAtts.GetOriginalSpatialExtents()->HasExtents())
         {
             inAtts.GetOriginalSpatialExtents()->CopyTo(b);
-            ProjectExtents(b,transform,cutter,atts.GetCutByLength(),effLength);
+            ProjectExtents(b,obj.transform,obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetOriginalSpatialExtents()->Set(b);
         }
- 
+
         if (inAtts.GetThisProcsOriginalSpatialExtents()->HasExtents())
         {
             inAtts.GetThisProcsOriginalSpatialExtents()->CopyTo(b);
-            ProjectExtents(b,transform,cutter,atts.GetCutByLength(),effLength);
+            ProjectExtents(b,obj.transform,obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetThisProcsOriginalSpatialExtents()->Set(b);
         }
- 
+
         if (inAtts.GetDesiredSpatialExtents()->HasExtents())
         {
             inAtts.GetDesiredSpatialExtents()->CopyTo(b);
-            ProjectExtents(b,transform,cutter,atts.GetCutByLength(),effLength);
+            ProjectExtents(b,obj.transform,obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetDesiredSpatialExtents()->Set(b);
         }
- 
+
         if (inAtts.GetActualSpatialExtents()->HasExtents())
         {
             inAtts.GetActualSpatialExtents()->CopyTo(b);
-            ProjectExtents(b,transform,cutter,atts.GetCutByLength(),effLength);
+            ProjectExtents(b,obj.transform,obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetActualSpatialExtents()->Set(b);
         }
- 
+
         if (inAtts.GetThisProcsActualSpatialExtents()->HasExtents())
         {
             inAtts.GetThisProcsActualSpatialExtents()->CopyTo(b);
-            ProjectExtents(b,transform,cutter,atts.GetCutByLength(),effLength);
+            ProjectExtents(b,obj.transform,obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetThisProcsActualSpatialExtents()->Set(b);
         }
     }
@@ -943,43 +1049,45 @@ avtConeFilter::UpdateDataObjectInfo(void)
         outValidity.SetPointsWereTransformed(true);
         outAtts.SetCanUseInvTransform(false);
         outAtts.SetCanUseTransform(false);
- 
+
         double b[6];
         if (inAtts.GetOriginalSpatialExtents()->HasExtents())
         {
             inAtts.GetOriginalSpatialExtents()->CopyTo(b);
-            PolarExtents(b, transform, cutter,atts.GetCutByLength(),effLength);
+            PolarExtents(b, obj.transform, obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetOriginalSpatialExtents()->Set(b);
         }
- 
+
         if (inAtts.GetThisProcsOriginalSpatialExtents()->HasExtents())
         {
             inAtts.GetThisProcsOriginalSpatialExtents()->CopyTo(b);
-            PolarExtents(b, transform, cutter,atts.GetCutByLength(),effLength);
+            PolarExtents(b, obj.transform, obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetThisProcsOriginalSpatialExtents()->Set(b);
         }
- 
+
         if (inAtts.GetDesiredSpatialExtents()->HasExtents())
         {
             inAtts.GetDesiredSpatialExtents()->CopyTo(b);
-            PolarExtents(b, transform, cutter,atts.GetCutByLength(),effLength);
+            PolarExtents(b, obj.transform, obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetDesiredSpatialExtents()->Set(b);
         }
- 
+
         if (inAtts.GetActualSpatialExtents()->HasExtents())
         {
             inAtts.GetActualSpatialExtents()->CopyTo(b);
-            PolarExtents(b, transform, cutter,atts.GetCutByLength(),effLength);
+            PolarExtents(b, obj.transform, obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetActualSpatialExtents()->Set(b);
         }
- 
+
         if (inAtts.GetThisProcsActualSpatialExtents()->HasExtents())
         {
             inAtts.GetThisProcsActualSpatialExtents()->CopyTo(b);
-            PolarExtents(b, transform, cutter,atts.GetCutByLength(),effLength);
+            PolarExtents(b, obj.transform, obj.cutter,atts.GetCutByLength(),effLength);
             outAtts.GetThisProcsActualSpatialExtents()->Set(b);
         }
     }
+
+    DestroyVTKObjects(obj);
 }
 
 
@@ -1001,43 +1109,16 @@ avtConeFilter::UpdateDataObjectInfo(void)
 //    Hank Childs, Fri Mar 11 07:37:05 PST 2005
 //    Fix non-problem size leak introduced with last fix.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    For threading VisIt, I removed variables from class. They are now 
+//    created when needed.
+//
 // ****************************************************************************
 
 void
 avtConeFilter::ReleaseData(void)
 {
     avtPluginDataTreeIterator::ReleaseData();
-
-    cutter->SetInput(NULL);
-    vtkPolyData *p = vtkPolyData::New();
-    cutter->SetOutput(p);
-    p->Delete();
-
-    polar->SetInput(NULL);
-    p = vtkPolyData::New();
-    polar->SetOutput(p);
-    p->Delete();
-
-    transform->SetInput(NULL);
-    p = vtkPolyData::New();
-    transform->SetOutput(p);
-    p->Delete();
-
-    clipOffSides->SetInput(NULL);
-    p = vtkPolyData::New();
-    clipOffSides->SetOutput(p);
-    p->Delete();
-
-    clipBottom->SetInput(NULL);
-    p = vtkPolyData::New();
-    clipBottom->SetOutput(p);
-    p->Delete();
-
-    clipByLength->SetInput(NULL);
-    p = vtkPolyData::New();
-    clipByLength->SetOutput(p);
-    p->Delete();
-
 }
 
 
@@ -1123,8 +1204,8 @@ ProjectExtents(double *b, vtkTransformPolyDataFilter *trans,
     // Slice and project our bounding box to mimic what would happen to our
     // original dataset.
     //
-    cutter->SetInput(rgrid);
-    trans->SetInput(cutter->GetOutput());
+    cutter->SetInputData(rgrid);
+    trans->SetInputConnection(cutter->GetOutputPort());
     trans->Update();
  
     //
@@ -1245,8 +1326,8 @@ PolarExtents(double *b, vtkTransformPolyDataFilter *trans, vtkVisItCutter *cutte
     // Slice and project our bounding box to mimic what would happen to our
     // original dataset.
     //
-    cutter->SetInput(rgrid);
-    trans->SetInput(cutter->GetOutput());
+    cutter->SetInputData(rgrid);
+    trans->SetInputConnection(cutter->GetOutputPort());
     trans->Update();
  
     //
@@ -1296,6 +1377,7 @@ PolarExtents(double *b, vtkTransformPolyDataFilter *trans, vtkVisItCutter *cutte
     rgrid->Delete();
 }
 
+
 // ****************************************************************************
 //  Method: avtConeFilter::ModifyContract
 //
@@ -1335,3 +1417,4 @@ avtConeFilter::ModifyContract(avtContract_p spec)
     }
     return rv;
 }
+

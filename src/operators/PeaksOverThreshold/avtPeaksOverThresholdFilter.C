@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,7 @@
 #include <InstallationFunctions.h>
 #include <string>
 #include <InvalidFilesException.h>
+#include <TimingsManager.h>
 
 // ****************************************************************************
 //  Method: avtPeaksOverThresholdFilter constructor
@@ -154,23 +155,31 @@ avtPeaksOverThresholdFilter::Execute()
 {
     if (atts.GetDataAnalysisYearRangeEnabled())
     {
-        if (atts.GetDataYearBegin() < atts.GetDataAnalysisYearRange()[0] ||
-            atts.GetDataYearBegin() > atts.GetDataAnalysisYearRange()[1])
+        if (atts.GetDataYearBegin() < atts.GetDataAnalysisYear1() ||
+            atts.GetDataYearBegin() > atts.GetDataAnalysisYear2())
         {
             EXCEPTION1(ImproperUseException, "Invalid data analysis begin year.");
         }
             
-        if (atts.GetDataAnalysisYearRange()[0] >= atts.GetDataAnalysisYearRange()[1])
+        if (atts.GetDataAnalysisYear1() >= atts.GetDataAnalysisYear2())
         {
             EXCEPTION1(ImproperUseException, "Invalid data analysis year range.");
         }
-        if (atts.GetDataAnalysisYearRange()[0] < atts.GetDataYearBegin() ||
-            atts.GetDataAnalysisYearRange()[1] < atts.GetDataYearBegin())
+        if (atts.GetDataAnalysisYear1() < atts.GetDataYearBegin() ||
+            atts.GetDataAnalysisYear2() < atts.GetDataYearBegin())
         {
             EXCEPTION1(ImproperUseException, "Invalid data analysis year range.");
         }
-            
     }
+    if (atts.GetEnsemble())
+    {
+        if (!atts.GetDataAnalysisYearRangeEnabled())
+        {
+            EXCEPTION1(ImproperUseException, "Ensemble usage requires year range to be set.");
+        }
+    }
+    
+    int t1 = visitTimer->StartTimer();
     avtRPOTFilter *f = new avtRPOTFilter();
 
     std::string vlibdir = GetVisItLibraryDirectory() + VISIT_SLASH_CHAR + "r_support";
@@ -185,6 +194,8 @@ avtPeaksOverThresholdFilter::Execute()
 
     dob->Update(spec);
     avtDataTree_p tree = f->GetTypedOutput()->GetDataTree();
+
+    visitTimer->StopTimer(t1, "avtPeaksOverThreshold: call avtRPOTFilter");
 
     //Set the output variable properly.
     int nleaves;

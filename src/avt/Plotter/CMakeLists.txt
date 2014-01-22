@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -48,6 +48,10 @@
 #   Kathleen Biagas, Tue Jul 31 12:08:32 MST 2012
 #   Change CONFIGURE_FILE settings so things work correctly with 
 #   out-of-source builds.
+#
+#   Kathleen Biagas, Tue Sep  3 11:08:03 PDT 2013
+#   Swap avtGLEWInitializer for avtOpenGLExtensionManager.
+#
 #****************************************************************************/
 
 SET(VISIT_VTK_MANTA_SOURCES
@@ -71,7 +75,7 @@ CONFIGURE_FILE(
 )
 
 SET(AVTPLOTTER_OPENGL_SOURCES
-avtGLEWInitializer.C 
+avtOpenGLExtensionManager.C 
 avtOpenGLSurfaceAndWireframeRenderer.C 
 vtk/vtkOpenGLRectilinearGridMapper.C 
 vtk/vtkOpenGLStructuredGridMapper.C 
@@ -79,11 +83,11 @@ vtk/vtkOpenGLTexturedBackgroundMapper.C
 vtk/vtkTexturedPointsPainter.C
 )
 
-SET_SOURCE_FILES_PROPERTIES(
-    ${AVTPLOTTER_OPENGL_SOURCES}
-    PROPERTIES
-    COMPILE_FLAGS "-I${GLEW_INCLUDE_DIR}"
-)
+IF(VISIT_USE_GLEW)
+    SET(GRAPHICS_INCLUDES ${GLEW_INCLUDE_DIR})
+ELSE(VISIT_USE_GLEW)
+    SET(GRAPHICS_INCLUDES ${OPENGL_INCLUDE_DIR})
+ENDIF(VISIT_USE_GLEW)
 
 SET(AVTPLOTTER_VTK_SOURCES
 vtk/InitVTKRendering.C 
@@ -173,16 +177,22 @@ ${VISIT_SOURCE_DIR}/visit_vtk/full
 ${VISIT_SOURCE_DIR}/visit_vtk/lightweight
 ${PROJECT_BINARY_DIR}/avt/Plotter/vtk/
 ${VTK_INCLUDE_DIRS}
-${MESA_INCLUDE_DIR}
-${GLEW_INCLUDE_DIR}
+${GRAPHICS_INCLUDES}
 )
 
 # Add link directories
 LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} )
 
+
 #********************************* SERIAL ************************************
 ADD_LIBRARY(avtplotter_ser ${AVTPLOTTER_SOURCES})
-TARGET_LINK_LIBRARIES(avtplotter_ser visitcommon avtmath avtview avtfilters_ser avtpipeline_ser visit_vtk lightweight_visit_vtk vtkHybrid ${GLEW_LIB})
+IF(HAVE_LIB_R)
+    TARGET_LINK_LIBRARIES(avtplotter_ser visitcommon avtmath avtview avtfilters_ser avtpipeline_ser visit_vtk lightweight_visit_vtk vtkFiltersHybrid vtkRenderingCore vtkRenderingFreeType vtkRenderingFreeTypeOpenGL ${GLEW_LIB} vtkFiltersStatisticsGnuR)
+ELSE(HAVE_LIB_R)
+    TARGET_LINK_LIBRARIES(avtplotter_ser visitcommon avtmath avtview avtfilters_ser avtpipeline_ser visit_vtk lightweight_visit_vtk vtkFiltersHybrid vtkRenderingCore vtkRenderingFreeType vtkRenderingFreeTypeOpenGL ${GLEW_LIB})
+ENDIF(HAVE_LIB_R)
+# Add vtk defines
+ADD_TARGET_DEFINITIONS(avtplotter_ser "${VTK_DEFINITIONS}")
 IF(VISIT_MANTA)
   TARGET_LINK_LIBRARIES(avtplotter_ser ${MANTA_TARGET_LINK_LIBRARIES})
 ENDIF(VISIT_MANTA)
@@ -191,14 +201,20 @@ VISIT_INSTALL_TARGETS(avtplotter_ser)
 #********************************* PARALLEL **********************************
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(avtplotter_par ${AVTPLOTTER_SOURCES})
-    TARGET_LINK_LIBRARIES(avtplotter_par visitcommon avtmath avtview avtfilters_par avtpipeline_par visit_vtk lightweight_visit_vtk vtkHybrid ${GLEW_LIB})
-IF(VISIT_MANTA)
-  TARGET_LINK_LIBRARIES(avtplotter_par ${MANTA_TARGET_LINK_LIBRARIES})
-  #IF(ICET_FOUND)
-  #  INCLUDE_DIRECTORIES(${ICET_INCLUDE_DIR})
-  #  LINK_DIRECTORIES(${ICET_LIBRARY_DIR})
-  #ENDIF(ICET_FOUND)
-ENDIF(VISIT_MANTA)
+    IF(HAVE_LIB_R)
+        TARGET_LINK_LIBRARIES(avtplotter_par visitcommon avtmath avtview avtfilters_par avtpipeline_par visit_vtk lightweight_visit_vtk vtkFiltersHybrid vtkRenderingCore vtkRenderingFreeType vtkRenderingFreeTypeOpenGL ${GLEW_LIB} vtkFiltersStatisticsGnuR)
+    ELSE(HAVE_LIB_R)
+        TARGET_LINK_LIBRARIES(avtplotter_par visitcommon avtmath avtview avtfilters_par avtpipeline_par visit_vtk lightweight_visit_vtk vtkFiltersHybrid vtkRenderingCore vtkRenderingFreeType vtkRenderingFreeTypeOpenGL ${GLEW_LIB})
+    ENDIF(HAVE_LIB_R)
+    # Add vtk defines
+    ADD_TARGET_DEFINITIONS(avtplotter_par "${VTK_DEFINITIONS}")
+    IF(VISIT_MANTA)
+      TARGET_LINK_LIBRARIES(avtplotter_par ${MANTA_TARGET_LINK_LIBRARIES})
+      #IF(ICET_FOUND)
+      #  INCLUDE_DIRECTORIES(${ICET_INCLUDE_DIR})
+      #  LINK_DIRECTORIES(${ICET_LIBRARY_DIR})
+      #ENDIF(ICET_FOUND)
+    ENDIF(VISIT_MANTA)
 
     VISIT_INSTALL_TARGETS(avtplotter_par)
 ENDIF(VISIT_PARALLEL)

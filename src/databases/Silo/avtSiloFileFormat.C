@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -65,6 +65,7 @@
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkShortArray.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkStructuredGrid.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnsignedIntArray.h>
@@ -102,6 +103,7 @@
 #include <InvalidVariableException.h>
 #include <InvalidZoneTypeException.h>
 #include <SiloException.h>
+#include <avtExecutionManager.h>
 
 #include <avtStructuredDomainBoundaries.h>
 
@@ -1680,7 +1682,15 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
 //
 //    Mark C. Miller, Tue Jul 10 19:55:37 PDT 2012
 //    Added logic to handle nodelist vars defined in MRG Trees.
+//
+//    Katheen Biagas, Thu Jun 6 13:11:27 PDT 2013
+//    Enable reading of mrgtrees on Windows.
+//
+//    Cyrus Harrison, Fri Aug 16 10:07:47 PDT 2013
+//    Added support for nodelists placed @ /Nodelists/
+//
 // ****************************************************************************
+
 void
 avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile, 
     int nmultimesh, char **multimesh_names,
@@ -1969,7 +1979,6 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                 vector<int> amr_group_ids;
                 vector<string> amr_block_names;
 
-#ifndef WIN32
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,2)
                 if (mm->mrgtree_name != 0)
@@ -1981,7 +1990,6 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
 
                     HandleMrgtreeNodelistVars(dbfile, name_w_dir, mm->mrgtree_name, md);
                 }
-#endif
 #endif
 #endif
 
@@ -2023,14 +2031,12 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                 //
                 // Handle special case for enumerated scalar rep for nodelists
                 //
-                if (codeNameGuess == "BlockStructured" &&
-                    !haveAddedNodelistEnumerations[name_w_dir])
+                if ( !haveAddedNodelistEnumerations[name_w_dir])
                 {
                     haveAddedNodelistEnumerations[name_w_dir] = true;
                     AddNodelistEnumerations(dbfile, md, name_w_dir);
                 }
-                else if (searchForAnnotInt && strcmp(dirname, topDir.c_str()) == 0)
-
+                if (searchForAnnotInt && strcmp(dirname, topDir.c_str()) == 0)
                 {
                     AddAnnotIntNodelistEnumerations(dbfile, md, name_w_dir, mm_ent);
                 }
@@ -2168,6 +2174,7 @@ avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
                 mmd->groupPieceName = "block";
                 mmd->hideFromGUI = qm->guihide;
                 md->Add(mmd);
+
             }
             else
             {
@@ -2203,7 +2210,12 @@ avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
 //
 //    Mark C. Miller, Tue Jul 10 19:55:37 PDT 2012
 //    Added logic to handle nodelist vars defined in MRG Trees.
+//
+//    Katheen Biagas, Thu Jun 6 13:11:27 PDT 2013
+//    Enable reading of mrgtrees on Windows.
+//
 // ****************************************************************************
+
 void
 avtSiloFileFormat::ReadUcdmeshes(DBfile *dbfile,
     int nucdmesh, char **ucdmesh_names,
@@ -2257,7 +2269,6 @@ avtSiloFileFormat::ReadUcdmeshes(DBfile *dbfile,
                 extents_to_use = extents;
             }
 
-#ifndef WIN32
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,2)
                 if (um->mrgtree_name != 0)
@@ -2265,7 +2276,6 @@ avtSiloFileFormat::ReadUcdmeshes(DBfile *dbfile,
                     // So far, we've coded only for MRG trees representing AMR hierarchies
                     HandleMrgtreeNodelistVars(dbfile, name_w_dir, um->mrgtree_name, md);
                 }
-#endif
 #endif
 #endif
 
@@ -3584,6 +3594,10 @@ avtSiloFileFormat::ReadMaterials(DBfile *dbfile,
 //    Limited support for Silo nameschemes, use new multi block cache data
 //    structures.
 //
+//    Cyrus Harrison, Fri Aug 16 14:25:36 PDT 2013
+//    Improve way multimat and mat info are inspected to create material names.
+//    Avoid using using a dummy DBMaterial struct and pointer stealing.
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
@@ -3619,6 +3633,11 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
                 RegisterDomainDirs(mm_ent, dirname);
             }
 
+            // use these temp vars 
+            int    minfo_nmats = 0;
+            int   *minfo_matnos = NULL;
+            char **minfo_matnames = NULL;
+            char **minfo_matcolors = NULL;
 
             if (MultiMatHasAllMatInfo(mm) < 3 && mm->nmats)
             {
@@ -3673,6 +3692,12 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
                 }
                 else
                 {
+                    //Get all the info from the mat obj.
+                    minfo_nmats     = mat->nmat;
+                    minfo_matnos    = mat->matnos;
+                    minfo_matnames  = mat->matnames;
+                    minfo_matcolors = mat->matcolors;
+
                     bool invalidateVar = false;
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,3)
@@ -3695,13 +3720,11 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
             {
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,3)
-                // Spoof the material object for code block below so it contains
-                // all the info from the multi-mat.
-                mat = DBAllocMaterial();
-                mat->nmat = mm->nmatnos;
-                mat->matnos = mm->matnos;
-                mat->matnames = mm->material_names;
-                mat->matcolors = mm->matcolors;
+                //Get all the info from the multi-mat.
+                minfo_nmats     = mm->nmatnos;
+                minfo_matnos    = mm->matnos;
+                minfo_matnames  = mm->material_names;
+                minfo_matcolors = mm->matcolors;
 #endif
 #endif
             }
@@ -3715,29 +3738,29 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
             string meshname;
             if (valid_var)
             {
-                for (j = 0 ; j < mat->nmat ; j++)
+                for (j = 0 ; j < minfo_nmats ; j++)
                 {
                     char *num = NULL;
-                    int dlen = int(log10(float(mat->matnos[j]+1))) + 1;
-                    if (mat->matnames == NULL || mat->matnames[j] == NULL)
+                    int dlen = int(log10(float(minfo_matnos[j]+1))) + 1;
+                    if (minfo_matnames == NULL || minfo_matnames[j] == NULL)
                     {
                         num = new char[dlen + 2];
-                        sprintf(num, "%d", mat->matnos[j]);
+                        sprintf(num, "%d", minfo_matnos[j]);
                     }
                     else
                     {
-                        int len = strlen(mat->matnames[j]);
+                        int len = strlen(minfo_matnames[j]);
                         num = new char[len + 1 + dlen + 1];
-                        sprintf(num, "%d %s", mat->matnos[j], mat->matnames[j]);
+                        sprintf(num, "%d %s", minfo_matnos[j], minfo_matnames[j]);
                     }
                     matnames.push_back(num);
                     delete[] num;
 
 #ifdef DBOPT_MATCOLORS
-                    if (mat->matcolors)
+                    if (minfo_matcolors)
                     {
-                        if (mat->matcolors[j] && mat->matcolors[j][0])
-                            matcolors.push_back(mat->matcolors[j]);
+                        if (minfo_matcolors[j] && minfo_matcolors[j][0])
+                            matcolors.push_back(minfo_matcolors[j]);
                         else
                             matcolors.push_back("");
                     }
@@ -3770,26 +3793,15 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
             avtMaterialMetaData *mmd;
             if (matcolors.size())
                 mmd = new avtMaterialMetaData(name_w_dir, meshname,
-                                              mat ? mat->nmat : 0, matnames,
+                                              minfo_nmats, matnames,
                                               matcolors);
             else
                 mmd = new avtMaterialMetaData(name_w_dir, meshname,
-                                              mat ? mat->nmat : 0, matnames);
+                                              minfo_nmats, matnames);
 
             mmd->validVariable = valid_var;
             mmd->hideFromGUI = mm->guihide;
             md->Add(mmd);
-
-
-            if (MultiMatHasAllMatInfo(mm) >= 2)
-            {
-                // Remove everything we stuck into the spoof'd material object
-                // before moving on to DBFreeMaterial call.
-                mat->nmat = 0;
-                mat->matnos = 0;
-                mat->matnames = 0;
-                mat->matcolors = 0;
-            }
 
         }
         CATCHALL
@@ -5134,7 +5146,7 @@ avtSiloFileFormat::GetConnectivityAndGroupInformationFromFile(DBfile *dbfile,
             map<int, bool> groupMap;
             for (int i = 0; i < numEntries; i++)
                 groupMap[groupIds[i]] = true;
-            numGroups = groupMap.size();
+            numGroups = (int)groupMap.size();
         }
     }
 }
@@ -6794,7 +6806,6 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
 vtkDataArray *
 avtSiloFileFormat::GetMrgTreeNodelistsVar(int domain, string listsname)
 {
-    int i;
     string meshName = metadata->MeshForVar(listsname);
 
     //
@@ -6951,6 +6962,10 @@ avtSiloFileFormat::GetMrgTreeNodelistsVar(int domain, string listsname)
 //
 //    Mark C. Miller, Tue Jul 10 20:08:37 PDT 2012
 //    Add support for nodelist vars in MRG Trees.
+//
+//    Cyrus Harrison, Fri Aug 16 10:07:47 PDT 2013
+//    Added support for nodelists placed @ /Nodelists/
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -6963,7 +6978,7 @@ avtSiloFileFormat::GetVar(int domain, const char *v)
     //
     // Handle possible special case of nodelists spoofed as a variable
     //
-    if (codeNameGuess == "BlockStructured" && string(v) == "Nodelists")
+    if (string(v) == "Nodelists")
     {
         vtkDataArray *nlvar = GetNodelistsVar(domain);
         if (nlvar != 0)
@@ -7377,7 +7392,7 @@ CopyUcdVar(const DBucdvar *uv, const vector<int> &remap)
                 {
                     if (j < uv->nvals)
                     {
-                        int itmp;
+                        size_t itmp;
                         for (k = 0, itmp = i; k < cnt; k++, itmp++)
                             sum += (double) ((T**)(uv->vals))[j][remap[itmp]];
                     }
@@ -9585,7 +9600,7 @@ LookupPHZonelistFaceIdInFaceHash(const vector<int>& faceNodes,
     const map<unsigned int, vector<std::pair<int, vector<int> > > >& faceHash)
 {
     unsigned int hv = BJHash::Hash((const unsigned char*) &canonicalFaceNodes[0],
-        canonicalFaceNodes.size()*sizeof(int), 0x0);
+        (unsigned int)canonicalFaceNodes.size()*sizeof(int), 0x0);
     map<unsigned int, vector<std::pair<int, vector<int> > > >::const_iterator it
         = faceHash.find(hv);
     if (it == faceHash.end())
@@ -9652,11 +9667,11 @@ GetPHZonelistFaceId(int nnodes, const int *const nl,
 
     // If we get here, we didn't find the face in the faceHash.
     // So, we need to update everything for this new face.
-    unsigned int hv = BJHash::Hash((const unsigned char *)&faceNodesF[0], faceNodesF.size()*sizeof(int), 0x0);
+    unsigned int hv = BJHash::Hash((const unsigned char *)&faceNodesF[0], (unsigned int)faceNodesF.size()*sizeof(int), 0x0);
     int phzlFaceId = nodecnt.size();
     faceHash[hv].push_back(std::pair<int, vector<int> >(phzlFaceId, faceNodesF));
-    nodecnt.push_back(faceNodes.size());
-    for (int j = 0; j < faceNodes.size(); j++)
+    nodecnt.push_back((int)faceNodes.size());
+    for (size_t j = 0; j < faceNodes.size(); j++)
         nodelist.push_back(faceNodes[j]);
     return phzlFaceId;
 }
@@ -9701,7 +9716,7 @@ MakePHZonelistFromZonelistArbFragment(const int *nl, int shapecnt)
     // that Silo will later expect to be able to call free on.
     //
     DBphzonelist *phzl = DBAllocPHZonelist();
-    phzl->nfaces = nodecnt.size();
+    phzl->nfaces = (int)nodecnt.size();
     phzl->nodecnt = (int *) malloc(nodecnt.size() * sizeof(int));
     memcpy(phzl->nodecnt, &nodecnt[0], nodecnt.size() * sizeof(int));
     phzl->lnodelist = (int) nodelist.size();
@@ -10220,7 +10235,7 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
         ghostZones->SetName("avtGhostZones");
         ugrid->GetCellData()->AddArray(ghostZones);
         ghostZones->Delete();
-        ugrid->SetUpdateGhostLevel(0);
+        vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(ugrid->GetInformation(), 0);
     }
 }
 
@@ -10585,7 +10600,7 @@ ArbInsertArbitrary(vtkUnstructuredGrid *ugrid, int nsdims, DBphzonelist *phzl, i
     for (k = 0; k < 3; k++)
         coord_sum[k] /= ncnttot;
     int cmidn = ugrid->GetPoints()->InsertNextPoint(coord_sum);
-    nodeReMap->push_back(nodemap.size());
+    nodeReMap->push_back((int)nodemap.size());
     for (map<int,int>::iterator it = nodemap.begin(); it != nodemap.end(); it++)
         nodeReMap->push_back(it->first);
 
@@ -11344,7 +11359,7 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
         ghostZones->SetName("avtGhostZones");
         ugrid->GetCellData()->AddArray(ghostZones);
         ghostZones->Delete();
-        ugrid->SetUpdateGhostLevel(0);
+        vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(ugrid->GetInformation(), 0);
     }
 
     //
@@ -11422,6 +11437,8 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
 //    Brad Whitlock, Fri Aug  7 11:11:29 PDT 2009
 //    I added some exception handling.
 //
+//    Mark C. Miller, Wed Sep 25 10:30:05 PDT 2013
+//    Added logic to handle 3D, co-linear, cylindrical meshes from Silo
 // ****************************************************************************
 
 vtkDataSet *
@@ -11459,7 +11476,12 @@ avtSiloFileFormat::GetQuadMesh(DBfile *dbfile, const char *mn, int domain)
     TRY
     {
         if (qm->coordtype == DB_COLLINEAR)
-            ds = CreateRectilinearMesh(qm);
+        {
+            if (qm->ndims == 3 && qm->coord_sys == DB_CYLINDRICAL)
+                ds = CreateCurvilinearMesh(qm);
+            else
+                ds = CreateRectilinearMesh(qm);
+        }
         else
             ds = CreateCurvilinearMesh(qm);
     }
@@ -11998,6 +12020,8 @@ avtSiloFileFormat::CreateRectilinearMesh(DBquadmesh *qm)
 //    I modified the row major case so it just uses increment for index
 //    calculations. Use unsigned int.
 //
+//    Mark C. Miller, Wed Sep 25 10:30:43 PDT 2013
+//    Added logic to handle 3d, co-linear, cylindrical meshes from Silo
 // ****************************************************************************
 
 template <class T>
@@ -12028,6 +12052,27 @@ static void CopyQuadCoordinates(T *dest, int nx, int ny, int nz, int morder,
                     *dest++ = c1 ? c1[idx] : 0.;
                     *dest++ = c2 ? c2[idx] : 0.;
                 }
+            }
+        }
+    }
+}
+
+template <class T>
+static void ConvertQuadCylindricalCoordinates(T *dest, int nx, int ny, int nz,
+    const T *const c0, const T *const c1, const T *const c2)
+{
+    for (int k = 0; k < nz; k++)
+    {
+        for (int j = 0; j < ny; j++)
+        {
+            for (int i = 0; i < nx; i++)
+            {
+                T x = c0[i] * cos(M_PI/180.0*c1[j]);
+                T y = c0[i] * sin(M_PI/180.0*c1[j]);
+                T z = c2[k];
+                *dest++ = x;
+                *dest++ = y;
+                *dest++ = z;
             }
         }
     }
@@ -12075,15 +12120,23 @@ avtSiloFileFormat::CreateCurvilinearMesh(DBquadmesh *qm)
     void *pts = points->GetVoidPointer(0);
     if (qm->datatype == DB_DOUBLE)
     {
-        CopyQuadCoordinates((double *) pts, nx, ny, nz, qm->major_order,
-            (double *) qm->coords[0], (double *) qm->coords[1],
-            qm->ndims <= 2 ? 0 : (double *) qm->coords[2]);
+        if (qm->ndims == 3 && qm->coord_sys == DB_CYLINDRICAL)
+            ConvertQuadCylindricalCoordinates((double *) pts, nx, ny, nz,
+               (double *) qm->coords[0], (double *) qm->coords[1], (double *) qm->coords[2]);
+        else
+            CopyQuadCoordinates((double *) pts, nx, ny, nz, qm->major_order,
+                (double *) qm->coords[0], (double *) qm->coords[1],
+                qm->ndims <= 2 ? 0 : (double *) qm->coords[2]);
     }
     else
     {
-        CopyQuadCoordinates((float *) pts, nx, ny, nz, qm->major_order,
-            (float *) qm->coords[0], (float *) qm->coords[1],
-            qm->ndims <= 2 ? 0 : (float *) qm->coords[2]);
+        if (qm->ndims == 3 && qm->coord_sys == DB_CYLINDRICAL)
+            ConvertQuadCylindricalCoordinates((float *) pts, nx, ny, nz,
+               (float *) qm->coords[0], (float *) qm->coords[1], (float *) qm->coords[2]);
+        else
+            CopyQuadCoordinates((float *) pts, nx, ny, nz, qm->major_order,
+                (float *) qm->coords[0], (float *) qm->coords[1],
+                qm->ndims <= 2 ? 0 : (float *) qm->coords[2]);
     }
 
     return sgrid;
@@ -12234,8 +12287,7 @@ avtSiloFileFormat::GetQuadGhostZones(DBquadmesh *qm, vtkDataSet *ds)
         ds->GetFieldData()->AddArray(realDims);
         ds->GetFieldData()->CopyFieldOn("avtRealDims");
         realDims->Delete();
-
-        ds->SetUpdateGhostLevel(0);
+        vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(ds->GetInformation(), 0);
     }
 }
 
@@ -13518,7 +13570,9 @@ avtSiloFileFormat::AllocAndDetermineMeshnameForUcdmesh(int dom, const char *mesh
     // Silo can't accept consts, so cast it away.
     //
     char *m = const_cast< char * >(mesh);
+    VisitMutexLock("avtSiloFileFormat");
     int type = DBInqVarType(dbfile, m);
+    VisitMutexUnlock("avtSiloFileFormat");
 
     if (type != DB_MULTIMESH && type != DB_UCDMESH)
     {
@@ -14054,7 +14108,9 @@ avtMaterial *
 avtSiloFileFormat::CalcMaterial(DBfile *dbfile, const char *matname, const char *tmn,
     int dom)
 {
+    VisitMutexLock("avtSiloFileFormat");
     DBmaterial *silomat = DBGetMaterial(dbfile, matname);
+    VisitMutexUnlock("avtSiloFileFormat");
     if (silomat == NULL)
     {
         EXCEPTION1(InvalidVariableException, matname);
@@ -14363,10 +14419,12 @@ avtSiloFileFormat::CalcExternalFacelist(DBfile *dbfile, const char *mesh)
 
     // We want to get just the facelist.  So we need to get the ReadMask,
     // set it to read facelists, then set it back.
+    VisitMutexLock("avtSiloFileFormat::CalcExternalFacelist");
     long mask = DBGetDataReadMask();
     DBSetDataReadMask(DBUMFacelist | DBFacelistInfo);
     DBucdmesh *um = DBGetUcdmesh(correctFile, realvar.c_str());
     DBSetDataReadMask(mask);
+    VisitMutexUnlock("avtSiloFileFormat::CalcExternalFacelist");
     if (um == NULL)
         EXCEPTION1(InvalidVariableException, mesh);
     DBfacelist *fl = um->faces;
@@ -14517,7 +14575,7 @@ avtSiloFileFormat::PopulateIOInformation(avtIOInformation &ioInfo)
                 filenames.push_back(string(filename));
                 vector<int> newvector_placeholder;
                 groups.push_back(newvector_placeholder);
-                index = filenames.size()-1;
+                index = (int)filenames.size()-1;
             }
             groups[index].push_back(i);
         }
@@ -15239,7 +15297,7 @@ PrepareDirName(const char *dirvar, const char *curdir)
     }
 
     char str[1024];
-    int dirlen = 0;
+    size_t dirlen = 0;
     if (dirvar[0] != '/')
     {
         //
@@ -15281,7 +15339,7 @@ SplitDirVarName(const char *dirvar, const char *curdir,
 {
     dir="";
     var="";
-    int len;
+    size_t len;
 
     if (!dirvar || ((len = strlen(dirvar)) == 0))
     {
@@ -15304,7 +15362,7 @@ SplitDirVarName(const char *dirvar, const char *curdir,
     }
 
     char str[1024];
-    int dirlen = 0;
+    size_t dirlen = 0;
     if (dirvar[0] != '/')
     {
         //
@@ -15733,18 +15791,39 @@ AddAle3drlxstatEnumerationInfo(avtScalarMetaData *smd)
 //
 //    Mark C. Miller, Thu Apr 12 23:14:21 PDT 2012
 //    Replaced use of NChooseR enumeration mode with ByBitMap.
+//
+//    Cyrus Harrison, Fri Aug 16 10:07:47 PDT 2013
+//    Added support for nodelists placed @ /Nodelists/
+//
 // ****************************************************************************
 void
 avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *md,
     string meshname)
 {
-    if (meshname != "hydro_mesh")
+    // mesh names that adhere to this nodelist format
+    if (!( meshname != "hydro_mesh" ||
+           meshname != "MMESH" ||
+           meshname != "MESH") )
         return;
 
-    if (DBInqVarType(dbfile, "/Global/Nodelists") != DB_DIR)
-        return;
+    // check for nodelists
+    ostringstream oss;
+    string nodelist_base = "/Global/Nodelists";
 
-    DBReadVar(dbfile, "/Global/Nodelists/NumberNodelists", &numNodeLists);
+    if (DBInqVarType(dbfile, nodelist_base.c_str()) != DB_DIR)
+    {
+        // it not found @ "/Global/Nodelists", check for "Nodelists" in the root of the silo file.
+        nodelist_base  = "/Nodelists";
+        if (DBInqVarType(dbfile, nodelist_base.c_str()) != DB_DIR)
+            return;
+    }
+
+    debug5 << "Adding Nodelist for mesh = " << meshname <<endl;
+    debug5 << "Nodelist silo base path = " << nodelist_base <<endl;
+
+    oss.str("");
+    oss << nodelist_base << "/NumberNodelists";
+    DBReadVar(dbfile, oss.str().c_str(), &numNodeLists);
 
     // Note, if we ever remove the restriction on meshname, above, we need
     // to make sure we don't wind up defining the same name scalar on different
@@ -15756,32 +15835,35 @@ avtSiloFileFormat::AddNodelistEnumerations(DBfile *dbfile, avtDatabaseMetaData *
     nlBlockToWindowsMap.clear();
     for (i = 0; i < numNodeLists; i++)
     {
-        char *tmpName = 0; char tmpVarName[256];
-        SNPRINTF(tmpVarName, sizeof(tmpVarName), "/Global/Nodelists/Nodelist%d/Name", i);
-        tmpName = (char*) DBGetVar(dbfile, tmpVarName);
+        oss.str("");
+        oss << nodelist_base << "/Nodelist" << i << "/Name";
+        char *tmpName = (char*) DBGetVar(dbfile, oss.str().c_str());
 
         debug5 << "For nodelist \"" << tmpName << "\", value = " << i << endl;
         smd->AddEnumNameValue(tmpName, i);
         free(tmpName);
 
-        SNPRINTF(tmpVarName, sizeof(tmpVarName), "/Global/Nodelists/Nodelist%d/NumberWindows", i);
+        oss.str("");
+        oss << nodelist_base << "/Nodelist" << i << "/NumberWindows";
         int numWindows;
-        DBReadVar(dbfile, tmpVarName, &numWindows);
+        DBReadVar(dbfile, oss.str().c_str(), &numWindows);
 
         debug5 << "    NumberWindows = " << numWindows << endl;
         for (int j = 0; j < numWindows; j++)
         {
             debug5 << "        For Window " << j << endl;
-            SNPRINTF(tmpVarName, sizeof(tmpVarName), "/Global/Nodelists/Nodelist%d/Block%d", i, j);
+            oss.str("");
+            oss <<  nodelist_base << "/Nodelist" << i << "/Block" << j;
             int blockNum;
-            DBReadVar(dbfile, tmpVarName, &blockNum);
+            DBReadVar(dbfile, oss.str().c_str(), &blockNum);
             nlBlockToWindowsMap[blockNum].push_back(i);
             debug5 << "            Block = " << blockNum << endl;
 
             debug5 << "            Extents = ";
-            SNPRINTF(tmpVarName, sizeof(tmpVarName), "/Global/Nodelists/Nodelist%d/Extents%d", i, j);
+            oss.str("");
+            oss <<  nodelist_base << "/Nodelist" << i << "/Extents" << j;
             int extents[6];
-            DBReadVar(dbfile, tmpVarName, extents);
+            DBReadVar(dbfile, oss.str().c_str(), extents);
             for (int k = 0; k < 6; k++)
             {
                 nlBlockToWindowsMap[blockNum].push_back(extents[k]);
@@ -15859,11 +15941,12 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile,
             continue;
 
         string realvar;
-        DBfile *correctFile;
+        DBfile *correctFile = 0;
         DetermineFileAndDirectory(mb_meshname.c_str(),"",
                                   correctFile, realvar);
+
         if (correctFile == 0)
-            continue;
+            correctFile = dbfile;
 
         DBcompoundarray *ai = DBGetCompoundarray(correctFile, "ANNOTATION_INT");
         if (ai)
@@ -15893,7 +15976,10 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile,
     // If we didn't find anything, we're done.
     //
     if (!haveNodeLists && !haveFaceLists)
+    {
+        debug5 << "Although we were asked to search for ANNOTATION_INT nodelists, none were found." << endl;
         return;
+    }
 
     //
     // Populate the enumeration names. This is a two pass loop;
@@ -15922,11 +16008,11 @@ avtSiloFileFormat::AddAnnotIntNodelistEnumerations(DBfile *dbfile,
         }
 
         if (pass == 0)
-            numAnnotIntLists = smd->enumNames.size();
+            numAnnotIntLists = (int)smd->enumNames.size();
         else
         {
             if (smd->enumNames.size() > numAnnotIntLists)
-                numAnnotIntLists = smd->enumNames.size();
+                numAnnotIntLists = (int)smd->enumNames.size();
         }
 
         smd->SetEnumerationType(avtScalarMetaData::ByBitMask);
@@ -16048,7 +16134,7 @@ static DBgroupelmap *
 GetCondensedGroupelMap(DBfile *dbfile, string mrgtnm_abspath,
     DBmrgtnode *rootNode, int forceSingle, int gpel_type)
 {
-    int i,k,q,pass;
+    int i,k,q = 0,pass;
     DBgroupelmap *retval = 0;
 
     // We do this to prevent Silo for re-interpreting integer data in
@@ -16199,7 +16285,7 @@ HandleMrgtreeAMRGroups(DBfile *dbfile, DBmultimesh *mm, const char *multimesh_na
 {
 #ifdef SILO_VERSION_GE
 #if SILO_VERSION_GE(4,6,3)
-    int i, j, q;
+    int i, j;
     bool probablyAnAMRMesh = true;
     DBgroupelmap *gm = 0; 
 
@@ -16782,7 +16868,12 @@ MultiMatHasAllMatInfo(const DBmultimat *const mm)
 //
 //  Creation: Mark C. Miller, Wed Jul 11 09:12:59 PDT 2012
 //
+//  Modifications:
+//    Katheen Biagas, Thu Jun 6 13:11:27 PDT 2013
+//    Pass "/" as pathSeparator to Absname.
+//
 // ****************************************************************************
+
 static string ResolveSiloIndObjAbsPath(
     DBfile *dbfile,
     string primary_objname_incl_any_abs_or_rel_path,
@@ -16797,7 +16888,7 @@ static string ResolveSiloIndObjAbsPath(
     // If primary object str is the name of an object as opposed to
     // the dir the object lives in, then compute the dirname
     string obj_abspath = Absname(dbcwd,
-        primary_objname_incl_any_abs_or_rel_path.c_str());
+        primary_objname_incl_any_abs_or_rel_path.c_str(), "/");
     int vtype = DBInqVarType(dbfile, obj_abspath.c_str());
     if (vtype >= 0 && vtype != DB_DIR)
     {
@@ -16810,7 +16901,7 @@ static string ResolveSiloIndObjAbsPath(
     }
 
     string indobj_abspath = Absname(obj_abspath.c_str(),
-        indirect_objname_incl_any_abs_or_rel_path.c_str());
+        indirect_objname_incl_any_abs_or_rel_path.c_str(), "/");
     retval = string(indobj_abspath);
     return retval;
 }

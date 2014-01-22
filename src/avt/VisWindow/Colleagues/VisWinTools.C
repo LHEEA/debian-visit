@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1009,7 +1009,7 @@ vtkHighlightActor2D::RegenerateHighlight()
     for(i = 0; i < numTools; ++i)
     {
         if(tools[i]->IsEnabled())
-            numHotPoints += tools[i]->HotPoints().size();
+            numHotPoints += (int)tools[i]->HotPoints().size();
     }
 
     // Allocate some temporary arrays that we'll use to construct the
@@ -1131,7 +1131,7 @@ vtkHighlightActor2D::RegenerateHighlight()
     if(highlightMapper != NULL)
         highlightMapper->Delete();
     highlightMapper = vtkPolyDataMapper2D::New();
-    highlightMapper->SetInput(highlightData);
+    highlightMapper->SetInputData(highlightData);
 
     if(highlightActor != NULL)
         highlightActor->Delete();

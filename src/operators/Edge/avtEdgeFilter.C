@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -149,19 +149,20 @@ vtkDataSet *
 avtEdgeFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
 {
     vtkGeometryFilter *geom = NULL;
+    vtkExtractEdges *ee = vtkExtractEdges::New();
     if (inDS->GetDataObjectType() != VTK_POLY_DATA)
     {
         geom = vtkGeometryFilter::New();
-        geom->SetInput(inDS);
-        inDS = geom->GetOutput();
+        geom->SetInputData(inDS);
+        ee->SetInputConnection(geom->GetOutputPort());
     }
+    else
+    {
+        ee->SetInputData(inDS);
+    }
+    ee->Update();
 
-    vtkExtractEdges *ee = vtkExtractEdges::New();
-    ee->SetInput(inDS);
-    vtkPolyData *outDS = vtkPolyData::New();
-    ee->SetOutput(outDS);
-
-    outDS->Update();
+    vtkPolyData *outDS = ee->GetOutput();
     ManageMemory(outDS);
 
     ee->Delete();

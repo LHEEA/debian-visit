@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -88,6 +88,8 @@
 #include <View2DAttributes.h>
 #include <View3DAttributes.h>
 #include <WindowInformation.h>
+#include <ViewerClientAttributes.h>
+#include <ViewerClientInformation.h>
 
 //
 // Undefine the macro so we can redefine it for various purposes in this file.

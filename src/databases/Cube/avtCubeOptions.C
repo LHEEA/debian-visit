@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -64,15 +64,19 @@
 //  Programmer: oruebel -- Rename to Cube and removed Walker functionality
 //  Modified:   Thu May 12 11:18 PDT 2009
 //
+//  Programmer: jfavre -- Added a boolean to extend the grid by one cell for CP2K users
+//  Modified:   Fri Apr 26 11:12:38 CEST 2013
+//
 // ****************************************************************************
 
 DBOptionsAttributes *
 GetCubeReadOptions(void)
 {
     DBOptionsAttributes *rv = new DBOptionsAttributes;
-    return rv;
+
+//default value false means this is the unchanged behavior up to version 2.6.2
+    rv->SetBool("ExtendVolumeByOneCell", true);
 /* EXAMPLE OF OPTIONS
-    rv->SetBool("Binary format", true);
     rv->SetBool("Big Endian", false);
     rv->SetEnum("Dimension", 1);
     vector<string> dims;
@@ -88,6 +92,7 @@ GetCubeReadOptions(void)
     // When reading or writing the file, you can get the options out of this object like:
     rv->GetDouble("Displacement factor");
 */
+    return rv;
 }
 
 

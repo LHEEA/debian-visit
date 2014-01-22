@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,7 +84,7 @@ class EXPRESSION_API avtSingleInputExpressionFilter
     virtual int               NumVariableArguments() { return 1; }
 
   protected:
-    virtual vtkDataArray     *DeriveVariable(vtkDataSet *) = 0;
+    virtual vtkDataArray     *DeriveVariable(vtkDataSet *, int currentDomainsIndex) = 0;
 };
 
 #endif

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -360,7 +360,7 @@ avtMissingDataFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 
                     // Do threshold and keep all cells with value == 0.
                     vtkThreshold *thres = vtkThreshold::New();
-                    thres->SetInput(input2);
+                    thres->SetInputData(input2);
                     thres->ThresholdBetween(-0.5, 0.5);
                     if(centering == AVT_ZONECENT)
                     {

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -163,7 +163,7 @@ void vtkVisItScalarBarWithOpacityActor::BuildColorBar(vtkViewport *viewport)
   int numColors, numLabels; 
   if ( this->Type == VTK_DISCRETE && !this->definedLabels.empty() )
     {
-    numColors = this->definedLabels.size();
+    numColors = (int)this->definedLabels.size();
     if (Orientation == VERTICAL_TEXT_ON_RIGHT || 
         Orientation == VERTICAL_TEXT_ON_LEFT)
       {

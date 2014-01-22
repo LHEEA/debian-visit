@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,13 +53,15 @@
 //  Programmer: Hank Childs
 //  Creation:   April 24, 2001
 //
+//  Modifications:
+//    Eric Brugger, Fri May 10 14:38:10 PDT 2013
+//    I removed support for mangled mesa.
+//
 // ****************************************************************************
 
 namespace InitVTKRendering
 {
     PLOTTER_API void Initialize();
-    PLOTTER_API void ForceMesa();
-    PLOTTER_API void UnforceMesa();
 }
 
 #endif

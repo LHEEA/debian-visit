@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -199,9 +199,9 @@ WriteOutDomain(DBfile *dbfile, int dI, int dJ, int dK)
     float y_step = rangeY / (ny-1);
     float z_step = rangeZ / (nz-1);
 
-    char *meshname = "mesh";
-    char *varname  = "dist";
-    char *zvarname  = "p";
+    const char *meshname = "mesh";
+    const char *varname  = "dist";
+    const char *zvarname  = "p";
     int dims[3];
     dims[0] = nx-1;
     dims[1] = ny-1;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -270,7 +270,7 @@ MDServerApplication::Execute()
             // Test all of the clients' file descriptors to see if they
             // can be read.
             std::vector<int> deadList;
-            for(size_t i = 0; i < clients.size(); ++i)
+            for(int i = 0; i < (int)clients.size(); ++i)
             {
                 if(connGroup.NeedsRead(i))
                 {

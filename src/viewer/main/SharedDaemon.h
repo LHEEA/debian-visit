@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 #include <QTcpSocket>
 #include <string>
 #include <vectortypes.h>
-
+#include <JSONNode.h>
 class Connection;
 class ViewerSubject;
 // ****************************************************************************
@@ -84,7 +84,7 @@ private:
                             const stringVector &,
                             void *);
 
-   bool ParseInput(const QString &input, std::string& lpasswd, bool& canRender);
+   bool ParseInput(const QString &input, JSONNode& output);
 
    //HKTODO: I need to figure out a good way to have Connections figure out the
    //the type of communication system..
@@ -94,7 +94,8 @@ private:
    enum ConnectionType { TcpConnection, WSocketConnection };
    static Connection* createCustomConnection(int descriptor,void* data);
    int listen_port;
-   std::string password;
+   QString password;
+   QString matched_input;
    ViewerSubject* subject;
 };
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,7 +57,7 @@ typedef struct histogram{
     double *range_ends;
     int count;
     int mod_number;
-};
+} histogram;
 
 typedef struct variableStats{
     int    num_points;
@@ -72,7 +72,7 @@ typedef struct variableStats{
     bool   calculate_stats;
     bool   calculate_hists;
     histogram hist;
-};
+} variableStats;
 
 // ****************************************************************************
 //  Class: avtModelFitFilter

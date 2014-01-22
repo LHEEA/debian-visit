@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -186,7 +186,7 @@ Parser::Reduce(int r)
     int i;
     for (i=0; i<len; i++)
     {
-        int index = elems.size() - len + i;
+        int index = (int)elems.size() - len + i;
         E.push_back(elems[index].node);
         T.push_back(elems[index].token);
         p.Join(elems[index].pos);

@@ -23,14 +23,13 @@
 #include <vtkRectilinearGrid.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
 
-vtkCxxRevisionMacro(vtkVisItExtractRectilinearGrid, "$Revision: 1.11 $");
 vtkStandardNewMacro(vtkVisItExtractRectilinearGrid);
 
 // Construct object to extract all of the input data.
 vtkVisItExtractRectilinearGrid::vtkVisItExtractRectilinearGrid()
 {
   this->VOI[0] = this->VOI[2] = this->VOI[4] = 0;
-  this->VOI[1] = this->VOI[3] = this->VOI[5] = VTK_LARGE_INTEGER;
+  this->VOI[1] = this->VOI[3] = this->VOI[5] = VTK_INT_MAX;
 
   this->SampleRate[0] = this->SampleRate[1] = this->SampleRate[2] = 1;
   

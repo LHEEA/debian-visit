@@ -24,8 +24,6 @@
 
 #include "vtkOpenGLRectilinearGridMapper.h"
 
-vtkCxxRevisionMacro(vtkRectilinearGridMapper, "$Revision: 1.38 $");
-
 //----------------------------------------------------------------------------
 // Needed when we don't use the vtkStandardNewMacro.
 vtkInstantiatorNewMacro(vtkRectilinearGridMapper);
@@ -45,17 +43,9 @@ vtkRectilinearGridMapper::vtkRectilinearGridMapper()
 }
 
 //----------------------------------------------------------------------------
-void vtkRectilinearGridMapper::SetInput(vtkRectilinearGrid *input)
+void vtkRectilinearGridMapper::SetInputData(vtkRectilinearGrid *input)
 {
-  if(input)
-    {
-    this->SetInputConnection(0, input->GetProducerPort());
-    }
-  else
-    {
-    // Setting a NULL input removes the connection.
-    this->SetInputConnection(0, 0);
-    }
+    this->SetInputDataInternal(0, input);
 }
 
 //----------------------------------------------------------------------------
@@ -72,7 +62,7 @@ void vtkRectilinearGridMapper::ShallowCopy(vtkAbstractMapper *mapper)
   vtkRectilinearGridMapper *m = vtkRectilinearGridMapper::SafeDownCast(mapper);
   if ( m != NULL )
     {
-    this->SetInput(m->GetInput());
+    this->SetInputConnection(m->GetInputConnection(0, 0));
     }
 
   // Now do superclass
@@ -102,8 +92,11 @@ double *vtkRectilinearGridMapper::GetBounds()
   if (this->GetNumberOfInputConnections(0))
     {
     this->Update();
-    this->GetInput()->GetBounds(this->Bounds);
-    return this->Bounds;
+    if(this->GetInput() != NULL)
+      {
+      this->GetInput()->GetBounds(this->Bounds);
+      return this->Bounds;
+      }
     }
 
   return bounds;

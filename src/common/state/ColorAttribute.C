@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1809,5 +1809,24 @@ ColorAttribute::RgbToRgbStr(unsigned char rgb[3], char *s)
                 s[k] = '0' + hexDigits[j];
         }
     }
+}
+
+// **************************************************************************
+// Function: Blend
+//
+// Purpose: Blend 2 colors.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Jul  5 22:10:35 PDT 2013
+// **************************************************************************
+
+ColorAttribute
+ColorAttribute::Blend(const ColorAttribute &a, const ColorAttribute &b, double t)
+{
+    int newR = ((1. - t) * double(a.Red())   + t * double(b.Red()));
+    int newG = ((1. - t) * double(a.Green()) + t * double(b.Green()));
+    int newB = ((1. - t) * double(a.Blue())  + t * double(b.Blue()));
+    int newA = ((1. - t) * double(a.Alpha()) + t * double(b.Alpha()));
+    return ColorAttribute(newR, newG, newB, newA);
 }
 

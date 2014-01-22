@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -125,10 +125,15 @@ avtFindExternalExpression::~avtFindExternalExpression()
 //
 //    Mark C. Miller, Wed Aug 22 09:30:01 PDT 2012
 //    Fixed leak of 'pdrpf' on early return due to EXCEPTION.
+//
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Change the avtFacelistFilter::FindFaces from a static function to a 
+//    normal function for the thread code to work.
+//
 // ****************************************************************************
 
 vtkDataArray *
-avtFindExternalExpression::DeriveVariable(vtkDataSet *in_ds)
+avtFindExternalExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     vtkDataSet *new_ds = in_ds->NewInstance();
     new_ds->ShallowCopy(in_ds);
@@ -146,9 +151,11 @@ avtFindExternalExpression::DeriveVariable(vtkDataSet *in_ds)
         new_ds->GetPointData()->AddArray(arr);
     arr->Delete();
 
-    avtDataTree_p tree = avtFacelistFilter::FindFaces(new_ds, -1, "",
+    avtFacelistFilter *flf = new avtFacelistFilter();
+    avtDataTree_p tree = flf->FindFaces(new_ds, -1, "",
                                   GetInput()->GetInfo(), false, false,
                                   true, true, NULL);
+    delete flf;
     vtkDataSet *ds = tree->GetSingleLeaf();
 
     vtkPolyDataRelevantPointsFilter *pdrpf = NULL;
@@ -160,7 +167,7 @@ avtFindExternalExpression::DeriveVariable(vtkDataSet *in_ds)
         if (ds->GetDataObjectType() == VTK_POLY_DATA)
         {
             pdrpf = vtkPolyDataRelevantPointsFilter::New();
-            pdrpf->SetInput((vtkPolyData *) ds);
+            pdrpf->SetInputData((vtkPolyData *) ds);
             pdrpf->Update();
             ds = pdrpf->GetOutput();
         }

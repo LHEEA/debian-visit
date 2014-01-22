@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1166,6 +1166,15 @@ int VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata);
 
 int VisItUI_setValueI(const char *name, int value, int enabled);
 int VisItUI_setValueS(const char *name, const char *value, int enabled);
+
+/* Initialize the VisIt runtime without the client being connected. */
+int VisItInitializeRuntime(void);
+
+/* Measuring memory usage */
+int VisItGetMemory(double *m_size, double *m_rss); 
+
+/* Include some experimental plotting functions */
+#include <VisItControlInterface_V2_plotting.h>
 
 #ifdef __cplusplus
 }

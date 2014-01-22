@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -152,6 +152,8 @@
 #include <PlotPluginManager.h>
 #include <OperatorPluginManager.h>
 #include <avtImageFileWriter.h>
+#include <ViewerClientInformation.h>
+#include <ViewerClientInformationElement.h>
 
 #include <QApplication>
 #include <QSocketNotifier>
@@ -178,6 +180,11 @@ static int nConfigArgs = 1;
 #endif
 
 #include <algorithm>
+
+#include <visit-config.h>
+#ifdef HAVE_OSMESA
+#include <vtkVisItOSMesaRenderingFactory.h>
+#endif
 
 static std::string getToken(std::string buff, bool reset);
 static int getVectorTokens(std::string buff, std::vector<std::string> &tokens, int nodeType);
@@ -350,6 +357,11 @@ ViewerSubject::ViewerSubject() : ViewerBase(0),
     // activated from commandline
     //
     shared_viewer_daemon = NULL;
+
+    /// assign each client a unique id..
+    /// new export functions are getting added and BroadcastToAllClients
+    /// would really be inefficient for this process..
+    clientIds = 0;
 }
 
 // ****************************************************************************
@@ -431,7 +443,17 @@ ViewerSubject::AddNewViewerClientConnection(ViewerClientConnection* newClient)
     connect(newClient, SIGNAL(DisconnectClient(ViewerClientConnection *)),
             this,      SLOT(DisconnectClient(ViewerClientConnection *)));
 
+    /// assign unique id to the client..
+    newClient->GetViewerClientAttributes().SetId((int)clientIds++);
+
     clients.push_back(newClient);
+
+    if(newClient->GetViewerClientAttributes().GetRenderingType() == ViewerClientAttributes::Image)
+        BroadcastAdvanced(GetViewerState()->GetView3DAttributes());
+
+    if(newClient->GetViewerClientAttributes().GetRenderingType() == ViewerClientAttributes::Data)
+        BroadcastAdvanced(0);
+
     // Discover the client's information.
     QTimer::singleShot(100, this, SLOT(DiscoverClientInformation()));
 }
@@ -1301,6 +1323,8 @@ ViewerSubject::DisconnectClient(ViewerClientConnection *client)
 
         debug1 << "VisIt's viewer lost a connection to one of its clients ("
                << client->Name().toStdString() << ")." << endl;
+        if(client->GetViewerClientAttributes().GetExternalClient())
+            std::cout << "Disconnecting client: " << client->GetViewerClientAttributes().GetTitle() << std::endl;
         client->deleteLater();
 
         // check to see if all other clients are remote, if they are then quit since
@@ -1308,7 +1332,7 @@ ViewerSubject::DisconnectClient(ViewerClientConnection *client)
         bool adminClient = false;
         for(int i = 0; i < clients.size(); ++i)
         {
-            if(!clients[i]->GetExternalClient())
+            if(!clients[i]->GetViewerClientAttributes().GetExternalClient())
             {
                 adminClient = true;
                 break;
@@ -2638,6 +2662,9 @@ ViewerSubject::ReadConfigFiles(int argc, char **argv)
 //    Carson Brownlee, Sun May  6 16:25:28 PDT 2012
 //    Add -manta argument.
 //
+//    Eric Brugger, Fri May 10 14:44:11 PDT 2013
+//    I removed support for mangled mesa.
+//
 // ****************************************************************************
 
 void
@@ -2880,7 +2907,9 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
         }
         else if (strcmp(argv[i], "-nowin") == 0)
         {
-            InitVTKRendering::ForceMesa();
+#ifdef HAVE_OSMESA
+            vtkVisItOSMesaRenderingFactory::ForceMesa();
+#endif
             RemoteProcess::DisablePTY();
             SetNowinMode(true);
         }
@@ -3500,6 +3529,269 @@ ViewerSubject::SaveWindow()
     ViewerWindowManager::Instance()->SaveWindow();
 }
 
+/*
+  Helper function for converting to serialized data
+  */
+void GetSerializedData(int windowIndex,
+                       int width,
+                       int height,
+                       double resolution,
+                       const ViewerClientInformation::OutputFormat& type,
+                       std::vector<ViewerClientInformationElement>& elementList)
+{
+
+    ViewerWindow* vwin = ViewerWindowManager::Instance()->GetWindow(windowIndex);
+
+    if( type == ViewerClientInformation::Image )
+    {
+        ViewerClientInformationElement element;
+
+        size_t len = 0;
+        const char* result = 0;
+
+        avtImage_p image = vwin->ScreenCapture();
+
+        /// convert to format..
+        if(width == -1 || height == -1)
+            result = avtImageFileWriter::WriteToByteArray(image->GetImage(),resolution,1,len);
+        else
+            result = avtImageFileWriter::WriteToByteArray(image->GetImage(),resolution,1,len,width, height);
+
+        if(len > 0){
+            QByteArray data(result,(int)len);
+
+            element.SetData(QString(data.toBase64()).toStdString());
+            element.SetFormat(ViewerClientInformation::Image);
+            elementList.push_back(element);
+        }
+        delete [] result;
+    }
+
+    if( type == ViewerClientInformation::Data )
+    {
+        ViewerPlotList *plotList = vwin->GetPlotList();
+
+        //TODO: Fix this return value..
+        if(plotList->GetNumRealizedPlots() == 0 || plotList->GetNumVisiblePlots() == 0) return;
+
+        size_t len = 0;
+        const char* result = 0;
+
+        for(int j = 0; j < plotList->GetNumPlots(); ++j)
+        {
+            ViewerPlot* plot = plotList->GetPlot(j);
+
+            avtDataObjectReader_p reader = plot->GetReader();
+
+            if(reader->InputIsImage())
+            {
+                avtImage_p image = reader->GetImageOutput();
+                if(width == -1 || height == -1)
+                    result = avtImageFileWriter::WriteToByteArray(image->GetImage(),resolution,1,len);
+                else
+                    result = avtImageFileWriter::WriteToByteArray(image->GetImage(),resolution,1,len, width, height);
+                if(len > 0){
+                    QByteArray data(result,(int)len);
+                    ViewerClientInformationElement element;
+                    element.SetData(QString(data.toBase64()).toStdString());
+                    element.SetFormat(ViewerClientInformation::Image);
+                    elementList.push_back(element);
+                }
+                /// free the memory
+                delete [] result;
+            }
+            else if(reader->InputIsDataset())
+            {
+                avtDataset_p dataset = reader->GetDatasetOutput();
+                std::string res = dataset->GetDatasetAsString();
+
+                if(res.size() > 0) {
+                    QByteArray data(res.c_str(),(int)res.size());
+                    ViewerClientInformationElement element;
+                    element.SetData(QString(data.toBase64()).toStdString());
+                    element.SetFormat(ViewerClientInformation::Data);
+                    elementList.push_back(element);
+                }
+            }
+        }
+    }
+}
+
+// ****************************************************************************
+// Method: QvisHostProfileWindow::ExportWindow
+//
+// Purpose:
+//   Experimental! Export screen capture over memory.
+//
+// Programmer:
+// Creation:   September 10, 2013
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+ViewerSubject::ExportWindow()
+{
+    JSONNode node;
+    node.Parse(GetViewerState()->GetViewerRPC()->GetStringArg1());
+
+
+    intVector windowIds = node["plotIds"].AsIntVector();
+    std::string format = node["format"].GetString();
+
+
+    ViewerClientInformation* qatts = GetViewerState()->GetViewerClientInformation();
+    ViewerClientInformation::OutputFormat of;
+
+    qatts->OutputFormat_FromString(format, of);
+
+    if(of == ViewerClientInformation::None)
+    {
+        std::cerr << "None selected for Export Window" << std::endl;
+        return;
+    }
+
+    int clientId = GetViewerState()->GetViewerRPC()->GetIntArg1();
+
+    int resultId = -1;
+    /// Broadcast directly to client..
+    for(int i = 0; i < clients.size(); ++i) {
+        ViewerClientAttributes& client = clients[i]->GetViewerClientAttributes();
+        if(client.GetId() == clientId) {
+            resultId = i;
+            break;
+        }
+    }
+
+    if(resultId < 0) {
+        /// client does not exist anymore?
+        std::cerr << "Export request for client that does not exist.." << std::endl;
+        return;
+    }
+
+    ViewerClientConnection* client = clients[resultId];
+    ViewerClientAttributes& clatts = client->GetViewerClientAttributes();
+
+    // resolution and window
+
+    std::vector<ViewerClientInformationElement> elementList;
+
+    qatts->ClearVars();
+
+    for(int i = 0; i < windowIds.size(); ++i)
+    {
+        ViewerWindow* vwin = ViewerWindowManager::Instance()->GetWindow(i);
+
+        bool match = false;
+        for(int j = 0; j < windowIds.size(); ++j)
+        {
+            if(windowIds[j] == vwin->GetWindowId()+1)
+            {
+                match = true;
+                break;
+            }
+        }
+
+        if(!match) continue;
+
+        GetSerializedData(i, clatts.GetImageWidth(), clatts.GetImageHeight(), clatts.GetImageResolutionPcnt(), of, elementList);
+    }
+
+    for(int i = 0; i < elementList.size(); ++i)
+        qatts->AddVars(elementList[i]);
+
+    client->BroadcastToClient(qatts);
+
+    qatts->ClearVars();
+}
+
+// ****************************************************************************
+// Method: QvisHostProfileWindow::ExportHostProfile
+//
+// Purpose:
+//   Export Selected HostProfile to Directory.
+//
+// Programmer:
+// Creation:   September 10, 2013
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+ViewerSubject::ExportHostProfile()
+{
+    JSONNode node;
+    node.Parse(GetViewerState()->GetViewerRPC()->GetStringArg1());
+
+    std::string profileName = node["profileName"].GetString();
+    std::string fileName = node["fileName"].GetString();
+    bool saveInUserDir = node["saveInUserDir"].GetBool();
+
+    std::string userdir = GetAndMakeUserVisItHostsDirectory();
+    HostProfileList *hpl = GetViewerState()->GetHostProfileList();
+
+    for (int i = 0; i < hpl->GetNumMachines(); ++i)
+    {
+        MachineProfile &pl = hpl->GetMachines(i);
+        std::string host = pl.GetHostNickname();
+
+        if(host != profileName) continue;
+
+        std::string name = "";
+
+        if(!saveInUserDir)
+            name = fileName;
+        else
+            name = userdir + VISIT_SLASH_STRING + fileName;
+
+        QString msg2 = tr("Host profile %1 exported to %2").
+                       arg(host.c_str()).
+                       arg(name.c_str());
+        Status(msg2);
+
+        // Tell the user what happened.
+        msg2 = tr("VisIt exported host profile \"%1\" to the file: %2. ").
+           arg(host.c_str()).
+           arg(name.c_str());
+        Message(msg2);
+
+        SingleAttributeConfigManager mgr(&pl);
+        mgr.Export(name);
+        break;
+    }
+}
+
+// ****************************************************************************
+// Method: QvisHostProfileWindow::Export
+//
+// Purpose:
+//   Handle new export functions
+//
+// Programmer:
+// Creation:   September 10, 2013
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+ViewerSubject::Export()
+{
+    JSONNode node;
+    node.Parse(GetViewerState()->GetViewerRPC()->GetStringArg1());
+
+    std::string action = node["action"].GetString();
+
+    if(action == "ExportWindows") {
+        ExportWindow();
+    }
+    else if(action == "ExportHostProfile") {
+        ExportHostProfile();
+    }
+}
+
 // ****************************************************************************
 // Method: ViewerSubject::PrintWindow
 //
@@ -3710,7 +4002,7 @@ int getVectorTokens(std::string buff, std::vector<std::string> &tokens, int node
     if (tokens.size() != length)
         tokens.clear();
 
-    return tokens.size();
+    return (int)tokens.size();
 }
 
 
@@ -8161,7 +8453,10 @@ ViewerSubject::HandleViewerRPC()
 //
 //    Kathleen Biagas, Fri Oct 19 13:55:00 PDT 2012
 //    Reorderd DDT entries, made MaxRPC the last case before default.
-//  
+//
+//    Kathleen Biagas, Wed Aug  7 13:00:17 PDT 2013
+//    Added SetPrecisionTypeRPC.
+//
 // ****************************************************************************
 
 void
@@ -8180,9 +8475,11 @@ ViewerSubject::HandleViewerRPCEx()
     //
     GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetStateLoggingRPC);
     GetViewerState()->GetLogRPC()->SetBoolFlag(false);
-    BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+    GetViewerState()->GetLogRPC()->Notify();
+    //BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
     GetViewerState()->GetLogRPC()->CopyAttributes(GetViewerState()->GetViewerRPC());
-    BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+    GetViewerState()->GetLogRPC()->Notify();
+    //BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
 
     debug4 << "Handling "
            << ViewerRPC::ViewerRPCType_ToString(GetViewerState()->GetViewerRPC()->GetRPCType()).c_str()
@@ -8396,6 +8693,9 @@ ViewerSubject::HandleViewerRPCEx()
     case ViewerRPC::SetPickAttributesRPC:
         SetPickAttributes();
         break;
+    case ViewerRPC::ExportRPC:
+        Export();
+        break;
     case ViewerRPC::ExportColorTableRPC:
         ExportColorTable();
         break;
@@ -8522,6 +8822,9 @@ ViewerSubject::HandleViewerRPCEx()
     case ViewerRPC::SetCreateVectorMagnitudeExpressionsRPC:
         SetCreateVectorMagnitudeExpressions();
         break;
+    case ViewerRPC::SetPrecisionTypeRPC:
+        SetPrecisionType();
+        break;
     case ViewerRPC::SetDefaultFileOpenOptionsRPC:
         SetDefaultFileOpenOptions();
         break;
@@ -8579,119 +8882,203 @@ ViewerSubject::HandleViewerRPCEx()
     // We need to do this until all items in the switch statement are
     // removed and converted to actions.
     //
-
+    if(GetViewerState()->GetViewerRPC()->GetRPCType() == ViewerRPC::DrawPlotsRPC)
+        BroadcastAdvanced(0);
     if (everythingOK && !actionHandled)
         ViewerWindowManager::Instance()->UpdateActions();
 
     // Tell the clients that it's okay to start logging again.
     GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetStateLoggingRPC);
     GetViewerState()->GetLogRPC()->SetBoolFlag(true);
-    BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+    GetViewerState()->GetLogRPC()->Notify();
+    //BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
 
     debug4 << "Done handling "
            << ViewerRPC::ViewerRPCType_ToString(GetViewerState()->GetViewerRPC()->GetRPCType()).c_str()
            << " RPC." << endl;
 }
 
+
 void
 ViewerSubject::BroadcastAdvanced(AttributeSubject* subj)
 {
-
     /// check if any clients have enabled advanced broadcasting before even
     /// starting..
-    bool shouldBroadCastAdvanced = false;
+
+    bool shouldBroadCastAdvancedImage = false;
+    bool shouldBroadCastAdvancedData = false;
 
     for(int i = 0; i < clients.size(); ++i)
     {
-        if(clients[i]->GetAdvancedRendering())
-        {
-            shouldBroadCastAdvanced = true;
-            break;
-        }
+        if(clients[i]->GetViewerClientAttributes().GetRenderingType() == ViewerClientAttributes::Image)
+            shouldBroadCastAdvancedImage = true;
+        if(clients[i]->GetViewerClientAttributes().GetRenderingType() == ViewerClientAttributes::Data)
+            shouldBroadCastAdvancedData = true;
     }
 
-    if(!shouldBroadCastAdvanced) return; 
+    if(!shouldBroadCastAdvancedImage && !shouldBroadCastAdvancedData) return;
 
-    /// if DrawPlots then send a Query for Advanced users..
-    //if(GetViewerState()->GetViewerRPC()->GetRPCType() == ViewerRPC::DrawPlotsRPC)
-    if(subj == GetViewerState()->GetView2DAttributes() || subj == GetViewerState()->GetView3DAttributes())
+    typedef std::vector<ViewerClientInformationElement> ViewerClientInformationElementList;
+    std::map<std::string, ViewerClientInformationElementList> geometryElementMap;
+
+    ViewerWindowManager* manager = ViewerWindowManager::Instance();
+
+    for(int x = 0; x < clients.size(); ++x)
     {
-        QueryAttributes* qatts = GetViewerState()->GetQueryAttributes();
-        ViewerWindowManager* manager = ViewerWindowManager::Instance();
-        stringVector defaultVars;
+        const ViewerClientAttributes& clatts = clients[x]->GetViewerClientAttributes();
 
-        /// for now do screen capture, until all clients are stable
-        bool screenCapture = true;
+        if(clatts.GetRenderingType() == ViewerClientAttributes::None)
+            continue;
 
-        for(int i = 0; i < manager->GetNumWindows(); ++i)
+        intVector activeWindows = clatts.GetWindowIds();
+
+        if(activeWindows.size() == 0)
+            activeWindows.push_back(manager->GetActiveWindow()->GetWindowId()+1);
+
+        if(     clatts.GetRenderingType() == ViewerClientAttributes::Image &&
+                (subj == GetViewerState()->GetView2DAttributes() ||
+                subj == GetViewerState()->GetView3DAttributes()))
         {
-            ViewerWindow* vwin = manager->GetWindow(i);
 
-            size_t len = 0;
-            const char* result = 0;
-
-            if(!screenCapture)
+            /// for now do screen capture, until all clients are stable
+            for(int i = 0; i < manager->GetNumWindows(); ++i)
             {
+                ViewerWindow* vwin = manager->GetWindow(i);
+
+                bool match = false;
+                for(int j = 0; j < activeWindows.size(); ++j)
+                {
+                    if(activeWindows[j] == vwin->GetWindowId()+1)
+                    {
+                        match = true;
+                        break;
+                    }
+                }
+
+                if(!match) continue;
+
+
+                QString qdim = QString("%1x%2x%3").arg(clatts.GetImageWidth())
+                                                  .arg(clatts.GetImageHeight())
+                                                  .arg(vwin->GetWindowId()+1);
+
+                std::string dimensions = qdim.toStdString();
+
+                if(geometryElementMap.count(dimensions) > 0) continue;
+
+                //int timerId = visitTimer->StartTimer(true);
+                GetSerializedData(i,
+                                  clatts.GetImageWidth(),
+                                  clatts.GetImageHeight(),
+                                  clatts.GetImageResolutionPcnt(),
+                                  ViewerClientInformation::Image,
+                                  geometryElementMap[dimensions]);
+            }
+        }
+
+        if( clatts.GetRenderingType() == ViewerClientAttributes::Data && subj == NULL)
+        {
+            /// for now do screen capture, until all clients are stable
+            for(int i = 0; i < manager->GetNumWindows(); ++i)
+            {
+                ViewerWindow* vwin = manager->GetWindow(i);
+
+                bool match = false;
+                for(int j = 0; j < activeWindows.size(); ++j)
+                {
+                    if(activeWindows[j] == vwin->GetWindowId()+1)
+                    {
+                        match = true;
+                        break;
+                    }
+                }
+
+                if(!match) continue;
+
+
+                QString qdim = QString("%1x%2x%3").arg(clatts.GetImageWidth())
+                                                  .arg(clatts.GetImageHeight())
+                                                  .arg(vwin->GetWindowId()+1);
+                std::string dimensions = qdim.toStdString();
+
+                if(geometryElementMap.count(dimensions) > 0) continue;
+
                 /// get dataset..
                 ViewerPlotList *plotList = vwin->GetPlotList();
 
-                for(int j = 0; j < plotList->GetNumPlots(); ++j)
-                {
-                    ViewerPlot* plot = plotList->GetPlot(i);
-                    avtDataObjectReader_p reader = plot->GetReader();
-                    if(reader->InputIsImage())
-                    {
-                        avtImage_p image = reader->GetImageOutput();
-                        result = avtImageFileWriter::WriteToByteArray(image->GetImage(),80,1,len);
+                if(plotList->GetNumRealizedPlots() == 0 || plotList->GetNumVisiblePlots() == 0)
+                     continue;
 
-                        if(len > 0){
-                            QByteArray data(result,len);
-                            defaultVars.push_back(QString(data.toBase64()).toStdString());
-                        }
-                        /// free the memory
-                        delete [] result;
-                    }
-                    else if(reader->InputIsDataset())
-                    {
-                        avtDataset_p dataset = reader->GetDatasetOutput();
-                        std::string res = dataset->GetDatasetAsString();
-                        if(res.size() > 0)
-                            defaultVars.push_back(res);
-                    }
-                }
-            }
-            else
-            {
-                /// image
-                avtImage_p image = vwin->ScreenCapture();
-                /// convert to format..
-                result = avtImageFileWriter::WriteToByteArray(image->GetImage(),80,1,len);
-
-                if(len > 0){
-                    QByteArray data(result,len);
-                    defaultVars.push_back(QString(data.toBase64()).toStdString());
-                }
-                delete [] result;
+                GetSerializedData(i,
+                                  clatts.GetImageWidth(),
+                                  clatts.GetImageHeight(),
+                                  clatts.GetImageResolutionPcnt(),
+                                  ViewerClientInformation::Data,
+                                  geometryElementMap[dimensions]);
             }
 
-        }
-
-        if(defaultVars.size() > 0)
-        {
-            qatts->SetResultsMessage("ImageData");
-            qatts->SetResultsValue(0);
-            qatts->SetDefaultVars(defaultVars);
-
-            for(int i = 0; i < clients.size(); ++i)
-            {
-                if(clients[i]->GetAdvancedRendering())
-                    clients[i]->BroadcastToClient(qatts);
-            }
-            qatts->SetResultsMessage("");
-            qatts->SetResultsValue(0);
-            qatts->SetDefaultVars(stringVector());
         }
     }
+
+
+    /// if no data to transmit then immediately return..
+    if(geometryElementMap.size() == 0) return;
+
+    ViewerClientInformation* qatts = GetViewerState()->GetViewerClientInformation();
+
+    /// I am clearing memory through the ClearVars() operations..
+    for(int i = 0; i < clients.size(); ++i)
+    {
+        ViewerClientAttributes& clatts = clients[i]->GetViewerClientAttributes();
+
+        if(clatts.GetRenderingType() == ViewerClientAttributes::None)
+            continue;
+
+        intVector activeWindows = clatts.GetWindowIds();
+
+        if(activeWindows.size() == 0)
+            activeWindows.push_back(manager->GetActiveWindow()->GetWindowId()+1);
+
+        if(clatts.GetRenderingType() == ViewerClientAttributes::Data ||
+           clatts.GetRenderingType() == ViewerClientAttributes::Image)
+        {
+            for(size_t j = 0; j < activeWindows.size(); ++j)
+            {
+                QString qdim = QString("%1x%2x%3").arg(clatts.GetImageWidth())
+                                                                 .arg(clatts.GetImageHeight())
+                                                                 .arg(activeWindows[j]);
+                std::string dimensions = qdim.toStdString();
+
+                if(geometryElementMap.count(dimensions) == 0) continue;
+
+                qatts->ClearVars();
+
+                ViewerClientInformationElementList& elementList = geometryElementMap[dimensions];
+                for(int k = 0; k < elementList.size(); ++k) {
+                    qatts->AddVars(elementList[k]);
+                }
+                clients[i]->BroadcastToClient(qatts);
+            }
+        }
+    }
+
+//    static bool first = true;
+//    static int index = -1;
+//    if(!first && (geometryImageMap.size() > 0 || geometryDataMap.size() > 0))
+//    {
+//        double timeSinceLastCall = visitTimer->StopTimer(index,"BroadcastAdvanceUpdate", true);
+//        std::cout << "update: " << timeSinceLastCall << std::endl;
+//        index = visitTimer->StartTimer(true);
+//    }
+
+//    if(first)
+//    {
+//        index = visitTimer->StartTimer(true);
+//        first = false;
+//    }
+
+    /// save memory..
+    qatts->ClearVars();
 }
 // ****************************************************************************
 // Method: ViewerSubject::PostponeAction
@@ -8808,18 +9195,21 @@ ViewerSubject::HandlePostponedAction()
             //
             GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetStateLoggingRPC);
             GetViewerState()->GetLogRPC()->SetBoolFlag(false);
-            BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+            GetViewerState()->GetLogRPC()->Notify();
+            //BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
             // Tell the logging client to log a change to set the window to the
             // window that originated the RPC.
             if(win != wM->GetActiveWindow())
             {
                 GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetActiveWindowRPC);
                 GetViewerState()->GetLogRPC()->SetWindowId(win->GetWindowId()+1);
-                BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+                GetViewerState()->GetLogRPC()->Notify();
+                //BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
             }
             GetViewerState()->GetLogRPC()->CopyAttributes(&GetViewerState()->
                 GetPostponedAction()->GetRPC());
-            BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+            GetViewerState()->GetLogRPC()->Notify();
+            //BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
 
             // Handle the action.
             actionMgr->HandleAction(GetViewerState()->GetPostponedAction()->GetRPC());
@@ -8830,12 +9220,14 @@ ViewerSubject::HandlePostponedAction()
             {
                 GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetActiveWindowRPC);
                 GetViewerState()->GetLogRPC()->SetWindowId(wM->GetActiveWindow()->GetWindowId()+1);
-                BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+                GetViewerState()->GetLogRPC()->Notify();
+                //BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
             }
             // Tell the clients that it's okay to start logging again.
             GetViewerState()->GetLogRPC()->SetRPCType(ViewerRPC::SetStateLoggingRPC);
             GetViewerState()->GetLogRPC()->SetBoolFlag(true);
-            BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
+            GetViewerState()->GetLogRPC()->Notify();
+            //BroadcastToAllClients((void*)this, GetViewerState()->GetLogRPC());
         }
         else
         {
@@ -10338,6 +10730,26 @@ ViewerSubject::SetCreateVectorMagnitudeExpressions()
 {
     ViewerWindowManager *wM = ViewerWindowManager::Instance();
     wM->SetCreateVectorMagnitudeExpressions(
+        GetViewerState()->GetViewerRPC()->GetIntArg1());
+}
+
+
+// ****************************************************************************
+//  Method:  ViewerSubject::SetPrecisionType
+//
+//  Purpose: Handle a SetPrecisionType RPC
+//
+//  Programmer:  Kathleen Biagas
+//  Creation:    August 7, 2013
+//
+//  Modifications:
+// ****************************************************************************
+
+void
+ViewerSubject::SetPrecisionType()
+{
+    ViewerWindowManager *wM = ViewerWindowManager::Instance();
+    wM->SetPrecisionType(
         GetViewerState()->GetViewerRPC()->GetIntArg1());
 }
 

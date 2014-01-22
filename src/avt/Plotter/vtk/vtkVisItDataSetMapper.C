@@ -32,7 +32,6 @@
 #include "vtkOpenGLRectilinearGridMapper.h"
 #include "vtkOpenGLStructuredGridMapper.h"
 
-vtkCxxRevisionMacro(vtkVisItDataSetMapper, "$Revision: 1.70 $");
 vtkStandardNewMacro(vtkVisItDataSetMapper);
 
 // ****************************************************************************
@@ -151,6 +150,9 @@ void vtkVisItDataSetMapper::ReleaseGraphicsResources( vtkWindow *renWin )
 //   Brad Whitlock, Wed Sep 14 15:30:14 PDT 2011
 //   Remove setting the painting delegate to make textured points work in SR.
 //
+//   Kathleen Biagas, Fri Jan 25 16:04:46 PST 2013
+//   Call Update on the filter, not the data object.
+//
 // ****************************************************************************
 
 void vtkVisItDataSetMapper::Render(vtkRenderer *ren, vtkActor *act)
@@ -179,7 +181,7 @@ void vtkVisItDataSetMapper::Render(vtkRenderer *ren, vtkActor *act)
     vtkPolyDataMapper *pm = vtkPolyDataMapper::New();
     vtkRectilinearGridMapper *rgm = vtkRectilinearGridMapper::New();
     vtkStructuredGridMapper *sgm = vtkStructuredGridMapper::New();
-    pm->SetInput(gf->GetOutput());
+    pm->SetInputConnection(gf->GetOutputPort());
 
     // Install a textured point painter on the polydata mapper.
     vtkPainterPolyDataMapper *ppdm = vtkPainterPolyDataMapper::SafeDownCast(pm);
@@ -208,25 +210,25 @@ void vtkVisItDataSetMapper::Render(vtkRenderer *ren, vtkActor *act)
   bool haveVertices = false;
   if ( this->GetInput()->GetDataObjectType() == VTK_RECTILINEAR_GRID )
     {
-    this->RectilinearGridMapper->SetInput((vtkRectilinearGrid *)(this->GetInput()));
+    this->RectilinearGridMapper->SetInputConnection(this->GetInputConnection(0,0));
     }
   else if ( this->GetInput()->GetDataObjectType() == VTK_STRUCTURED_GRID )
     {
-    this->StructuredGridMapper->SetInput((vtkStructuredGrid *)(this->GetInput()));
+    this->StructuredGridMapper->SetInputConnection(this->GetInputConnection(0,0));
     }
   else if ( this->GetInput()->GetDataObjectType() == VTK_POLY_DATA )
     {
     vtkPolyData *pd = (vtkPolyData *)(this->GetInput());
     haveVertices = (pd->GetNumberOfVerts() > 0);
-    this->PolyDataMapper->SetInput(pd);
+    this->PolyDataMapper->SetInputConnection(this->GetInputConnection(0,0));
     }
   else
     {
-    this->GeometryExtractor->SetInput(this->GetInput());
+    this->GeometryExtractor->SetInputConnection(this->GetInputConnection(0,0));
+    this->GeometryExtractor->Update();
     vtkPolyData *pd = this->GeometryExtractor->GetOutput();
-    pd->Update();
     haveVertices = (pd->GetNumberOfVerts() > 0);
-    this->PolyDataMapper->SetInput(pd);
+    this->PolyDataMapper->SetInputConnection(this->GeometryExtractor->GetOutputPort());
     }
   
   vtkMapper *mapper = NULL;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -359,7 +359,7 @@ avtNeighborEvaluatorExpression::DeriveVariableT(vtkDataSet *in_ds,
 // ****************************************************************************
 
 vtkDataArray *
-avtNeighborEvaluatorExpression::DeriveVariable(vtkDataSet *in_ds)
+avtNeighborEvaluatorExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     vtkIdType nPoints = in_ds->GetNumberOfPoints();
     vtkIdType nCells  = in_ds->GetNumberOfCells();

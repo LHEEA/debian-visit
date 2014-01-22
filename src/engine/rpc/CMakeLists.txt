@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -45,6 +45,9 @@
 #   Brad Whitlock, Mon Oct 10 11:14:46 PDT 2011
 #   Added EnginePropertiesRPC.
 #
+#   Kathleen Biagas, Wed Aug  7 15:56:48 PDT 2013
+#   Added SetPrecisionTypeRPC.
+#
 #****************************************************************************/
 
 SET(ENGINERPC_SOURCES
@@ -68,6 +71,7 @@ ReadRPC.C
 ReleaseDataRPC.C
 RenderRPC.C
 SetEFileOpenOptionsRPC.C
+SetPrecisionTypeRPC.C
 SetWinAnnotAttsRPC.C
 SimulationCommandRPC.C
 StartPickRPC.C

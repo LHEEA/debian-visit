@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -69,10 +69,11 @@ public:
     enum FieldType
     {
         Default,
+        FlashField,
         M3DC12DField,
         M3DC13DField,
-        NIMRODField,
-        FlashField
+        Nek5000Field,
+        NIMRODField
     };
     enum IntegrationType
     {
@@ -80,7 +81,7 @@ public:
         Leapfrog,
         DormandPrince,
         AdamsBashforth,
-        Reserved_4,
+        RK4,
         M3DC12DIntegrator
     };
     enum SizeType
@@ -143,17 +144,26 @@ public:
         WindingPointOrder,
         WindingPointOrderModulo
     };
-    enum StreamlineAlgorithmType
+    enum ParallelizationAlgorithmType
     {
         LoadOnDemand,
         ParallelStaticDomains,
-        MasterSlave
+        MasterSlave,
+        VisItSelects
+    };
+    enum PathlinesCMFE
+    {
+        CONN_CMFE,
+        POS_CMFE
     };
     enum PointType
     {
         Box,
         Axis,
         Icosahedron,
+        Octahedron,
+        Tetrahedron,
+        SphereGeometry,
         Point,
         Sphere
     };
@@ -203,6 +213,7 @@ public:
     void SetLineEnd(const double *lineEnd_);
     void SetPointDensity(int pointDensity_);
     void SetFieldType(FieldType fieldType_);
+    void SetForceNodeCenteredData(bool forceNodeCenteredData_);
     void SetFieldConstant(double fieldConstant_);
     void SetVelocitySource(const double *velocitySource_);
     void SetIntegrationType(IntegrationType integrationType_);
@@ -233,6 +244,8 @@ public:
     void SetSingleColor(const ColorAttribute &singleColor_);
     void SetColorTableName(const std::string &colorTableName_);
     void SetDataValue(DataValue dataValue_);
+    void SetShowRationalSurfaces(bool showRationalSurfaces_);
+    void SetRationalSurfaceMaxIterations(int RationalSurfaceMaxIterations_);
     void SetShowOPoints(bool showOPoints_);
     void SetOPointMaxIterations(int OPointMaxIterations_);
     void SetShowXPoints(bool showXPoints_);
@@ -254,11 +267,18 @@ public:
     void SetPointType(PointType pointType_);
     void SetLegendFlag(bool legendFlag_);
     void SetLightingFlag(bool lightingFlag_);
-    void SetStreamlineAlgorithmType(StreamlineAlgorithmType streamlineAlgorithmType_);
-    void SetMaxStreamlineProcessCount(int maxStreamlineProcessCount_);
+    void SetParallelizationAlgorithmType(ParallelizationAlgorithmType parallelizationAlgorithmType_);
+    void SetMaxProcessCount(int maxProcessCount_);
     void SetMaxDomainCacheSize(int maxDomainCacheSize_);
     void SetWorkGroupSize(int workGroupSize_);
-    void SetForceNodeCenteredData(bool forceNodeCenteredData_);
+    void SetPathlines(bool pathlines_);
+    void SetPathlinesOverrideStartingTimeFlag(bool pathlinesOverrideStartingTimeFlag_);
+    void SetPathlinesOverrideStartingTime(double pathlinesOverrideStartingTime_);
+    void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
+    void SetIssueTerminationWarnings(bool issueTerminationWarnings_);
+    void SetIssueStiffnessWarnings(bool issueStiffnessWarnings_);
+    void SetIssueCriticalPointsWarnings(bool issueCriticalPointsWarnings_);
+    void SetCriticalPointThreshold(double criticalPointThreshold_);
 
     // Property getting methods
     Opacity              GetOpacityType() const;
@@ -275,6 +295,7 @@ public:
           double         *GetLineEnd();
     int                  GetPointDensity() const;
     FieldType            GetFieldType() const;
+    bool                 GetForceNodeCenteredData() const;
     double               GetFieldConstant() const;
     const double         *GetVelocitySource() const;
           double         *GetVelocitySource();
@@ -308,6 +329,8 @@ public:
     const std::string    &GetColorTableName() const;
           std::string    &GetColorTableName();
     DataValue            GetDataValue() const;
+    bool                 GetShowRationalSurfaces() const;
+    int                  GetRationalSurfaceMaxIterations() const;
     bool                 GetShowOPoints() const;
     int                  GetOPointMaxIterations() const;
     bool                 GetShowXPoints() const;
@@ -330,11 +353,18 @@ public:
     PointType            GetPointType() const;
     bool                 GetLegendFlag() const;
     bool                 GetLightingFlag() const;
-    StreamlineAlgorithmType GetStreamlineAlgorithmType() const;
-    int                  GetMaxStreamlineProcessCount() const;
+    ParallelizationAlgorithmType GetParallelizationAlgorithmType() const;
+    int                  GetMaxProcessCount() const;
     int                  GetMaxDomainCacheSize() const;
     int                  GetWorkGroupSize() const;
-    bool                 GetForceNodeCenteredData() const;
+    bool                 GetPathlines() const;
+    bool                 GetPathlinesOverrideStartingTimeFlag() const;
+    double               GetPathlinesOverrideStartingTime() const;
+    PathlinesCMFE        GetPathlinesCMFE() const;
+    bool                 GetIssueTerminationWarnings() const;
+    bool                 GetIssueStiffnessWarnings() const;
+    bool                 GetIssueCriticalPointsWarnings() const;
+    double               GetCriticalPointThreshold() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -401,10 +431,15 @@ public:
 protected:
     static std::string DataValue_ToString(int);
 public:
-    static std::string StreamlineAlgorithmType_ToString(StreamlineAlgorithmType);
-    static bool StreamlineAlgorithmType_FromString(const std::string &, StreamlineAlgorithmType &);
+    static std::string ParallelizationAlgorithmType_ToString(ParallelizationAlgorithmType);
+    static bool ParallelizationAlgorithmType_FromString(const std::string &, ParallelizationAlgorithmType &);
 protected:
-    static std::string StreamlineAlgorithmType_ToString(int);
+    static std::string ParallelizationAlgorithmType_ToString(int);
+public:
+    static std::string PathlinesCMFE_ToString(PathlinesCMFE);
+    static bool PathlinesCMFE_FromString(const std::string &, PathlinesCMFE &);
+protected:
+    static std::string PathlinesCMFE_ToString(int);
 public:
     static std::string PointType_ToString(PointType);
     static bool PointType_FromString(const std::string &, PointType &);
@@ -436,6 +471,7 @@ public:
         ID_lineEnd,
         ID_pointDensity,
         ID_fieldType,
+        ID_forceNodeCenteredData,
         ID_fieldConstant,
         ID_velocitySource,
         ID_integrationType,
@@ -466,6 +502,8 @@ public:
         ID_singleColor,
         ID_colorTableName,
         ID_dataValue,
+        ID_showRationalSurfaces,
+        ID_RationalSurfaceMaxIterations,
         ID_showOPoints,
         ID_OPointMaxIterations,
         ID_showXPoints,
@@ -487,11 +525,18 @@ public:
         ID_pointType,
         ID_legendFlag,
         ID_lightingFlag,
-        ID_streamlineAlgorithmType,
-        ID_maxStreamlineProcessCount,
+        ID_parallelizationAlgorithmType,
+        ID_maxProcessCount,
         ID_maxDomainCacheSize,
         ID_workGroupSize,
-        ID_forceNodeCenteredData,
+        ID_pathlines,
+        ID_pathlinesOverrideStartingTimeFlag,
+        ID_pathlinesOverrideStartingTime,
+        ID_pathlinesCMFE,
+        ID_issueTerminationWarnings,
+        ID_issueStiffnessWarnings,
+        ID_issueCriticalPointsWarnings,
+        ID_criticalPointThreshold,
         ID__LAST
     };
 
@@ -507,6 +552,7 @@ private:
     double         lineEnd[3];
     int            pointDensity;
     int            fieldType;
+    bool           forceNodeCenteredData;
     double         fieldConstant;
     double         velocitySource[3];
     int            integrationType;
@@ -537,6 +583,8 @@ private:
     ColorAttribute singleColor;
     std::string    colorTableName;
     int            dataValue;
+    bool           showRationalSurfaces;
+    int            RationalSurfaceMaxIterations;
     bool           showOPoints;
     int            OPointMaxIterations;
     bool           showXPoints;
@@ -558,16 +606,23 @@ private:
     int            pointType;
     bool           legendFlag;
     bool           lightingFlag;
-    int            streamlineAlgorithmType;
-    int            maxStreamlineProcessCount;
+    int            parallelizationAlgorithmType;
+    int            maxProcessCount;
     int            maxDomainCacheSize;
     int            workGroupSize;
-    bool           forceNodeCenteredData;
+    bool           pathlines;
+    bool           pathlinesOverrideStartingTimeFlag;
+    double         pathlinesOverrideStartingTime;
+    int            pathlinesCMFE;
+    bool           issueTerminationWarnings;
+    bool           issueStiffnessWarnings;
+    bool           issueCriticalPointsWarnings;
+    double         criticalPointThreshold;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define POINCAREATTRIBUTES_TMFS "idiiiiDDDiidDiidbddiddiiiiddiiiidddbbiasibibibisbbbbbbiibdiibbiiiib"
+#define POINCAREATTRIBUTES_TMFS "idiiiiDDDiibdDiidbddiddiiiiddiiiidddbbiasibibibibisbbbbbbiibdiibbiiiibbdibbbd"
 
 #endif

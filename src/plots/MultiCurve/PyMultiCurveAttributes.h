@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define MULTICURVEATTRIBUTES_NMETH 32
+#define MULTICURVEATTRIBUTES_NMETH 36
 void           PyMultiCurveAttributes_StartUp(MultiCurveAttributes *subj, void *data);
 void           PyMultiCurveAttributes_CloseDown();
 PyMethodDef *  PyMultiCurveAttributes_GetMethodTable(int *nMethods);

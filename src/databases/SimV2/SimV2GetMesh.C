@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,9 +45,11 @@
 #include <vtkFloatArray.h>
 #include <vtkDoubleArray.h>
 #include <vtkIdTypeArray.h>
+#include <vtkInformation.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkStructuredGrid.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnsignedIntArray.h>
@@ -192,7 +194,8 @@ GetQuadGhostZones(int nnodes, int ndims,
         ds->GetFieldData()->CopyFieldOn("avtRealDims");
         realDims->Delete();
 
-        ds->SetUpdateGhostLevel(0);
+        ds->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
     }
 }
 
@@ -1044,7 +1047,7 @@ SimV2_Add_PolyhedralCell(vtkUnstructuredGrid *ugrid, const int **cellptr,
     // Come up with a center point and store it.
     double pt[3] = {0.,0.,0.}, center[3] = {0.,0.,0.};
     vtkPoints *points = ugrid->GetPoints();
-    polyhedralSplit->AppendPolyhedralNode(uniquePointIds.size());
+    polyhedralSplit->AppendPolyhedralNode((int)uniquePointIds.size());
     for(std::set<int>::const_iterator it = uniquePointIds.begin();
         it != uniquePointIds.end(); ++it)
     {
@@ -1387,7 +1390,8 @@ SimV2_GetMesh_Unstructured(int domain, visit_handle h, avtPolyhedralSplit **phSp
             ghostZones->SetName(AVT_GHOST_ZONES_ARRAY);
             ugrid->GetCellData()->AddArray(ghostZones);
             ghostZones->Delete();
-            ugrid->SetUpdateGhostLevel(0);
+            ugrid->GetInformation()->Set(
+                vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
         }
     }
 

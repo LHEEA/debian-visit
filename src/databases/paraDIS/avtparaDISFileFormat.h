@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -99,6 +99,7 @@ class avtparaDISFileFormat : public avtSTSDFileFormat
     virtual const char    *GetType(void)   { return "paraDIS"; };
     virtual void           FreeUpResources(void); 
     
+    void Clear(void); 
     
     // These would tell the parent class to call PopulateDatabaseMetadata() for each timestep.  I decided against it. 
     //  virtual bool HasInvariantMetaData(void) const { return false; };

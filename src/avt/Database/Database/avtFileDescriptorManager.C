@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,8 +45,7 @@
 #include <BadIndexException.h>
 #include <ImproperUseException.h>
 
-
-using     std::vector;
+#include <avtExecutionManager.h>
 
 
 avtFileDescriptorManager   *avtFileDescriptorManager::instance = NULL;
@@ -227,9 +226,9 @@ avtFileDescriptorManager::RegisterFile(CloseFileCallback cback, void *args)
 void
 avtFileDescriptorManager::UnregisterFile(int index)
 {
-    if (index >= fileIsOpen.size() || index < 0)
+    if (index >= (int)fileIsOpen.size() || index < 0)
     {
-        EXCEPTION2(BadIndexException, index, fileIsOpen.size());
+        EXCEPTION2(BadIndexException, index, (int)fileIsOpen.size());
     }
 
     if (!fileIsOpen[index])
@@ -261,13 +260,17 @@ avtFileDescriptorManager::UnregisterFile(int index)
 void
 avtFileDescriptorManager::UsedFile(int index)
 {
-    if (index >= fileIsOpen.size() || index < 0)
+    if (index >= (int)fileIsOpen.size() || index < 0)
     {
-        EXCEPTION2(BadIndexException, index, fileIsOpen.size());
+        EXCEPTION2(BadIndexException, index, (int)fileIsOpen.size());
     }
+
+    VisitMutexLock("avtFileDescriptorManagerFileTimestamp");
 
     fileTimestamp[index] = timestamp;
     timestamp++;
+
+    VisitMutexUnlock("avtFileDescriptorManagerFileTimestamp");
 }
 
 

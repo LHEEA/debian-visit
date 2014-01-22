@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -335,9 +335,9 @@ avtXmdvFileFormat::GetVectorVar(const char *varname)
         if (!ReadXmdvFile(true))
             EXCEPTION1(InvalidFilesException, filename);
 
-    int nvars = varnames.size();
+    int nvars = (int)varnames.size();
     vtkFloatArray *rv = vtkFloatArray::New();
-    rv->SetNumberOfComponents(varnames.size());
+    rv->SetNumberOfComponents(nvars);
     rv->SetNumberOfTuples(ncells);
     float *ptr = rv->GetPointer(0);
     memcpy(ptr, &(values[0]), ncells*nvars*sizeof(float));

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -663,7 +663,7 @@ VisitPlaneTool::CreatePlaneActor()
     }
 
     planeMapper = vtkPolyDataMapper::New();
-    planeMapper->SetInput(planeData);
+    planeMapper->SetInputData(planeData);
 
     planeActor = vtkActor::New();
     planeActor->GetProperty()->SetLineWidth(2.);
@@ -832,7 +832,7 @@ VisitPlaneTool::CreateVectorActor()
     // This will make it look shaded as was intended.
     //
     vtkPolyDataNormals *pdn = vtkPolyDataNormals::New();
-    pdn->SetInput(vectorData);
+    pdn->SetInputData(vectorData);
     pdn->Update();
     vtkPolyData *pd = pdn->GetOutput();
     pd->Register(NULL);
@@ -841,7 +841,7 @@ VisitPlaneTool::CreateVectorActor()
     vectorData = pd;
 
     vectorMapper = vtkPolyDataMapper::New();
-    vectorMapper->SetInput(vectorData);
+    vectorMapper->SetInputData(vectorData);
 
     vectorActor = vtkActor::New();
     vtkMatrix4x4 *m = vtkMatrix4x4::New(); m->Identity();
@@ -1357,7 +1357,7 @@ VisitPlaneTool::UpdateOutline()
     }
 
     // Set the mapper's input to be the new dataset.
-    outlineMapper->SetInput(outlineData);
+    outlineMapper->SetInputData(outlineData);
 }
 
 // ****************************************************************************

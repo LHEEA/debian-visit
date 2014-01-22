@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -216,7 +216,7 @@ CurveViewerPluginInfo::PermitsCurveViewScaling() const
 
 void
 CurveViewerPluginInfo::InitializePlotAtts(AttributeSubject *atts,
-    ViewerPlot *)
+    const ViewerPlot *)
 {
     *(CurveAttributes*)atts = *defaultAtts;
     SetColor(atts);
@@ -302,6 +302,9 @@ CurveViewerPluginInfo::XPMIconData() const
 //    Hank Childs, Sat Mar 13 10:35:34 PST 2010
 //    Change Boolean test to comparison with enumeration.
 //
+//    Brad Whitlock, Fri Jul  5 16:55:22 PDT 2013
+//    Set the fill color too.
+//
 // ****************************************************************************
 #include <avtColorTables.h>
 
@@ -328,6 +331,20 @@ CurveViewerPluginInfo::SetColor(AttributeSubject *atts)
             c.SetBlue(int(rgb[2]));
         }
         curveAtts->SetCurveColor(c);
+        curveAtts->SetFillColor1(c);
+
+        // Make a whiter version of the color for fill color 2.
+        int R = int(rgb[0]) + 100;
+        int G = int(rgb[1]) + 100;
+        int B = int(rgb[2]) + 100;
+        R = (R > 255) ? 255 : R;
+        G = (G > 255) ? 255 : G;
+        B = (B > 255) ? 255 : B;
+        c.SetRed(R);
+        c.SetGreen(G);
+        c.SetBlue(B);
+        curveAtts->SetFillColor2(c);
+
         // Increment the color index.
         colorIndex = (colorIndex + 1) % ct->GetNumColors();
     }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -160,6 +160,9 @@ class VIEWER_API ViewerOperator : public ViewerBase
 
     void CreateNode(DataNode *);
     void SetFromNode(DataNode *, const std::string &);
+
+    void UpdateOperatorAtts();
+    std::string GetOperatorVarDescription();
 
   protected:
     ViewerPlot                   *plot;

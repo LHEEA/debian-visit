@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -202,8 +202,8 @@ avtExtrudedVolFileFormat::GetMesh(int domain, const char *meshname)
     SNPRINTF(filename, 1024, "%s.%d.exvol_conn", stem.c_str(), domain);
     vtkDataSetReader *rdr = vtkDataSetReader::New();
     rdr->SetFileName(filename);
+    rdr->Update();
     vtkDataSet *ds = rdr->GetOutput();
-    ds->Update();
     if (ds == NULL || ds->GetDataObjectType() != VTK_POLY_DATA)
     {
         EXCEPTION1(InvalidVariableException, meshname);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -92,6 +92,7 @@ bool    avtDatabaseFactory::createMeshQualityExpressions = true;
 bool    avtDatabaseFactory::createTimeDerivativeExpressions = true;
 bool    avtDatabaseFactory::createVectorMagnitudeExpressions = true;
 FileOpenOptions avtDatabaseFactory::defaultFileOpenOptions;
+avtPrecisionType avtDatabaseFactory::precisionType = AVT_PRECISION_NATIVE;
 
 //
 // Function Prototypes
@@ -118,6 +119,28 @@ void
 avtDatabaseFactory::SetDefaultFileOpenOptions(const FileOpenOptions &opts)
 {
     defaultFileOpenOptions = opts;
+}
+
+// ****************************************************************************
+//  Method:  avtDatabaseFactory::SetPrecisionType
+//
+//  Purpose:
+//    Store off the precisionType.  We use this when XForm Manager decides
+//    whether or not to tranform data.
+//
+//  Arguments:
+//    pType      the new precision type.
+//
+//  Programmer:  Kathleen Biagas
+//  Creation:    August 1, 2013
+//
+// ****************************************************************************
+
+void
+avtDatabaseFactory::SetPrecisionType(const int pType)
+{
+    if (pType >= 0 && pType < 3)
+        precisionType = avtPrecisionType(pType);
 }
 
 // ****************************************************************************
@@ -310,6 +333,9 @@ avtDatabaseFactory::SetDefaultFileOpenOptions(const FileOpenOptions &opts)
 //    occurrences of them and report them prominently, even if a different
 //    file format was able to successfully open the file.
 //
+//    Dave Pugmire, Thu Feb 14 13:56:46 EST 2013
+//    Support for ensemble .visit files (files with identical time states)
+//
 // ****************************************************************************
 
 avtDatabase *
@@ -332,6 +358,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
     int fileIndex = 0;
 
     int nBlocks = 1;
+    bool filesAreEnsemble = false;
     vector<double> times;
     for (int f = 0 ; f < filelistN ; f++)
     {
@@ -351,6 +378,11 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
          else if (strstr(filelist[fileIndex], "!TIME ") != NULL)
          {
              times.push_back(atof(filelist[fileIndex] + strlen("!TIME ")));
+             fileIndex++;
+         }
+         else if (strstr(filelist[fileIndex], "!ENSEMBLE") != NULL)
+         {
+             filesAreEnsemble = true;
              fileIndex++;
          }
          else
@@ -424,8 +456,8 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
         plugins.push_back(info ? info->GetName(): "");
         rv = SetupDatabase(info, filelist, filelistN, timestep, fileIndex,
                            nBlocks, forceReadAllCyclesAndTimes,
-                           treatAllDBsAsTimeVarying, false, times);
-
+                           treatAllDBsAsTimeVarying, false, times, filesAreEnsemble);
+        
         if (rv == NULL)
         {
             char msg[1000];
@@ -511,7 +543,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
             rv = SetupDatabase(info, filelist, filelistN,
                                timestep, fileIndex,
                                nBlocks, forceReadAllCyclesAndTimes,
-                               treatAllDBsAsTimeVarying, true, times);
+                               treatAllDBsAsTimeVarying, true, times, filesAreEnsemble);
             // If some file reader claimed this file, but couldn't open it,
             // but another one could, then report a warning.
             if (rv != NULL && noncompliantPlugins.size() > 0)
@@ -602,8 +634,8 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                 plugins.push_back(info ? info->GetName() : "");
                 avtDatabase *dbtmp =
                     SetupDatabase(info, filelist, filelistN, timestep,
-                               fileIndex, nBlocks, forceReadAllCyclesAndTimes,
-                               treatAllDBsAsTimeVarying, true, times);
+                                  fileIndex, nBlocks, forceReadAllCyclesAndTimes,
+                                  treatAllDBsAsTimeVarying, true, times, filesAreEnsemble);
                 if (dbtmp)
                 {
                     succeeded.push_back(info->GetName());
@@ -739,7 +771,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
             rv = SetupDatabase(info, filelist, filelistN,
                                timestep, fileIndex,
                                nBlocks, forceReadAllCyclesAndTimes,
-                               treatAllDBsAsTimeVarying, true, times);
+                               treatAllDBsAsTimeVarying, true, times, filesAreEnsemble);
             // If some file reader claimed this file, but couldn't open it,
             // but another one could, then report a warning.
             if (rv != NULL && noncompliantPlugins.size() > 0)
@@ -853,6 +885,9 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
 //    Hank Childs, Sun Sep 19 09:02:05 PDT 2010
 //    Add argument for explicit setting of times by user.
 //
+//    Kathleen Biagas, Thu Feb 14 10:36:09 PST 2013
+//    Only set isEnsemble if rv not null.
+//
 // ****************************************************************************
 
 avtDatabase *
@@ -862,7 +897,8 @@ avtDatabaseFactory::SetupDatabase(CommonDatabasePluginInfo *info,
                                   bool forceReadAllCyclesAndTimes,
                                   bool treatAllDBsAsTimeVarying, 
                                   bool strictMode,
-                                  const std::vector<double> &times)
+                                  const std::vector<double> &times,
+                                  bool isEnsemble)
 {
     if (info == 0)
     {
@@ -892,6 +928,7 @@ avtDatabaseFactory::SetupDatabase(CommonDatabasePluginInfo *info,
     if (rv != NULL)
     {
         int t0 = visitTimer->StartTimer();
+        rv->SetIsEnsemble(isEnsemble);
         rv->SetStrictMode(strictMode);
         if (timestep != -2)
             rv->ActivateTimestep(timestep);
@@ -918,7 +955,6 @@ avtDatabaseFactory::SetupDatabase(CommonDatabasePluginInfo *info,
     }
     else
         debug4 << "File open resulted in NULL database" << endl;
-
     return rv;
 }
 

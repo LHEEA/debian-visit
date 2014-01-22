@@ -88,7 +88,7 @@
 #define __vtkVisItPLOT3DReader_h
 
 #include <stdio.h>
-#include "vtkStructuredGridSource.h"
+#include "vtkStructuredGridAlgorithm.h"
 #include <visit-config.h>
 
 class vtkIntArray;
@@ -128,11 +128,11 @@ class vtkStructuredGrid;
 #define FORTRAN_BINARY 1
 
 
-class vtkVisItPLOT3DReader : public vtkStructuredGridSource 
+class vtkVisItPLOT3DReader : public vtkStructuredGridAlgorithm
 {
 public:
   static vtkVisItPLOT3DReader *New();
-  vtkTypeRevisionMacro(vtkVisItPLOT3DReader,vtkStructuredGridSource);
+  vtkTypeMacro(vtkVisItPLOT3DReader,vtkStructuredGridAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
@@ -420,15 +420,16 @@ private:
 
 #include <vtkByteSwap.h>
 #include <vtkFloatArray.h>
+#include <vtkInformation.h>
 #include <vtkIntArray.h>
 #include <vtkObjectFactory.h>
 #include <vtkPointData.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkStructuredGrid.h>
 
 #include <ctype.h>
 #include <math.h>
 
-vtkCxxRevisionMacro(vtkVisItPLOT3DReader, "$Revision: 1.64 $");
 vtkStandardNewMacro(vtkVisItPLOT3DReader);
 
 #define VTK_BINARY 0
@@ -1145,9 +1146,11 @@ int vtkVisItPLOT3DReader::ReadGridDimensions(FILE *fp,
     gridSize = dim[3 * this->GridNumber] * dim[1 + 3 * this->GridNumber] 
                                          * dim[2 + 3 * this->GridNumber];
 
-    output->SetWholeExtent( 0, dim[3 * this->GridNumber] -1,
-                             0, dim[1 + 3 * this->GridNumber] -1,
-                             0, dim[2 + 3 * this->GridNumber] -1);
+    int wext[6] = { 0, dim[0 + 3 * this->GridNumber] -1,
+                    0, dim[1 + 3 * this->GridNumber] -1,
+                    0, dim[2 + 3 * this->GridNumber] -1};
+    output->GetInformation()->Set(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), wext, 6);
+
   }
   else
   {
@@ -1156,8 +1159,9 @@ int vtkVisItPLOT3DReader::ReadGridDimensions(FILE *fp,
       return 1;
     }
     gridSize = dim[ 2 * this->GridNumber] * dim[ 1 + 2 * GridNumber];
-    output->SetWholeExtent(0, dim[2 * this->GridNumber] -1,
-                            0, dim[1 + 2 * this->GridNumber] -1, 0, 1);
+    int wext[6] = {0, dim[0 + 2 * this->GridNumber] -1,
+                   0, dim[1 + 2 * this->GridNumber] -1, 0, 1};
+    output->GetInformation()->Set(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(), wext, 6);
   }
 
   this->NumberOfPoints = gridSize;
@@ -2904,7 +2908,7 @@ avtPLOT3DFileFormat::GetMesh(int dom, const char *name)
     reader->SetGridNumber(dom);
     reader->SetScalarFunctionNumber(-1);
     reader->SetVectorFunctionNumber(-1);
-    reader->GetOutput()->Update();
+    reader->Update();
     vtkDataSet *rv = (vtkDataSet *) reader->GetOutput()->NewInstance();
     if(rv != NULL)
         rv->ShallowCopy(reader->GetOutput());
@@ -2985,7 +2989,7 @@ avtPLOT3DFileFormat::GetVar(int dom, const char *name)
 
     reader->SetScalarFunctionNumber(var);
     reader->SetGridNumber(dom);
-    reader->GetOutput()->Update();
+    reader->Update();
 
     vtkDataArray *dat = reader->GetOutput()->GetPointData()->GetScalars();
     if (dat == NULL)
@@ -3050,7 +3054,7 @@ avtPLOT3DFileFormat::GetVectorVar(int dom, const char *name)
 
     reader->SetVectorFunctionNumber(var);
     reader->SetGridNumber(dom);
-    reader->GetOutput()->Update();
+    reader->Update();
 
     vtkDataArray *dat = reader->GetOutput()->GetPointData()->GetVectors();
     if (dat == NULL)

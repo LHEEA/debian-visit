@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -873,8 +873,8 @@ QvisFileWindowBase::AddFileItem(QListWidget *parent, const QString &displayName,
     if(fileInfo.IsVirtual())
     {
         // Append some filenames
-        const int MAX_DISPLAYED_NAMES = 5;
-        int i;
+        const size_t MAX_DISPLAYED_NAMES = 5;
+        size_t i;
         stringVector names(fileServer->GetVirtualFileDefinition(fileInfo));
         if(names.size() > (MAX_DISPLAYED_NAMES*2))
         {

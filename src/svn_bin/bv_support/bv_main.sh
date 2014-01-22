@@ -43,6 +43,10 @@ if [[ "$OPSYS" == "Darwin" ]]; then
    export SO_EXT="dylib"
    VER=$(uname -r)
 # Check for Panther, because MACOSX_DEPLOYMENT_TARGET will default to 10.1
+# Used http://en.wikipedia.org/wiki/Darwin_(operating_system) to map Darwin
+# Kernel versions to OSX version numbers.
+# Other options for dealing with MACOSX_DEPLOYMENT_TARGET didn't work
+# See issue #1499 (https://visitbugs.ornl.gov/issues/1499)
    if (( ${VER%%.*} < 8 )) ; then
       export MACOSX_DEPLOYMENT_TARGET=10.3
    elif [[ ${VER%%.*} == 8 ]] ; then
@@ -51,8 +55,12 @@ if [[ "$OPSYS" == "Darwin" ]]; then
       export MACOSX_DEPLOYMENT_TARGET=10.5
    elif [[ ${VER%%.*} == 10 ]] ; then
       export MACOSX_DEPLOYMENT_TARGET=10.6
+   elif [[ ${VER%%.*} == 11 ]] ; then
+      export MACOSX_DEPLOYMENT_TARGET=10.7
+   elif [[ ${VER%%.*} == 12 ]] ; then
+      export MACOSX_DEPLOYMENT_TARGET=10.8
    else
-      export MACOSX_DEPLOYMENT_TARGET=10.6
+      export MACOSX_DEPLOYMENT_TARGET=10.8
    fi
    export C_COMPILER=${C_COMPILER:-"gcc"}
    export CXX_COMPILER=${CXX_COMPILER:-"g++"}
@@ -95,6 +103,8 @@ elif [[ "$OPSYS" == "Linux" ]]; then
           export CXX_COMPILER=${CXX_COMPILER-"xlC"}
           export MESA_TARGET=${MESA_TARGET-"linux"}
           QT_PLATFORM="linux-xlc" #aix-xlc"
+      elif [[ "$C_COMPILER" == "bgxlc" ]] ; then
+          export CXX_COMPILER=${CXX_COMPILER-"bgxlC"}
       else
           CFLAGS="$CFLAGS -fPIC"
           FCFLAGS="$FCFLAGS -fPIC"
@@ -263,8 +273,6 @@ export DO_PATH="no"
 export ON_PATH="off"
 export DO_VERSION="no"
 export ON_VERSION="off"
-export DO_MODULE="no"
-export ON_MODULE="off"
 export DO_VERBOSE="no"
 export ON_VERBOSE="off"
 export DO_JAVA="no"
@@ -288,22 +296,12 @@ export DO_DBIO_ONLY="no"
 export DO_ENGINE_ONLY="no"
 export DO_SERVER_COMPONENTS_ONLY="no"
 export DO_STATIC_BUILD="no"
+export DO_THREAD_BUILD="no"
 export USE_VISIBILITY_HIDDEN="no"
 export VISIT_INSTALL_PREFIX=""
 export VISIT_BUILD_MODE="Release"
 DOWNLOAD_ONLY="no"
 
-##
-## Only turn mesa on by default for OSX versions prior
-## to 10.8 (Mountian Lion)
-##
-if [[ "$OPSYS" == "Darwin" ]]; then
-    VER=$(uname -r)
-    if (( ${VER%%.*} < 12 )) ; then
-        export DO_MESA="yes"
-        export ON_MESA="on"
-    fi
-fi
 
 if [[ "$CXX_COMPILER" == "g++" ]] ; then
     VERSION=$(g++ -v 2>&1 | grep "gcc version" | cut -d' ' -f3 | cut -d'.' -f1-1)
@@ -882,7 +880,6 @@ for arg in "${arguments[@]}" ; do
         --installation-build-dir) next_arg="installation-build-dir";;
         --write-unified-file) next_arg="write-unified-file";;
         --parallel-build) DO_SUPER_BUILD="yes";;
-        --mangle-libraries) DO_MANGLED_LIBRARIES="yes";;
         --dry-run) VISIT_DRY_RUN=1;;
         --arch) next_arg="arch";;
         --build-mode) next_arg="build-mode";;
@@ -894,7 +891,8 @@ for arg in "${arguments[@]}" ; do
         --cxx) next_arg="cxx";;
         --log-file) next_arg="log-file";;
         --console) GRAPHICAL="no"; ON_GRAPHICAL="off";;
-        --debug) set -vx;;
+        --debug) C_OPT_FLAGS="${C_OPT_FLAGS} -g"; CXX_OPT_FLAGS="${CXX_OPT_FLAGS} -g"; VISIT_BUILD_MODE="Debug";;
+        --bv-debug) set -vx;;
         --download-only) DOWNLOAD_ONLY="yes";;
         --engine-only) DO_ENGINE_ONLY="yes";;
         --flags-debug) C_OPT_FLAGS="${C_OPT_FLAGS} -g"; CXX_OPT_FLAGS="${CXX_OPT_FLAGS} -g"; VISIT_BUILD_MODE="Debug";;
@@ -905,13 +903,13 @@ for arg in "${arguments[@]}" ; do
         --java) DO_JAVA="yes"; ON_JAVA="on";;
         --makeflags) next_arg="makeflags";;
         --no-hostconf) DO_HOSTCONF="no"; ON_HOSTCONF="off";;
-        --parallel) parallel="yes"; DO_ICET="yes"; ON_ICET="on"; DO_MESA="yes"; ON_MESA="on"; ON_parallel="on";;
+        --parallel) parallel="yes"; DO_ICET="yes"; ON_ICET="on"; ON_parallel="on";;
         --prefix) next_arg="prefix";;
         --print-vars) next_action="print-vars";;
-        --python-module) DO_MODULE="yes"; ON_MODULE="on";;
         --server-components-only) DO_SERVER_COMPONENTS_ONLY="yes";;
         --slivr) DO_SLIVR="yes"; ON_SLIVR="on";;
-        --static) DO_STATIC_BUILD="yes";;
+        --static) DO_STATIC_BUILD="yes"; USE_VISIBILIITY_HIDDEN="no";;
+        --thread) DO_THREAD_BUILD="yes";;
         --stdout) LOG_FILE="/dev/tty";;
         --svn) DO_SVN="yes"; export SVN_ROOT_PATH=$SVN_REPO_ROOT_PATH;;
         --svn-anon) DO_SVN="yes"; DO_SVN_ANON="yes" ; export SVN_ROOT_PATH=$SVN_ANON_ROOT_PATH ;;
@@ -943,7 +941,6 @@ for arg in "${arguments[@]}" ; do
         -S) deprecated="${deprecated} --slivr";;
         -t) deprecated="${deprecated} --tarball '<file>'";;
         -v) deprecated="${deprecated} --tarball 'visit<version>.tar.gz'";;
-        -V) deprecated="${deprecated} --visus";;
         -b|-B) deprecated="${deprecated} --boxlib";;
         -f|-F) deprecated="${deprecated} --cfitsio";;
         -g|-G) deprecated="${deprecated} --gdal";;
@@ -988,6 +985,12 @@ if test -n "${next_action}" ; then
         help) usage; exit 2;;
     esac
 fi
+
+#
+# Echo the current invocation command line to the log file
+#
+info "[build_visit invocation arguments] $@"
+
 
 #write a unified file
 if [[ $WRITE_UNIFIED_FILE != "" ]] ; then
@@ -1070,7 +1073,6 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
            "SVN"        "get sources from SVN server"     $ON_SVN\
            "Tarball"    "specify VisIt tarball name"      $ON_USE_VISIT_FILE\
            "Parallel"   "specify parallel build flags"    $ON_parallel\
-           "Python"     "enable VisIt python module"      $ON_MODULE\
            "Java"       "enable java client library"      $ON_JAVA\
            "Fortran"    "enable fortran in third party libraries"  $ON_FORTRAN\
            "SLIVR"      "enable SLIVR volume rendering library"  $ON_SLIVR\
@@ -1088,7 +1090,6 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
         DO_SVN="no"
         USE_VISIT_FILE="no"
         parallel="no"
-        DO_MODULE="no"
         DO_JAVA="no"
         DO_FORTRAN="no"
         DO_SLIVR="no"
@@ -1110,9 +1111,7 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
                  VISIT_FILE="$(echo $result)"
                  USE_VISIT_FILE="yes";;
               Parallel)
-                 parallel="yes"; DO_ICET="yes"; ON_ICET="on"; DO_MESA="yes"; ON_MESA="on";;
-              PythonModule)
-                 DO_MODULE="yes";;
+                 parallel="yes"; DO_ICET="yes"; ON_ICET="on";;
               Java)
                  DO_JAVA="yes";;
               Fortran)
@@ -1425,13 +1424,13 @@ initialize_module_variables
 # so echo it here.
 #
 if [[ "$USE_SYSTEM_QT" != "yes" && "$DO_QT" == "yes" && "$DO_SERVER_COMPONENTS_ONLY" == "no" ]]; then
-
+    BYPASS_QT_LICENSE="no"
     check_if_installed "qt" $QT_VERSION
     if [[ $? == 0 ]] ; then
-        DO_QT="no"
+        BYPASS_QT_LICENSE="yes"
     fi
 
-    if [[ "$DO_QT" == "yes" && "$DOWNLOAD_ONLY" == "no" ]] ; then
+    if [[ "$BYPASS_QT_LICENSE" == "no" && "$DOWNLOAD_ONLY" == "no" ]] ; then
         qt_license_prompt
         if [[ $? != 0 ]] ;then
             error "Qt4 Open Source Edition License Declined. Bailing out."

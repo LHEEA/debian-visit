@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -234,7 +234,7 @@ Connection::WriteDouble(double val)
 void
 Connection::WriteString(const std::string &s)
 {
-    Append((unsigned char *)s.c_str(), s.size() + 1);
+    Append((unsigned char *)s.c_str(), (int)s.size() + 1);
 }
 
 // *******************************************************************

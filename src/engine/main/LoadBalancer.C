@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -647,7 +647,7 @@ LoadBalancer::Reduce(avtContract_p input)
             new_data->GetRestriction()
                                    ->RestrictDomainsForLoadBalance(domainList);
             UpdateProgress(pipelineInfo[input->GetPipelineIndex()].current,
-                           list.size());
+                           (int)list.size());
             pipelineInfo[input->GetPipelineIndex()].current++;
             if (pipelineInfo[input->GetPipelineIndex()].current == list.size())
                 pipelineInfo[input->GetPipelineIndex()].complete = true;

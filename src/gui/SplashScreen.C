@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -177,6 +177,12 @@
 //    Eric Brugger, Wed Jan 23 09:06:55 PST 2013
 //    Changed the date on the splash screen to January 2013.
 //
+//    Eric Brugger, Wed Jul 10 10:56:47 PDT 2013
+//    Changed the date on the splash screen to July 2013.
+//
+//    Eric Brugger, Wed Oct  9 14:25:58 PDT 2013
+//    Changed the date on the splash screen to October 2013.
+//
 // ****************************************************************************
 
 SplashScreen::SplashScreen(bool cyclePictures) 
@@ -301,7 +307,7 @@ SplashScreen::SplashScreen(bool cyclePictures)
            << tr("October")
            << tr("November")
            << tr("December");
-    int currentMonth = 3;
+    int currentMonth = 10;
     lLayout->addWidget(new QLabel(versionText, this));
     lLayout->addWidget(new QLabel(months[currentMonth-1] + " 2013", this));
 

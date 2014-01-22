@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,7 +57,7 @@
 
 #include "avtOpenGLMoleculeRenderer.h"
 
-#include <avtGLEWInitializer.h>
+#include <avtOpenGLExtensionManager.h>
 #include <avtCallback.h>
 #include <avtColorTables.h>
 #include <avtViewInfo.h>
@@ -65,8 +65,6 @@
 #include <InvalidColortableException.h>
 #include <LightList.h>
 #include <MoleculeAttributes.h>
-
-#include <avtGLEWInitializer.h>
 
 #include "AtomicProperties.h"
 #include <LineAttributes.h>

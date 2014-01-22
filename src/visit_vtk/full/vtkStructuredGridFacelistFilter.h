@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,12 +48,13 @@
 #define __vtkStructuredGridFacelistFilter_h
 #include <visit_vtk_exports.h>
 
-#include "vtkStructuredGridToPolyDataFilter.h"
+#include "vtkPolyDataAlgorithm.h"
 
-class VISIT_VTK_API vtkStructuredGridFacelistFilter : public vtkStructuredGridToPolyDataFilter
+class VISIT_VTK_API vtkStructuredGridFacelistFilter :
+  public vtkPolyDataAlgorithm
 {
 public:
-  vtkTypeMacro(vtkStructuredGridFacelistFilter,vtkStructuredGridToPolyDataFilter);
+  vtkTypeMacro(vtkStructuredGridFacelistFilter,vtkPolyDataAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
@@ -66,9 +67,10 @@ protected:
   vtkStructuredGridFacelistFilter(const vtkStructuredGridFacelistFilter&) {};
   void operator=(const vtkStructuredGridFacelistFilter&) {};
 
-  void Execute();
+  virtual int RequestData(vtkInformation *,
+                          vtkInformationVector **,
+                          vtkInformationVector *);
+  virtual int FillInputPortInformation(int port, vtkInformation *info);
 };
 
 #endif
-
-

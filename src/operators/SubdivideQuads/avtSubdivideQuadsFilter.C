@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -256,8 +256,6 @@ CreateMidPoint(bool fanOut, bool iSpecial, bool jSpecial,
 vtkDataSet *
 avtSubdivideQuadsFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 {
-    int  i, j;
-
     //
     // Get the information about how this filter should execute.
     //
@@ -549,7 +547,7 @@ avtSubdivideQuadsFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
         //
         int base = 1;
         int step = 1;
-        for (j = 0 ; j < maxSubdivs ; j++)
+        for (int j = 0 ; j < maxSubdivs ; j++)
             if (j < numSubdivs)
                 base *= 2;
             else

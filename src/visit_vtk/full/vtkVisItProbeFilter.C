@@ -25,7 +25,6 @@
 #include <vtkStreamingDemandDrivenPipeline.h>
 #include <DebugStream.h>
 
-vtkCxxRevisionMacro(vtkVisItProbeFilter, "$Revision: 1.82 $");
 vtkStandardNewMacro(vtkVisItProbeFilter);
 
 //----------------------------------------------------------------------------
@@ -51,7 +50,7 @@ vtkVisItProbeFilter::~vtkVisItProbeFilter()
 //----------------------------------------------------------------------------
 void vtkVisItProbeFilter::SetSource(vtkDataSet *input)
 {
-  this->SetInput(1, input);
+  this->SetInputData(1, input);
 }
 
 //----------------------------------------------------------------------------
@@ -172,16 +171,6 @@ int vtkVisItProbeFilter::RequestData(
       outPD->NullPoint(ptId);
       }
     }
-  // BUG FIX: JB.
-  // Output gets setup from input, but when output is imagedata, scalartype
-  // depends on source scalartype not input scalartype
-  if (output->IsA("vtkImageData"))
-    {
-    vtkImageData *out = (vtkImageData*)output;
-    vtkDataArray *s = outPD->GetScalars();
-    out->SetScalarType(s->GetDataType());
-    out->SetNumberOfScalarComponents(s->GetNumberOfComponents());
-    }
   if (mcs>256)
     {
     delete [] weights;
@@ -227,11 +216,11 @@ int vtkVisItProbeFilter::RequestInformation(
       {
       if (m1 < -1)
         {
-        m1 = VTK_LARGE_INTEGER;
+        m1 = VTK_INT_MAX;
         }
       if (m2 < -1)
         {
-        m2 = VTK_LARGE_INTEGER;
+        m2 = VTK_INT_MAX;
         }
       if (m2 < m1)
         {
@@ -240,6 +229,21 @@ int vtkVisItProbeFilter::RequestInformation(
       outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
                    m1);
       }
+    }
+
+  // A variation of the bug fix from John Biddiscombe.
+  // Make sure that the scalar type and number of components
+  // are propagated from the source not the input.
+  if (vtkImageData::HasScalarType(sourceInfo))
+    {
+    vtkImageData::SetScalarType(vtkImageData::GetScalarType(sourceInfo),
+                                outInfo);
+    }
+  if (vtkImageData::HasNumberOfScalarComponents(sourceInfo))
+    {
+    vtkImageData::SetNumberOfScalarComponents(
+      vtkImageData::GetNumberOfScalarComponents(sourceInfo),
+      outInfo);
     }
 
   return 1;

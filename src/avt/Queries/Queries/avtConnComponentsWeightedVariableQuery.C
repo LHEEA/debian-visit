@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -262,7 +262,7 @@ avtConnComponentsWeightedVariableQuery::Execute(vtkDataSet *ds, const int dom)
             new_ds->GetPointData()->AddArray(
                                       ds->GetPointData()->GetArray(var));
             vtkPointDataToCellData *pd2cd = vtkPointDataToCellData::New();
-            pd2cd->SetInput(new_ds);
+            pd2cd->SetInputData(new_ds);
             pd2cd->Update();
             values = pd2cd->GetOutput()->GetCellData()->GetArray(var);
             values->Register(NULL);

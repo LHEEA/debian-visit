@@ -32,12 +32,12 @@ class PLOTTER_API vtkRectilinearGridMapper : public vtkMapper
 {
 public:
   static vtkRectilinearGridMapper *New();
-  vtkTypeRevisionMacro(vtkRectilinearGridMapper,vtkMapper);
+  vtkTypeMacro(vtkRectilinearGridMapper,vtkMapper);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
   // Specify the input data to map.
-  void SetInput(vtkRectilinearGrid *in);
+  void SetInputData(vtkRectilinearGrid *in);
   vtkRectilinearGrid *GetInput();
   
   // Description:

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -70,6 +70,7 @@
 #include <ExpressionList.h>
 #include <FileOpenOptions.h>
 #include <SetEFileOpenOptionsRPC.h>
+#include <SetPrecisionTypeRPC.h>
 #include <SelectionProperties.h>
 #include <StatusAttributes.h>
 
@@ -107,6 +108,7 @@ public:
     ConstructDataBinningRPC&    GetConstructDataBinningRPC() { return constructDataBinningRPC; }
     NamedSelectionRPC&          GetNamedSelectionRPC() { return namedSelectionRPC; }
     SetEFileOpenOptionsRPC&     GetSetEFileOpenOptionsRPC() { return setEFileOpenOptionsRPC; }
+    SetPrecisionTypeRPC&        GetSetPrecisionTypeRPC() { return setPrecisionTypeRPC; }
     EnginePropertiesRPC&        GetEnginePropertiesRPC() { return enginePropertiesRPC; }
     LaunchRPC&                  GetLaunchRPC() { return launchRPC; }
 private:
@@ -135,6 +137,7 @@ private:
     ConstructDataBinningRPC  constructDataBinningRPC;
     NamedSelectionRPC        namedSelectionRPC;
     SetEFileOpenOptionsRPC   setEFileOpenOptionsRPC;
+    SetPrecisionTypeRPC      setPrecisionTypeRPC;
     EnginePropertiesRPC      enginePropertiesRPC;
     LaunchRPC                launchRPC;
     StatusAttributes        *statusAtts;

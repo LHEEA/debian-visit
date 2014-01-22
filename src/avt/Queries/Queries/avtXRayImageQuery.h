@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -147,7 +147,7 @@ class QUERY_API avtXRayImageQuery : public avtDatasetQuery
     void                      WriteImage(int, int, T*);
     template <typename T>
     void                      WriteFloats(int, int, T*);
-    void                      WriteBOVHeader(int, int, int, char *);
+    void                      WriteBOVHeader(int, int, int, const char *);
 };
 
 

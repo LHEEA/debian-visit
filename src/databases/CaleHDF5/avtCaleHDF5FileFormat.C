@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,10 +49,12 @@
 #include <vtkCellData.h>
 #include <vtkDoubleArray.h>
 #include <vtkFloatArray.h>
+#include <vtkInformation.h>
 #include <vtkPointData.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkStructuredGrid.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnstructuredGrid.h>
@@ -1141,7 +1143,8 @@ avtCaleHDF5FileFormat::GetMesh(const char *meshname)
             }
         }
         sgrid->GetCellData()->AddArray(ghostCells);
-        sgrid->SetUpdateGhostLevel(0);
+        sgrid->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
         ghostCells->Delete();
         // Clean up
         delete [] blanks;
@@ -1558,7 +1561,8 @@ avtCaleHDF5FileFormat::GetCycle(void)
 int
 avtCaleHDF5FileFormat::GetCycleFromFilename(const char *f) const
 {
-    int i,j,n,c;
+    size_t i,j,n;
+    int c;
     char cycstr[10];
 
     n = strlen(f) ;

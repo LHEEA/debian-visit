@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -252,7 +252,7 @@ main(int argc, char *argv[])
             {
                 strcpy(tmpArg, argv[i]);
                 int nArgsSkip = 1;
-                int tmplen = strlen(argv[i]);
+                size_t tmplen = strlen(argv[i]);
                 for (int j = i+1; j < argc; j++)
                 {
                     nArgsSkip++;
@@ -345,17 +345,19 @@ main(int argc, char *argv[])
         {
             pyside_gui = true;
             pyside_viewer = true;
+            argv2[argc2++] = "-pyuiembedded"; //pass it along to client
         }
         else if(strcmp(argv[i], "-pysideclient") == 0)
         {
             pyside_gui = true;
+            argv2[argc2++] = "-pyuiembedded"; //pass it along to client
         }
         else if(strcmp(argv[i], "-uifile") == 0)
         {
             pyside_gui = true;
             uifile = argv[i+1];
             ++i;
-            argv2[argc2++] = "-uifile"; //pass it along to client
+            argv2[argc2++] = "-pyuiembedded"; //pass it along to client
         }
         else if(strcmp(argv[i], "-dv") == 0)
         {
@@ -522,6 +524,9 @@ main(int argc, char *argv[])
         {
             visitrc = visitSystemRc;
         }
+
+        if(!uifile && (pyside_viewer || pyside_gui))
+            PyRun_SimpleString((char*)"visit.ShowAllWindows()");
 
         if(uifile && pyside_gui)
         {

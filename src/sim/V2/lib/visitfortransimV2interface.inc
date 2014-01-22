@@ -42,6 +42,9 @@
 !   Brad Whitlock, Wed Jul 18 13:47:45 PDT 2012
 !   Add regionIds functions for variable metadata.
 !
+!   Brad Whitlock, Tue Jun  4 09:28:59 PDT 2013
+!   Add newer environment functions (visitgetenv, visitsetupenv2).
+!
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 
 !... Commonly useful declarations
@@ -376,6 +379,10 @@
       external visitexecutecommand
       integer  visitexecutecommand
 
+! visitgetenv(string env, int lenv)
+      external visitgetenv
+      integer  visitgetenv
+
 ! visitgetlasterror(string dest, int ldest)
       external visitgetlasterror
       integer  visitgetlasterror
@@ -434,6 +441,10 @@
       external visitsetupenv
       integer  visitsetupenv
 
+! visitsetupenv2(string env, int lenv)
+      external visitsetupenv2
+      integer  visitsetupenv2
+
 ! visitsynchronize()
       external visitsynchronize
       integer  visitsynchronize
@@ -446,6 +457,38 @@
       external visitupdateplots
       integer  visitupdateplots
 
+!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+! Prototype batch mode functions
+!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+
+! visitinitializeruntime()
+      external visitinitializeruntime
+      integer  visitinitializeruntime
+
+! visitaddplot(string plotType, int lplotType, string var, 
+!              int lvar, (out)int plotID)
+      external visitaddplot
+      integer  visitaddplot
+
+! visitaddoperator(int plotID, string operatorType, int loperatorType, 
+!                  (out)int operatorID)
+      external visitaddoperator
+      integer  visitaddoperator
+
+! visitdrawplot(int plotID)
+      external visitdrawplot
+      integer  visitdrawplot
+
+! visitdeleteplot(int plotID)
+      external visitdeleteplot
+      integer  visitdeleteplot
+
+!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+! Metric functions 
+!cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+! visitgetmemory(unsigned long m_size, unsigned long m_rss)
+      external visitgetmemory
+      integer  visitgetmemory
 
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 ! Metadata functions

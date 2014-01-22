@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -134,6 +134,7 @@ public:
         ID_groupOrigin,
         ID_groupPieceName,
         ID_groupTitle,
+        ID_groupNames,
         ID_groupIds,
         ID_groupIdsBasedOnRange,
         ID_disjointElements,
@@ -188,6 +189,7 @@ public:
     int                  groupOrigin;
     std::string          groupPieceName;
     std::string          groupTitle;
+    stringVector         groupNames;
     intVector            groupIds;
     intVector            groupIdsBasedOnRange;
     bool                 disjointElements;
@@ -213,6 +215,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define AVTMESHMETADATA_TMFS "ssbiiiibIbiissssssbDDiisss*aiissi*i*bibbbbibFFbDibbii"
+#define AVTMESHMETADATA_TMFS "ssbiiiibIbiissssssbDDiisss*aiisss*i*i*bibbbbibFFbDibbii"
 
 #endif

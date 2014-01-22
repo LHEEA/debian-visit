@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -35,7 +35,7 @@
 * DAMAGE.
 *
 *****************************************************************************/
-
+    
 #include <Engine.h>
 #include <EngineState.h>
 #include <Executors.h>
@@ -93,7 +93,7 @@
 #include <StackTimer.h>
 #include <Utility.h>
 #include <VisItDisplay.h>
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__) && defined(HAVE_LIBX11)
 # include <XDisplay.h>
 #endif
 
@@ -113,6 +113,12 @@
 #include <avtVariableCache.h>
 #include <Environment.h>
 #include <avtStructuredDomainBoundaries.h>
+#include <avtExecutionManager.h>
+
+#include <visit-config.h>
+#ifdef HAVE_OSMESA
+#include <vtkVisItOSMesaRenderingFactory.h>
+#endif
 
 #include <string>
 using std::string;
@@ -349,44 +355,61 @@ protected:
 //    Add command line option to enable new ghost zone generation for
 //    AMRStitchCell operator.
 //
+//    Brad Whitlock, Fri Sep 28 09:21:38 PDT 2012
+//    Change intitialization to member-order. NULL out more member pointers.
+//
 // ****************************************************************************
 
-Engine::Engine() : viewerArgs()
+Engine::Engine() : viewerArgs(), destinationFormat(), rpcExecutors()
 {
     viewer = NULL;
     viewerP = NULL;
     reverseLaunch = false;
 
+    netmgr = NULL;
+    pluginDir = "";
+    simulationPluginsEnabled = false;
+
     vtkConnection = 0;
+
     noFatalExceptions = true;
+
     idleTimeoutMins = 480;
     executionTimeoutMins = 30;
     idleTimeoutEnabled = false;
     overrideTimeoutMins = 0;
     overrideTimeoutEnabled = false;
-    netmgr = NULL;
-    lb = NULL;
-    procAtts = NULL;
 
-    simxfer = NULL;
-    simConnection = NULL;
-    simulationCommandCallback = NULL;
-    simulationCommandCallbackData = NULL;
-    metaData = NULL;
-    silAtts = NULL;
-    commandFromSim = NULL;
-    pluginDir = "";
-    simulationPluginsEnabled = false;
+    lb = NULL;
+
+    xfer = NULL;
 
     quitRPC = NULL;
     keepAliveRPC = NULL;
     enginestate = NULL;
+#ifdef DEBUG_MEMORY_LEAKS
+    parsingExprList = NULL;
+#endif
+
+    filename = "";
+    format = "";
+    simxfer = NULL;
+    simConnection = NULL;
+    metaData = NULL;
+    silAtts = NULL;
+    commandFromSim = NULL;
+    simulationCommandCallback = NULL;
+    simulationCommandCallbackData = NULL;
+
+    procAtts = NULL;
 
 #if defined(PARALLEL) && defined(HAVE_ICET)
-    useIceT = true;
+    useIceT = false; //true;
 #else
     useIceT = false;
 #endif
+    X_Args = "";
+    X_Display = "";
     nDisplays = 0;
     renderingDisplay = NULL;
     launchXServers = false;
@@ -446,6 +469,7 @@ Engine::~Engine()
     delete quitRPC;
     delete keepAliveRPC;
     delete enginestate;
+
     delete viewer;
     delete viewerP;
 
@@ -547,15 +571,16 @@ Engine *Engine::Instance()
 //    Tom Fogal, Mon May 24 19:36:40 MDT 2010
 //    Avoid an Open MPI warning when starting X servers.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Add a call to set the number of threads used if thread mode it on.
+//    The number is a command line argument. The default is 4.
+//
 // ****************************************************************************
 
 void
 Engine::Initialize(int *argc, char **argv[], bool sigs)
 {
     int initTimer = visitTimer->StartTimer();
-
-    // Get arguments that the viewer can use.
-    ExtractViewerArguments(argc, argv);
 
 #ifdef PARALLEL
     // We fork/exec X servers in some cases.  Open MPI will yell at us about
@@ -588,6 +613,8 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
     RuntimeSetting::parse_command_line(*argc, const_cast<const char**>(*argv));
     this->X_Args = RuntimeSetting::lookups("x-args");
 
+    VisitSetNumberOfThreads( RuntimeSetting::lookupi("threads") );
+
     //
     // Set a different new handler for the engine
     //
@@ -607,6 +634,9 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
 #else
     visitTimer->StopTimer(initTimer, "Initializing the engine");
 #endif
+
+    // Parse the command line.
+    ProcessCommandLine(*argc, *argv);
 }
 
 // ****************************************************************************
@@ -735,6 +765,168 @@ public:
 #endif
 
 // ****************************************************************************
+// Method: Engine::InitializeCompute
+//
+// Purpose: 
+//   Initializing the compute parts of the engine.
+//
+// Arguments:
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Sep 28 09:54:32 PDT 2012
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+Engine::InitializeCompute()
+{
+    if(xfer == NULL)
+    {
+        EXCEPTION1(ImproperUseException, "InitializeCompute must be called after Initialize.");
+    }
+
+    int setupTimer = visitTimer->StartTimer();
+    InitVTK::Initialize();
+    InitVTKRendering::Initialize();
+    if (avtCallback::GetSoftwareRendering())
+    {
+        // Install factory for  VisIt's OSMesa Render Windnow
+#ifdef HAVE_OSMESA
+        vtkVisItOSMesaRenderingFactory::ForceMesa();
+#endif
+    }
+    else
+    {
+        std::ostringstream s;
+        s << "Setting up " << this->nDisplays << " GPUs for HW rendering";
+        if (DebugStream::Level3())
+            debug3 << "Setting up X displays for " << this->nDisplays << " GPUs."
+               << "  Using X arguments: '" << this->X_Args << "'" << std::endl;
+        TimedCodeBlock(s.str(), this->SetupDisplay());
+    }
+    avtCallback::SetNowinMode(true);
+
+    //
+    // Create the network manager.  Note that this must be done *after* the
+    // code to set the display and decide if we are using Mesa.
+    //
+#if defined(PARALLEL) && defined(HAVE_ICET)
+    if(this->useIceT)
+    {
+        if (DebugStream::Level2())
+            debug2 << "Using IceT network manager." << std::endl;
+        netmgr = new IceTNetworkManager;
+    }
+    else
+    {
+        if (DebugStream::Level2())
+            debug2 << "Using standard network manager." << std::endl;
+        netmgr = new NetworkManager;
+    }
+#else
+    if (DebugStream::Level1())
+    {
+        if(this->useIceT)
+        {
+            debug1 << "Error; IceT not enabled at compile time. "
+               << "Ignoring ..." << std::endl;
+        }
+    }
+    netmgr = new NetworkManager;
+#endif
+
+    //
+    // Initialize the plugin managers.
+    //
+    int pluginsTotal = visitTimer->StartTimer();
+    if(pluginDir.size() > 0)
+    {
+        netmgr->GetPlotPluginManager()->SetPluginDir(pluginDir.c_str());
+        netmgr->GetOperatorPluginManager()->SetPluginDir(pluginDir.c_str());
+        netmgr->GetDatabasePluginManager()->SetPluginDir(pluginDir.c_str());
+    }
+    PluginManager::PluginCategory pCat = simulationPluginsEnabled ? 
+        PluginManager::Simulation : PluginManager::Engine;
+#ifdef PARALLEL
+    bool readInfo = PAR_UIProcess();
+    PAR_PluginBroadcaster broadcaster;
+    int pluginInit = visitTimer->StartTimer();
+    netmgr->GetPlotPluginManager()->Initialize(pCat, true, NULL, 
+                                               readInfo, 
+                                               &broadcaster);
+    visitTimer->StopTimer(pluginInit, "Loading plot plugin info");
+
+    pluginInit = visitTimer->StartTimer();
+    netmgr->GetOperatorPluginManager()->Initialize(pCat, true, NULL, 
+                                               readInfo, 
+                                               &broadcaster);
+    visitTimer->StopTimer(pluginInit, "Loading operator plugin info");
+
+    pluginInit = visitTimer->StartTimer();
+    netmgr->GetDatabasePluginManager()->Initialize(pCat, true, NULL, 
+                                               readInfo, 
+                                               &broadcaster);
+    visitTimer->StopTimer(pluginInit, "Loading database plugin info");
+#else
+    netmgr->GetPlotPluginManager()->Initialize(pCat, false);
+    netmgr->GetOperatorPluginManager()->Initialize(pCat, false);
+    netmgr->GetDatabasePluginManager()->Initialize(pCat, false);
+#endif    
+    //
+    // Load plugins
+    //
+    netmgr->GetPlotPluginManager()->LoadPluginsOnDemand();
+    netmgr->GetOperatorPluginManager()->LoadPluginsOnDemand();
+    netmgr->GetDatabasePluginManager()->LoadPluginsOnDemand();
+    visitTimer->StopTimer(pluginsTotal, "Setting up plugins.");
+
+#if !defined(_WIN32)
+    // Set up the alarm signal handler.
+    signal(SIGALRM, Engine::AlarmHandler);
+#endif
+
+    avtCallback::RegisterResetTimeoutCallback(ResetEngineTimeout, this);
+
+    //
+    // Create the network manager and the load balancer.
+    //
+#ifdef PARALLEL
+    lb = new LoadBalancer(PAR_Size(), PAR_Rank());
+#else
+    lb = new LoadBalancer(1, 0);
+#endif
+    netmgr->SetLoadBalancer(lb);
+
+    // Hook up metadata and SIL to be send back to the viewer.
+    // This is intended to only be used for simulations.
+    metaData = new avtDatabaseMetaData;
+    silAtts = new SILAttributes;
+    commandFromSim = new SimulationCommand;
+    simxfer->Add(metaData);
+    simxfer->Add(silAtts);
+    simxfer->Add(commandFromSim);
+
+    //
+    // Initialize some callback functions.
+    //
+    avtDataObjectSource::RegisterAbortCallback(Engine::EngineAbortCallback, NULL);
+    avtDataObjectSource::RegisterProgressCallback(Engine::EngineUpdateProgressCallback,
+                                                  NULL);
+    LoadBalancer::RegisterAbortCallback(Engine::EngineAbortCallbackParallel, NULL);
+    LoadBalancer::RegisterProgressCallback(Engine::EngineUpdateProgressCallback,
+                                           NULL);
+    avtOriginatingSource::RegisterInitializeProgressCallback(
+                                       Engine::EngineInitializeProgressCallback, NULL);
+    visitTimer->StopTimer(setupTimer, "Initializing compute");
+}
+
+// ****************************************************************************
 //  Method:  Engine::SetUpViewerInterface
 //
 //  Purpose:
@@ -859,17 +1051,45 @@ public:
 //    Brad Whitlock, Mon Oct 10 11:23:14 PDT 2011
 //    Added enginePropertiesRPC.
 //
+//    Brad Whitlock, Fri Sep 28 09:54:17 PDT 2012
+//    I moved a bunch of code into InitializeCompute so this method really just
+//    sets up the viewer interface.
+//
+//    Eric Brugger, Fri May 10 14:41:08 PDT 2013
+//    I removed support for mangled mesa.
+//
+//    Kathleen Biagas, Wed Aug  7 15:50:49 PDT 2013
+//    Added SetPrecisionTypeRPC.
+//
 // ****************************************************************************
 
 void
 Engine::SetUpViewerInterface(int *argc, char **argv[])
 {
-    int setupTimer = visitTimer->StartTimer();
+    StackTimer setupTimer("Setting up viewer interface");
+    const char *exMsg = "SetUpViewerInterface must be called after ConnectViewer";
+
+    if(xfer == NULL)
+    {
+        EXCEPTION1(ImproperUseException, "SetUpViewerInterface must be called after Initialize.");
+    }
 
     if(reverseLaunch)
+    {
+        if(viewer == NULL)
+        {
+            EXCEPTION1(ImproperUseException, exMsg);
+        }
         vtkConnection = viewer->GetWriteConnection(1);
+    }
     else
+    {
+        if(viewerP == NULL)
+        {
+            EXCEPTION1(ImproperUseException, exMsg);
+        }
         vtkConnection = viewerP->GetReadConnection(1);
+    }
 
     if(simulationPluginsEnabled)
     {
@@ -879,106 +1099,6 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
             simConnection = viewerP->GetReadConnection(2);
     }
 
-    // Parse the command line.
-    ProcessCommandLine(*argc, *argv);
-
-    InitVTK::Initialize();
-    InitVTKRendering::Initialize();
-    if (avtCallback::GetSoftwareRendering())
-    {
-        InitVTKRendering::ForceMesa();
-    }
-    else
-    {
-        std::ostringstream s;
-        s << "Setting up " << this->nDisplays << " GPUs for HW rendering";
-        if (DebugStream::Level3())
-            debug3 << "Setting up X displays for " << this->nDisplays << " GPUs."
-               << "  Using X arguments: '" << this->X_Args << "'" << std::endl;
-        TimedCodeBlock(s.str(), this->SetupDisplay());
-    }
-    avtCallback::SetNowinMode(true);
-
-    //
-    // Create the network manager.  Note that this must be done *after* the
-    // code to set the display and decide if we are using Mesa.
-    //
-#if defined(PARALLEL) && defined(HAVE_ICET)
-    if(this->useIceT)
-    {
-        if (DebugStream::Level2())
-            debug2 << "Using IceT network manager." << std::endl;
-        netmgr = new IceTNetworkManager;
-    }
-    else
-    {
-        if (DebugStream::Level2())
-            debug2 << "Using standard network manager." << std::endl;
-        netmgr = new NetworkManager;
-    }
-#else
-    if (DebugStream::Level1())
-    {
-        if(this->useIceT)
-        {
-            debug1 << "Error; IceT not enabled at compile time. "
-               << "Ignoring ..." << std::endl;
-        }
-    }
-    netmgr = new NetworkManager;
-#endif
-
-    //
-    // Initialize the plugin managers.
-    //
-    int pluginsTotal = visitTimer->StartTimer();
-    if(pluginDir.size() > 0)
-    {
-        netmgr->GetPlotPluginManager()->SetPluginDir(pluginDir.c_str());
-        netmgr->GetOperatorPluginManager()->SetPluginDir(pluginDir.c_str());
-        netmgr->GetDatabasePluginManager()->SetPluginDir(pluginDir.c_str());
-    }
-    PluginManager::PluginCategory pCat = simulationPluginsEnabled ? 
-        PluginManager::Simulation : PluginManager::Engine;
-#ifdef PARALLEL
-    bool readInfo = PAR_UIProcess();
-    PAR_PluginBroadcaster broadcaster;
-    int pluginInit = visitTimer->StartTimer();
-    netmgr->GetPlotPluginManager()->Initialize(pCat, true, NULL, 
-                                               readInfo, 
-                                               &broadcaster);
-    visitTimer->StopTimer(pluginInit, "Loading plot plugin info");
-
-    pluginInit = visitTimer->StartTimer();
-    netmgr->GetOperatorPluginManager()->Initialize(pCat, true, NULL, 
-                                               readInfo, 
-                                               &broadcaster);
-    visitTimer->StopTimer(pluginInit, "Loading operator plugin info");
-
-    pluginInit = visitTimer->StartTimer();
-    netmgr->GetDatabasePluginManager()->Initialize(pCat, true, NULL, 
-                                               readInfo, 
-                                               &broadcaster);
-    visitTimer->StopTimer(pluginInit, "Loading database plugin info");
-#else
-    netmgr->GetPlotPluginManager()->Initialize(pCat, false);
-    netmgr->GetOperatorPluginManager()->Initialize(pCat, false);
-    netmgr->GetDatabasePluginManager()->Initialize(pCat, false);
-#endif    
-    //
-    // Load plugins
-    //
-    netmgr->GetPlotPluginManager()->LoadPluginsOnDemand();
-    netmgr->GetOperatorPluginManager()->LoadPluginsOnDemand();
-    netmgr->GetDatabasePluginManager()->LoadPluginsOnDemand();
-    visitTimer->StopTimer(pluginsTotal, "Setting up plugins.");
-
-#if !defined(_WIN32)
-    // Set up the alarm signal handler.
-    signal(SIGALRM, Engine::AlarmHandler);
-#endif
-
-    avtCallback::RegisterResetTimeoutCallback(ResetEngineTimeout, this);
 
     // Create some RPC objects and make Xfer observe them.
     quitRPC                         = new QuitRPC;
@@ -1018,6 +1138,7 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
     rpcExecutors.push_back(new RPCExecutor<ConstructDataBinningRPC>(&enginestate->GetConstructDataBinningRPC()));
     rpcExecutors.push_back(new RPCExecutor<NamedSelectionRPC>(&enginestate->GetNamedSelectionRPC()));
     rpcExecutors.push_back(new RPCExecutor<SetEFileOpenOptionsRPC>(&enginestate->GetSetEFileOpenOptionsRPC()));
+    rpcExecutors.push_back(new RPCExecutor<SetPrecisionTypeRPC>(&enginestate->GetSetPrecisionTypeRPC()));
     rpcExecutors.push_back(new RPCExecutor<EnginePropertiesRPC>(&enginestate->GetEnginePropertiesRPC()));
     rpcExecutors.push_back(new RPCExecutor<LaunchRPC>(&enginestate->GetLaunchRPC()));
   
@@ -1028,15 +1149,6 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
 #ifdef DEBUG_MEMORY_LEAKS
     parsingExprList = l;
 #endif
-
-    // Hook up metadata and SIL to be send back to the viewer.
-    // This is intended to only be used for simulations.
-    metaData = new avtDatabaseMetaData;
-    silAtts = new SILAttributes;
-    commandFromSim = new SimulationCommand;
-    simxfer->Add(metaData);
-    simxfer->Add(silAtts);
-    simxfer->Add(commandFromSim);
 
     //
     // Hook up the viewer connections to Xfer
@@ -1087,29 +1199,8 @@ Engine::SetUpViewerInterface(int *argc, char **argv[])
             destinationFormat = viewerP->GetReadConnection()->GetDestinationFormat();
     }
 
-    //
-    // Create the network manager and the load balancer.
-    //
-#ifdef PARALLEL
-    lb = new LoadBalancer(PAR_Size(), PAR_Rank());
-#else
-    lb = new LoadBalancer(1, 0);
-#endif
-    netmgr->SetLoadBalancer(lb);
-
-    //
-    // Initialize some callback functions.
-    //
     avtDataObjectSource::RegisterAbortCallback(Engine::EngineAbortCallback, xfer);
-    avtDataObjectSource::RegisterProgressCallback(Engine::EngineUpdateProgressCallback,
-                                                  NULL);
     LoadBalancer::RegisterAbortCallback(Engine::EngineAbortCallbackParallel, xfer);
-    LoadBalancer::RegisterProgressCallback(Engine::EngineUpdateProgressCallback,
-                                           NULL);
-    avtOriginatingSource::RegisterInitializeProgressCallback(
-                                       Engine::EngineInitializeProgressCallback, NULL);
-
-    visitTimer->StopTimer(setupTimer, "Setting up viewer interface");
 }
 
 // ****************************************************************************
@@ -1330,6 +1421,9 @@ bool
 Engine::ConnectViewer(int *argc, char **argv[])
 {
     int connectTimer = visitTimer->StartTimer();
+
+    // Get arguments that the viewer can use.
+    ExtractViewerArguments(argc, argv);
 
     // Connect to the viewer.
     TRY
@@ -1619,6 +1713,9 @@ Engine::PAR_ProcessInput()
 //    Brad Whitlock, Thu Jun 11 15:12:36 PST 2009
 //    I disabled the call to NeedsRead when we don't have select().
 //
+//    Brad Whitlock, Mon May 20 13:18:13 PDT 2013
+//    Do not loop if xfer's input connection is NULL.
+//
 // ****************************************************************************
 
 bool
@@ -1627,7 +1724,9 @@ Engine::EventLoop()
     bool errFlag = false;
 
     // The application's main loop
-    while(!quitRPC->GetQuit() && noFatalExceptions)
+    while(xfer->GetInputConnection() != NULL &&
+          !quitRPC->GetQuit() && 
+          noFatalExceptions)
     {
         // Reset the timeout alarm
         overrideTimeoutEnabled = false;
@@ -2169,6 +2268,10 @@ Engine::ProcessCommandLine(int argc, char **argv)
 void
 Engine::AlarmHandler(int signal)
 {
+    //DRP --REMOVE THIS HACK
+    return;
+
+    
     Engine *e = Engine::Instance();
     if (!e->alarmEnabled)
         return;
@@ -3065,11 +3168,18 @@ Engine::SendKeepAliveReply()
 //    Brad Whitlock, Thu Jun 11 15:08:46 PST 2009
 //    I disabled this code if we don't have select().
 //
+//    Brad Whitlock, Fri Sep 28 11:17:24 PDT 2012
+//    Return early when the viewer is not connected.
+//
 // ****************************************************************************
 
 bool
 Engine::EngineAbortCallbackParallel(void *data, bool informSlaves)
 {
+    // If the viewer is not connected, return.
+    if(data == NULL)
+        return false;
+
 #ifdef HAVE_SELECT
 #ifdef PARALLEL
     MPIXfer *xfer = (MPIXfer*)data;
@@ -3077,12 +3187,7 @@ Engine::EngineAbortCallbackParallel(void *data, bool informSlaves)
     Xfer *xfer = (Xfer*)data;
 #endif
 
-    if (!xfer)
-        EXCEPTION1(VisItException,
-                   "EngineAbortCallback called with no Xfer set.");
-
 #ifdef PARALLEL
-
     // non-ui processes must do something entirely different
     if (!PAR_UIProcess())
     {
@@ -3376,8 +3481,6 @@ Engine::ResetTimeout(int timeout)
 #endif    
 }
 
-
-
 // ****************************************************************************
 //  Method:  Engine::PopulateSimulationMetaData
 //
@@ -3399,6 +3502,9 @@ Engine::ResetTimeout(int timeout)
 //
 //    Brad Whitlock, Mon Aug  6 12:07:59 PDT 2012
 //    Print the metadata we're sending.
+//
+//    Brad Whitlock, Fri Sep 28 11:20:27 PDT 2012
+//    Early return if the viewer is not connected.
 //
 // ****************************************************************************
 
@@ -3424,6 +3530,10 @@ Engine::PopulateSimulationMetaData(const std::string &db,
     SILAttributes *tmp = database->GetSIL(0)->MakeSILAttributes();
     *silAtts = *tmp;
     delete tmp;
+
+    // The viewer may not be connected.
+    if(quitRPC == NULL)
+        return;
 
     // Send the metadata and SIL to the viewer
     if(!quitRPC->GetQuit())
@@ -3513,12 +3623,15 @@ Engine::SimulationTimeStepChanged()
 //   Brad Whitlock, Fri Mar 27 13:55:27 PDT 2009
 //   Enable xfer updates.
 //
+//   Brad Whitlock, Fri Sep 28 11:21:17 PDT 2012
+//   Return early if the viewer is not connected.
+//
 // ****************************************************************************
 
 void
 Engine::SimulationInitiateCommand(const std::string &command)
 {
-    if(!quitRPC->GetQuit())
+    if(quitRPC != NULL && !quitRPC->GetQuit())
     {
         // Allow the command to be sent, even if we're in the middle of an
         // Xfer::Process. This fixes a synchronization bug.
@@ -3667,19 +3780,26 @@ Engine::ExecuteSimulationCommand(const std::string &command,
 //
 //    Mark C. Miller, Wed Jan 20 16:41:24 PST 2010
 //    Changed pids, ppids of ProcessAttributes to intVectors.
+//
+//    Satheesh Maheswaran, Mon Oct 01 11:48:10 PST 2012
+//    Added code to get memory information from each processor
 // ****************************************************************************
 
 ProcessAttributes *
 Engine::GetProcessAttributes()
 {
+    unsigned long m_size, m_rss;
+    double m_size_mb, m_rss_mb;
+  
     if (procAtts == NULL)
     {
         procAtts = new ProcessAttributes;
 
         intVector pids;
         intVector ppids;
+        intVector memusage;
         stringVector hosts;
-
+  
 #if defined(_WIN32)
         int myPid = _getpid();
         int myPpid = -1;
@@ -3696,15 +3816,25 @@ Engine::GetProcessAttributes()
 
         bool isParallel = true;
 
+        // Collect memory infomation
+        //Get the memory size from current proc
+        GetMemorySize(m_size, m_rss);
+
+        //Convert to megabytes
+        m_size_mb = ( (double)m_size / 1048576.0);
+        m_rss_mb  = ( (double)m_rss  / 1048576.0);
+
         // collect pids and host names
         int *allPids;
         int *allPpids;
         char *allHosts;
+        int *allMemusage;
         if (PAR_Rank() == 0)
         {
             allPids = new int[PAR_Size()];
             allPpids = new int[PAR_Size()];
             allHosts = new char[PAR_Size() * sizeof(myHost)];
+            allMemusage = new int [PAR_Size()];
         }
 
         MPI_Gather(&myPid, 1, MPI_INT,
@@ -3713,6 +3843,9 @@ Engine::GetProcessAttributes()
                    allPpids, 1, MPI_INT, 0, VISIT_MPI_COMM);
         MPI_Gather(&myHost, sizeof(myHost), MPI_CHAR,
                    allHosts, sizeof(myHost), MPI_CHAR, 0, VISIT_MPI_COMM);
+        int m_size_mb_tmp = (int)m_size_mb;
+    MPI_Gather(&m_size_mb_tmp, 1, MPI_INT,
+           allMemusage, 1, MPI_INT, 0, VISIT_MPI_COMM);
 
         if (PAR_Rank() == 0)
         {
@@ -3721,29 +3854,37 @@ Engine::GetProcessAttributes()
                 pids.push_back(allPids[i]);
                 ppids.push_back(allPpids[i]);
                 hosts.push_back(&allHosts[i*sizeof(myHost)]);
+                memusage.push_back(allMemusage[i]);
             }
 
             delete [] allPids;
             delete [] allPpids;
             delete [] allHosts;
+            delete [] allMemusage;
         }
 
 #else
 
         pids.push_back(myPid);
         ppids.push_back(myPpid);
-
         char myHost[256];
         gethostname(myHost, sizeof(myHost));
         hosts.push_back(myHost);
+        // Collect memory infomation
+        //Get the memory size from current proc
+        GetMemorySize(m_size, m_rss);
 
+        //Convert to megabytes
+        m_size_mb = ( (double)m_size / 1048576.0);
+        m_rss_mb  = ( (double)m_rss  / 1048576.0);
+        memusage.push_back(m_size_mb);
         bool isParallel = false;
-
 #endif
 
         procAtts->SetPids(pids);
         procAtts->SetPpids(ppids);
         procAtts->SetHosts(hosts);
+        procAtts->SetMemory(memusage);
         procAtts->SetIsParallel(isParallel);
 
     }
@@ -3893,7 +4034,7 @@ Engine::SetupDisplay()
 #endif
     std::string X_Display = RuntimeSetting::lookups("x-display");
     std::string disp = display_format(X_Display, PAR_Rank(), display_num);
-#if !defined(_WIN32) && !defined(__APPLE__)
+#if !defined(_WIN32) && !defined(__APPLE__) && defined(HAVE_LIBX11)
     // Tell the display whether or not it should start X servers.  This must be
     // done before ::Initialize!
     XDisplay* xd = dynamic_cast<XDisplay*>(this->renderingDisplay);
@@ -3969,6 +4110,7 @@ ResetEngineTimeout(void *p, int secs)
 //   Tells the network manager to render and save a window.
 //
 // Arguments:
+//   ids        : The ids of the networks that we want to save.
 //   filename   : The filename in which to save an image.
 //   imageWidth : The width of the image to save.
 //   imageHeight: The height of the image to save.
@@ -3987,10 +4129,10 @@ ResetEngineTimeout(void *p, int secs)
 // ****************************************************************************
 
 bool
-Engine::SaveWindow(const std::string &filename, int imageWidth, int imageHeight,
-    SaveWindowAttributes::FileFormat fmt)
+Engine::SaveWindow(const intVector &ids, const std::string &filename, 
+    int imageWidth, int imageHeight, SaveWindowAttributes::FileFormat fmt)
 {
-    return netmgr->SaveWindow(filename, imageWidth, imageHeight, fmt);
+    return netmgr->SaveWindow(ids, filename, imageWidth, imageHeight, fmt);
 }
 
 // ****************************************************************************

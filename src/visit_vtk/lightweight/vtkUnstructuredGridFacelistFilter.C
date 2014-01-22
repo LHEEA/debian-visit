@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,6 +43,8 @@
 #include "vtkUnstructuredGridFacelistFilter.h"
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
+#include <vtkInformation.h>
+#include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
 #include <vtkPointData.h>
 #include <vtkPolygon.h>
@@ -50,7 +52,6 @@
 #include <vtkUnstructuredGrid.h>
 
 #include <vector>
-using std::vector;
 
 
 //
@@ -96,11 +97,11 @@ class QuadMemoryManager
                      QuadMemoryManager();
     virtual         ~QuadMemoryManager();
 
-    inline Quad     *GetFreeQuad()
+    inline Quad     *GetFreeQuad(HashEntryList *hel)
                          {
                              if (freequadindex <= 0)
                              {
-                                 AllocateQuadPool();
+                                 AllocateQuadPool(hel);
                              }
                              freequadindex--;
                              return freequadlist[freequadindex];
@@ -123,7 +124,7 @@ class QuadMemoryManager
 
     std::vector<Quad *> quadpool;
 
-    void             AllocateQuadPool(void);
+    void             AllocateQuadPool(HashEntryList *hel);
 };
 
 
@@ -146,11 +147,11 @@ class TriMemoryManager
                      TriMemoryManager();
     virtual         ~TriMemoryManager();
 
-    inline Tri      *GetFreeTri()
+    inline Tri      *GetFreeTri(HashEntryList *hel)
                          {
                              if (freetriindex <= 0)
                              {
-                                 AllocateTriPool();
+                                 AllocateTriPool(hel);
                              }
                              freetriindex--;
                              return freetrilist[freetriindex];
@@ -173,9 +174,141 @@ class TriMemoryManager
 
     std::vector<Tri *> tripool;
 
-    void            AllocateTriPool(void);
+    void            AllocateTriPool(HashEntryList *hel);
 };
 
+
+// ****************************************************************************
+//  Class: HashEntry
+//
+//  Purpose:
+//      This is one entry in a larger hash list.  It knows how to add quads
+//      and tris to its lists and free them whenever we have a match.
+//
+//  Programmer: Hank Childs
+//  Creation:   October 21, 2002
+//
+// ****************************************************************************
+
+typedef union
+{
+    Quad *quad;
+    Tri  *tri;
+}  Face;
+
+static int face_mask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
+
+class HashEntry
+{
+  public:
+                   HashEntry();
+    virtual       ~HashEntry() {;};
+
+    void           AddQuad(Quad *);
+    void           AddTri(Tri *);
+
+    inline void    SetPointIndex(int pi) { point_index = pi; };
+    inline void    RegisterHashEntryList(HashEntryList *hel)
+                          { hashEntryList = hel; };
+
+    void           CreateOutputCells(vtkPolyData*, vtkCellData*, vtkCellData*);
+
+  protected:
+    Face           faces[FACES_PER_HASH_ENTRY];
+    int            point_index;
+    unsigned char  last_good_entry;
+    unsigned char  face_type;
+    HashEntry     *extension;
+   
+    HashEntryList *hashEntryList;
+
+    bool           LocateAndRemoveTri(Tri *);
+    bool           LocateAndRemoveQuad(Quad *);
+    void           ActuallyAddTri(Tri *);
+    void           ActuallyAddQuad(Quad *);
+    void           RemoveEntry(int);
+};
+
+
+// ****************************************************************************
+//  Class: HashEntryMemoryManager
+//
+//  Purpose:
+//      This provides a pool of HashEntry objects.  They are allocated in bulk,
+//      and then freed in bulk.
+//
+//  Programmer: Hank Childs
+//  Creation:   October 22, 2002
+//
+// ****************************************************************************
+
+class HashEntryMemoryManager
+{
+  public:
+                         HashEntryMemoryManager();
+    virtual             ~HashEntryMemoryManager();
+
+    inline HashEntry    *GetHashEntry(HashEntryList *hel)
+                         {
+                             if (currentHash+1 >= POOL_SIZE)
+                             {
+                                 AllocateHashEntryPool(hel);
+                             }
+                             HashEntry *rv = currentHashPool + currentHash;
+                             currentHash++;
+                             return rv;
+                         }
+
+    void                 AllocateHashEntryPool(HashEntryList *hel);
+
+  protected:
+    HashEntry           *currentHashPool;
+    int                  currentHash;
+
+    std::vector<HashEntry *> hashpool;
+};
+
+
+// ****************************************************************************
+//  Class: HashEntryList
+//
+//  Purpose:
+//      This effectively works as the hash.  It hashes each faces by its lowest
+//      numbered index. 
+//
+//  Programmer: Hank Childs
+//  Creation:   October 21, 2002
+//
+// ****************************************************************************
+
+class HashEntryList
+{
+  public:
+                HashEntryList(int npts);
+    virtual    ~HashEntryList();
+
+    void        AddTri(const vtkIdType *, vtkIdType orig_zone);
+    void        AddQuad(const vtkIdType *, vtkIdType orig_zone);
+
+    inline void RemoveFace(void) { nfaces--; };
+    inline int  GetNumberOfFaces(void) { return nfaces; };
+
+    void        CreateOutputCells(vtkPolyData *, vtkCellData *, vtkCellData *);
+
+  protected:
+    HashEntry            **list;
+    int                    nhashes;
+    int                    npts;
+    int                    nfaces;
+    QuadMemoryManager      qmm;
+    TriMemoryManager       tmm;
+    HashEntryMemoryManager hemm;
+
+    // The friend is so each of these classes can access the memory managers.
+    friend class HashEntry;
+    friend class Quad;
+    friend class Tri;
+};
 
 // ****************************************************************************
 //  Class: Quad
@@ -203,7 +336,7 @@ class Quad
     void           AddInRemainingTriangle(Tri *, int);
     inline void    ReRegisterMemory(void)
                          {
-                             MemoryManager->ReRegisterQuad(this);
+                             hashEntryList->qmm.ReRegisterQuad(this);
                          }
 
     inline void    SetOriginalZone(const int &oz) { orig_zone = oz; };
@@ -211,20 +344,19 @@ class Quad
 
     void           OutputCell(int,vtkPolyData *, vtkCellData *, vtkCellData *);
 
-    static void    RegisterHashEntryList(HashEntryList *);
-    static void    RegisterMemoryManager(QuadMemoryManager *);
-    static void    SetNumberOfPoints(int np) { npts = np; };
+    inline void    RegisterHashEntryList(HashEntryList *hel)
+                          { hashEntryList = hel; };
+    inline void    SetNumberOfPoints(int np) { npts = np; };
 
   protected:
-    unsigned char ordering_case;
-    vtkIdType     nodes[3];
-    vtkIdType     orig_zone;
+    unsigned char  ordering_case;
+    vtkIdType      nodes[3];
+    vtkIdType      orig_zone;
 
-    static HashEntryList     *list;
-    static QuadMemoryManager *MemoryManager;
-    static int                npts;
+    HashEntryList *hashEntryList;
+    int            npts;
 
-    void          AddInRemainingTriangle(int, int);
+    void           AddInRemainingTriangle(int, int);
 };
 
 //
@@ -297,7 +429,7 @@ class Tri
     void           AddInRemainingTriangle(Quad *, int);
     inline void    ReRegisterMemory(void)
                        {
-                           MemoryManager->ReRegisterTri(this);
+                           hashEntryList->tmm.ReRegisterTri(this);
                        }
 
     inline void    SetOriginalZone(const int &oz) { orig_zone = oz; };
@@ -305,17 +437,18 @@ class Tri
 
     void           OutputCell(int,vtkPolyData *, vtkCellData *, vtkCellData *);
 
-    static void    RegisterMemoryManager(TriMemoryManager *);
-    static void    SetNumberOfPoints(int np) { npts = np; };
+    inline void    RegisterHashEntryList(HashEntryList *hel)
+                          { hashEntryList = hel; };
+    inline void    SetNumberOfPoints(int np) { npts = np; };
 
 
   protected:
-    unsigned char ordering_case;
-    vtkIdType     nodes[2];
-    vtkIdType     orig_zone;
+    unsigned char  ordering_case;
+    vtkIdType      nodes[2];
+    vtkIdType      orig_zone;
 
-    static TriMemoryManager *MemoryManager;
-    static int               npts;
+    int            npts;
+    HashEntryList *hashEntryList;
 };
 
 //
@@ -335,149 +468,6 @@ static int tri_reorder_list[6][3] =
         { 0, -1, 1 }, { 0, 1, -1 },
         { 1, -1, 0 }, { 1, 0, -1 }
     };
-
-
-// ****************************************************************************
-//  Class: HashEntry
-//
-//  Purpose:
-//      This is one entry in a larger hash list.  It knows how to add quads
-//      and tris to its lists and free them whenever we have a match.
-//
-//  Programmer: Hank Childs
-//  Creation:   October 21, 2002
-//
-// ****************************************************************************
-
-typedef union
-{
-    Quad *quad;
-    Tri  *tri;
-}  Face;
-
-static int face_mask[8] = { 1, 2, 4, 8, 16, 32, 64, 128 };
-
-class HashEntry
-{
-  public:
-                   HashEntry();
-    virtual       ~HashEntry() {;};
-
-    void           AddQuad(Quad *);
-    void           AddTri(Tri *);
-
-    inline void    SetPointIndex(int pi) { point_index = pi; };
-    static void    RegisterMemoryManager(HashEntryMemoryManager *mm)
-                          { MemoryManager = mm; };
-    static void    RegisterHashEntryList(HashEntryList *hel)
-                          { list = hel; };
-
-    void           CreateOutputCells(vtkPolyData*, vtkCellData*, vtkCellData*);
-
-  protected:
-    Face           faces[FACES_PER_HASH_ENTRY];
-    int            point_index;
-    unsigned char  last_good_entry;
-    unsigned char  face_type;
-    HashEntry     *extension;
-   
-    static HashEntryMemoryManager *MemoryManager;
-    static HashEntryList          *list;
-
-    bool           LocateAndRemoveTri(Tri *);
-    bool           LocateAndRemoveQuad(Quad *);
-    void           ActuallyAddTri(Tri *);
-    void           ActuallyAddQuad(Quad *);
-    void           RemoveEntry(int);
-};
-
-
-// ****************************************************************************
-//  Class: HashEntryMemoryManager
-//
-//  Purpose:
-//      This provides a pool of HashEntry objects.  They are allocated in bulk,
-//      and then freed in bulk.
-//
-//  Programmer: Hank Childs
-//  Creation:   October 22, 2002
-//
-// ****************************************************************************
-
-class HashEntryMemoryManager
-{
-  public:
-                         HashEntryMemoryManager();
-    virtual             ~HashEntryMemoryManager();
-
-    inline HashEntry    *GetHashEntry()
-                         {
-                             if (currentHash+1 >= POOL_SIZE)
-                             {
-                                 AllocateHashEntryPool();
-                             }
-                             HashEntry *rv = currentHashPool + currentHash;
-                             currentHash++;
-                             return rv;
-                         }
-
-  protected:
-    HashEntry      *currentHashPool;
-    int             currentHash;
-
-    std::vector<HashEntry *> hashpool;
-
-    void            AllocateHashEntryPool(void);
-};
-
-
-// ****************************************************************************
-//  Class: HashEntryList
-//
-//  Purpose:
-//      This effectively works as the hash.  It hashes each faces by its lowest
-//      numbered index. 
-//
-//  Programmer: Hank Childs
-//  Creation:   October 21, 2002
-//
-// ****************************************************************************
-
-class HashEntryList
-{
-  public:
-                HashEntryList(int npts);
-    virtual    ~HashEntryList();
-
-    void        AddTri(const vtkIdType *, vtkIdType orig_zone);
-    void        AddQuad(const vtkIdType *, vtkIdType orig_zone);
-
-    inline void RemoveFace(void) { nfaces--; };
-    int         GetNumberOfFaces(void) { return nfaces; };
-
-    void        CreateOutputCells(vtkPolyData *, vtkCellData *, vtkCellData *);
-
-  protected:
-    HashEntry            **list;
-    int                    nhashes;
-    int                    npts;
-    int                    nfaces;
-    QuadMemoryManager      qmm;
-    TriMemoryManager       tmm;
-    HashEntryMemoryManager hemm;
-};
-
-
-//
-// Declare these static members.
-//
-HashEntryList          *Quad::list = NULL;
-QuadMemoryManager      *Quad::MemoryManager = NULL;
-int                     Quad::npts = 0;
-int                     Tri::npts = 0;
-TriMemoryManager       *Tri::MemoryManager  = NULL;
-HashEntryList          *HashEntry::list = NULL;
-HashEntryMemoryManager *HashEntry::MemoryManager = NULL;
 
 
 //
@@ -517,47 +507,6 @@ static void LoopOverPolygonCells(vtkUnstructuredGrid *, vtkPolyData *,
                                  vtkCellData *, vtkCellData *);
 static void LoopOverStripCells(vtkUnstructuredGrid *, vtkPolyData *,
                                vtkCellData *, vtkCellData *);
-
-
-// ****************************************************************************
-//  Method: Quad::RegisterHashEntryList
-//
-//  Purpose:
-//      Registers the hash entry list with the Quad class.  This is necessary
-//      because a triangle may collide with a quadrilateral and the result
-//      (another triangle) needs to be added back into the hash as its own
-//      entry.
-//
-//  Programmer: Hank Childs
-//  Creation:   October 21, 2002
-//
-// ****************************************************************************
-
-void
-Quad::RegisterHashEntryList(HashEntryList *l)
-{
-    list = l;
-}
-
-
-// ****************************************************************************
-//  Method: Quad::RegisterMemoryManager
-//
-//  Purpose:
-//      Registers the memory manager with the Quad class.  Whenever a quad is
-//      freed from the hash, the newly freed quad is put back on a queue with
-//      the memory manager via this reference.
-//
-//  Programmer: Hank Childs
-//  Creation:   October 21, 2002
-//
-// ****************************************************************************
-
-void
-Quad::RegisterMemoryManager(QuadMemoryManager *mm)
-{
-    MemoryManager = mm;
-}
 
 
 // ****************************************************************************
@@ -993,27 +942,7 @@ Quad::AddInRemainingTriangle(int n, int node_0)
     {
         tmp_nodes[i] = (n_list[i] == -1 ? node_0 : nodes[n_list[i]]);
     }
-    list->AddTri(tmp_nodes, orig_zone);
-}
-
-
-// ****************************************************************************
-//  Method: Tri::RegisterMemoryManager
-//
-//  Purpose:
-//      Registers the memory manager with the Tri class.  Whenever a tri is
-//      freed from the hash, the newly freed tri is put back on a queue with
-//      the memory manager via this reference.
-//
-//  Programmer: Hank Childs
-//  Creation:   October 21, 2002
-//
-// ****************************************************************************
-
-void
-Tri::RegisterMemoryManager(TriMemoryManager *mm)
-{
-    MemoryManager = mm;
+    hashEntryList->AddTri(tmp_nodes, orig_zone);
 }
 
 
@@ -1276,8 +1205,8 @@ HashEntry::LocateAndRemoveQuad(Quad *f)
             Quad *q = faces[i].quad;
             if (q->Equals(f))
             {
-                list->RemoveFace();
-                list->RemoveFace();
+                hashEntryList->RemoveFace();
+                hashEntryList->RemoveFace();
                 RemoveEntry(i);
                 q->ReRegisterMemory();
                 f->ReRegisterMemory();
@@ -1289,8 +1218,8 @@ HashEntry::LocateAndRemoveQuad(Quad *f)
             Tri *t = faces[i].tri;
             if (t->Equals(f))
             {
-                list->RemoveFace();
-                list->RemoveFace();
+                hashEntryList->RemoveFace();
+                hashEntryList->RemoveFace();
                 RemoveEntry(i);
                 f->AddInRemainingTriangle(t, point_index);
                 t->ReRegisterMemory();
@@ -1329,8 +1258,8 @@ HashEntry::LocateAndRemoveTri(Tri *f)
             Quad *q = faces[i].quad;
             if (q->Equals(f))
             {
-                list->RemoveFace();
-                list->RemoveFace();
+                hashEntryList->RemoveFace();
+                hashEntryList->RemoveFace();
                 RemoveEntry(i);
                 q->AddInRemainingTriangle(f, point_index);
                 q->ReRegisterMemory();
@@ -1343,8 +1272,8 @@ HashEntry::LocateAndRemoveTri(Tri *f)
             Tri *t = faces[i].tri;
             if (t->Equals(f))
             {
-                list->RemoveFace();
-                list->RemoveFace();
+                hashEntryList->RemoveFace();
+                hashEntryList->RemoveFace();
                 RemoveEntry(i);
                 t->ReRegisterMemory();
                 f->ReRegisterMemory();
@@ -1386,7 +1315,7 @@ HashEntry::ActuallyAddQuad(Quad *f)
 
     if (extension == NULL)
     {
-        extension = MemoryManager->GetHashEntry();
+        extension = hashEntryList->hemm.GetHashEntry(hashEntryList);
         extension->SetPointIndex(point_index);
     }
     extension->ActuallyAddQuad(f);
@@ -1418,7 +1347,7 @@ HashEntry::ActuallyAddTri(Tri *f)
 
     if (extension == NULL)
     {
-        extension = MemoryManager->GetHashEntry();
+        extension = hashEntryList->hemm.GetHashEntry(hashEntryList);
         extension->SetPointIndex(point_index);
     }
     extension->ActuallyAddTri(f);
@@ -1435,7 +1364,6 @@ HashEntry::ActuallyAddTri(Tri *f)
 
 HashEntryMemoryManager::HashEntryMemoryManager()
 {
-    AllocateHashEntryPool();
 }
 
 
@@ -1470,11 +1398,15 @@ HashEntryMemoryManager::~HashEntryMemoryManager()
 // ****************************************************************************
 
 void
-HashEntryMemoryManager::AllocateHashEntryPool(void)
+HashEntryMemoryManager::AllocateHashEntryPool(HashEntryList *hel)
 {
     currentHashPool = new HashEntry[POOL_SIZE];
     currentHash = 0;
     hashpool.push_back(currentHashPool);
+    for (int i = 0 ; i < POOL_SIZE ; i++)
+    {
+        currentHashPool[i].RegisterHashEntryList(hel);
+    }
 }
 
 
@@ -1524,7 +1456,7 @@ QuadMemoryManager::~QuadMemoryManager()
 // ****************************************************************************
 
 void
-QuadMemoryManager::AllocateQuadPool(void)
+QuadMemoryManager::AllocateQuadPool(HashEntryList *hel)
 {
     if (freequadindex == 0)
     {
@@ -1532,6 +1464,7 @@ QuadMemoryManager::AllocateQuadPool(void)
         quadpool.push_back(newlist);
         for (int i = 0 ; i < POOL_SIZE ; i++)
         {
+            newlist[i].RegisterHashEntryList(hel);
             freequadlist[i] = &(newlist[i]);
         }
         freequadindex = POOL_SIZE;
@@ -1585,7 +1518,7 @@ TriMemoryManager::~TriMemoryManager()
 // ****************************************************************************
 
 void
-TriMemoryManager::AllocateTriPool(void)
+TriMemoryManager::AllocateTriPool(HashEntryList *hel)
 {
     if (freetriindex <= 0)
     {
@@ -1593,6 +1526,7 @@ TriMemoryManager::AllocateTriPool(void)
         tripool.push_back(newlist);
         for (int i = 0 ; i < POOL_SIZE ; i++)
         {
+            newlist[i].RegisterHashEntryList(hel);
             freetrilist[i] = &(newlist[i]);
         }
         freetriindex = POOL_SIZE;
@@ -1618,11 +1552,7 @@ HashEntryList::HashEntryList(int np)
     {
         list[i] = NULL;
     }
-    HashEntry::RegisterMemoryManager(&hemm);
-    HashEntry::RegisterHashEntryList(this);
-    Quad::RegisterMemoryManager(&qmm);
-    Tri::RegisterMemoryManager(&tmm);
-    Quad::RegisterHashEntryList(this);
+    hemm.AllocateHashEntryPool(this);
 }
 
 
@@ -1662,12 +1592,12 @@ void
 HashEntryList::AddTri(const vtkIdType *node_list, vtkIdType orig_zone)
 {
     nfaces++;
-    Tri *tri = tmm.GetFreeTri();
+    Tri *tri = tmm.GetFreeTri(this);
     int hash_index = tri->AssignNodes(node_list);
     tri->SetOriginalZone(orig_zone);
     if (list[hash_index] == NULL)
     {
-        list[hash_index] = hemm.GetHashEntry();
+        list[hash_index] = hemm.GetHashEntry(this);
         list[hash_index]->SetPointIndex(hash_index);
     }
     list[hash_index]->AddTri(tri);
@@ -1692,12 +1622,12 @@ void
 HashEntryList::AddQuad(const vtkIdType *node_list, vtkIdType orig_zone)
 {
     nfaces++;
-    Quad *quad = qmm.GetFreeQuad();
+    Quad *quad = qmm.GetFreeQuad(this);
     int hash_index = quad->AssignNodes(node_list);
     quad->SetOriginalZone(orig_zone);
     if (list[hash_index] == NULL)
     {
-        list[hash_index] = hemm.GetHashEntry();
+        list[hash_index] = hemm.GetHashEntry(this);
         list[hash_index]->SetPointIndex(hash_index%npts);
     }
     list[hash_index]->AddQuad(quad);
@@ -1769,14 +1699,9 @@ HashEntry::CreateOutputCells(vtkPolyData *output, vtkCellData *in_cd,
 
 vtkStandardNewMacro(vtkUnstructuredGridFacelistFilter); 
 
-void
-vtkUnstructuredGridFacelistFilter::PrintSelf(ostream& os, vtkIndent indent)
-{
-    this->Superclass::PrintSelf(os,indent);
-}
 
 // ****************************************************************************
-//  Method: vtkUnstructuredGridFacelistFilter::Execute
+//  Method: vtkUnstructuredGridFacelistFilter::RequestData
 //
 //  Purpose:
 //      Finds the faces that are external to the unstructured grid input.
@@ -1805,14 +1730,27 @@ vtkUnstructuredGridFacelistFilter::PrintSelf(ostream& os, vtkIndent indent)
 //
 // ****************************************************************************
 
-void
-vtkUnstructuredGridFacelistFilter::Execute()
+int
+vtkUnstructuredGridFacelistFilter::RequestData(
+    vtkInformation *vtkNotUsed(request),
+    vtkInformationVector **inputVector,
+    vtkInformationVector *outputVector)
 {
     vtkDebugMacro(<<"Executing geometry filter for unstructured grid input");
 
-    vtkUnstructuredGrid *input= (vtkUnstructuredGrid *)this->GetInput();
+    // get the info objects
+    vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
+    vtkInformation *outInfo = outputVector->GetInformationObject(0);
+
+    //
+    // Initialize some frequently used values.
+    //
+    vtkUnstructuredGrid *input = vtkUnstructuredGrid::SafeDownCast(
+        inInfo->Get(vtkDataObject::DATA_OBJECT()));
+    vtkPolyData *output = vtkPolyData::SafeDownCast(
+        outInfo->Get(vtkDataObject::DATA_OBJECT()));
+
     vtkCellData *cd = input->GetCellData();
-    vtkPolyData *output = this->GetOutput();
     vtkCellData *outputCD = output->GetCellData();
  
     //
@@ -1867,6 +1805,34 @@ vtkUnstructuredGridFacelistFilter::Execute()
     {
         LoopOverStripCells(input, output, cd, outputCD);
     }
+
+    return 1;
+}
+
+
+// ****************************************************************************
+//  Method: vtkUnstructuredGridFacelistFilter::FillInputPortInformation
+//
+// ****************************************************************************
+
+int
+vtkUnstructuredGridFacelistFilter::FillInputPortInformation(int,
+    vtkInformation *info)
+{
+    info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkUnstructuredGrid");
+    return 1;
+}
+
+
+// ****************************************************************************
+//  Method: vtkUnstructuredGridFacelistFilter::PrintSelf
+//
+// ****************************************************************************
+
+void
+vtkUnstructuredGridFacelistFilter::PrintSelf(ostream& os, vtkIndent indent)
+{
+    this->Superclass::PrintSelf(os,indent);
 }
 
 
@@ -3031,7 +2997,7 @@ AddUnknownCell(vtkCell *cell, int cellId, HashEntryList &list)
         }
         else if (face->GetCellType() == VTK_POLYGON)
         {
-            static vtkIdList *tris = vtkIdList::New();
+            vtkIdList *tris = vtkIdList::New();
             vtkPolygon *polygon = (vtkPolygon *) face;
             polygon->Triangulate(tris);
             int numTris = tris->GetNumberOfIds() / 3;
@@ -3042,8 +3008,8 @@ AddUnknownCell(vtkCell *cell, int cellId, HashEntryList &list)
                 nodes[2] = polygon->GetPointId(tris->GetId(3*i+2));
                 list.AddTri(nodes, cellId);
             }
+            tris->Delete();
         }
     }
 }
-
 

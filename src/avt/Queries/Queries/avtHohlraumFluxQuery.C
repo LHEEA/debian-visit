@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -358,6 +358,9 @@ avtHohlraumFluxQuery::SetDivideEmisByAbsorb(bool flag)
 //    Hank Childs, Fri May  2 09:02:39 PDT 2008
 //    Add a warning for no intersections.
 //
+//    Kathleen Biagas, Fri Jan 25 16:36:38 PST 2013
+//    Call update on filter, not data object.
+//
 // ****************************************************************************
 
 void
@@ -379,9 +382,9 @@ avtHohlraumFluxQuery::ExecuteLineScan(vtkPolyData *pd)
     vtkCleanPolyData *cpd = vtkCleanPolyData::New();  //Glue together intersecting segments
     cpd->SetToleranceIsAbsolute(0);
     cpd->SetTolerance(1e-7);
-    cpd->SetInput(pd);
+    cpd->SetInputData(pd);
+    cpd->Update();
     vtkPolyData *output = cpd->GetOutput();
-    output->Update();
     
     UpdateProgress(extraMsg*currentNode+extraMsg/3, totalProg);
 

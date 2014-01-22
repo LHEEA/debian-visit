@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -306,6 +306,7 @@ class PLOTTER_API avtPlot
     void                       SetDataExtents(const std::vector<double> &);
     virtual void               GetDataExtents(std::vector<double> &);
 
+    virtual void               SetPlotTitle(const char *title);
     virtual void               SetVarName(const char *name);
     void                       SetVarUnits(const char *units);
     void                       SetMeshType(const avtMeshType);

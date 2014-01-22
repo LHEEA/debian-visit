@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1229,7 +1229,7 @@ avtSIL::MakeSILAttributes(void) const
     //
     // Add the sets.
     //
-    size_t nSets = sets.size();
+    int nSets = (int)sets.size();
     rv->SetNSets(nSets);
     vector<string> names;
     vector<int>    ids;
@@ -1245,7 +1245,7 @@ avtSIL::MakeSILAttributes(void) const
     //
     // Add the collections.
     //
-    size_t nCols = collections.size();
+    int nCols = (int)collections.size();
     rv->SetNCollections(nCols);
     vector<string> cats;
     vector<int> roles;

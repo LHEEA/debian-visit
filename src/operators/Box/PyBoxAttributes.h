@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define BOXATTRIBUTES_NMETH 16
+#define BOXATTRIBUTES_NMETH 18
 void           PyBoxAttributes_StartUp(BoxAttributes *subj, void *data);
 void           PyBoxAttributes_CloseDown();
 PyMethodDef *  PyBoxAttributes_GetMethodTable(int *nMethods);

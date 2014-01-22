@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -635,7 +635,7 @@ avtVarMetaData::Print(ostream &out, int indent) const
     {
         Indent(out, indent);
         out << "Restricted to material indices: " << matRestricted[0];
-        for (int i = 1; i < matRestricted.size(); i++)
+        for (size_t i = 1; i < matRestricted.size(); i++)
         {
             out << ", " << matRestricted[i];
             if (i%20 == 0)

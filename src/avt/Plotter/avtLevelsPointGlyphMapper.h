@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -64,6 +64,9 @@
 //    Added an override for the SetGlyphType method that lets us switch
 //    mapper inputs when we enter of leave point glyphing mode.
 //
+//    Kathleen Biagas, Wed Feb 6 19:38:27 PDT 2013
+//    Changed signature of InsertFilters.
+//
 // ****************************************************************************
 
 class PLOTTER_API  avtLevelsPointGlyphMapper : virtual public avtLevelsMapper,
@@ -78,7 +81,7 @@ class PLOTTER_API  avtLevelsPointGlyphMapper : virtual public avtLevelsMapper,
 
   protected:
     virtual void               CustomizeMappers(void);
-    virtual vtkDataSet        *InsertFilters(vtkDataSet *, int);
+    virtual vtkAlgorithmOutput *InsertFilters(vtkDataSet *, int);
     virtual void               SetUpFilters(int);
 
   private:

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -121,7 +121,7 @@ avtCurveRenderer::Render(vtkDataSet *ds)
         if (ds->GetDataObjectType() != VTK_POLY_DATA) 
         {
             vtkGeometryFilter *gf = vtkGeometryFilter::New();
-            gf->SetInput(ds);
+            gf->SetInputData(ds);
             input = vtkPolyData::New();
             gf->SetOutput(input);
             gf->Update();

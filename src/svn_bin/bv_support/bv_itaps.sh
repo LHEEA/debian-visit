@@ -18,7 +18,21 @@ ON_ITAPS="off"
 
 function bv_itaps_depends_on
 {
-echo ""
+    local depends_on=""
+
+    if [[ "$DO_HDF5" == "yes" ]] ; then
+        depends_on="hdf5"
+    fi
+
+    if [[ "$DO_SZIP" == "yes" ]] ; then
+        depends_on="$depends_on szip"
+    fi
+
+    if [[ "$DO_NETCDF" == "yes" ]] ; then
+        depends_on="$depends_on netcdf"    
+    fi
+
+    echo $depends_on
 }
 
 function bv_itaps_print
@@ -59,24 +73,42 @@ function bv_itaps_host_profile
         echo "ITAPS_INCLUDE_DIRECTORIES(MOAB \${VISITHOME}/itaps/$ITAPS_VERSION/MOAB/$ITAPS_MOAB_VERSION/\${VISITARCH}/include)" \
         >> $HOSTCONF
         echo "ITAPS_FILE_PATTERNS(MOAB *.cub)" >> $HOSTCONF
-        echo "ITAPS_LINK_LIBRARIES(MOAB iMesh MOAB hdf5_hl hdf5 sz z netcdf_c++ netcdf vtkGraphics)" \
+        local hdf5_libs=""
+        local hdf5_libdir=""
+        local szip_libs=""
+        local szip_libdir=""
+        local netcdf_libs=""
+        local netcdf_libdir=""
+        if [[ "$DO_HDF5" == "yes" ]] ; then
+            hdf5_libs="hdf5_hl hdf5"
+            hdf5_libdir="\${VISITHOME}/hdf5/${HDF5_VERSION}/\${VISITARCH}/lib "
+        fi
+        if [[ "$DO_SZIP" == "yes" ]] ; then
+            szip_libs="sz"
+            szip_libdir="\${VISITHOME}/szip/${SZIP_VERSION}/\${VISITARCH}/lib "
+        fi
+        if [[ "$DO_NETCDF" == "yes" ]] ; then
+            netcdf_libs="netcdf_c++ netcdf"
+            netcdf_libdir="\${VISITHOME}/netcdf/${NETCDF_VERSION}/\${VISITARCH}/lib "
+        fi
+        echo "ITAPS_LINK_LIBRARIES(MOAB iMesh MOAB $hdf5_libs $szip_libs z $netcdf_libs )" \
         >> $HOSTCONF
         echo "ITAPS_LINK_DIRECTORIES(MOAB " \
              "\${VISITHOME}/itaps/$ITAPS_VERSION/MOAB/$ITAPS_MOAB_VERSION/\${VISITARCH}/lib " \
-             "\${VISITHOME}/hdf5/${HDF5_VERSION}/\${VISITARCH}/lib " \
-             "\${VISITHOME}/szip/${SZIP_VERSION}/\${VISITARCH}/lib " \
-             "\${VISITHOME}/netcdf/${NETCDF_VERSION}/\${VISITARCH}/lib)" >> $HOSTCONF
+             "$hdf5_libdir" \
+             "$szip_libdir" \
+             "$netcdf_libdir)" >> $HOSTCONF
         echo "## FMDB implementation" >> $HOSTCONF
         echo "ITAPS_INCLUDE_DIRECTORIES(FMDB \${VISITHOME}/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/\${VISITARCH}/include)" \
         >> $HOSTCONF
         echo "ITAPS_FILE_PATTERNS(FMDB *.sms)" >> $HOSTCONF
-        echo "ITAPS_LINK_LIBRARIES(FMDB FMDB SCORECModel SCORECUtil vtkGraphics)" >> $HOSTCONF
+        echo "ITAPS_LINK_LIBRARIES(FMDB FMDB SCORECModel SCORECUtil )" >> $HOSTCONF
         echo "ITAPS_LINK_DIRECTORIES(FMDB \${VISITHOME}/itaps/$ITAPS_VERSION/FMDB/$ITAPS_FMDB_VERSION/\${VISITARCH}/lib)" >> $HOSTCONF
         echo "## GRUMMP implementation" >> $HOSTCONF
         echo "ITAPS_INCLUDE_DIRECTORIES(GRUMMP \${VISITHOME}/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/\${VISITARCH}/include)" \
         >> $HOSTCONF
         echo "ITAPS_FILE_PATTERNS(GRUMMP *.bdry *.smesh *.vmesh)" >> $HOSTCONF
-        echo "ITAPS_LINK_LIBRARIES(GRUMMP iMesh_GRUMMP GR_3D GR_surf GR_2D GR_geom GR_base SUMAAlog_lite OptMS vtkGraphics cgm dl)" \
+        echo "ITAPS_LINK_LIBRARIES(GRUMMP iMesh_GRUMMP GR_3D GR_surf GR_2D GR_geom GR_base SUMAAlog_lite OptMS cgm dl)" \
         >> $HOSTCONF
         echo "ITAPS_LINK_DIRECTORIES(GRUMMP \${VISITHOME}/itaps/$ITAPS_VERSION/GRUMMP/$ITAPS_GRUMMP_VERSION/\${VISITARCH}/lib)" \
         >> $HOSTCONF
@@ -87,29 +119,29 @@ function bv_itaps_host_profile
 
 function bv_itaps_info
 {
-export ITAPS_VERSION=${ITAPS_VERSION:-"1.2"}
-export ITAPS_MOAB_VERSION=${ITAPS_MOAB_VERSION:-"4.0.1RC2"}
+export ITAPS_VERSION=${ITAPS_VERSION:-"1.4"}
+export ITAPS_MOAB_VERSION=${ITAPS_MOAB_VERSION:-"4.6.0"}
 export ITAPS_MOAB_FILE=${ITAPS_MOAB_FILE:-"moab-${ITAPS_MOAB_VERSION}.tar.gz"}
-export ITAPS_MOAB_URL=${ITAPS_MOAB_URL:-http://gnep.mcs.anl.gov:8010}
-export ITAPS_MOAB_BUILD_DIR=${ITAPS_MOAB_BUILD_DIR:-"moab-4.0.1"}
+export ITAPS_MOAB_URL=${ITAPS_MOAB_URL:-http://ftp.mcs.anl.gov/pub/fathom}
+export ITAPS_MOAB_BUILD_DIR=${ITAPS_MOAB_BUILD_DIR:-"moab-${ITAPS_MOAB_VERSION}"}
 
-export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.2"}
+export ITAPS_FMDB_VERSION=${ITAPS_FMDB_VERSION:-"1.4.0"}
 export ITAPS_FMDB_FILE=${ITAPS_FMDB_FILE:-"FMDB-${ITAPS_FMDB_VERSION}.tar.gz"}
-export ITAPS_FMDB_URL=${ITAPS_FMDB_URL:-https://redmine.scorec.rpi.edu/anonsvn/itaps/software/branches/1.2RC/release_distros/FMDB}
+export ITAPS_FMDB_URL=${ITAPS_FMDB_URL:-http://www.scorec.rpi.edu/FMDB/source}
 export ITAPS_FMDB_BUILD_DIR=${ITAPS_FMDB_BUILD_DIR:-"${ITAPS_FMDB_FILE%.tar*}"}
 
 # CGM is an indirect dependency introduced by ITAPS_GRUMMP. No other part
 # of VisIt uses CGM, presently. That is likely to change in the future
 # if we add an iGeom reader to VisIt.
-export ITAPS_GRUMMP_CGM_VERSION=${ITAPS_GRUMMP_CGM_VERSION:-"10.2.3"}
-export ITAPS_GRUMMP_CGM_FILE=${ITAPS_GRUMMP_CGM_FILE:-"cgma-${ITAPS_GRUMMP_CGM_VERSION}.tar.gz"}
-export ITAPS_GRUMMP_CGM_URL=${ITAPS_GRUMMP_CGM_URL:-https://redmine.scorec.rpi.edu/anonsvn/itaps/software/tags/1.2/release_distros}
-export ITAPS_GRUMMP_CGM_BUILD_DIR=${ITAPS_GRUMMP_CGM_BUILD_DIR:-"${ITAPS_GRUMMP_CGM_FILE%.tar*}"}
+export ITAPS_GRUMMP_CGM_VERSION=${ITAPS_GRUMMP_CGM_VERSION:-"12.2.0b1"}
+export ITAPS_GRUMMP_CGM_FILE=${ITAPS_GRUMMP_CGM_FILE:-"cgm-${ITAPS_GRUMMP_CGM_VERSION}.tar.gz"}
+export ITAPS_GRUMMP_CGM_URL=${ITAPS_GRUMMP_CGM_URL:-http://ftp.mcs.anl.gov/pub/fathom}
+export ITAPS_GRUMMP_CGM_BUILD_DIR=${ITAPS_GRUMMP_CGM_BUILD_DIR:-"cgma-${ITAPS_GRUMMP_CGM_VERSION}"}
 
-export ITAPS_GRUMMP_VERSION=${ITAPS_GRUMMP_VERSION:-"0.6.3"}
+export ITAPS_GRUMMP_VERSION=${ITAPS_GRUMMP_VERSION:-"0.6.5"}
 export ITAPS_GRUMMP_FILE=${ITAPS_GRUMMP_FILE:-"GRUMMP-${ITAPS_GRUMMP_VERSION}.tar.gz"}
-export ITAPS_GRUMMP_URL=${ITAPS_GRUMMP_URL:-https://redmine.scorec.rpi.edu/anonsvn/itaps/software/tags/1.2/release_distros}
-export ITAPS_GRUMMP_BUILD_DIR=${ITAPS_GRUMMP_BUILD_DIR:-"${ITAPS_GRUMMP_FILE%.tar*}"}
+#export ITAPS_GRUMMP_URL=${ITAPS_GRUMMP_URL:-ftp://tetra.mech.ubc.ca/pub/GRUMMP}
+export ITAPS_GRUMMP_BUILD_DIR=${ITAPS_GRUMMP_BUILD_DIR:-"GRUMMP-${ITAPS_GRUMMP_VERSION}"}
 export ITAPS_MD5_CHECKSUM=""
 export ITAPS_SHA256_CHECKSUM=""
 }
@@ -175,7 +207,7 @@ function build_itaps_moab
     cd $ITAPS_MOAB_BUILD_DIR || error "Cannot cd to $ITAPS_MOAB_BUILD_DIR build dir."
     info "Invoking command to configure ITAPS_MOAB"
     if [[ "$DO_HDF5" == "yes" ]] ; then
-       WITHHDF5ARG="--with-hdf5=$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH --with-hdf5-ldflags=-lz"
+       WITHHDF5ARG="--with-hdf5=$HDF5_INSTALL_DIR --with-hdf5-ldflags=-lz"
     else
        WITHHDF5ARG="--without-hdf5"
     fi
@@ -185,7 +217,7 @@ function build_itaps_moab
        WITHSZIPARG="--without-szip"
     fi
     if [[ "$DO_NETCDF" == "yes" ]] ; then
-       WITHNETCDFARG="--with-netcdf=$VISITDIR/netcdf/$NETCDF_VERSION/$VISITARCH"
+       WITHNETCDFARG="--with-netcdf=$NETCDF_INSTALL_DIR"
     else
        WITHNETCDFARG="--without-netcdf"
     fi
@@ -212,7 +244,7 @@ function build_itaps_moab
     #
     # Install into the VisIt third party location.
     #
-    info "Installing ITAPS_FMDB"
+    info "Installing ITAPS_MOAB"
 
     if [[ "$OPSYS" == "Darwin" ]]; then
         warn "I do not know how to install ITAPS_MOAB on a Mac. Giving up"
@@ -255,12 +287,12 @@ function build_itaps_fmdb
     cd $ITAPS_FMDB_BUILD_DIR
     abs_itaps_fmdb_build_dir=$(pwd)
 
-    if [[ ! -e GMI-1.0.tar.gz ]]; then
-        download_file GMI-1.0.tar.gz $ITAPS_FMDB_URL
-        [[ $? -eq 0 ]] || { error "Unable to download GMI-1.0.tar.gz for ITAPS_FMDB" && return 1; }
+    if [[ ! -e GMI-1.0.1.tar.gz ]]; then
+        download_file GMI-1.0.1.tar.gz $ITAPS_FMDB_URL
+        [[ $? -eq 0 ]] || { error "Unable to download GMI-1.0.1.tar.gz for ITAPS_FMDB" && return 1; }
     fi
-    gunzip < GMI-1.0.tar.gz | tar xf -
-    [[ $? -eq 0 ]] || { error "Unable to untar GMI-1.0.tar.gz for ITAPS_FMDB" && return 1; }
+    gunzip < GMI-1.0.1.tar.gz | tar xf -
+    [[ $? -eq 0 ]] || { error "Unable to untar GMI-1.0.1.tar.gz for ITAPS_FMDB" && return 1; }
     if [[ ! -e SCUtil.tar.gz ]]; then
         download_file SCUtil.tar.gz $ITAPS_FMDB_URL
         [[ $? -eq 0 ]] || { error "Unable to download SCUtil.tar.gz for ITAPS_FMDB" && return 1; }
@@ -278,7 +310,7 @@ function build_itaps_fmdb
     # Configure GMI
     #
     info "Configuring GMI for ITAPS_FMDB. . ."
-    pushd GMI-1.0 >/dev/null 2>&1
+    pushd GMI-1.0.1 >/dev/null 2>&1
     ./configure CXX="$CXX_COMPILER" CC="$C_COMPILER" \
         CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
         --with-fmdb=$abs_itaps_fmdb_build_dir \

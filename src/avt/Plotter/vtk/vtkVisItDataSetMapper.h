@@ -25,7 +25,7 @@
 #ifndef __vtkVisItDataSetMapper_h
 #define __vtkVisItDataSetMapper_h
 #include <plotter_exports.h>
-#include "vtkDataSetMapper.h"
+#include <vtkDataSetMapper.h>
 
 class vtkPolyDataMapper;
 class vtkRectilinearGridMapper;
@@ -44,7 +44,7 @@ class PLOTTER_API vtkVisItDataSetMapper : public vtkDataSetMapper
 {
 public:
   static vtkVisItDataSetMapper *New();
-  vtkTypeRevisionMacro(vtkVisItDataSetMapper, vtkDataSetMapper);
+  vtkTypeMacro(vtkVisItDataSetMapper, vtkDataSetMapper);
   void PrintSelf(ostream& os, vtkIndent indent);
   void Render(vtkRenderer *ren, vtkActor *act);
 

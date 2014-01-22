@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -130,7 +130,7 @@ main(int argc, char *argv[])
     // Now write the output to a file.
     //
     vtkPolyDataWriter *writer = vtkPolyDataWriter::New();
-    writer->SetInput(output);
+    writer->SetInputData(output);
     writer->SetFileName(output_file_name);
     writer->Write();
 

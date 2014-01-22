@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -250,11 +250,11 @@ avtContourPlot::SetAtts(const AttributeGroup *a)
     }
     else if (atts.GetContourMethod() == ContourAttributes::Value)
     {
-        numLevels = atts.GetContourValue().size();
+        numLevels = (int)atts.GetContourValue().size();
     }
     else 
     {
-        numLevels = atts.GetContourPercent().size();
+        numLevels = (int)atts.GetContourPercent().size();
     }
 
     SetColors();

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,6 +78,10 @@
 #include <InvalidCellTypeException.h>
 #include <TimingsManager.h>
 
+#include <Utility.h>
+#include <DebugStream.h>
+
+#include <stack>
 
 // ****************************************************************************
 //  Method: avtSamplePointExtractor constructor
@@ -160,10 +164,18 @@ avtSamplePointExtractor::avtSamplePointExtractor(int w, int h, int d)
 
     modeIs3D = true;
     SetKernelBasedSampling(false);
+    SetTrilinear(false);
 
     shouldSetUpArbitrator    = false;
     arbitratorPrefersMinimum = false;
     arbitrator               = NULL;
+
+    patchCount = 0;
+
+    rayCastingSLIVR = false;
+    lighting = false;
+    lightPosition[0] = lightPosition[1] = lightPosition[2] = 0.0;   lightPosition[3] = 1.0;
+    materialProperties[0] = 0.4; materialProperties[1] = 0.75; materialProperties[3] = 0.0; materialProperties[3] = 15.0;
 }
 
 
@@ -231,6 +243,8 @@ avtSamplePointExtractor::~avtSamplePointExtractor()
         delete arbitrator;
         arbitrator = NULL;
     }
+
+    delImgPatches();
 }
 
 
@@ -443,6 +457,9 @@ avtSamplePointExtractor::SetUpExtractors(void)
     wedgeExtractor = new avtWedgeExtractor(width, height, depth, volume, cl);
     pointExtractor = new avtPointExtractor(width, height, depth, volume, cl);
     pyramidExtractor = new avtPyramidExtractor(width, height, depth,volume,cl);
+
+    massVoxelExtractor->SetTrilinear(trilinearInterpolation);
+    massVoxelExtractor->SetRayCastingSLIVR(rayCastingSLIVR);
 
     hexExtractor->SendCellsMode(sendCells);
     hex20Extractor->SendCellsMode(sendCells);
@@ -660,47 +677,177 @@ avtSamplePointExtractor::PostExecute(void)
 //    Moved raster based sampling into its own method.  Added support for
 //    kernel based sampling.
 //
+//    Manasa Prasad, 
+//    Converted the recursive function to iteration
+//
 // ****************************************************************************
+    struct datatree_childindex {
+        avtDataTree_p dt; int idx; bool visited;
+        datatree_childindex(avtDataTree_p dt_, int idx_) : dt(dt_),idx(idx_),visited(false) {}
+    };
+
 
 void
 avtSamplePointExtractor::ExecuteTree(avtDataTree_p dt)
 {
-    if (*dt == NULL)
-    {
-        return;
-    }
-    if (dt->GetNChildren() <= 0 && (!(dt->HasData())))
-    {
-        return;
-    }
+    debug5<<"got here!"<<endl;
 
-    if (dt->GetNChildren() != 0)
+    //check memory
+    unsigned long m_size, m_rss;
+    GetMemorySize(m_size, m_rss);
+    debug5 << PAR_Rank() << " ~ avtSamplePointExtractor::ExecuteTree  .. .  " 
+           << "    Memory use before: " << m_size << "  rss (MB): " << m_rss/(1024*1024) << endl;
+
+    //initialize rayCastingSLIVR sampling state
+    totalAssignedPatches = dt->GetNChildren();
+    patchCount = 0;
+    imageMetaPatchVector.clear();
+    imgDataHashMap.clear();
+
+    //need to pass the datatree as well as its index in its parent to RasterBasedSample.
+    /*struct datatree_childindex { 
+        avtDataTree_p dt; int idx; bool visited;
+        datatree_childindex(avtDataTree_p dt_, int idx_) : dt(dt_),idx(idx_),visited(false) {}
+    };*/
+
+    std::stack<datatree_childindex*> nodes;
+    if (*dt == NULL || (dt->GetNChildren() <= 0 && (!(dt->HasData()))))
+        return;
+
+    //iterative depth-first sampling
+    nodes.push(new datatree_childindex(dt,0));
+    while (!nodes.empty())
     {
-        for (int i = 0; i < dt->GetNChildren(); i++)
+        datatree_childindex *ci=nodes.top();
+        avtDataTree_p ch=ci->dt;
+
+        if (ch->GetNChildren() != 0)
         {
-            if (dt->ChildIsPresent(i))
-                ExecuteTree(dt->GetChild(i));
+            nodes.pop();  // if it has children, it never gets processed below
+            for (int i = 0; i < ch->GetNChildren(); i++)
+            {
+                if (ch->ChildIsPresent(i))
+                {
+                    if (*ch == NULL || (ch->GetNChildren() <= 0 && (!(ch->HasData()))))
+                        continue;
+                    nodes.push(new datatree_childindex(ch->GetChild(i),i));
+                }
+            }
+
+            continue;
         }
 
-        return;
+        //do the work
+        nodes.pop();
+
+        if (*ch == NULL || (ch->GetNChildren() <= 0 && (!(ch->HasData()))))
+            continue;
+
+        //
+        // Get the dataset for this leaf in the tree.
+        //
+        vtkDataSet *ds = ch->GetDataRepresentation().GetDataVTK();
+
+        //
+        // Iterate over all cells in the mesh and call the appropriate 
+        // extractor for each cell to get the sample points.
+        //
+        if (kernelBasedSampling)
+            KernelBasedSample(ds);
+        else
+            RasterBasedSample(ds,ci->idx);
+
+        UpdateProgress(10*currentNode+9, 10*totalNodes);
+        currentNode++;
     }
 
-    //
-    // Get the dataset for this leaf in the tree.
-    //
-    vtkDataSet *ds = dt->GetDataRepresentation().GetDataVTK();
 
-    //
-    // Iterate over all cells in the mesh and call the appropriate 
-    // extractor for each cell to get the sample points.
-    //
-    if (kernelBasedSampling)
-        KernelBasedSample(ds);
-    else
-        RasterBasedSample(ds);
+    //check memory after
+    GetMemorySize(m_size, m_rss);
+    debug5 << PAR_Rank() << " ~ Memory use after: " << m_size << "  rss (MB): " << m_rss/(1024*1024)
+           <<  "   ... avtSamplePointExtractor::ExecuteTree done@!!!" << endl;
 
-    UpdateProgress(10*currentNode+9, 10*totalNodes);
-    currentNode++;
+
+}
+
+
+// ****************************************************************************
+//  Method: avtSamplePointExtractor::delImgPatches
+//
+//  Purpose:
+//      allocates space to the pointer address and copy the image generated to it
+//
+//  Programmer: 
+//  Creation:   
+//
+//  Modifications:
+//
+// ****************************************************************************
+void
+avtSamplePointExtractor::delImgPatches(){
+    imageMetaPatchVector.clear();
+
+    for (iter_t it=imgDataHashMap.begin(); it!=imgDataHashMap.end(); it++){
+        if ((*it).second.imagePatch != NULL)
+            delete [](*it).second.imagePatch;
+
+        (*it).second.imagePatch = NULL;
+    }
+    imgDataHashMap.clear();
+}
+
+
+
+// ****************************************************************************
+//  Method: avtSamplePointExtractor::getImgData
+//
+//  Purpose:
+//      copies a patchover
+//
+//  Programmer: 
+//  Creation:   
+//
+//  Modifications:
+//
+// ****************************************************************************
+void 
+avtSamplePointExtractor::getnDelImgData(int patchId, imgData &tempImgData){
+    iter_t it = imgDataHashMap.find(patchId);
+
+    tempImgData.procId = it->second.procId;
+    tempImgData.patchNumber = it->second.patchNumber;
+    memcpy(tempImgData.imagePatch,it->second.imagePatch,imageMetaPatchVector[patchId].dims[0] * 4 * imageMetaPatchVector[patchId].dims[1] * sizeof(float));
+
+    delete [](*it).second.imagePatch;
+    it->second.imagePatch = NULL;
+}
+
+
+// ****************************************************************************
+//  Method: avtSamplePointExtractor::
+//
+//  Purpose:
+//      allocates space to the pointer address and copy the image generated to it
+//
+//  Programmer: 
+//  Creation:   
+//
+//  Modifications:
+//
+// ****************************************************************************
+imgMetaData
+avtSamplePointExtractor::initMetaPatch(int id){
+    imgMetaData temp;
+    temp.inUse = 0;
+    temp.procId = PAR_Rank();
+    temp.destProcId = PAR_Rank();
+    temp.patchNumber = id;
+    temp.dims[0] = temp.dims[1] = -1;
+    temp.screen_ll[0] = temp.screen_ll[1] = -1;
+    temp.screen_ur[0] = temp.screen_ur[1] = -1;
+    temp.avg_z = -1.0;
+    
+    return temp;
 }
 
 
@@ -846,7 +993,7 @@ avtSamplePointExtractor::KernelBasedSample(vtkDataSet *ds)
 // ****************************************************************************
 
 void
-avtSamplePointExtractor::RasterBasedSample(vtkDataSet *ds)
+avtSamplePointExtractor::RasterBasedSample(vtkDataSet *ds, int num)
 {
     if (modeIs3D && ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
     {
@@ -865,8 +1012,35 @@ avtSamplePointExtractor::RasterBasedSample(vtkDataSet *ds)
             varnames.push_back(samples->GetVariableName(i));
             varsizes.push_back(samples->GetVariableSize(i));
         }
+        massVoxelExtractor->setProcIdPatchID(PAR_Rank(),num);
+        massVoxelExtractor->SetLighting(lighting);
+        massVoxelExtractor->SetLightDirection(lightDirection);
+        massVoxelExtractor->SetMatProperties(materialProperties);
+        massVoxelExtractor->SetModelViewMatrix(modelViewMatrix);
+        massVoxelExtractor->SetTransferFn(transferFn1D);
+        massVoxelExtractor->SetViewDirection(view_direction);
+        massVoxelExtractor->SetViewUp(view_up);
         massVoxelExtractor->Extract((vtkRectilinearGrid *) ds,
                                     varnames, varsizes);
+        if (rayCastingSLIVR == true){
+            imgMetaData tmpImageMetaPatch;
+            tmpImageMetaPatch = initMetaPatch(patchCount);
+
+            massVoxelExtractor->getImageDimensions(tmpImageMetaPatch.inUse, tmpImageMetaPatch.dims, tmpImageMetaPatch.screen_ll, tmpImageMetaPatch.screen_ur, tmpImageMetaPatch.avg_z);
+            if (tmpImageMetaPatch.inUse == 1){
+                tmpImageMetaPatch.destProcId = tmpImageMetaPatch.procId;
+                imageMetaPatchVector.push_back(tmpImageMetaPatch);
+                
+                imgData tmpImageDataHash;
+                tmpImageDataHash.procId = tmpImageMetaPatch.procId;           tmpImageDataHash.patchNumber = tmpImageMetaPatch.patchNumber;         tmpImageDataHash.imagePatch = NULL;
+                tmpImageDataHash.imagePatch = new float[(tmpImageMetaPatch.dims[0]*4)*tmpImageMetaPatch.dims[1]];
+
+                massVoxelExtractor->getComputedImage(tmpImageDataHash.imagePatch);
+                imgDataHashMap.insert( std::pair<int, imgData> (tmpImageDataHash.patchNumber , tmpImageDataHash) );
+
+                patchCount++;
+            }
+        }
         return;
     }
 

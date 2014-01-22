@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1098,7 +1098,11 @@ ViewerWindow::GetToolName(int index) const
 //    Added new axis array window mode.
 //
 //    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -1122,7 +1126,8 @@ ViewerWindow::RecenterView()
         RecenterView3d(limits);
         break;
       case WINMODE_AXISARRAY:
-      case WINMODE_AXISPARALLEL:
+      case WINMODE_PARALLELAXES:
+      case WINMODE_VERTPARALLELAXES:
         GetExtents(2, limits);
         RecenterViewAxisArray(limits);
         break;
@@ -1169,7 +1174,11 @@ ViewerWindow::RecenterView()
 //    Added new axis array window mode.
 //
 //    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -1205,7 +1214,8 @@ ViewerWindow::ResetView()
         ResetView3d();
         break;
       case WINMODE_AXISARRAY:
-      case WINMODE_AXISPARALLEL:
+      case WINMODE_PARALLELAXES:
+      case WINMODE_VERTPARALLELAXES:
         ResetViewAxisArray();
         break;
       default:
@@ -2615,7 +2625,11 @@ ViewerWindow::SendDeleteMessage()
 //    Added new axis array window mode.
 //
 //    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -2638,7 +2652,8 @@ ViewerWindow::UpdateView(const WINDOW_MODE mode, const double *limits)
         UpdateView3d(limits);
         break;
       case WINMODE_AXISARRAY:
-      case WINMODE_AXISPARALLEL:
+      case WINMODE_PARALLELAXES:
+      case WINMODE_VERTPARALLELAXES:
         UpdateViewAxisArray(limits);
         break;
       default:
@@ -2752,11 +2767,34 @@ ViewerWindow::SetView2D(const avtView2D &v)
 //    Eric Brugger, Thu Apr 22 15:18:37 PDT 2004
 //    I renamed haveRenderedIn3d to viewSetIn3d, since it was more accurate.
 //
+//    Jeremy Meredith, Thu Aug 22 15:27:14 EDT 2013
+//    If we've changed the axis scales, update the plot list.
+//
 // ****************************************************************************
 
 void
 ViewerWindow::SetView3D(const avtView3D &v)
 {
+    // This is our chance to redo the plots based 
+    // on axis scaling (like vector glyphs).
+    double s[3];
+    bool f = visWindow->Get3DAxisScalingFactors(s);
+    bool changed = (f != v.axis3DScaleFlag ||
+                    s[0] != v.axis3DScales[0] ||
+                    s[1] != v.axis3DScales[1] ||
+                    s[2] != v.axis3DScales[2]);
+    if (changed)
+    {
+        s[0] = v.axis3DScales[0];
+        s[1] = v.axis3DScales[1];
+        s[2] = v.axis3DScales[2];
+        if (v.axis3DScaleFlag==false || 
+            (s[0]==1. && s[1]==1. && s[2]==1.))
+            plotList->SetFullFrameScaling(false, s);
+        else
+            plotList->SetFullFrameScaling(true, s);
+    }
+
     visWindow->SetView3D(v);
 
     viewPartialSetIn3d = true;
@@ -3013,7 +3051,11 @@ ViewerWindow::CopyViewAttributes(const ViewerWindow *source)
 //   Added new axis array window mode.
 //
 //   Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//   Added the AxisParallel window mode.
+//   Added the ParallelAxes window mode.
+//
+//   Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//   I added the ability to display the parallel axes either horizontally
+//   or vertically.
 //
 // ****************************************************************************
 
@@ -3054,7 +3096,8 @@ ViewerWindow::UpdateCameraView()
             visWindow->SetView3D(view3d);
         }
         else if (visWindow->GetWindowMode() == WINMODE_AXISARRAY ||
-                 visWindow->GetWindowMode() == WINMODE_AXISPARALLEL)
+                 visWindow->GetWindowMode() == WINMODE_PARALLELAXES ||
+                 visWindow->GetWindowMode() == WINMODE_VERTPARALLELAXES)
         {
             viewAxisArrayAtts->GetAtts(curIndex, curViewAxisArray);
             avtViewAxisArray viewAxisArray;
@@ -3078,7 +3121,11 @@ ViewerWindow::UpdateCameraView()
 //    Added new axis array window mode.
 //
 //    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -3128,7 +3175,8 @@ ViewerWindow::UndoView()
         }
     }
     else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+            GetWindowMode() == WINMODE_PARALLELAXES ||
+            GetWindowMode() == WINMODE_VERTPARALLELAXES)
     {
         avtViewAxisArray view;
 
@@ -3158,7 +3206,11 @@ ViewerWindow::UndoView()
 //    Added new axis array window mode.
 //
 //    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -3193,7 +3245,8 @@ ViewerWindow::RedoView()
         }
     }
     else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+            GetWindowMode() == WINMODE_PARALLELAXES ||
+            GetWindowMode() == WINMODE_VERTPARALLELAXES)
     {
         avtViewAxisArray view;
         if(redoViewStack.PopViewAxisArray(view))
@@ -3218,7 +3271,11 @@ ViewerWindow::RedoView()
 //    Added new axis array window mode.
 //   
 //    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -3232,7 +3289,8 @@ ViewerWindow::PushCurrentViews()
     else if(GetWindowMode() == WINMODE_3D)
         undoViewStack.PushView3D(GetView3D());
     else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+            GetWindowMode() == WINMODE_PARALLELAXES ||
+            GetWindowMode() == WINMODE_VERTPARALLELAXES)
         undoViewStack.PushViewAxisArray(GetViewAxisArray());
 }
 
@@ -3250,7 +3308,11 @@ ViewerWindow::PushCurrentViews()
 //    Added new axis array window mode.
 //   
 //    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -3265,7 +3327,8 @@ ViewerWindow::UndoViewEnabled() const
     else if(GetWindowMode() == WINMODE_3D)
         retval = undoViewStack.HasView3Ds();
     else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+            GetWindowMode() == WINMODE_PARALLELAXES ||
+            GetWindowMode() == WINMODE_VERTPARALLELAXES)
         retval = undoViewStack.HasViewAxisArrays();
     return retval;
 }
@@ -3284,7 +3347,11 @@ ViewerWindow::UndoViewEnabled() const
 //    Added new axis array window mode.
 //   
 //    Eric Brugger, Tue Dec  9 16:21:46 PST 2008
-//    Added the AxisParallel window mode.
+//    Added the ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 16:05:24 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -3299,7 +3366,8 @@ ViewerWindow::RedoViewEnabled() const
     else if(GetWindowMode() == WINMODE_3D)
         retval = redoViewStack.HasView3Ds();
     else if(GetWindowMode() == WINMODE_AXISARRAY ||
-            GetWindowMode() == WINMODE_AXISPARALLEL)
+            GetWindowMode() == WINMODE_PARALLELAXES ||
+            GetWindowMode() == WINMODE_VERTPARALLELAXES)
         retval = redoViewStack.HasViewAxisArrays();
     return retval;
 }
@@ -5660,6 +5728,10 @@ ViewerWindow::UpdateView2d(const double *limits)
 //    Mark C. Miller, Thu Jul 21 12:52:42 PDT 2005
 //    Added bools to call to vwm->UpdateViewAtts
 //
+//    Jeremy Meredith, Thu Aug 22 15:27:14 EDT 2013
+//    Use full frame scaling to apply corrections to the plot list for
+//    3D axis scaling.
+//
 // ****************************************************************************
 
 void
@@ -5733,6 +5805,13 @@ ViewerWindow::UpdateView3d(const double *limits)
 
     viewSetIn3d = true;
     viewPartialSetIn3d = true;
+
+    double s[3];
+    bool f = visWindow->Get3DAxisScalingFactors(s);
+    if (f==false || (s[0]==1. && s[1]==1. && s[2]==1.))
+        plotList->SetFullFrameScaling(false, s);
+    else
+        plotList->SetFullFrameScaling(true, s);
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -93,7 +93,7 @@ private:
 class vtkCracksClipper : public vtkVisItClipper
 {
   public:
-    vtkTypeRevisionMacro(vtkCracksClipper,vtkVisItClipper);
+    vtkTypeMacro(vtkCracksClipper,vtkVisItClipper);
     void PrintSelf(ostream& os, vtkIndent indent);
 
     static vtkCracksClipper *New();
@@ -103,7 +103,7 @@ class vtkCracksClipper : public vtkVisItClipper
     vtkSetStringMacro(CrackWidth);
     vtkSetStringMacro(CellCenters);
 
-    virtual void ModifyClip(vtkIdType);
+    virtual void ModifyClip(vtkDataSet *, vtkIdType);
 
   protected:
     vtkCracksClipper();

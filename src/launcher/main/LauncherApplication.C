@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -845,7 +845,7 @@ LauncherApplication::ConnectSimulation(const stringVector &origLaunchArgs,
     // Send the security key and launch information to the simulation
     //
     char tmp[2000];
-    size_t          nleft, nwritten;
+    int          nleft, nwritten;
     const char      *ptr;
 
     sprintf(tmp, "%s\n", simSecurityKey.c_str());

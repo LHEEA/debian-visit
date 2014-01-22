@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -72,6 +72,9 @@
 #   Added 'ADD_TARGET_INCLUDE' function, change how parallel flags are 
 #   handled on windows. Fix glitch with ADD_TARGET_DEFINITIONS when target
 #   had more than one definition set already.
+#
+#   Kathleen Biagas, Tue Oct 29 12:24:32 MST 2013
+#   Fixed typos in Functions that prevented caused problems on Windows.
 #
 #****************************************************************************/
 
@@ -164,19 +167,39 @@ SET(BOOST_INCLUDE_DIR ${VISIT_INCLUDE_DIR}/visit/third_party_builtin/bilib/boost
 # Set up Qt
 SET(QT_INCLUDE_DIR           ${VISIT_INCLUDE_DIR}/qt/include)
 SET(QT_QTCORE_INCLUDE_DIR    ${VISIT_INCLUDE_DIR}/qt/include/QtCore)
-SET(QT_QTCORE_LIB            QtCore)
+IF(NOT WIN32)
+    SET(QT_QTCORE_LIB        QtCore)
+ELSE(NOT WIN32)
+    SET(QT_QTCORE_LIB        QtCore4)
+ENDIF(NOT WIN32)
 
 SET(QT_QTGUI_INCLUDE_DIR     ${VISIT_INCLUDE_DIR}/qt/include/QtGui)
-SET(QT_QTGUI_LIB             QtGui)
+IF(NOT WIN32)
+    SET(QT_QTGUI_LIB         QtGui)
+ELSE(NOT WIN32)
+    SET(QT_QTGUI_LIB         QtGui4)
+ENDIF(NOT WIN32)
 
 SET(QT_QTNETWORK_INCLUDE_DIR ${VISIT_INCLUDE_DIR}/qt/include/QtNetwork)
-SET(QT_QTNETWORK_LIB         QtNetwork)
+IF(NOT WIN32)
+    SET(QT_QTNETWORK_LIB     QtNetwork)
+ELSE(NOT WIN32)
+    SET(QT_QTNETWORK_LIB     QtNetwork4)
+ENDIF(NOT WIN32)
 
 SET(QT_QTOPENGL_INCLUDE_DIR  ${VISIT_INCLUDE_DIR}/qt/include/QtOpenGL)
-SET(QT_QTOPENGL_LIB          QtOpenGL)
+IF(NOT WIN32)
+    SET(QT_QTOPENGL_LIB      QtOpenGL)
+ELSE(NOT WIN32)
+    SET(QT_QTOPENGL_LIB      QtOpenGL4)
+ENDIF(NOT WIN32)
 
 SET(QT_QTXML_INCLUDE_DIR     ${VISIT_INCLUDE_DIR}/qt/include/QtXml)
-SET(QT_QTXML_LIB             QtXml)
+IF(NOT WIN32)
+    SET(QT_QTXML_LIB         QtXml)
+ELSE(NOT WIN32)
+    SET(QT_QTXML_LIB         QtXml4)
+ENDIF(NOT WIN32)
 
 SET(QT_LIBRARY_DIR           ${VISIT_LIBRARY_DIR})
 SET(QT_BIN                   ${VISIT_BINARY_DIR})
@@ -267,10 +290,6 @@ SET(PDB_LIB @SILO_LIB@)
 SET(SILO_INCLUDE_DIR ${VISIT_INCLUDE_DIR}/silo/include)
 SET(SILO_LIBRARY_DIR ${VISIT_LIBRARY_DIR} ${VISIT_ARCHIVE_DIR})
 SET(SILO_LIB @SILO_LIB@)
-
-SET(VISUS_INCLUDE_DIR  ${VISIT_INCLUDE_DIR}/visus/include)
-SET(VISUS_LIBRARY_DIR  ${VISIT_LIBRARY_DIR} ${VISIT_ARCHIVE_DIR})
-SET(VISUS_LIB @VISUS_LIB@)
 
 SET(XDMF_INCLUDE_DIR  ${VISIT_INCLUDE_DIR}/xdmf/include)
 SET(XDMF_LIBRARY_DIR  ${VISIT_LIBRARY_DIR} ${VISIT_ARCHIVE_DIR})
@@ -392,7 +411,7 @@ FUNCTION(ADD_TARGET_DEFINITIONS target newDefs)
     ENDIF(${firstItem} MATCHES NOTFOUND)
    
     SET_TARGET_PROPERTIES(${target} PROPERTIES
-        COMPILE_DEFINITIONS ${allDefs}
+        COMPILE_DEFINITIONS "${allDefs}"
     )
 ENDFUNCTION(ADD_TARGET_DEFINITIONS)
 
@@ -421,7 +440,7 @@ FUNCTION(ADD_PARALLEL_LIBRARY target)
       TARGET_LINK_LIBRARIES(${target} ${VISIT_PARALLEL_LIBS})
     ELSE(UNIX)
       ADD_TARGET_INCLUDE(${target} ${VISIT_PARALLEL_INCLUDE})
-      ADD_TARGET_DEFINTIONS(${target} ${VISIT_PARALLEL_DEFS})
+      ADD_TARGET_DEFINITIONS(${target} ${VISIT_PARALLEL_DEFS})
       TARGET_LINK_LIBRARIES(${target} "${VISIT_PARALLEL_LIBS}")
     ENDIF(UNIX)
 ENDFUNCTION(ADD_PARALLEL_LIBRARY)

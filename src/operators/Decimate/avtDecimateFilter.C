@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -173,13 +173,13 @@ avtDecimateFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     vtkPolyData *pd = (vtkPolyData *) in_ds;
 
     vtkTriangleFilter *triangulator = vtkTriangleFilter::New();
-    triangulator->SetInput(pd);
+    triangulator->SetInputData(pd);
 
     vtkDecimatePro *decimate = vtkDecimatePro::New();
-    decimate->SetInput(triangulator->GetOutput());
+    decimate->SetInputConnection(triangulator->GetOutputPort());
     decimate->SetTargetReduction(atts.GetTarget());
+    decimate->Update();
     vtkDataSet *output = decimate->GetOutput();
-    output->Update();
 
     ManageMemory(output);
 

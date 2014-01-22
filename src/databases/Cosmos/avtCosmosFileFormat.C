@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,9 +48,11 @@
 
 #include <vtkCellData.h>
 #include <vtkFloatArray.h>
+#include <vtkInformation.h>
 #include <vtkIntArray.h>
 #include <vtkPoints.h>
 #include <vtkRectilinearGrid.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkStructuredGrid.h>
 #include <vtkUnsignedCharArray.h>
 
@@ -302,8 +304,8 @@ avtCosmosFileFormat::avtCosmosFileFormat(const char *fname)
     if (coordType == cylindrical && rank == 3)
         EXCEPTION1(InvalidDBTypeException, "Bad cylindrical configuration.");
 
-    nscalars = scalarVarNames.size();
-    nvectors = vectorVarNames.size();
+    nscalars = (int)scalarVarNames.size();
+    nvectors = (int)vectorVarNames.size();
 
     meshes = new vtkDataSet *[ndomains];
     for (i = 0; i < ndomains; ++i)
@@ -1094,7 +1096,8 @@ avtCosmosFileFormat::ReadMesh(int domain)
         realDims->Delete();
         ghostLevels->Delete();
         
-        rv->SetUpdateGhostLevel(0);
+        rv->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
     } 
     
     meshes[domain] = rv;

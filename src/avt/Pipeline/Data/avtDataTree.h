@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -145,6 +145,7 @@ class PIPELINE_API avtDataTree
     virtual                 ~avtDataTree();
 
     avtDataTree             &operator=(const avtDataTree&);
+    avtDataTree             &operator=(const avtDataTree*);
 
     avtDataTree_p            GetChild(int);
     avtDataRepresentation   &GetDataRepresentation(void); 

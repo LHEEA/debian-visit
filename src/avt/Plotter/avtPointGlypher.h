@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,7 @@
 #include <plotter_exports.h>
 #include <string>
 
+class     vtkAlgorithmOutput;
 class     vtkDataSet;
 class     vtkPolyData;
 class     vtkVisItGlyph3D;
@@ -67,6 +68,12 @@ class     vtkVisItPolyDataNormals;
 //    avtVariableMapper, modified some method names so that they don't collide
 //    with avtMapper method names.
 //
+//    Brad Whitlock, Mon Jan  7 16:53:56 PST 2013
+//    Adding new glyph types.
+//
+//    Kathleen Biagas, Wed Feb 6 19:38:27 PDT 2013
+//    Changed signature of InsertGlyphs.
+//
 // ****************************************************************************
 
 class PLOTTER_API  avtPointGlypher  
@@ -76,7 +83,10 @@ class PLOTTER_API  avtPointGlypher
                   Axis,
                   Icosahedron,
                   Point,
-                  Sphere
+                  Sphere,
+                  Octahedron,
+                  Tetrahedron,
+                  SphereGeometry
                  } PointGlyphType;
 
                                avtPointGlypher();
@@ -106,7 +116,7 @@ class PLOTTER_API  avtPointGlypher
     vtkVisItPolyDataNormals  **normalsFilter;
     int                        nGlyphFilters;
 
-    virtual vtkDataSet        *InsertGlyphs(vtkDataSet *, int, int);
+    virtual vtkAlgorithmOutput *InsertGlyphs(vtkDataSet *, int, int);
     virtual void               SetUpGlyphs(int);
     virtual void               CustomizeGlyphs(int);
 

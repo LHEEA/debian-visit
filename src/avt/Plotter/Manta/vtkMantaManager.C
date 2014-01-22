@@ -48,7 +48,6 @@ PURPOSE.  See the above copyright notice for more information.
 #include <sstream>
 #include <string>
 
-vtkCxxRevisionMacro(vtkMantaManager, "$Revision: 1.5 $");
 vtkStandardNewMacro(vtkMantaManager);
 
 
@@ -266,7 +265,7 @@ void vtkMantaManager::StartEngine(int maxDepth,
 
   // Use SyncDisplay with Null Display to stop Manta engine at each frame,
   // the image is combined with OpenGL framebuffer by vtkXMantaRenderWindow
-  vtkstd::vector<vtkstd::string> vs;
+  std::vector<std::string> vs;
   this->SyncDisplay = new Manta::SyncDisplay( vs );
   this->SyncDisplay->setChild(  new Manta::NullDisplay( vs )  );
 

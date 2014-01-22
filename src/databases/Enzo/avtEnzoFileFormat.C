@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -414,7 +414,7 @@ avtEnzoFileFormat::ReadHierachyFile()
 
             grids.push_back(g);
             grids[parent].childrenID.push_back(g.ID);
-            numGrids = grids.size()-1;
+            numGrids = (int)grids.size()-1;
         }
         else if (buff == "Pointer:")
         {

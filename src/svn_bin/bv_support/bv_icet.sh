@@ -42,7 +42,7 @@ function bv_icet_print
 function bv_icet_print_usage
 {
 printf "%-15s %s [%s]\n" "--icet" "Build Ice-T (parallel rendering lib)" "$DO_ICET"
-printf "%-15s %s [%s]\n" "--no-icet" "Ice-T is automatically built with --enable-parallel.  Prevent it from being built" "$PREVENT_ICET"  
+printf "%-15s %s [%s]\n" "--no-icet" "Ice-T is automatically built with --enable-parallel.  Prevent it from being built" "$PREVENT_ICET"
 }
 
 function bv_icet_graphical
@@ -160,17 +160,22 @@ function build_icet
     if [[ "$PAR_INCLUDE" != "" ]] ; then
         PAR_INCLUDE_STRING=$PAR_INCLUDE
     fi
-    
+
     if [[ "$PAR_COMPILER" != "" ]] ; then
         if [[ "$OPSYS" == "Darwin" && "$PAR_COMPILER" == "/usr/bin/mpicc" ]]; then
             PAR_INCLUDE_STRING="-I/usr/include/"
+        elif [[ "$OPSYS" == "Linux" && "$PAR_COMPILER" == "mpixlc" ]]; then
+            PAR_INCLUDE_STRING=`$PAR_COMPILER -show`
         else
             if [[ -z "$PAR_INCLUDE_STRING" ]]; then
-                PAR_INCLUDE_STRING=`$PAR_COMPILER --showme:compile`    
+                PAR_INCLUDE_STRING=`$PAR_COMPILER --showme:compile`
+                if [[ $? != 0 ]] ; then
+                    PAR_INCLUDE_STRING=`$PAR_COMPILER -show`
+                fi
             fi
         fi
     fi
-    
+
     if [[ "$PAR_INCLUDE_STRING" == "" ]] ; then
        warn "You must set either the PAR_COMPILER or PAR_INCLUDE environment variable to be Ice-T."
        warn "PAR_COMPILER should be of the form \"/path/to/mpi/bin/mpicc\""
@@ -188,14 +193,26 @@ function build_icet
     # is certainly not ideal -- for example, it will break if the user's
     # MPI setup requires multiple include directories.
 
-    # split string at space, grab the front/first string in it.
+    # Search all of the -I directories and take the first one containing mpi.h
     PAR_INCLUDE_DIR=""
     for arg in $PAR_INCLUDE_STRING ; do
-       if [[ "$arg" != "${arg#-I}" ]] ; then
-          PAR_INCLUDE_DIR=${arg#-I}
-          break
-       fi
+        if [[ "$arg" != "${arg#-I}" ]] ; then
+            if test -e "${arg#-I}/mpi.h" ; then
+                PAR_INCLUDE_DIR=${arg#-I}
+                break
+            fi
+        fi
     done
+    # If we did not get a valid include directory, take the first -I directory.
+    if test -z "${PAR_INCLUDE_DIR}"  ; then
+        for arg in $PAR_INCLUDE_STRING ; do
+            if [[ "$arg" != "${arg#-I}" ]] ; then
+                PAR_INCLUDE_DIR=${arg#-I}
+                break
+            fi
+        done
+    fi
+
     if test -z "${PAR_INCLUDE_DIR}"  ; then
         if test -n "${PAR_INCLUDE}" ; then
             warn "This script believes you have defined PAR_INCLUDE as: $PAR_INCLUDE"
@@ -234,16 +251,24 @@ function build_icet
         LIBEXT="a"
     fi
     touch fakempi.${LIBEXT}
+    rm -f CMakeCache.txt
+
     ${CMAKE_BIN} \
+        -DCMAKE_C_COMPILER:STRING=${C_COMPILER} \
+        -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER} \
+        -DCMAKE_BUILD_TYPE:STRING="${VISIT_BUILD_MODE}" \
+        -DCMAKE_C_FLAGS:STRING="${CFLAGS} ${C_OPT_FLAGS}" \
+        -DCMAKE_CXX_FLAGS:STRING="${CXXFLAGS} ${CXX_OPT_FLAGS}" \
         -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
         -DCMAKE_INSTALL_PREFIX:PATH="$VISITDIR/icet/${ICET_VERSION}/${VISITARCH}"\
         -DOPENGL_INCLUDE_DIR:PATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/include"\
         -DOPENGL_gl_LIBRARY:FILEPATH="$VISITDIR/mesa/${MESA_VERSION}/${VISITARCH}/lib/libOSMesa.${LIBEXT}"\
-        -DCMAKE_C_FLAGS:STRING="-fPIC -DUSE_MGL_NAMESPACE ${CFLAGS} ${C_OPT_FLAGS}"\
+        -DCMAKE_C_FLAGS:STRING="-fPIC ${CFLAGS} ${C_OPT_FLAGS}"\
         -DMPI_INCLUDE_PATH:PATH="${PAR_INCLUDE_DIR}"\
         -DMPI_LIBRARY:FILEPATH="./fakempi.${LIBEXT}"\
         -DBUILD_TESTING:BOOL=OFF\
         .
+
     rm fakempi.${LIBEXT}
 
     if [[ $? != 0 ]] ; then
@@ -282,7 +307,7 @@ function build_icet
 function bv_icet_is_enabled
 {
     if [[ $DO_ICET == "yes" ]]; then
-        return 1    
+        return 1
     fi
     return 0
 }

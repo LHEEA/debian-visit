@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -299,6 +299,9 @@ state/View3DAttributes.C
 state/ViewAttributes.C
 state/ViewAxisArrayAttributes.C
 state/ViewCurveAttributes.C
+state/ViewerClientAttributes.C
+state/ViewerClientInformation.C
+state/ViewerClientInformationElement.C
 state/VisItRPC.C
 state/VisualCueInfo.C
 state/VisualCueList.C

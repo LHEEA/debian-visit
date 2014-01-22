@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -36,7 +36,7 @@
 *
 *****************************************************************************/
 #include "vtkOpenGLTexturedBackgroundMapper.h"
-#include <avtGLEWInitializer.h>
+#include <avtOpenGLExtensionManager.h>
 #include <vtkCamera.h>
 #include <vtkTexture.h>
 #include <vtkViewport.h>

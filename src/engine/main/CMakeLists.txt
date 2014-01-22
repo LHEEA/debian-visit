@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -57,6 +57,9 @@
 #    Call ADD_TARGET_DEFINTIONS to add "HAVE_ICET", as the function deals
 #    correctly with a target already having some COMPILE_DEFINITIONS set.
 #
+#    Brad Whitlock, Thu Apr 11 15:59:49 PDT 2013
+#    Add check for X11. Change how we get zlib.
+#
 #****************************************************************************/
 
 SET(LIBENGINE_SOURCES
@@ -76,9 +79,9 @@ IF(VISIT_STATIC)
     SET(ENGINE_STATIC_SOURCES EngineStaticSymbolLocator.C)
 ENDIF(VISIT_STATIC)
 
-IF (NOT WIN32 AND NOT APPLE)
+IF (NOT WIN32 AND NOT APPLE AND VISIT_USE_X)
     SET(LIBENGINE_SOURCES ${LIBENGINE_SOURCES} XDisplay.C)
-ENDIF (NOT WIN32 AND NOT APPLE)
+ENDIF (NOT WIN32 AND NOT APPLE AND VISIT_USE_X)
 IF (NOT WIN32)
     # This keeps comm's exceptions visible when using -fvisibility=hidden
     ADD_DEFINITIONS(-DCOMM_EXPORTS)
@@ -127,18 +130,21 @@ ${VISIT_SOURCE_DIR}/avt/VisWindow/Tools
 ${VISIT_SOURCE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_SOURCE_DIR}/visit_vtk/full
 ${VISIT_SOURCE_DIR}/visit_vtk/lightweight
+${VISIT_SOURCE_DIR}/visit_vtk/osmesa
 ${VTK_INCLUDE_DIRS}
+${OPENGL_INCLUDE_DIR}
 )
 
 # Add link directories
 LINK_DIRECTORIES(
 ${LIBRARY_OUTPUT_DIRECTORY}
+${GLEW_LIBRARY_DIR}
 ${MESA_LIBRARY_DIR}
-${GLEW_LIBRARY_DIR} 
-${VTK_LIBRARY_DIRS} 
-${TCMALLOC_LIBRARY_DIR} 
+${VTK_LIBRARY_DIRS}
+${TCMALLOC_LIBRARY_DIR}
 ${ALL_THIRDPARTY_IO_LIBRARY_DIR}
 )
+
 
 #********************************* SERIAL ************************************
 ADD_LIBRARY(engine_ser ${LIBENGINE_SOURCES})
@@ -156,6 +162,12 @@ avtviswindow_ser
 avtpipeline_ser
 )
 
+IF(MESA_FOUND)
+    TARGET_LINK_LIBRARIES(engine_ser visit_vtk_osmesa)
+ENDIF(MESA_FOUND)
+
+
+
 # These 3 variables are only defined when building statically.
 # engine_ser_exe_EDatabase_ser = The list of database libE libraries needed to link
 # engine_ser_exe_EOperator_ser = The list of operator libE libraries needed to link
@@ -172,9 +184,9 @@ TARGET_LINK_LIBRARIES(engine_ser_exe
     ${engine_ser_exe_EPlot_ser}
     engine_ser 
     visit_verdict 
-    ${VTK_JPEG_LIBRARIES}
-    ${VTK_PNG_LIBRARIES}
-    ${VTK_ZLIB_LIBRARIES} 
+    vtkjpeg
+    vtkpng
+    ${VTKZLIB_LIB}
     ${VTK_FREETYPE_LIBRARIES}
     vtkftgl
     ${ALL_THIRDPARTY_IO_LIB}
@@ -235,6 +247,10 @@ IF(VISIT_PARALLEL)
         ${ICET_LIB} ${ICET_OPENGL}
     )
 
+    IF(MESA_FOUND)
+        TARGET_LINK_LIBRARIES(engine_par visit_vtk_osmesa)
+    ENDIF(MESA_FOUND)
+
     IF(VISIT_NOLINK_MPI_WITH_LIBRARIES)
         ADD_LIBRARY(link_mpi_libs STATIC empty.c)
         TARGET_LINK_LIBRARIES(link_mpi_libs ${VISIT_PARALLEL_LIBS})
@@ -250,18 +266,17 @@ IF(VISIT_PARALLEL)
         ${engine_par_exe_EOperator_par}
         ${engine_par_exe_IPlot_par}
         ${engine_par_exe_EPlot_par}
-        engine_par 
+        engine_par
         visit_verdict 
-        ${VTK_JPEG_LIBRARIES}
-        ${VTK_PNG_LIBRARIES}
-        ${VTK_ZLIB_LIBRARIES}
-        ${Z_LIB}
+        vtkjpeg
+        vtkpng
+        ${VTKZLIB_LIB}
         ${VTK_FREETYPE_LIBRARIES}
         vtkftgl
         ${ALL_THIRDPARTY_IO_LIB}
         ${TCMALLOC_LIB}
         ${CMAKE_THREAD_LIBS} 
-        ${ZLIB_LIB} 
+        ${ZLIB_LIB}
     )
 
     # If we're building statically then the engine can't be linked until the plugin

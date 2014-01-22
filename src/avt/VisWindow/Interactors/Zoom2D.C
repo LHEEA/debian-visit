@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,11 +89,19 @@ Zoom2D_SetLineProperties(vtkPolyData *guideLines,
 //    Kathleen Biagas, Mon Jun 11 17:16:42 MST 2012
 //    Have windows follow the APPLE path.
 //
+//    Eric Brugger, Mon Jun 24 13:27:38 PDT 2013
+//    I modified the 2d and 3d zoom interactors to once again constrain the
+//    zoom rectangle to a 1:1 ratio when zooming with the shift key and left
+//    mouse button pressed. Pressing the ctrl key and the left mouse button
+//    still pans the image. I corrected a bug where pressing the ctrl key and
+//    the left mouse button would result in the window being stuck in pan mode
+//    if the shift key was released before the left mouse button.
+//
 // ****************************************************************************
 
 Zoom2D::Zoom2D(VisWindowInteractorProxy &v) : ZoomInteractor(v)
 {
-    ctrlOrShiftPushed = false;
+    ctrlPushed = false;
 
     guideLines       = vtkPolyData::New();
 
@@ -132,7 +140,7 @@ Zoom2D::Zoom2D(VisWindowInteractorProxy &v) : ZoomInteractor(v)
     lines->Delete();
 #endif
     guideLinesMapper = proxy.CreateXorGridMapper();
-    guideLinesMapper->SetInput(guideLines);
+    guideLinesMapper->SetInputData(guideLines);
 //    guideLinesMapper->SetDots(2, 3);
     
     guideLinesActor  = vtkActor2D::New();
@@ -160,9 +168,11 @@ Zoom2D::~Zoom2D()
 //  Method: Zoom2D::OnTimer
 //
 //  Purpose:
-//    Handles the timer event.  For Navigate2D, this means the user has
-//    pressed a mouse key and that it is time to sample the mouse position
-//    to see if the view should be panned or zoomed.
+//    Handles the timer event.  For Zoom2D, this means the user has either
+//    pressed the ctrl key along with the left mouse button to pan the
+//    image or has pressed the middle mouse button to zoom or de-zoom the
+//    image. In either case the mouse position must be sampled to handle
+//    the mouse motion and take the appropriate pan or zoom action.
 //
 //  Programmer: Eric Brugger
 //  Creation:   October 10, 2003
@@ -172,32 +182,39 @@ Zoom2D::~Zoom2D()
 //    Use current event position instead of Last, appears to work better with
 //    new vtk.
 //
+//    Eric Brugger, Wed Jun 19 16:40:25 PDT 2013
+//    I corrected the logic so that zooming or de-zooming with the middle
+//    mouse button worked.
+//
 // ****************************************************************************
 
 void
 Zoom2D::OnTimer(void)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
-    int Pos[2];
-    rwi->GetEventPosition(Pos);
-
-    switch (State)
+    if (!rubberBandMode)
     {
-      case VTKIS_PAN:
-        PanCamera(Pos[0], Pos[1]);
+        vtkRenderWindowInteractor *rwi = Interactor;
 
-        rwi->CreateTimer(VTKI_TIMER_UPDATE);
-        break;
+        int Pos[2];
+        rwi->GetEventPosition(Pos);
 
-      case VTKIS_DOLLY:
-        ZoomCamera(Pos[0], Pos[1]);
+        switch (State)
+        {
+          case VTKIS_PAN:
+            PanCamera(Pos[0], Pos[1]);
 
-        rwi->CreateTimer(VTKI_TIMER_UPDATE);
-        break;
+            rwi->CreateTimer(VTKI_TIMER_UPDATE);
+            break;
 
-      default:
-        break;
+          case VTKIS_ZOOM:
+            ZoomCamera(Pos[0], Pos[1]);
+
+            rwi->CreateTimer(VTKI_TIMER_UPDATE);
+            break;
+
+          default:
+            break;
+        }
     }
 }
 
@@ -207,13 +224,12 @@ Zoom2D::OnTimer(void)
 //
 //  Purpose:
 //      Handles the left button being pushed down.  For Zoom2D, this means
-//      a rubber band zoom mode.
+//      a rubber band zoom mode or pan mode.
 //
 //  Programmer: Hank Childs
 //  Creation:   May 22, 2000
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Feb 19 13:11:47 PST 2002
 //    Update for the VTK magic to make the zoom work.
 //
@@ -223,20 +239,27 @@ Zoom2D::OnTimer(void)
 //    Kathleen Bonnell, Fri Dec 13 16:41:12 PST 2002
 //    Removed arguments to comply with vtk's new interactor interface.
 //
+//    Eric Brugger, Mon Jun 24 13:27:38 PDT 2013
+//    I modified the 2d and 3d zoom interactors to once again constrain the
+//    zoom rectangle to a 1:1 ratio when zooming with the shift key and left
+//    mouse button pressed. Pressing the ctrl key and the left mouse button
+//    still pans the image. I corrected a bug where pressing the ctrl key and
+//    the left mouse button would result in the window being stuck in pan mode
+//    if the shift key was released before the left mouse button.
+//
 // ****************************************************************************
 
 void
 Zoom2D::StartLeftButtonAction()
 {
     //
-    // If ctrl or shift is pushed, pan, otherwise rotate.  Save which one we
-    // did so we can issue the proper "End.." statement when the button is
-    // released.
+    // If ctrl is pushed, pan, otherwise zoom.  Save which one we did so we
+    // can issue the proper "End.." statement when the button is released.
     //
-    if (Interactor->GetControlKey()|| Interactor->GetShiftKey())
+    if (Interactor->GetControlKey())
     {
         StartPan();
-        ctrlOrShiftPushed = true;
+        ctrlPushed = true;
     }
     else
     {
@@ -244,7 +267,7 @@ Zoom2D::StartLeftButtonAction()
         Interactor->GetEventPosition(x, y);
         StartZoom();
         StartRubberBand(x, y);
-        ctrlOrShiftPushed = false;
+        ctrlPushed = false;
     }
 }
 
@@ -254,13 +277,12 @@ Zoom2D::StartLeftButtonAction()
 //
 //  Purpose:
 //      Handles the left button being pushed up.  For Zoom2D, this means
-//      a rubber band zoom mode.
+//      a rubber band zoom mode or pan mode.
 //
 //  Programmer: Hank Childs
 //  Creation:   May 22, 2000
 //
 //  Modifications:
-//
 //    Hank Childs, Mon Jun 26 17:09:25 PDT 2000
 //    Removed arguments to EndRubberBand.
 //
@@ -276,12 +298,20 @@ Zoom2D::StartLeftButtonAction()
 //    Eric Brugger, Fri Nov 21 08:02:55 PST 2003
 //    Added code to call the view callback.
 //
+//    Eric Brugger, Mon Jun 24 13:27:38 PDT 2013
+//    I modified the 2d and 3d zoom interactors to once again constrain the
+//    zoom rectangle to a 1:1 ratio when zooming with the shift key and left
+//    mouse button pressed. Pressing the ctrl key and the left mouse button
+//    still pans the image. I corrected a bug where pressing the ctrl key and
+//    the left mouse button would result in the window being stuck in pan mode
+//    if the shift key was released before the left mouse button.
+//
 // ****************************************************************************
 
 void
 Zoom2D::EndLeftButtonAction()
 {
-    if (Interactor->GetControlKey()|| Interactor->GetShiftKey())
+    if (ctrlPushed)
     {
         EndPan();
     }
@@ -293,6 +323,8 @@ Zoom2D::EndLeftButtonAction()
     }
 
     IssueViewCallback();
+
+    ctrlPushed = false;
 }
 
 
@@ -310,13 +342,30 @@ Zoom2D::EndLeftButtonAction()
 //    Kathleen Bonnell, Fri Dec 13 16:41:12 PST 2002
 //    Removed arguments to comply with vtk's new interactor interface.
 //
+//    Eric Brugger, Mon Jun 24 13:27:38 PDT 2013
+//    I modified the 2d and 3d zoom interactors to once again constrain the
+//    zoom rectangle to a 1:1 ratio when zooming with the shift key and left
+//    mouse button pressed. Pressing the ctrl key and the left mouse button
+//    still pans the image. I corrected a bug where pressing the ctrl key and
+//    the left mouse button would result in the window being stuck in pan mode
+//    if the shift key was released before the left mouse button.
+//
 // ****************************************************************************
 
 void
 Zoom2D::AbortLeftButtonAction()
 {
-    EndRubberBand();
-    EndZoom();
+    if (ctrlPushed)
+    {
+        EndPan();
+    }
+    else
+    {
+        EndRubberBand();
+        EndZoom();
+    }
+
+    ctrlPushed = false;
 }
 
 
@@ -331,7 +380,6 @@ Zoom2D::AbortLeftButtonAction()
 //  Creation:   May 22, 2000
 //
 //  Modifications:
-//
 //    Hank Childs, Mon Mar 18 13:48:55 PST 2002
 //    Renamed from OnMiddleButtonDown.
 //
@@ -358,7 +406,6 @@ Zoom2D::StartMiddleButtonAction()
 //  Creation:   May 22, 2000
 //
 //  Modifications:
-//
 //    Hank Childs, Mon Mar 18 13:48:55 PST 2002
 //    Renamed from OnMiddleButtonUp.
 //
@@ -500,6 +547,7 @@ Zoom2D::StartRubberBand(int x, int y)
 //
 //  Programmer: Akira Haddox
 //  Creation:   July 3, 2003
+//
 // ****************************************************************************
 
 void

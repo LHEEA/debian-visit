@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -47,7 +47,7 @@
 #include "debugutil.h"
 #include "pathutil.h"
 #include "version.h"
-
+#include "paradis.h"
 #include <string>
 #include <vector>
 
@@ -77,21 +77,36 @@ using     rclib::Point;
  
 avtparaDISFileFormat::avtparaDISFileFormat(const char *filename,
                                            DBOptionsAttributes *rdatts)
-  : avtSTSDFileFormat(filename), 
-    mFilename(filename), mFormat(PARADIS_NO_FORMAT), 
-    mParallelData(filename), mDumpfile(filename, rdatts) {
+  : avtSTSDFileFormat(filename), mDumpfile(filename, rdatts),mParallelData(filename) {
+
+  cerr << "using avtparaDISFileFormat::avtparaDISFileFormat version 2.3.4" << endl; 
+  if (filename) {
+    mFilename = filename; 
+  }
+  mFormat = PARADIS_NO_FORMAT;
+  mVerbosity = 0; 
 
   if (mParallelData.ParseMetaDataFile()) {  
-     mFormat = PARADIS_PARALLEL_FORMAT;
+    mFormat = PARADIS_PARALLEL_FORMAT;
   } else if (mDumpfile.FileIsValid()) {
     mFormat = PARADIS_DUMPFILE_FORMAT; 
   }
   debug1 << "avtparaDISFileFormat, filename="<<filename<<";  development code" << endl;
+
   return; 
 }
 
 
+void avtparaDISFileFormat::Clear(void) {
+  mFilename = ""; 
+  mFormat = PARADIS_NO_FORMAT;
+  mVerbosity = 0; 
+  mDumpfile.Clear(); 
+  mParallelData.Clear(); 
 
+    
+  return; 
+}
 
 // ****************************************************************************
 //  Method: avtparaDISFileFormat::FreeUpResources
@@ -110,6 +125,7 @@ avtparaDISFileFormat::avtparaDISFileFormat(const char *filename,
 void
 avtparaDISFileFormat::FreeUpResources(void)
 {
+  debug1 << "avtparaDISFileFormat::FreeUpResources(void)" << endl; 
   return; 
 }
 
@@ -139,28 +155,25 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
   int nblocks = 1; /* This is for multi-domain, we are single-domain self-decomposing */ 
   int block_origin = 0; 
   int spatial_dimension = 3; /* 3D space */ 
-  double *extents = NULL; 
+  //double *extents = NULL; 
 
-  string meshname = "segments"; 
-  int topological_dimension = 1; /* lines */ 
-  avtMeshType meshtype = AVT_UNSTRUCTURED_MESH; 
-  AddMeshToMetaData(md, meshname, meshtype, NULL, nblocks, block_origin,
-                    spatial_dimension, topological_dimension);
-
-  meshname = "nodes"; 
-  topological_dimension = 0; /* only points */ 
-  meshtype = AVT_POINT_MESH; 
-  AddMeshToMetaData(md, meshname, meshtype, NULL, nblocks, block_origin,
-                    spatial_dimension, topological_dimension);
   
   if (mFormat == PARADIS_PARALLEL_FORMAT) {
     // mParallelData.ParseMetaDataFile()) {  
     debug1 << "populateDatabaseMetaData using the newer parallelizable data format... " << endl;
-    /*!
+    
+   /*!
       =======================================================
-      populate the segments mesh
+      populate the segments mesh for parallel data files
       =======================================================
     */ 
+    string meshname = "segments"; 
+    int topological_dimension = 1; /* lines */ 
+    avtMeshType meshtype = AVT_UNSTRUCTURED_MESH; 
+    
+    AddMeshToMetaData(md, meshname, meshtype, NULL, nblocks, block_origin,
+                      spatial_dimension, topological_dimension);
+    
     int numvars = mParallelData.mSegmentFiles.mDataArrayNames.size(); 
     int varnum = 0; 
     for (varnum = 0; varnum < numvars; ++varnum) {
@@ -180,22 +193,18 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     AddMaterialToMetaData(md, "Burgers type", "segments", 
                           mParallelData.mBurgersTypes.size(), 
                           mDumpfile.mBurgersTypes);
+    
     /*!
-      avtScalarMetaData *el_smd =
-      new avtScalarMetaData("Burgers type", "segments", AVT_ZONECENT);
-    el_smd->SetEnumerationType(avtScalarMetaData::ByValue);
-    int a=0;
-    for (a=0; a<mParallelData.mBurgersTypes.size(); a++) {
-      el_smd->AddEnumNameValue(mParallelData.mBurgersTypes[a], a);
-    }
-    md->Add(el_smd);
-    */
-   /*!
       =======================================================
-      populate the nodes mesh
+      populate the nodes mesh for parallel data files
       =======================================================
     */ 
     
+    meshname = "nodes"; 
+    topological_dimension = 0; /* only points */ 
+    meshtype = AVT_POINT_MESH; 
+    AddMeshToMetaData(md, meshname, meshtype, NULL, nblocks, block_origin,
+                      spatial_dimension, topological_dimension);
     numvars = mParallelData.mNodeFiles.mDataArrayNames.size(); 
     for (varnum = 0; varnum < numvars; ++varnum) { 
       string name =  mParallelData.mNodeFiles.mDataArrayNames[varnum];
@@ -207,171 +216,166 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         AddScalarVarToMetaData(md, name, "nodes", AVT_NODECENT); 
         debug2 << "AddScalarVarTo nodes mesh: name=" << name  << endl; 
       }
-    }
-    
+    }    
     
     md->SetFormatCanDoDomainDecomposition(true);  
   } // end of parallel data format mesh creation 
-  else if (mFormat == PARADIS_DUMPFILE_FORMAT) { // mDumpfile.FileIsValid()) { 
+  else if (mFormat == PARADIS_DUMPFILE_FORMAT) { 
+    /*! 
+      ==============================================
+      //  for dumpfile (serial)
+      ==============================================
+    */
     debug1 << " populateDatabaseMetaData detected dumpfile-based dataset" << endl;  
-
+    
 #ifdef PARALLEL
     EXCEPTION1(VisItException, "You cannot read old ParaDIS dump files in parallel.  Run VisIt in serial to do this, or create ParaDIS parallel vis files.  Contact Rich Cook at 423-9605 regarding this error.");     
 #else
     
+    string meshname; 
+    int topological_dimension = 1; /* lines */ 
+    avtMeshType meshtype; 
+
+     
     /*!
       =======================================================
-      populate the segments mesh
+      populate the nodes mesh for dumpfile (serial) 
       =======================================================
     */ 
-    AddScalarVarToMetaData(md, "segmentIndex", "segments", AVT_ZONECENT);
-    AddScalarVarToMetaData(md, "burgersType", "segments", AVT_ZONECENT);
-    if (mDumpfile.mVerbosity > 1) {
-      AddScalarVarToMetaData(md, "segmentEngine", "segments", AVT_ZONECENT);
-    }
+    meshname = "nodes"; 
+    topological_dimension = 0; /* only points */ 
+    meshtype = AVT_POINT_MESH; 
+    AddMeshToMetaData(md, meshname, meshtype, mDumpfile.mExtents, nblocks, block_origin,
+                      spatial_dimension, topological_dimension);
     
-    // VisIt only allows one material set, so we have to let the user choose one
-    if (mDumpfile.mMaterialSetChoice == 0) {
-      AddMaterialToMetaData(md, "Segment_Burgers_Type", "segments", 
-                            mDumpfile.mBurgersTypes.size(), mDumpfile.mBurgersTypes);
-    } else {
-      AddMaterialToMetaData(md, "Segment_MN_Type", "segments", 
-                            mDumpfile.mSegmentMNTypes.size(), mDumpfile.mSegmentMNTypes);
-    }
     
-    /*!
-      =======================================================
-      populate the nodes mesh
-      =======================================================
-    */ 
-    
-    //AddScalarVarToMetaData(md, "nodeType", "nodes", AVT_NODECENT);
     // use a material for the node types 
-    AddMaterialToMetaData(md, "Node_Num_Neighbors", "nodes", mDumpfile.mNodeNeighborValues.size(), mDumpfile.mNodeNeighborValues);
+    AddMaterialToMetaData(md, "Node-Num-Neighbors", "nodes", mDumpfile.mNodeNeighborValues.size(), mDumpfile.mNodeNeighborValues);
     
-    AddScalarVarToMetaData(md, "simulationDomain", "nodes", AVT_NODECENT); 
-    AddScalarVarToMetaData(md, "simulationID", "nodes", AVT_NODECENT); 
-    AddScalarVarToMetaData(md, "nodeIndex", "nodes", AVT_NODECENT); 
+    AddScalarVarToMetaData(md, "Node-ID-Hash", "nodes", AVT_NODECENT); 
+    AddScalarVarToMetaData(md, "Node-Index", "nodes", AVT_NODECENT); 
+
+    // Can't use enumerated scalar here because nodes can have almost arbitrary types.  
     
-    if (mDumpfile.mVerbosity > 1) {
-      AddScalarVarToMetaData(md, "nodeEngine", "nodes", AVT_NODECENT);
+    avtScalarMetaData *node_type =
+      new avtScalarMetaData("Node-Type", "nodes", AVT_NODECENT);
+    node_type->SetEnumerationType(avtScalarMetaData::ByValue);    
+    node_type->AddEnumNameValue("LESS THAN -10", -11);
+    for (int i = -10; i<7; i++) {
+      if (i<-3 || i>0)
+        node_type->AddEnumNameValue(str(boost::format("%d")%i), i); 
     }
+    node_type->AddEnumNameValue("GREATER THAN 10", 10);      
+    md->Add(node_type);
+
+    avtScalarMetaData *node_loop =
+      new avtScalarMetaData("Node-Is-Loop", "nodes", AVT_NODECENT);
+    node_loop->SetEnumerationType(avtScalarMetaData::ByValue);
+    node_loop->AddEnumNameValue("NOT LOOP", 0);
+    node_loop->AddEnumNameValue("LOOP", 1);
+    md->Add(node_loop);
     
-    md->SetFormatCanDoDomainDecomposition(true);  
+    avtScalarMetaData *node_typem =
+      new avtScalarMetaData("Node-Is-Type-M", "nodes", AVT_NODECENT);
+    node_typem->SetEnumerationType(avtScalarMetaData::ByValue);
+    node_typem->AddEnumNameValue("NOT TYPE M", 0);
+    node_typem->AddEnumNameValue("TYPE M", 1);
+    md->Add(node_typem);
     
-#endif
+    avtScalarMetaData *node_typen =
+      new avtScalarMetaData("Node-Is-Type-N", "nodes", AVT_NODECENT);
+    node_typen->SetEnumerationType(avtScalarMetaData::ByValue);
+    node_typen->AddEnumNameValue("NOT TYPE N", 0);
+    node_typen->AddEnumNameValue("TYPE N", 1);
+    md->Add(node_typen);
+    
+     
+   /*!
+      =======================================================
+      populate the segments mesh for dumpfile (serial) 
+      =======================================================
+    */ 
+    
+    meshname = "segments"; 
+    topological_dimension = 1; /* lines */ 
+    meshtype = AVT_UNSTRUCTURED_MESH; 
+    
+    AddMeshToMetaData(md, meshname, meshtype, mDumpfile.mExtents, nblocks, block_origin,
+                      spatial_dimension, topological_dimension);
+    
+    AddScalarVarToMetaData(md, "Segment-Index", "segments", AVT_ZONECENT);
+ 
+    AddMaterialToMetaData(md, "Segment-Burgers-Type", "segments",
+                          mDumpfile.mSegmentBurgerTypeNames.size(), 
+                          mDumpfile.mSegmentBurgerTypeNames); 
+   // Enumerated types give you some more flexibility in the interface and allows arbitrary values, not just 0-indexed list.  Use if there is a palette of choices.  Stolen from avtOUTCARFileFormat
+    /*    int btypes[] = {-2,-1, 0, 10,11,12,13, 20,21,22, 30,31,32, 40,41,42, 50, 60}; 
+          avtScalarMetaData *burgers_smd =
+          new avtScalarMetaData("Segment-Burgers-Type", "segments", AVT_ZONECENT);
+          burgers_smd->SetEnumerationType(avtScalarMetaData::ByValue);
+          for (int i=0; i<18; i++) {
+          burgers_smd->AddEnumNameValue(BurgersTypeNames(btypes[i]), btypes[i]);
+          }
+          md->Add(burgers_smd);
+    */ 
+     
+    AddScalarVarToMetaData(md, "Segment-Parent-MetaArm-ID", "segments", AVT_ZONECENT);
+    AddScalarVarToMetaData(md, "Segment-Parent-Arm-ID", "segments", AVT_ZONECENT);
+    AddScalarVarToMetaData(md, "Segment-Duplicates", "segments", AVT_ZONECENT);
+       
+    avtScalarMetaData *matype_smd =
+      new avtScalarMetaData("Segment-Parent-MetaArm-Type", "segments", AVT_ZONECENT);
+    matype_smd->SetEnumerationType(avtScalarMetaData::ByValue);
+    for (int i=0; i<4; i++) {
+      matype_smd->AddEnumNameValue(MetaArmTypeNames(i), i);
+    }
+    md->Add(matype_smd);    
+    
+    /*! 
+      ==============================================
+      Add a mesh for the meta-arms for dumpfile (serial) 
+      ==============================================
+    */
+    meshname = "Meta Arms"; 
+    topological_dimension = 1; /* lines */ 
+    meshtype = AVT_UNSTRUCTURED_MESH; 
+    AddMeshToMetaData(md, meshname, meshtype, mDumpfile.mExtents, nblocks, block_origin,
+                      spatial_dimension, topological_dimension);
+    
+    AddMaterialToMetaData(md, "MetaArm-Type", "Meta Arms", 
+                          mDumpfile.mMetaArmTypes.size(), 
+                          mDumpfile.mMetaArmTypes); 
+    AddScalarVarToMetaData(md, "MetaArm-ID", "Meta Arms", AVT_ZONECENT);
+
+   /*! 
+      ==============================================
+      Now a special mesh for meta-arms that wraps its endpoints 
+      instead of "taking a shortcut" across the data.  For dumpfile (serial)
+      ==============================================
+    */
+    meshname = "Wrapped Meta Arms"; 
+    topological_dimension = 1; /* lines */ 
+    meshtype = AVT_UNSTRUCTURED_MESH; 
+    AddMeshToMetaData(md, meshname, meshtype, mDumpfile.mExtents, nblocks, block_origin,
+                      spatial_dimension, topological_dimension);
+
+    AddMaterialToMetaData(md, "Wrapped-MetaArm-Type", "Wrapped Meta Arms", 
+                          mDumpfile.mMetaArmTypes.size(), 
+                          mDumpfile.mMetaArmTypes); 
+    AddScalarVarToMetaData(md, "Wrapped-MetaArm-ID", "Wrapped Meta Arms", AVT_ZONECENT);
+
+#endif // not PARALLEL
   } // end DumpFile format 
   else {
     EXCEPTION1(VisItException, "Cannot get paraDIS metadata from the file."); 
   }
 
-  debug3 << " populateDatabaseMetaData complete" << endl; 
+
+
+    debug3 << " populateDatabaseMetaData complete" << endl; 
   return;
-  
-  // NOTES FOR DOCUMENTATION
-  // CODE TO ADD A MESH
-  //
-  // string meshname = ...
-  //
-  // AVT_RECTILINEAR_MESH, AVT_CURVILINEAR_MESH, AVT_UNSTRUCTURED_MESH,
-  // AVT_POINT_MESH, AVT_SURFACE_MESH, AVT_UNKNOWN_MESH
-  // avtMeshType mt = AVT_RECTILINEAR_MESH;
-  //
-  // int nblocks = 1;  <-- this must be 1 for STSD
-  // int block_origin = 0;
-  // int spatial_dimension = 2;
-  // int topological_dimension = 2;
-  // float *extents = NULL;
-  //
-  // Here's the call that tells the meta-data object that we have a mesh:
-  //
-  // AddMeshToMetaData(md, meshname, mt, extents, nblocks, block_origin,
-  //                   spatial_dimension, topological_dimension);
-  //
-  
-  //
-  // CODE TO ADD A SCALAR VARIABLE
-  //
-  // string mesh_for_this_var = meshname; // ??? -- could be multiple meshes
-  // string varname = ...
-  //
-  // AVT_NODECENT, AVT_ZONECENT, AVT_UNKNOWN_CENT
-  // avtCentering cent = AVT_NODECENT;
-  //
-  //
-  // Here's the call that tells the meta-data object that we have a var:
-  //
-  //AddScalarVarToMetaData(md, varname, meshname, cent); 
-  
-  //
-  // CODE TO ADD A VECTOR VARIABLE
-  //
-  // string mesh_for_this_var = meshname; // ??? -- could be multiple meshes
-  // string varname = ...
-  // int vector_dim = 2;
-  //
-  // AVT_NODECENT, AVT_ZONECENT, AVT_UNKNOWN_CENT
-  // avtCentering cent = AVT_NODECENT;
-  //
-  //
-  // Here's the call that tells the meta-data object that we have a var:
-  //
-  // AddVectorVarToMetaData(md, varname, mesh_for_this_var, cent,vector_dim);
-  //
-  
-  //
-  // CODE TO ADD A TENSOR VARIABLE
-  //
-  // string mesh_for_this_var = meshname; // ??? -- could be multiple meshes
-  // string varname = ...
-  // int tensor_dim = 9;
-  //
-  // AVT_NODECENT, AVT_ZONECENT, AVT_UNKNOWN_CENT
-  // avtCentering cent = AVT_NODECENT;
-  //
-  //
-  // Here's the call that tells the meta-data object that we have a var:
-  //
-  // AddTensorVarToMetaData(md, varname, mesh_for_this_var, cent,tensor_dim);
-  //
-  
-  //
-  // CODE TO ADD A MATERIAL
-  //
-  
-  /* 
-     string matname = "mymaterial";
-     string mesh_for_mat = "segments"; 
-     vector<string> mnames;
-     mnames.push_back(string("100 arm type"));    
-     mnames.push_back(string("010 arm type"));
-     mnames.push_back(string("001 arm type"));
-     mnames.push_back(string("+++ arm type"));
-     mnames.push_back(string("++- arm type"));
-     mnames.push_back(string("+-+ arm type"));
-     mnames.push_back(string("-++ arm type"));
-     mnames.push_back(string("unknown arm type"));
-     
-     int nmats = 8;
-  */ 
-  // 
-  // Here's the call that tells the meta-data object that we have a mat:
-  //
-  //AddMaterialToMetaData(md, matname, mesh_for_mat, nmats, mnames);
-  //
-  //
-  // Here's the way to add expressions:
-  //Expression momentum_expr;
-  //momentum_expr.SetName("momentum");
-  //momentum_expr.SetDefinition("{u, v}");
-  //momentum_expr.SetType(Expression::VectorMeshVar);
-  //md->AddExpression(&momentum_expr);
-  //Expression KineticEnergy_expr;
-  //KineticEnergy_expr.SetName("KineticEnergy");
-  //KineticEnergy_expr.SetDefinition("0.5*(momentum*momentum)/(rho*rho)");
-  //KineticEnergy_expr.SetType(Expression::ScalarMeshVar);
-  //md->AddExpression(&KineticEnergy_expr);
-  
+
+   
 }
 
 // ****************************************************************************
@@ -394,10 +398,10 @@ avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 vtkDataSet *
 avtparaDISFileFormat::GetMesh(const char *meshname)
 {  
-    
-  debug2 << "avtparaDISFileFormat::GetMesh("<<meshname<<") from file "<<mFilename<<endl;
+   
+  debug2 << "avtparaDISFileFormat 2.3.4::GetMesh("<<meshname<<") from file "<<mFilename<<endl;
   vtkDataSet *mesh = NULL; 
-    
+  
   if (mFormat == PARADIS_DUMPFILE_FORMAT) {
     mesh = mDumpfile.GetMesh(meshname); 
   }  else {
@@ -406,26 +410,7 @@ avtparaDISFileFormat::GetMesh(const char *meshname)
   if (!mesh) {
     EXCEPTION1(VisItException, "Could not get mesh requested"); 
   }
-  /* DEBUG CODE 
-  int npts = mesh->GetNumberOfPoints();
-  double pvals[3];
-  double pvmax = -FLT_MAX;
-  double pvmin =  FLT_MAX;
-  for(int i=0;i<npts;i++)
-    {
-      mesh->GetPoint(i,pvals);
-      if(pvals[0]>  pvmax) pvmax= pvals[0];
-      if(pvals[1]>  pvmax) pvmax= pvals[1];
-      if(pvals[2]>  pvmax) pvmax= pvals[2];
-      if(pvals[0]<  pvmin) pvmin= pvals[0];
-      if(pvals[1]<  pvmin) pvmin= pvals[1];
-      if(pvals[2]<  pvmin) pvmin= pvals[2];
-    }
-  cout<<  "For " << mFilename << ", npts = " << npts << ", pv min&  max = "<<  pvmin<<  " "<<  pvmax<<endl;
-  cout<<  "plast = "<<  pvals[0]<<  " "<<  pvals[1]<<  " "<<
-    pvals[2]<<endl;
-  */ 
-  return mesh;
+ return mesh;
 }
 
 // ****************************************************************************
@@ -480,39 +465,6 @@ avtparaDISFileFormat::GetVectorVar(const char *varname)
 {
   return GetVar(varname); 
 
-  //YOU MUST IMPLEMENT THIS
-
-    //
-    // If you have a file format where variables don't apply (for example a
-    // strictly polygonal format like the STL (Stereo Lithography) format,
-    // then uncomment the code below.
-    //
-    // EXCEPTION1(InvalidVariableException, varname);
-    //
-
-    //
-    // If you do have a vector variable, here is some code that may be helpful.
-    //
-    // int ncomps = YYY;  // This is the rank of the vector - typically 2 or 3.
-    // int ntuples = XXX; // this is the number of entries in the variable.
-    // vtkFloatArray *rv = vtkFloatArray::New();
-    // int ucomps = (ncomps == 2 ? 3 : ncomps);
-    // rv->SetNumberOfComponents(ucomps);
-    // rv->SetNumberOfTuples(ntuples);
-    // float *one_entry = new float[ucomps];
-    // for (int i = 0 ; i < ntuples ; i++)
-    // {
-    //      int j;
-    //      for (j = 0 ; j < ncomps ; j++)
-    //           one_entry[j] = ...
-    //      for (j = ncomps ; j < ucomps ; j++)
-    //           one_entry[j] = 0.;
-    //      rv->SetTuple(i, one_entry); 
-    // }
-    //
-    // delete [] one_entry;
-    // return rv;
-    //
 }
 
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -97,8 +97,8 @@ using std::vector;
 
 static const char *free_nodes_str = "free_nodes";
 static const char *no_free_nodes_str = "no_free_nodes";
-static const int free_nodes_strlen = strlen(free_nodes_str);
-static const int no_free_nodes_strlen = strlen(no_free_nodes_str);
+static const int free_nodes_strlen = (int)strlen(free_nodes_str);
+static const int no_free_nodes_strlen = (int)strlen(no_free_nodes_str);
 
 // Mili geometry data 
 static const int n_elem_types = 8;
@@ -1154,6 +1154,8 @@ avtMiliFileFormat::GetSizeInfoForGroup(const char *group_name, int &offset,
 //    Brad Whitlock, Thu May 10 16:30:33 PST 2007
 //    I corrected a bug that caused node 1 to be messed up.
 //
+//    Mark C. Miller, Mon Sep 30 10:45:46 PDT 2013
+//    Fixed bug handling tets as degenerate hexes.
 // ****************************************************************************
 
 void
@@ -1344,8 +1346,8 @@ avtMiliFileFormat::ReadMesh(int dom)
                             conn[5] == conn[6] && conn[6] == conn[7])
                         {
                             vtkIdType tet[4];
-                            tet[0] = verts[2]; tet[1] = verts[2];
-                            tet[2] = verts[2]; tet[3] = verts[2];
+                            tet[0] = verts[0]; tet[1] = verts[1];
+                            tet[2] = verts[2]; tet[3] = verts[4];
                             connectivity[dom][mesh_id]->InsertNextCell(
                                                      VTK_TETRA,
                                                      4, tet);
@@ -1677,7 +1679,6 @@ avtMiliFileFormat::GetVar(int ts, int dom, const char *name)
         isFreeNodesVar = true;
     }
 
-    size_t found;
     string vname;
     if (nmeshes != 1)
     {
@@ -3583,7 +3584,7 @@ avtMiliFileFormat::ParseDynaPart()
             adjacentProc[i].push_back(adp);
         }
         in.clear();
-        nAdjacentProc[i] = adjacentProc[i].size();
+        nAdjacentProc[i] = (int)adjacentProc[i].size();
 
         // We may have stripped the '#' out of the comment
         // use a getline this time.
@@ -3698,7 +3699,7 @@ void
 avtMiliFileFormat::LoadMiliInfo(const char *fname)
 {
     ifstream in;
-    char dummy[256], path[256];
+    char path[256];
     bool newFormat=false;
     int i=0, j=0;
     int meshid=0;
@@ -3944,6 +3945,8 @@ avtMiliFileFormat::LoadMiliInfo(const char *fname)
 //  Notes:
 //
 //  Modifications:
+//    Mark .C Miller Fri Aug 23 18:38:07 PDT 2013
+//    Initialize kwUpper to fix a UMR.
 //
 // ****************************************************************************
 char *
@@ -3952,7 +3955,7 @@ avtMiliFileFormat::ReadMiliFileLine(ifstream &in, const char *commentSymbol,
 {
     char *oneLine, dummy[512];
     int i=0;
-    int maxLen=0;
+    size_t maxLen=0;
     int lineNumber=0;
 
     bool lineFound=false, commentFound=false;
@@ -3992,7 +3995,7 @@ avtMiliFileFormat::ReadMiliFileLine(ifstream &in, const char *commentSymbol,
 
                 commentFound=true;
                 int charMatch=0;
-                for (int i=0; i<maxLen; i++)
+                for (size_t i=0; i<maxLen; i++)
                 {
                     if (field1[i]!=commentSymbol[i])
                     {
@@ -4011,16 +4014,17 @@ avtMiliFileFormat::ReadMiliFileLine(ifstream &in, const char *commentSymbol,
             continue;
 
         char kwUpper[256];
+        kwUpper[0] = '\0';
         if (kw)
             if (strlen(kw)>0)
             {
                 /* Convert fields to upper case */ 
                 strcpy(kwUpper, kw);
-                for (int i=0; i<strlen(kw); i++)
+                for (size_t i=0; i<strlen(kw); i++)
                     kwUpper[i] = toupper(kw[i]);
             }
 
-        for (int i = 0; i < field1.length(); i++)
+        for (size_t i = 0; i < field1.length(); i++)
             field1[i]=toupper(field1[i]);
          
         if ( !strcmp(field1.c_str(), kwUpper ))

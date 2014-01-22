@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -192,7 +192,7 @@ avtVertexNormalsFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
                 pointNormals = false;
         }
         vtkVisItPolyDataNormals *normals = vtkVisItPolyDataNormals::New();
-        normals->SetInput(pd);
+        normals->SetInputData(pd);
         normals->SetFeatureAngle(45.);
         if (pointNormals)
             normals->SetNormalTypeToPoint();
@@ -221,7 +221,7 @@ avtVertexNormalsFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
         }
         vtkVisItStructuredGridNormals *normals = 
                                             vtkVisItStructuredGridNormals::New();
-        normals->SetInput(sgrid);
+        normals->SetInputData(sgrid);
         if (pointNormals)
             normals->SetNormalTypeToPoint();
         else

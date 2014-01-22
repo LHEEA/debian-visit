@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -95,7 +95,7 @@ paraDISGeneralPluginInfo::GetName() const
 const char *
 paraDISGeneralPluginInfo::GetVersion() const
 {
-    return "2.0";
+    return "2.3.4";
 }
 
 // ****************************************************************************
@@ -114,7 +114,7 @@ paraDISGeneralPluginInfo::GetVersion() const
 const char *
 paraDISGeneralPluginInfo::GetID() const
 {
-    return "paraDIS_2.0";
+    return "paraDIS_2.3.4";
 }
 // ****************************************************************************
 //  Method: paraDISGeneralPluginInfo::EnabledByDefault

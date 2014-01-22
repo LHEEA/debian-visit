@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -66,7 +66,7 @@ class vtkStimulateReader : public vtkImageReader2
 {
 public:
   static vtkStimulateReader *New();
-  vtkTypeRevisionMacro(vtkStimulateReader,vtkImageReader2);
+  vtkTypeMacro(vtkStimulateReader,vtkImageReader2);
 
   int CanReadFile(const char* fname); 
   virtual const char* GetFileExtensions()
@@ -86,8 +86,10 @@ public:
 
 protected:
   enum dtype {UCHAR, SHORT, INT, FLOAT};
-  void ExecuteInformation();
-  void ExecuteData(vtkDataObject *);
+  int RequestInformation(vtkInformation* request,
+                         vtkInformationVector** inputVector,
+                         vtkInformationVector* outputVector);
+  void ExecuteDataWithInformation(vtkDataObject *, vtkInformation* outInfo);
   virtual int OpenFile(void);
   vtkStimulateReader();
   ~vtkStimulateReader();

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -60,11 +60,14 @@
 #   Hank Childs, Tue Mar 13 12:59:07 PDT 2012
 #   Move avtDatasetOnDemandFilter from Pipeline/AbstractFilters directory.
 #
+#   Kathleen Biagas, Tue May 28 17:02:23 MST 2013 
+#   Move avtTimeLoopFilter and avtTimeLoopCollectorFilter from 
+#   Pipeline/AbstractFilters directory.
+#
 #****************************************************************************/
 
 SET(AVTFILTERS_SOURCES
 avtActualExtentsFilter.C
-avtCommDSOnDemandICAlgorithm.C
 avtCondenseDatasetFilter.C
 avtContourFilter.C
 avtCoordSystemConvert.C
@@ -76,24 +79,18 @@ avtFacelistFilter.C
 avtFeatureEdgesFilter.C
 avtGhostZoneAndFacelistFilter.C
 avtGhostZoneFilter.C
-avtICAlgorithm.C
 avtImageCommunicator.C
 avtImageCompositer.C
+avtImgCommunicator.C
 avtLinearTransformFilter.C
 avtLineoutFilter.C
 avtLineScanFilter.C
 avtLineToPolylineFilter.C
 avtMassVoxelExtractor.C
-avtMasterSlaveICAlgorithm.C
 avtMeshLogFilter.C
 avtMissingDataFilter.C
 avtMultiresFilter.C
 avtNamedSelectionFilter.C
-avtParDomICAlgorithm.C
-avtParICAlgorithm.C
-avtPICSFilter.C
-avtPODICAlgorithm.C
-avtPOSBalanceICAlgorithm.C
 avtPointToGlyphFilter.C
 avtRayCompositer.C
 avtRayTracer.C
@@ -101,17 +98,16 @@ avtResampleFilter.C
 avtSamplePointCommunicator.C
 avtSamplePointExtractor.C
 avtSamplePointToSurfaceFilter.C
-avtSerialICAlgorithm.C
 avtShiftCenteringFilter.C
 avtSimilarityTransformFilter.C
 avtSmoothPolyDataFilter.C
 avtStaggeringFilter.C
-avtStreamlineFilter.C
-avtStreamlinePolyDataFilter.C
 avtSummationFilter.C
 avtSurfaceFilter.C
 avtThresholdFilter.C
 avtTiledImageCompositor.C
+avtTimeLoopCollectorFilter.C
+avtTimeLoopFilter.C
 avtTransform.C
 avtVertexNormalsFilter.C
 avtWarpFilter.C
@@ -121,15 +117,8 @@ avtWorldSpaceToImageSpaceTransform.C
 avtXRayFilter.C
 )
 
-#IF(HAVE_LIB_R)
-#  LIST(APPEND AVTFILTERS_SOURCES avtRExtremesFilter.C)
-#ENDIF(HAVE_LIB_R)
-
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
-IF(HAVE_LIB_R)
-${R_INCLUDE_DIR}
-ENDIF(HAVE_LIB_R)
 ${VISIT_COMMON_INCLUDES}
 ${VISIT_SOURCE_DIR}/visit_vtk/full
 ${VISIT_SOURCE_DIR}/visit_vtk/lightweight
@@ -158,12 +147,12 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS} ${MESA_LIBRARY_
 
 #********************************* SERIAL ************************************
 ADD_LIBRARY(avtfilters_ser ${AVTFILTERS_SOURCES})
-TARGET_LINK_LIBRARIES(avtfilters_ser visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtivp avtpipeline_ser avtdatabase_ser avtdbatts)
+TARGET_LINK_LIBRARIES(avtfilters_ser visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_ser avtdatabase_ser avtdbatts)
 VISIT_INSTALL_TARGETS(avtfilters_ser)
 
 #********************************* PARALLEL **********************************
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(avtfilters_par ${AVTFILTERS_SOURCES})
-    TARGET_LINK_LIBRARIES(avtfilters_par visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtivp avtpipeline_par avtdatabase_par avtdbatts)
+    TARGET_LINK_LIBRARIES(avtfilters_par visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_par avtdatabase_par avtdbatts)
     VISIT_INSTALL_TARGETS(avtfilters_par)
 ENDIF(VISIT_PARALLEL)

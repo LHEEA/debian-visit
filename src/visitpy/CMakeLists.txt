@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -109,7 +109,6 @@ visitpy/PyavtVectorMetaData.C
 SET(GENERATED_PY_SOURCES
 visitpy/PyAnimationAttributes.C 
 visitpy/PyAnnotationAttributes.C 
-visitpy/PyAnnotationAttributes_Legacy.C 
 visitpy/PyAxes2D.C 
 visitpy/PyAxes3D.C 
 visitpy/PyAxesArray.C 
@@ -162,6 +161,9 @@ visitpy/PyView2DAttributes.C
 visitpy/PyView3DAttributes.C 
 visitpy/PyViewAttributes.C 
 visitpy/PyViewAxisArrayAttributes.C 
+visitpy/PyViewerClientAttributes.C 
+visitpy/PyViewerClientInformation.C 
+visitpy/PyViewerClientInformationElement.C 
 visitpy/PyViewCurveAttributes.C 
 visitpy/PyViewerRPC.C 
 visitpy/PyWindowInformation.C

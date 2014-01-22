@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -85,6 +85,7 @@
 #include <ReleaseDataRPC.h>
 #include <RenderRPC.h>
 #include <SetEFileOpenOptionsRPC.h>
+#include <SetPrecisionTypeRPC.h>
 #include <SetWinAnnotAttsRPC.h>
 #include <SimulationCommandRPC.h>
 #include <StartPickRPC.h>
@@ -1823,6 +1824,25 @@ void
 RPCExecutor<SetEFileOpenOptionsRPC>::Execute(SetEFileOpenOptionsRPC *rpc)
 {
     avtDatabaseFactory::SetDefaultFileOpenOptions(rpc->GetFileOpenOptions());
+    rpc->SendReply();
+}
+
+// ****************************************************************************
+//  Method:  RPCExecutor<SetPrecisionTypeRPC>::Execute
+//
+//  Purpose:
+//    Set the new precision type in the database factory.
+//
+//
+//  Programmer:  Kathleen Biagas
+//  Creation:    August 1, 2013
+//
+// ****************************************************************************
+template<>
+void
+RPCExecutor<SetPrecisionTypeRPC>::Execute(SetPrecisionTypeRPC *rpc)
+{
+    avtDatabaseFactory::SetPrecisionType(rpc->GetPrecisionType());
     rpc->SendReply();
 }
 
