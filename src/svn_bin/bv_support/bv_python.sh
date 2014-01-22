@@ -148,7 +148,9 @@ function bv_python_host_profile
             echo "VISIT_OPTION_DEFAULT(PYTHON_LIBRARY_DIR $PYTHON_LIBRARY_DIR)" >> $HOSTCONF
             echo "VISIT_OPTION_DEFAULT(PYTHON_VERSION $PYTHON_COMPATIBILITY_VERSION)" >> $HOSTCONF
         else
-            echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR $VISIT_PYTHON_DIR)" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR \${VISITHOME}/python/$PYTHON_VERSION/\${VISITARCH})" \
+		>> $HOSTCONF
+#           echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR $VISIT_PYTHON_DIR)" >> $HOSTCONF
         fi
     fi
 }
@@ -218,6 +220,32 @@ EOF
    return 0
 }
 
+function apply_python_icc_patch
+{
+   info "Patching Python: fix ffi64 issue for icc"
+   patch -f -p0 << \EOF
+diff -c Modules/_ctypes/libffi/src/x86/ffi64.c.orig Modules/_ctypes/libffi/src/x86/ffi64.c
+*** Modules/_ctypes/libffi/src/x86/ffi64.c.orig	2013-11-12 15:02:51.585653535 -0800
+--- Modules/_ctypes/libffi/src/x86/ffi64.c	2013-11-12 15:20:47.000000000 -0800
+***************
+*** 39,44 ****
+--- 39,45 ----
+  #define MAX_SSE_REGS 8
+  
+  #if defined(__INTEL_COMPILER)
++ #include "xmmintrin.h"
+  #define UINT128 __m128
+  #else
+  #if defined(__SUNPRO_C)
+EOF
+    if [[ $? != 0 ]] ; then
+        warn "Python patch for icc fialed."
+        return 1
+    fi
+
+    return 0
+}
+
 function apply_python_patch
 {
     if [[ "$OPSYS" == "Darwin" ]]; then
@@ -227,6 +255,12 @@ function apply_python_patch
             if [[ $? != 0 ]] ; then
                 return 1
             fi
+        fi
+    fi
+    if [[ "${C_COMPILER}" == "icc" ]]; then
+        apply_python_icc_patch
+        if [[ $? != 0 ]] ; then
+            return 1
         fi
     fi
 

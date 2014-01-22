@@ -127,15 +127,10 @@ FluxCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMetaData *md)
             e2.SetType(Expression::ScalarMeshVar);
             e2.SetFromOperator(true);
             e2.SetOperatorName("Flux");
-            sprintf(defn, "cell_constant(%s, 0.)", mmd->name.c_str());
+            sprintf(defn, "cell_constant(<%s>, 0.)", mmd->name.c_str());
             e2.SetDefinition(defn);
             el->AddExpressions(e2);
         }
-    }
-    const ExpressionList &oldEL = md->GetExprList();
-    for (i = 0 ; i < oldEL.GetNumExpressions() ; i++)
-    {
-        const Expression &e = oldEL.GetExpressions(i);
     }
     return el;
 }

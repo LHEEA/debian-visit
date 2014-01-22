@@ -152,6 +152,13 @@
 #    Kathleen Biagas, Tue Jun 18 16:58:43 PDT 2013
 #    Skip paraDIS reader on Windows.
 #
+#    Eric Brugger, Wed Nov 20 11:16:52 PST 2013
+#    I added the AMRTest reader.
+#
+#    Eric Brugger, Mon Jan 13 17:24:13 PST 2014
+#    I moved the AMRTest reader from the optional list of databases to
+#    build to the required list of databases to build.
+#
 #****************************************************************************/
 
 IF(NOT WIN32)
@@ -253,6 +260,7 @@ THIRDPARTY_DEPENDENT_PLUGINS(GDAL     GDAL)
 THIRDPARTY_DEPENDENT_PLUGINS(HDF4     Cosmos ZeusMP)
 THIRDPARTY_DEPENDENT_PLUGINS(MDSPLUS  MDSplus)
 THIRDPARTY_DEPENDENT_PLUGINS(MILI     Mili)
+THIRDPARTY_DEPENDENT_PLUGINS(UINTAH   Uintah)
 IF (WIN32)
     THIRDPARTY_DEPENDENT_PLUGINS(ZLIB     VCellMTMD)
 ENDIF (WIN32)
@@ -282,6 +290,7 @@ ENDIF(VISIT_STATIC)
 
 # These are our required plugins (no external dependencies)
 SET(REQUIRED_DATABASE_PLUGINS
+AMRTest
 ANALYZE
 ANSYS
 AUXFile

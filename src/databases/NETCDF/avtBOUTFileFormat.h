@@ -56,13 +56,20 @@ class avtFileFormatInterface;
 // Creation:   Thu Aug  1 16:16:10 PDT 2013
 //
 // Modifications:
+//   Eric Brugger, Mon Dec  2 15:43:26 PST 2013
+//   I added the ability to handle circular grids.
 //   
+//   Eric Brugger, Tue Dec  3 10:20:02 PST 2013
+//   I added the ability to handle grids with two X points.
+//
 // ****************************************************************************
 
-#define N_SUB_MESHES 4
+#define MAX_SUB_MESHES 7
 
 #define N_DIVERTER_SUB_MESHES 2
 #define DIVERTER_SUBGRID 1
+
+enum GridType {circularGrid, oneXGrid, twoXGrid};
 
 struct Subgrid
 {
@@ -76,7 +83,6 @@ struct Subgrid
     int               *inrep;
     int               *jnrep;
 };
-
 
 class avtBOUTFileFormat : public avtMTMDFileFormat
 {
@@ -106,11 +112,14 @@ public:
   private:
     bool                   ReadTimes();
     void                   DetermineMeshReplication(Subgrid &);
+    void                   ReadMeshMetaData();
     bool                   ReadMesh();
     void                   CreateDiverterMesh(Subgrid &, int, float *, float *);
     void                   CreateMesh(Subgrid &, int, int, float *, float *);
     void                   CreateDiverterVar(Subgrid &, int, float *, float *);
     void                   CreateVar(Subgrid &, int, int, float *, float *);
+
+    char                  *filePath;
 
     NETCDFFileObject      *fileObject;
     NETCDFFileObject      *meshFile;
@@ -121,7 +130,9 @@ public:
     int                    ixseps1, ixseps2;
     int                    jyseps1_1, jyseps1_2;
     int                    jyseps2_1, jyseps2_2;
-    Subgrid                subgrid[N_SUB_MESHES];
+    GridType               gridType;
+    int                    nSubMeshes;
+    Subgrid                subgrid[MAX_SUB_MESHES];
 
     float                 *Rxy, *Zxy, *zShift, *zShiftZero;
     int                    nx2d, ny2d;
@@ -133,7 +144,7 @@ public:
     int                    cacheTime;
     std::string            cacheVar;
     std::string            cacheVarRaw;
-    vtkDataArray          *cacheData[N_SUB_MESHES];
+    vtkDataArray          *cacheData[MAX_SUB_MESHES];
     float                 *cacheDataRaw;
 };
 

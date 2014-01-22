@@ -279,6 +279,10 @@ using std::vector;
 //    Hank Childs, Mon Mar  4 18:35:27 PST 2013
 //    Initialize duplicateData member.
 //
+//    Kathleen Biagas, Thu Dec 19 09:25:29 PST 2013
+//    Test if read options exist before attemtping to access them.
+//    Default to the same defaults as stored in the Options file.
+//
 // ****************************************************************************
 
 avtNek5000FileFormat::avtNek5000FileFormat(const char *filename,
@@ -298,8 +302,15 @@ avtNek5000FileFormat::avtNek5000FileFormat(const char *filename,
     numberOfTimePeriods = 1;
     gapBetweenTimePeriods = 0.0;
 
-    readOptionToGetAllTimes = atts->GetBool("Read all times and cycles");
-    duplicateData = atts->GetBool("Duplicate data for particle advection (slower for all other techniques)");
+    readOptionToGetAllTimes = true;
+    duplicateData = false;
+    if (atts)
+    {
+        if (atts->FindIndex("Read all times and cycles") >= 0)
+            readOptionToGetAllTimes = atts->GetBool("Read all times and cycles");
+        if (atts->FindIndex("Duplicate data for particle advection (slower for all other techniques)") >= 0)
+            duplicateData = atts->GetBool("Duplicate data for particle advection (slower for all other techniques)");
+    }
 
     iNumBlocks = 0;
     iBlockSize[0] = 1;
@@ -1283,13 +1294,11 @@ avtNek5000FileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int /*ti
 vtkDataSet *
 avtNek5000FileFormat::GetMesh(int /* timestate */, int domain, const char * /*meshname*/)
 {
-    int  i;
-
     int t1 = visitTimer->StartTimer();
     const int num_elements = (int)myElementList.size();
     vector<float *> ptlist(num_elements);
     vector<bool> shouldDelete(num_elements, false);
-    for (i = 0 ; i < num_elements ; i++)
+    for (int i = 0 ; i < num_elements ; i++)
     {
         int element  = myElementList[i];
         int timestep = timestepToUseForMesh;
@@ -1326,7 +1335,7 @@ avtNek5000FileFormat::GetMesh(int /* timestate */, int domain, const char * /*me
         pts_per_element *= iBlockSize[2];
     pts->SetNumberOfPoints(pts_per_element * num_elements);
     float *pts_ptr = (float *) pts->GetVoidPointer(0);
-    for (i = 0 ; i < num_elements ; i++)
+    for (int i = 0 ; i < num_elements ; i++)
     {
         memcpy(pts_ptr, ptlist[i], pts_per_element*3*sizeof(float));
         pts_ptr += pts_per_element*3;
@@ -1356,7 +1365,7 @@ avtNek5000FileFormat::GetMesh(int /* timestate */, int domain, const char * /*me
 
     int hexes_so_far = 0;
     int elements_so_far = 0;
-    for (i = 0 ; i < num_elements ; i++)
+    for (int i = 0 ; i < num_elements ; i++)
     {
         int pt_start = pts_per_element * elements_so_far;
         for (int ii = 0 ; ii < iBlockSize[0]-1 ; ii++)
@@ -1407,10 +1416,11 @@ avtNek5000FileFormat::GetMesh(int /* timestate */, int domain, const char * /*me
     // Save the block size for use in the avtIVPNek5000Field.
     vtkIntArray *sem = vtkIntArray::New();
     sem->SetNumberOfComponents( 1 );
-    sem->SetNumberOfTuples(3);
+    sem->SetNumberOfTuples(4);
     sem->SetTuple1(0, iBlockSize[0]);
     sem->SetTuple1(1, iBlockSize[1]);
     sem->SetTuple1(2, iBlockSize[2]);
+    sem->SetTuple1(3, iNumBlocks);
     sem->SetName("Nek_SpectralElementData");
     ugrid->GetFieldData()->AddArray(sem);
     sem->Delete();
@@ -2421,10 +2431,10 @@ avtNek5000FileFormat::UpdateCyclesAndTimes()
 
 void
 avtNek5000FileFormat::GetDomainSizeAndVarOffset(int iTimestep, const char *var, 
-                                              int &outDomSizeInFloats, 
-                                              int &outVarOffsetBinary,
-                                              int &outVarOffsetAscii,
-                                              int &outTimestepHasMesh )
+                                                int &outDomSizeInFloats, 
+                                                int &outVarOffsetBinary,
+                                                int &outVarOffsetAscii,
+                                                int &outTimestepHasMesh )
 {
     outTimestepHasMesh = 0;
 
@@ -2619,9 +2629,12 @@ avtNek5000FileFormat::FindAsciiDataStart(FILE *fd, int &outDataStart, int &outLi
 // ****************************************************************************
 
 void *
-avtNek5000FileFormat::GetAuxiliaryData(const char *var, int timestep,
-                                     int  /*domain*/, const char *type, void *,
-                                     DestructorFunction &df)
+avtNek5000FileFormat::GetAuxiliaryData(const char *var,
+                                       int timestep,
+                                       int  /*domain*/,
+                                       const char *type,
+                                       void *,
+                                       DestructorFunction &df)
 {
     if (numberOfTimePeriods > 1)
     {
@@ -2731,7 +2744,9 @@ avtIntervalTree *
 avtNek5000FileFormat::GetBoundingBoxIntervalTree(int timestep)
 {
     int t1 = visitTimer->StartTimer();
-    map<int,avtIntervalTree*>::const_iterator fit = boundingBoxes.find(timestep);
+    map<int,avtIntervalTree*>::const_iterator fit =
+      boundingBoxes.find(timestep);
+
     if (fit != boundingBoxes.end())
         return fit->second;
 
@@ -3446,5 +3461,3 @@ avtNek5000FileFormat::ActivateTimestep(int ts)
     else
         timestepToUseForMesh = 0;
 }
-
-

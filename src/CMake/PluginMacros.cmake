@@ -45,6 +45,9 @@
 #   which sets runtime output directory, which works with all versions of
 #   Visual Studio, while the target prefix version didn't work with 2010.
 #
+#   Kathleen Biagas, Wed Jan 8 16:05:27 PST 2014
+#   Fix non-msvc-ide filename path. Patch provided by John Cary.
+#
 #****************************************************************************/
 
 
@@ -60,7 +63,7 @@ MACRO(VISIT_INSTALL_PLUGINS type)
                 PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
                             GROUP_READ GROUP_WRITE GROUP_EXECUTE 
                             WORLD_READ             WORLD_EXECUTE
-                CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+                CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
             )
         ELSE(NOT WIN32)
             # ${BUILD_TYPE} refers to the configuration option chosen (Release,
@@ -76,10 +79,10 @@ MACRO(VISIT_INSTALL_PLUGINS type)
                     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
                                 GROUP_READ GROUP_WRITE GROUP_EXECUTE 
                                 WORLD_READ             WORLD_EXECUTE
-                    CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+                    CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
                   )
                 ELSE()  # For no IDE, installed straight into exe
-                  SET(filename "${VISIT_BINARY_DIR}/exe/${target}.dll")
+                  SET(filename "${VISIT_BINARY_DIR}/exe/${type}/${target}.dll")
                   INSTALL(FILES ${filename}
                     DESTINATION ${VISIT_INSTALLED_VERSION_PLUGINS}/${type}
                     COMPONENT RUNTIME

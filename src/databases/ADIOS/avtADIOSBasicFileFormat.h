@@ -72,7 +72,7 @@ class vtkRectilinearGrid;
 class avtADIOSBasicFileFormat : public avtMTMDFileFormat
 {
   public:
-    static bool        Identify(ADIOSFileObject *);
+    static bool        Identify(const char *fname);
     static avtFileFormatInterface *CreateInterface(const char *const *list,
                                                    int nList,
                                                    int nBlock);
@@ -92,9 +92,7 @@ class avtADIOSBasicFileFormat : public avtMTMDFileFormat
     // If you know the times and cycle numbers, overload this function.
     // Otherwise, VisIt will make up some reasonable ones for you.
     //
-    virtual void        GetCycles(std::vector<int> &);
-    // virtual void        GetTimes(std::vector<double> &);
-    //
+        virtual void        GetCycles(std::vector<int> &);
 
     virtual int            GetNTimesteps(void);
 

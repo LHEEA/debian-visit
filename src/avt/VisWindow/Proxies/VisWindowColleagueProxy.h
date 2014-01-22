@@ -267,14 +267,14 @@ class VISWINDOW_API VisWindowColleagueProxy : public VisWindowProtectionProxy
 
     void                RecalculateRenderOrder()
                                   { ProxiedRecalculateRenderOrder(); };
-    double               GetMaxPlotZShift()
+    double              GetMaxPlotZShift()
                                   { return ProxiedGetMaxPlotZShift(); };
 
-    bool                 IsMakingExternalRenderRequests(void) const
+    bool                IsMakingExternalRenderRequests(void) const
                              { return ProxiedIsMakingExternalRenderRequests(); };
-    double               GetAverageExternalRenderingTime(void) const
+    double              GetAverageExternalRenderingTime(void) const
                              { return ProxiedGetAverageExternalRenderingTime(); };
-    void                 DoNextExternalRenderAsVisualQueue(int w, int h, const double *c)
+    void                DoNextExternalRenderAsVisualQueue(int w, int h, const double *c)
                              { ProxiedDoNextExternalRenderAsVisualQueue(w,h,c); };
 
 };

@@ -360,6 +360,13 @@
 #    Fix exported VTK targets for VTK-6. Fix VTK-6 include dirs 
 #    for make install / package.
 #
+#    Kathleen Biagas, Wed Nov  6 17:42:32 PST 2013
+#    Remove setting of CMAKE_Java_xxx, rely instead on the Java_xxx vars
+#    set by FindJava.cmake
+#
+#    Kathleen Biagas, Tue Nov 26 10:14:29 PST 2013
+#    Only add osxfixup dir if on APPLE.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
@@ -712,6 +719,9 @@ VISIT_3RDPARTY_DEP(XDMF_LIBDEP   "Xdmf library dependencies")
 VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include and lib")
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
 VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
+VISIT_3RDPARTY_VAR(UINTAH_DIR   "Path containing the Uintah library's include and lib")
+VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include and lib")
+VISIT_3RDPARTY_VAR(GFORTRAN_DIR  "Path containing the GFortran library's include and lib")
 
 #-----------------------------------------------------------------------------
 # Read the version
@@ -829,7 +839,7 @@ MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
                     PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                                 GROUP_READ GROUP_WRITE GROUP_EXECUTE
                                 WORLD_READ             WORLD_EXECUTE
-                    CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+                    CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
                 )
             ENDIF(NOT ${pType} STREQUAL "STATIC_LIBRARY")
         ENDFOREACH(T)
@@ -842,7 +852,7 @@ MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                         GROUP_READ GROUP_WRITE GROUP_EXECUTE
                         WORLD_READ             WORLD_EXECUTE
-            CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+            CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
         )
     ENDIF(VISIT_STATIC)
 ENDMACRO(VISIT_INSTALL_TARGETS_RELATIVE)
@@ -863,7 +873,7 @@ ELSE(VISIT_HEADERS_SKIP_INSTALL)
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                               GROUP_READ GROUP_WRITE GROUP_EXECUTE
                               WORLD_READ             WORLD_EXECUTE
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
         FILES_MATCHING PATTERN "*.h"
         PATTERN "*.hpp"
         PATTERN ".svn" EXCLUDE
@@ -932,11 +942,8 @@ ENDIF((VISIT_PYTHON_SCRIPTING OR VISIT_PYTHON_FILTERS) AND NOT VISIT_DBIO_ONLY)
 
 IF(VISIT_JAVA)
     INCLUDE(${CMAKE_ROOT}/Modules/FindJava.cmake)
-
     ENABLE_LANGUAGE(Java)
-    SET(CMAKE_Java_COMPILER ${JAVA_COMPILE})
-    SET(CMAKE_Java_FLAGS -source 1.4)
-    SET(CMAKE_Java_ARCHIVE ${JAVA_ARCHIVE})
+    SET(VISIT_Java_FLAGS -source 1.4)
 ENDIF(VISIT_JAVA)
 
 CHECK_INCLUDE_FILES (fcntl.h     HAVE_FCNTL_H)
@@ -1251,6 +1258,18 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
     IF(MDSPLUS_FOUND)
         SET(HAVE_LIBMDSPLUS 1)
     ENDIF(MDSPLUS_FOUND)
+
+    # Configure Uintah support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindUintah.cmake)
+    IF(UINTAH_FOUND)
+        SET(HAVE_LIBUINTAH 1)
+    ENDIF(UINTAH_FOUND)
+
+    # Configure GFortran support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindGFortran.cmake)
+    IF(GFORTRAN_FOUND)
+        SET(HAVE_LIBGFORTRAN 1)
+    ENDIF(GFORTRAN_FOUND)
 ENDIF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
 
 # Configure Manta support.
@@ -1472,12 +1491,16 @@ FUNCTION(ADD_TARGET_DEFINITIONS target newDefs)
     # if there truly are current definitions, and more than 1 in the list, then
     # IF(${currentDefs} MATCHES NOTFOUND) causes a configure failure.
     # Grab the first item in the list for comparison instead.
-    LIST(GET currentDefs 0 firstItem )
-    IF(${firstItem} MATCHES NOTFOUND)
+    if (currentDefs)
+        LIST(GET currentDefs 0 firstItem )
+        IF(${firstItem} MATCHES NOTFOUND)
+            SET(allDefs ${newDefs})
+        ELSE(${firstItem} MATCHES NOTFOUND)
+            SET(allDefs ${currentDefs} ${newDefs})
+        ENDIF(${firstItem} MATCHES NOTFOUND)
+    else()
         SET(allDefs ${newDefs})
-    ELSE(${firstItem} MATCHES NOTFOUND)
-        SET(allDefs ${currentDefs} ${newDefs})
-    ENDIF(${firstItem} MATCHES NOTFOUND)
+    endif()
     SET_TARGET_PROPERTIES(${target} PROPERTIES
             COMPILE_DEFINITIONS "${allDefs}"
         )
@@ -2114,7 +2137,7 @@ IF(VISIT_MPICH_INSTALL)
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                               GROUP_READ GROUP_WRITE GROUP_EXECUTE
                               WORLD_READ             WORLD_EXECUTE
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
     )
     INSTALL(DIRECTORY ${VISIT_MPICH_DIR}/bin
         DESTINATION ${VISIT_INSTALLED_VERSION}
@@ -2124,7 +2147,7 @@ IF(VISIT_MPICH_INSTALL)
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                               GROUP_READ GROUP_WRITE GROUP_EXECUTE
                               WORLD_READ             WORLD_EXECUTE
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
     )
     INSTALL(DIRECTORY ${VISIT_MPICH_DIR}/lib
         DESTINATION ${VISIT_INSTALLED_VERSION}
@@ -2134,7 +2157,7 @@ IF(VISIT_MPICH_INSTALL)
         DIRECTORY_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
                               GROUP_READ GROUP_WRITE GROUP_EXECUTE
                               WORLD_READ             WORLD_EXECUTE
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
     )
 ENDIF(VISIT_MPICH_INSTALL)
 
@@ -2427,7 +2450,7 @@ INSTALL(FILES ${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake
         PERMISSIONS OWNER_READ OWNER_WRITE
                     GROUP_READ GROUP_WRITE
                     WORLD_READ
-        CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+        CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
 )
 
 #-----------------------------------------------------------------------------
@@ -2527,7 +2550,9 @@ ENDIF (NOT WIN32)
 #ADD_DEPENDENCIES(osxfixup install)
 
 #todo: replace add_subdirectory with the lines above
-ADD_SUBDIRECTORY(osxfixup)
+IF(APPLE)
+    ADD_SUBDIRECTORY(osxfixup)
+ENDIF(APPLE)
 
 IF (NOT WIN32)
     MESSAGE(STATUS "\n\nUse recmake_visit.sh or search for `CMAKE_INVOKE' in CMakeCache.txt to re-run CMake with the same arguments\n\n")

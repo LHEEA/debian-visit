@@ -889,7 +889,8 @@ avtLCSFilter::GetInitialLocationsFromRectilinearGrid()
 //  Method: avtLCSFilter::NativeMeshSingleCalc
 //
 //  Purpose:
-//      Computes the FTLE after the particles have been advected.
+//      Computes the FTLE and similar values that are neighbor
+//      independent after the particles have been advected.
 //
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
@@ -936,8 +937,9 @@ void avtLCSFilter::NativeMeshSingleCalc(std::vector<avtIntegralCurve*> &ics)
 //  Method: avtLCSFilter::MultiBlockSingleCalc
 //
 //  Purpose:
-//      Computes the FTLE for the whole data set, using the final
-//      particle locations, at the blocks native mesh resolution.
+//      Computes the FTLE and similar values that are neighbor
+//      independent for the whole data set, using the final particle
+//      locations, at the blocks native mesh resolution.
 //
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
@@ -1000,19 +1002,20 @@ avtLCSFilter::MultiBlockSingleCalc( avtDataTree_p inDT,
 //  Method: avtLCSFilter::SingleBlockSingleCalc
 //
 //  Purpose:
-//      Computes the FTLE for a single block of a data set, using the 
-//      final particle locations, at the blocks native mesh resolution.
+//      Computes the FTLE and similar values that are neighbor
+//      independent for a single block of a data set, using the final
+//      particle locations, at the blocks native mesh resolution.
 //
 //  Arguments:
-//      in_ds   The block to calculate the FTLE on
+//      in_ds   The block to calculate the value on
 //      ics     The list of particles for all blocks on this MPI task.
 //      domain  The domain number of in_ds
-//      minv    The minimum FTLE value (output)
-//      maxv    The maximum FTLE value (output)
+//      minv    The minimum value (output)
+//      maxv    The maximum value (output)
 //
-//  Returns:    The new version of in_ds that includes the FTLE scalar
-//              variable.  The calling function is responsible for dereferencing
-//              this VTK object.
+//  Returns:    The new version of in_ds that includes the scalar
+//              variable.  The calling function is responsible for
+//              dereferencing this VTK object.
 //
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
@@ -1080,7 +1083,6 @@ avtLCSFilter::SingleBlockSingleCalc( vtkDataSet *in_ds,
             remapPoints[i] = seedPoints.at(offset + i);
     }
 
-#if 1
     for(int i = 0; i < ics.size(); ++i)
     {
         size_t index = ics[i]->id;
@@ -1100,7 +1102,7 @@ avtLCSFilter::SingleBlockSingleCalc( vtkDataSet *in_ds,
             remapPoints.at(l) =
               avtVector( ((avtLCSIC*)ics[i])->GetTime(),
                          ((avtLCSIC*)ics[i])->GetDistance(),
-                         ((avtLCSIC*)ics[i])->GetSummation() /
+                         ((avtLCSIC*)ics[i])->GetSummation0() /
                          (double) ((avtLCSIC*)ics[i])->GetNumSteps() );
           }
         }
@@ -1152,7 +1154,7 @@ avtLCSFilter::SingleBlockSingleCalc( vtkDataSet *in_ds,
         component->SetTuple1(i, std::numeric_limits<float>::epsilon());
 
       //now have the jacobian - 3 arrays with 3 components.
-      ComputeFTLE(jacobian, component);
+      ComputeEigenValueLyapunovExponent(jacobian, component);
 
       jacobian[0]->Delete();
       jacobian[1]->Delete();
@@ -1173,44 +1175,6 @@ avtLCSFilter::SingleBlockSingleCalc( vtkDataSet *in_ds,
     }
 
     component->Delete();
-#else
-    // This code shows the distance a particle traveled ... very
-    // useful for debugging.
-    vtkFloatArray *arr = vtkFloatArray::New();
-    arr->SetNumberOfTuples(nTuples);
-
-    for (int i = 0; i < nTuples; i++)
-        arr->SetTuple1(i, -1);
-
-    for(int i = 0; i < ics.size(); ++i)
-    {
-        size_t index = ics[i]->id;
-        int l = (index-offset);
-        if(0 <= l && l < nTuples)
-        {
-          avtVector diff = (((avtLCSIC*)ics[i])->GetEndPoint()[0] -
-                            ((avtLCSIC*)ics[i])->GetStartPoint()[0]);
-
-            arr->SetTuple1(l, diff );
-        }
-    }
-
-    for(int i = 0; i < nTuples; ++i)
-    {
-        minv = std::min(arr->GetTuple1(i), minv);
-        maxv = std::max(arr->GetTuple1(i), maxv);
-    }
-
-    arr->SetName(var.c_str());
-
-    out_grid->GetPointData()->AddArray(arr);
-    arr->Delete();
-    out_grid->GetPointData()->SetActiveScalars(var.c_str());
-
-    //done with offset, increment it for the next call to this
-    //function.
-    offset += nTuples;
-#endif
 
     //Store this dataset in Cache for next time.
     std::string str = CreateCacheString();
@@ -1228,7 +1192,8 @@ avtLCSFilter::SingleBlockSingleCalc( vtkDataSet *in_ds,
 //  Method: avtLCSFilter::RectilinearGridSingleCalc
 //
 //  Purpose:
-//      Computes the FTLE on a rectilinear grid.
+//      Computes the FTLE and similar values that are neighbor
+//      independent on a rectilinear grid.
 //
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
@@ -1241,6 +1206,10 @@ avtLCSFilter::SingleBlockSingleCalc( vtkDataSet *in_ds,
 void
 avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 {
+    int    maxSteps = std::numeric_limits<int>::min();
+    double maxTime = std::numeric_limits<double>::min();
+    double maxLength = std::numeric_limits<double>::min();
+
     //variable name.
     std::string var = std::string("operators/LCS/") + outVarName;
 
@@ -1252,17 +1221,18 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
     //original list of seeds.
     intVector indices(ics.size());
     doubleVector points(ics.size()*3);
+    doubleVector times(ics.size());
+    doubleVector lengths(ics.size());
 
     for(size_t i=0, j=0; i<ics.size(); ++i, j+=3)
     {
         indices[i] = ics[i]->id;
+        times[i] = ((avtLCSIC*)ics[i])->GetTime();
+        lengths[i] = ((avtLCSIC*)ics[i])->GetArcLength();
 
-        // avtVector distance = ( ((avtLCSIC*)ics[i])->GetEndPoint() -
-        //                        ((avtLCSIC*)ics[i])->GetStartPoint() );
-
-        // if(distance.length() > 0)
-        //    std::cout << "distance: " << indices[i]
-        //           << " " << distance.length() << std::endl;
+        maxSteps  = std::max( ((avtLCSIC*)ics[i])->GetNumSteps(), maxSteps);
+        maxTime   = std::max( ((avtLCSIC*)ics[i])->GetTime(), maxTime);
+        maxLength = std::max( ((avtLCSIC*)ics[i])->GetArcLength(), maxLength);
 
         if( atts.GetOperationType() == LCSAttributes::Lyapunov )
         {
@@ -1278,11 +1248,16 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
         else
         {
           points[j+0] = ((avtLCSIC*)ics[i])->GetTime();
-          points[j+1] = ((avtLCSIC*)ics[i])->GetDistance();
-          points[j+2] = ((avtLCSIC*)ics[i])->GetSummation() /
+          points[j+1] = ((avtLCSIC*)ics[i])->GetArcLength();
+          points[j+2] = ((avtLCSIC*)ics[i])->GetSummation0() /
             (double) ((avtLCSIC*)ics[i])->GetNumSteps();
         }
     }
+
+    // std::cerr << "Max steps " << maxSteps
+    //           << "  max time " << maxTime
+    //           << "  max arc length " << maxLength
+    //           << std::endl;
 
     // std::cout << PAR_Rank() << " total integral pts: "
     //        << ics.size() << std::endl;
@@ -1290,6 +1265,13 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 
     int* all_indices = 0;
     int* index_counts = 0;
+
+    double* all_times = 0;
+    int *time_counts = 0;
+
+    double* all_lengths = 0;
+    int *length_counts = 0;
+
     double* all_points = 0;
     int *point_counts = 0;
 
@@ -1297,6 +1279,12 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 
     CollectIntArraysOnRootProc(all_indices, index_counts,
                                &indices.front(), indices.size());
+
+    CollectDoubleArraysOnRootProc(all_times, time_counts,
+                                  &times.front(), times.size());
+
+    CollectDoubleArraysOnRootProc(all_lengths, time_counts,
+                                  &lengths.front(), lengths.size());
 
     CollectDoubleArraysOnRootProc(all_points, point_counts,
                                   &points.front(), points.size());
@@ -1368,9 +1356,7 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
         //         << global_resolution[1] << " "
         //         << global_resolution[2] << std::endl;
 
-        vtkDataArray* jacobian[3];
         vtkFloatArray *component = vtkFloatArray::New();
-
         component->SetName(var.c_str());
         component->SetNumberOfTuples(leafSize);
 
@@ -1378,6 +1364,8 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
         rect_grid->GetPointData()->SetActiveScalars(var.c_str());
 
         //calculate jacobian in parts (x,y,z).
+        std::vector<double> remapTimes(leafSize);
+        std::vector<double> remapLengths(leafSize);
         std::vector<avtVector> remapPoints(leafSize);
 
         //update remapPoints with new value bounds from integral curves.
@@ -1408,7 +1396,9 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 
             // std::cout << index << " before " << remapPoints[index]
             //        << std::endl;
-            
+
+            remapTimes[index] = all_times[j];
+            remapLengths[index] = all_lengths[j];
             remapPoints[index].set( all_points[k+0],
                                     all_points[k+1],
                                     all_points[k+2]);
@@ -1425,10 +1415,12 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 
         if( atts.GetOperationType() == LCSAttributes::Lyapunov )
         {
+          vtkDataArray* jacobian[3];
+
           for(int i = 0; i < 3; ++i)
           {
-            for(size_t j = 0; j < leafSize; ++j)
-                component->SetTuple1(j, remapPoints[j][i]);
+            for (size_t l = 0; l < leafSize; l++)
+                component->SetTuple1(l, remapPoints[l][i]);
 
             jacobian[i] =
               avtGradientExpression::CalculateGradient(rect_grid, var.c_str());
@@ -1437,20 +1429,59 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
           for (size_t l = 0; l < leafSize; l++)
             component->SetTuple1(l, std::numeric_limits<float>::epsilon());
 
-          ComputeFTLE(jacobian, component);
+          ComputeEigenValueLyapunovExponent(jacobian, component);
 
           jacobian[0]->Delete();
           jacobian[1]->Delete();
           jacobian[2]->Delete();
         }
-        else
+        else if( atts.GetOperatorType() == LCSAttributes::BaseValue )
         {
           int index = atts.GetOperationType() - 1;
-
-          for(size_t j = 0; j < leafSize; ++j)
-            component->SetTuple1(j, remapPoints[j][index]);
+          
+          for (size_t l = 0; l < leafSize; l++)
+            component->SetTuple1(l, remapPoints[l][index]);
         }
 
+        else if( atts.GetOperatorType() == LCSAttributes::Gradient )
+        {
+          int index = atts.GetOperationType() - 1;
+          
+          // The base value is used to clamp the log values to be only
+          // positive or both positive and negative.
+          double baseValue;
+
+          if (atts.GetClampLogValues() == true )
+            baseValue = 1.0;
+          else
+            baseValue = std::numeric_limits<double>::epsilon();
+
+          for (size_t l = 0; l < leafSize; l++)
+            component->SetTuple1(l, remapPoints[l][index]);
+
+          vtkDataArray* gradient =
+            avtGradientExpression::CalculateGradient(rect_grid, var.c_str());
+
+          for (size_t l = 0; l < leafSize; l++)
+          {
+            double *grad = gradient->GetTuple3(l);
+
+            double lambda = baseValue;
+            lambda = std::max( lambda, grad[0]*grad[0] );
+            lambda = std::max( lambda, grad[1]*grad[1] );
+            lambda = std::max( lambda, grad[2]*grad[2] );
+            lambda = log( sqrtf( lambda ) );
+
+            if( doTime )
+              lambda /= maxTime;
+            else if( doDistance )
+              lambda /= maxDistance;
+
+            component->SetTuple1(l, lambda);
+          }
+
+          gradient->Delete();
+        }
 
         //min and max values over all datasets of the tree.
         double minv = std::numeric_limits<double>::max();
@@ -1467,6 +1498,13 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 
         if (all_indices)  delete [] all_indices;
         if (index_counts) delete [] index_counts;
+
+        if (all_times)  delete [] all_times;
+        if (time_counts) delete [] time_counts;
+
+        if (all_lengths)  delete [] all_lengths;
+        if (length_counts) delete [] length_counts;
+
         if (all_points)   delete [] all_points;
         if (point_counts) delete [] point_counts;
 
@@ -1507,13 +1545,13 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 
 
 // ****************************************************************************
-//  Method: avtLCSFilter::ComputeFTLE
+//  Method: avtLCSFilter::ComputeEigenValueLyapunovExponent
 //
 //  Purpose:
-//      Computes the FTLE given a Jacobian. Which is the following:
-//      log of the square root of the maximum eigen vector of the
-//      jacobian * jacobian transposed with the result divided 
-//      by the time or distance.
+//      Computes the FTLE or FLLE given a Jacobian. Which is the
+//      following: log of the square root of the maximum eigen value
+//      of the right Caughy-Green Tensor with the result divided by
+//      the time or distance.
 //
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
@@ -1526,9 +1564,27 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 //
 // ****************************************************************************
 
-void avtLCSFilter::ComputeFTLE(vtkDataArray *jacobian[3], vtkDataArray *result)
+void avtLCSFilter::ComputeEigenValueLyapunovExponent(vtkDataArray *jacobian[3],
+                                                     vtkDataArray *result)
 {
+    bool takeLog = doTime || doDistance;
+
     size_t nTuples = result->GetNumberOfTuples();
+
+    // The base value is used to clamp the log values to be only
+    // positive or both positive and negative.
+    double baseValue, denominator = 1.0;;
+
+    // Clamp only if taking the log.
+    if (takeLog && atts.GetClampLogValues() == true )
+      baseValue = 1.0;
+    else
+      baseValue = std::numeric_limits<double>::epsilon();
+
+    if( doTime )
+      denominator /= maxTime;
+    else if( doDistance )
+      denominator /= maxDistance;
 
     for(size_t l = 0; l < nTuples; ++l)
     {
@@ -1542,8 +1598,6 @@ void avtLCSFilter::ComputeFTLE(vtkDataArray *jacobian[3], vtkDataArray *result)
         avtVector dy(j0[1],j1[1],j2[1]);
         //x,y,z components compute front,back
         avtVector dz(j0[2],j1[2],j2[2]);
-
-        // std::cout << dx << " " << dy << " " << dz << std::endl;
 
         // Compute the 
         //J*J^T
@@ -1590,21 +1644,18 @@ void avtLCSFilter::ComputeFTLE(vtkDataArray *jacobian[3], vtkDataArray *result)
         sinphi = sinf(phi);
         cosphi = cosf(phi);
 
-        double lambda = 1.0f;
+        double lambda = baseValue;
         lambda = std::max( lambda, x + 2.0f*sqrtr*cosphi );
         lambda = std::max( lambda, x - sqrtr*(cosphi + sqrt3*sinphi) );
         lambda = std::max( lambda, x - sqrtr*(cosphi - sqrt3*sinphi) );
 
-        // lambda = log( sqrtf( lambda ) ) + 0.000000001;
-        // std::cout << "s: " << lambda << std::endl;
-        lambda = log( sqrtf( lambda ) );
+        lambda = sqrtf( lambda );
 
-        if( doTime )
-          lambda /= maxTime;
-        else if( doDistance )
-          lambda /= maxDistance;
+        if( takeLog )
+          lambda = log( lambda );
 
-        // std::cout << "lambda :" << lambda << std::endl;
+        lambda *= denominator;
+
         result->SetTuple1(l, lambda);
     }
 }
@@ -1646,121 +1697,11 @@ avtLCSFilter::CreateIterativeCalcDataTree(avtDataTree_p inDT)
         // there is only one dataset to process
         //
         vtkDataSet *in_ds = inDT->GetDataRepresentation().GetDataVTK();
-        vtkDataSet *out_ds;
 
         //create new instance from old.
-        // vtkDataSet* out_ds = in_ds->NewInstance();
-        // out_ds->ShallowCopy(in_ds);
-        // int nTuples = in_ds->GetNumberOfPoints();
-
-        int dims[3];
-        int nTuples;
-
-        if (in_ds->GetDataObjectType() == VTK_UNIFORM_GRID)
-        {
-          ((vtkUniformGrid*)in_ds)->GetDimensions(dims);
-
-          nTuples = dims[0] * dims[1] * dims[2];
-
-          //now create a rectilinear grid.
-        
-          // The grid is stored so not to be created as each curve is
-          // extended.
-          vtkUniformGrid *out_ug = vtkUniformGrid::New();
-          out_ug->SetDimensions(dims);
-          out_ug->SetExtent( 0, dims[0]-1, 0, dims[1]-1, 0, dims[2]-1 );
-
-          out_ds = out_ug;
-        }
-        
-        else if (in_ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
-        {
-          ((vtkRectilinearGrid*)in_ds)->GetDimensions(dims);
-
-          nTuples = dims[0] * dims[1] * dims[2];
-
-          //now create a rectilinear grid.
-        
-          // The grid is stored so not to be created as each curve is
-          // extended.
-          vtkRectilinearGrid *out_rg = vtkRectilinearGrid::New();
-          out_rg->SetDimensions(dims);
-        
-          vtkFloatArray* lxcoord = vtkFloatArray::New();
-          vtkFloatArray* lycoord = vtkFloatArray::New();
-          vtkFloatArray* lzcoord = vtkFloatArray::New();
-        
-          //Note this grid is a uniform gird which allows the
-          //avtGradientExpression to be used to get the distances
-          //between integral curves.
-          lxcoord->SetNumberOfTuples(dims[0]);
-          for (int i = 0; i < dims[0]; i++)
-            lxcoord->SetTuple1(i, i);
-      
-          lycoord->SetNumberOfTuples(dims[1]);
-          for (int j = 0; j < dims[1]; j++)
-            lycoord->SetTuple1(j, j);
-      
-          lzcoord->SetNumberOfTuples(dims[2]);
-          for (int k = 0; k < dims[2]; k++)
-            lzcoord->SetTuple1(k, k);
-      
-          out_rg->SetXCoordinates(lxcoord);
-          out_rg->SetYCoordinates(lycoord);
-          out_rg->SetZCoordinates(lzcoord);
-        
-          //cleanup
-          lxcoord->Delete();
-          lycoord->Delete();
-          lzcoord->Delete();
-
-          out_ds = out_rg;
-        }
-        else if (in_ds->GetDataObjectType() == VTK_STRUCTURED_GRID)
-        {
-          ((vtkStructuredGrid*)in_ds)->GetDimensions(dims);
-
-          nTuples = dims[0] * dims[1] * dims[2];
-
-          //now create a structured grid.
-        
-          // The grid is stored so not to be created as each curve is
-          // extended.
-          vtkStructuredGrid *out_sg = vtkStructuredGrid::New();
-          out_sg->SetDimensions(dims);
-
-          vtkPoints* points = vtkPoints::New();
-
-          points->SetNumberOfPoints( nTuples );
-
-          size_t l = 0;
-
-          for (int k = 0; k < dims[2]; k++)
-          {
-            for (int j = 0; j < dims[1]; j++)
-            {
-              for (int i = 0; i < dims[0]; i++)
-              {
-                points->SetPoint(l, i, j, k );
-              }
-            }
-          }
-
-          out_sg->SetPoints( points );
-
-          //cleanup
-          points->Delete();
-
-          out_ds = out_sg;
-        }
-        else
-        {
-          EXCEPTION1(VisItException,
-                     "Can only compute FSLE on structure meshs "
-                     "(uniform, rectilinear, or structured grids). "
-                     "The native mesh is not a structure mesh. "
-                     "Please use a 'Source type' of 'Regular grid' instead.");
-        }
+        vtkDataSet* out_ds = in_ds->NewInstance();
+        out_ds->ShallowCopy(in_ds);
+        int nTuples = in_ds->GetNumberOfPoints();
 
         // Create storage for the components that need to be used
         // for calculating the exponent. All arrays but the exponent
@@ -1774,6 +1715,9 @@ avtLCSFilter::CreateIterativeCalcDataTree(avtDataTree_p inDT)
         // active scalars.
 //      out_ds->GetPointData()->SetActiveScalars(var.c_str());
 
+        for (size_t i = 0; i < nTuples; i++)
+          exponents->SetTuple1(i, std::numeric_limits<float>::min() );
+
         vtkFloatArray *component = vtkFloatArray::New();
         component->SetName("component");
         component->SetNumberOfTuples(nTuples);
@@ -1785,89 +1729,10 @@ avtLCSFilter::CreateIterativeCalcDataTree(avtDataTree_p inDT)
         times->SetNumberOfTuples(nTuples);
         out_ds->GetPointData()->AddArray(times);
 
-        vtkFloatArray *lengths = vtkFloatArray::New();
-        lengths->SetName("lengths");
-        lengths->SetNumberOfTuples(nTuples);
-        out_ds->GetPointData()->AddArray(lengths);
-
-        // The mask array is a tally to indicate whether a curve
-        // needs to have additional integration. WHen the tally
-        // reachs a count of seven no additional integration is
-        // required. (Sseven == six neighbors and itself).
-        vtkIntArray *mask = vtkIntArray::New();
-        mask->SetName("mask");
-        mask->SetNumberOfTuples(nTuples);
-        out_ds->GetPointData()->AddArray(mask);
-
-        for (size_t l = 0; l < nTuples; l++)
-        {
-          exponents->SetTuple1(l, std::numeric_limits<float>::min());
-          mask->SetTuple1(l, 0 );
-        }
-        
-        // Preincraement the mask as boundary nodes will not be
-        // accessed fully.
-        int k1 = 0;
-        int k_1 = global_resolution[2]-1;
-
-        // Z plane
-        for(int j = 0; j < global_resolution[1]; ++j)
-        {
-          for(int i = 0; i < global_resolution[0]; ++i)
-          {
-            Increment( i, j, k1,  mask,
-                       global_resolution[0],
-                       global_resolution[1],
-                       global_resolution[2] );
-            Increment( i, j, k_1, mask,
-                       global_resolution[0],
-                       global_resolution[1],
-                       global_resolution[2] );
-          }
-        }
-          
-        int j1 = 0;
-        int j_1 = global_resolution[1]-1;
-          
-        for(int k = 0; k < global_resolution[2]; ++k)
-        {
-          for(int i = 0; i < global_resolution[0]; ++i)
-          {
-            Increment( i, j1,  k, mask,
-                       global_resolution[0],
-                       global_resolution[1],
-                       global_resolution[2] );
-            Increment( i, j_1, k, mask,
-                       global_resolution[0],
-                       global_resolution[1],
-                       global_resolution[2] );
-          }
-        }
-
-        int i1 = 0;
-        int i_1 = global_resolution[0]-1;
-          
-        for(int k = 0; k < global_resolution[2]; ++k)
-        {
-          for(int j = 0; j < global_resolution[1]; ++j)
-          {
-            Increment( i1, j,  k, mask,
-                       global_resolution[0],
-                       global_resolution[1],
-                       global_resolution[2] );
-            Increment( i_1, j, k, mask,
-                       global_resolution[0],
-                       global_resolution[1],
-                       global_resolution[2] );
-          }
-        }
-          
         //cleanup
         exponents->Delete();
         component->Delete();
         times->Delete();
-        lengths->Delete();
-        mask->Delete();
         
         int dom = inDT->GetDataRepresentation().GetDomain();
         std::string label = inDT->GetDataRepresentation().GetLabel();
@@ -1926,26 +1791,38 @@ avtLCSFilter::CreateIterativeCalcDataSet()
   // extended.
   vtkRectilinearGrid* rect_grid = vtkRectilinearGrid::New();
 
-  rect_grid->SetDimensions(global_resolution);
-      
   vtkFloatArray* lxcoord = vtkFloatArray::New();
   vtkFloatArray* lycoord = vtkFloatArray::New();
   vtkFloatArray* lzcoord = vtkFloatArray::New();
 
-  //Note this grid is a uniform gird which allows the
-  //avtGradientExpression to be used to get the distances
-  //between integral curves.
+  rect_grid->SetDimensions(global_resolution);
+      
   lxcoord->SetNumberOfTuples(global_resolution[0]);
   for (int i = 0; i < global_resolution[0]; i++)
-    lxcoord->SetTuple1(i, i);
-      
+  {
+      double pcnt = 0;
+      if (global_resolution[0] > 1)
+        pcnt = ((double)i)/((double)global_resolution[0]-1);
+      lxcoord->SetTuple1(i, global_bounds[0]*(1.0-pcnt) + global_bounds[1]*pcnt);
+  }
+
   lycoord->SetNumberOfTuples(global_resolution[1]);
   for (int i = 0; i < global_resolution[1]; i++)
-    lycoord->SetTuple1(i, i);
-      
+  {
+      double pcnt = 0;
+      if (global_resolution[1] > 1)
+        pcnt = ((double)i)/((double)global_resolution[1]-1);
+      lycoord->SetTuple1(i, global_bounds[2]*(1.0-pcnt) + global_bounds[3]*pcnt);
+  }
+
   lzcoord->SetNumberOfTuples(global_resolution[2]);
   for (int i = 0; i < global_resolution[2]; i++)
-    lzcoord->SetTuple1(i, i);
+  {
+      double pcnt = 0;
+      if (global_resolution[2] > 1)
+        pcnt = ((double)i)/((double)global_resolution[2]-1);
+      lzcoord->SetTuple1(i, global_bounds[4]*(1.0-pcnt) + global_bounds[5]*pcnt);
+  }
       
   rect_grid->SetXCoordinates(lxcoord);
   rect_grid->SetYCoordinates(lycoord);
@@ -1973,6 +1850,9 @@ avtLCSFilter::CreateIterativeCalcDataSet()
   // active scalars.
   // rect_grid->GetPointData()->SetActiveScalars(var.c_str());
 
+  for (size_t i = 0; i < nTuples; i++)
+    exponents->SetTuple1(i, std::numeric_limits<float>::min() );
+
   vtkFloatArray *component = vtkFloatArray::New();
   component->SetName("component");
   component->SetNumberOfTuples(nTuples);
@@ -1984,89 +1864,10 @@ avtLCSFilter::CreateIterativeCalcDataSet()
   times->SetNumberOfTuples(nTuples);
   rect_grid->GetPointData()->AddArray(times);
 
-  vtkFloatArray *lengths = vtkFloatArray::New();
-  lengths->SetName("lengths");
-  lengths->SetNumberOfTuples(nTuples);
-  rect_grid->GetPointData()->AddArray(lengths);
-
-  // The mask array is a tally to indicate whether a curve
-  // needs to have additional integration. WHen the tally
-  // reachs a count of seven no additional integration is
-  // required. (Sseven == six neighbors and itself).
-  vtkIntArray *mask = vtkIntArray::New();
-  mask->SetName("mask");
-  mask->SetNumberOfTuples(nTuples);
-  rect_grid->GetPointData()->AddArray(mask);
-
-  for (size_t l=0; l<nTuples; l++)
-  {
-    exponents->SetTuple1(l, std::numeric_limits<float>::min());
-    mask->SetTuple1(l, 0 );
-  }
-          
-  // Preincraement the mask as boundary nodes will not be accessed
-  // fully.
-  int k1 = 0;
-  int k_1 = global_resolution[2]-1;
-  
-  // Z plane
-  for(int j = 0; j < global_resolution[1]; ++j)
-  {
-    for(int i = 0; i < global_resolution[0]; ++i)
-    {
-      Increment( i, j, k1,  mask,
-                 global_resolution[0],
-                 global_resolution[1],
-                 global_resolution[2] );
-      Increment( i, j, k_1, mask,
-                 global_resolution[0],
-                 global_resolution[1],
-                 global_resolution[2] );
-    }
-  }
-  
-  int j1 = 0;
-  int j_1 = global_resolution[1]-1;
-  
-  for(int k = 0; k < global_resolution[2]; ++k)
-   {
-     for(int i = 0; i < global_resolution[0]; ++i)
-     {
-       Increment( i, j1,  k, mask,
-                  global_resolution[0],
-                  global_resolution[1],
-                  global_resolution[2] );
-       Increment( i, j_1, k, mask,
-                  global_resolution[0],
-                  global_resolution[1],
-                  global_resolution[2] );
-     }
-   }
-  
-  int i1 = 0;
-  int i_1 = global_resolution[0]-1;
-  
-  for(int k = 0; k < global_resolution[2]; ++k)
-  {
-    for(int j = 0; j < global_resolution[1]; ++j)
-    {
-      Increment( i1, j,  k, mask,
-                 global_resolution[0],
-                 global_resolution[1],
-                 global_resolution[2] );
-      Increment( i_1, j, k, mask,
-                 global_resolution[0],
-                 global_resolution[1],
-                 global_resolution[2] );
-    }
-  }
-  
   //cleanup
   exponents->Delete();
   component->Delete();
   times->Delete();
-  lengths->Delete();
-  mask->Delete();
 
   return rect_grid;
 }
@@ -2076,7 +1877,8 @@ avtLCSFilter::CreateIterativeCalcDataSet()
 //  Method: avtLCSFilter::NativeMeshIterativeCalc
 //
 //  Purpose:
-//      Computes the FSLE on a native resolution grid.
+//      Computes the FSLE and similar values that are neighbor
+//      dependent on a native resolution grid.
 //
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
@@ -2110,8 +1912,9 @@ avtLCSFilter::NativeMeshIterativeCalc(std::vector<avtIntegralCurve*> &ics)
 //  Method: avtLCSFilter::MultiBlockIterativeCalc
 //
 //  Purpose:
-//      Computes the FSLE for the whole data set, using the 
-//      final particle locations, at the blocks native resolution.
+//      Computes the FSLE and similar values that are neighbor
+//      dependent for the whole data set, using the final particle
+//      locations, at the blocks native resolution.
 //
 //  Programmer: Allen Sanderson
 //  Creation:   September 5, 2013
@@ -2166,16 +1969,17 @@ avtLCSFilter::MultiBlockIterativeCalc(avtDataTree_p outDT,
 //  Method: avtLCSFilter::SingleBlockIterativeCalc
 //
 //  Purpose:
-//      Computes the FSLE for a single block of a data set, using the 
-//      final particle locations, at the blocks native resolution.
+//      Computes the FSLE and similar values that are neighbor
+//      dependent for a single block of a data set, using the final
+//      particle locations, at the blocks native resolution.
 //
 //  Arguments:
 //      out_ds  The block to calculate the FSLE on
 //      ics     The list of particles for all blocks on this MPI task.
 //
 //  Returns:    The new version of in_ds that includes the FSLE scalar
-//              variable.  The calling function is responsible for dereferencing
-//              this VTK object.
+//              variable.  The calling function is responsible for
+//              dereferencing this VTK object.
 //
 //  Programmer: Allen Sanderson
 //  Creation:   September 5, 2013
@@ -2227,15 +2031,10 @@ avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
       out_ds->GetPointData()->GetArray("component");
     vtkFloatArray *times = (vtkFloatArray *)
       out_ds->GetPointData()->GetArray("times");
-    vtkFloatArray *lengths = (vtkFloatArray *)
-      out_ds->GetPointData()->GetArray("lengths");
-    vtkIntArray *mask = (vtkIntArray *)
-      out_ds->GetPointData()->GetArray("mask");
-    
-    // Storage for the points, times, and lengths
+
+    // Storage for the points and times
     std::vector<avtVector> remapPoints(nTuples);
     std::vector<double> remapTimes(nTuples);
-    std::vector<double> remapLengths(nTuples);
 
     if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
     {
@@ -2267,13 +2066,11 @@ avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
             {
                 remapPoints[i] = seedPoints.at(offset + i);
                 remapTimes[i] = 0;
-                remapLengths[i] = 0;
             }
             else
             {
                 remapPoints[i] = zero;
                 remapTimes[i] = 0;
-                remapLengths[i] = 0;
             }
     }
     else
@@ -2283,7 +2080,6 @@ avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
         {
             remapPoints[i] = seedPoints.at(offset + i);
             remapTimes[i] = 0;
-            remapLengths[i] = 0;
         }
     }
 
@@ -2306,8 +2102,6 @@ avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
             remapTimes.at(l) = ic->GetTime() - seedTime0;
           else
             remapTimes.at(l) = ic->GetTime();
-
-          remapLengths.at(l) = ic->GetDistance();
         }
     }
 
@@ -2315,6 +2109,7 @@ avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
     //gradients.  since this function only does scalar, break our
     //vectors into scalar components and calculate one at a time.
 
+    // Note the mesh is uniform with all distances being one.
     for(int i = 0; i < 3; ++i)
     {
         for(size_t j = 0; j < nTuples; ++j)
@@ -2334,20 +2129,24 @@ avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
           avtGradientExpression::CalculateGradient(out_ds, var.c_str());
     }
 
-    // Store the times and lengths for the exponent.
+    // Store the times for the exponent.
     for(size_t l = 0; l < nTuples; ++l)
     {
       times->SetTuple1(l, remapTimes[l]);
-      lengths->SetTuple1(l, remapLengths[l]);
     }
 
-    // Compute the FSLE
-    ComputeFSLE(jacobian, times, lengths, exponents, mask,
-                dims[0], dims[1], dims[2]);
+    for (int i = 0; i < nTuples; i++)
+      component->SetTuple1(i, std::numeric_limits<float>::epsilon());
 
+    //now have the jacobian - 3 arrays with 3 components.
+    ComputeEigenValueLyapunovExponent(jacobian, component);
+    
     jacobian[0]->Delete();
     jacobian[1]->Delete();
     jacobian[2]->Delete();
+    
+    // Compute the FSLE
+    ComputeFSLE( component, times, exponents );
 
     bool haveAllExponents = true;
 
@@ -2360,7 +2159,7 @@ avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
       size_t index = ic->id;
       int l = (index-offset);
 
-      if( mask->GetTuple1( l ) < 7 )
+      if( ic->maxSteps < maxSteps )
       {
         ic->maxSteps++;
         ic->status.ClearTerminationMet();
@@ -2384,7 +2183,8 @@ avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
 //  Method: avtLCSFilter::RectilinearGridIterativeCalc
 //
 //  Purpose:
-//      Computes the FSLE on a rectilinear grid.
+//      Computes the FSLE and similar values that are neighbor
+//      dependent on a rectilinear grid.
 //
 //  Programmer: Allen Sanderson
 //  Creation:   September 5, 2013
@@ -2408,7 +2208,6 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
     intVector indices(ics.size());
     doubleVector points(ics.size()*3);
     doubleVector times(ics.size());
-    doubleVector lengths(ics.size());
 
     for(size_t i=0, j=0; i<ics.size(); ++i, j+=3)
     {
@@ -2416,7 +2215,17 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
 
         indices[i] = ic->id;
 
+//        avtVector spoint = ic->GetStartPoint();
+
         avtVector point = ic->GetEndPoint();
+
+//      if( spoint[0] == 79 && spoint[1] == 90 && spoint[2] == 10 )
+        // if( spoint[0] == 76 && spoint[1] == 88 && spoint[2] == 10 )
+        //   std::cerr << i << "   " << ic->id << "   "
+        //          << spoint[0] << "  " << spoint[1] << "  " << spoint[2] << "    "
+
+        //          << point[0] << "  " << point[1] << "  " << point[2] << "  "
+        //          << std::endl;
 
         points[j+0] = point[0];
         points[j+1] = point[1];
@@ -2426,8 +2235,6 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
           times[i] = ic->GetTime() - seedTime0;
         else
           times[i] = ic->GetTime();
-
-        lengths[i] = ic->GetDistance();
 
         // std::cout << PAR_Rank() << " ics: " << indices[i] << " "
         //             << end_point << std::endl;
@@ -2446,9 +2253,6 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
     double* all_times = 0;
     int *time_counts = 0;
 
-    double* all_lengths = 0;
-    int *length_counts = 0;
-
     Barrier();
 
     CollectIntArraysOnRootProc(all_indices, index_counts,
@@ -2459,9 +2263,6 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
 
     CollectDoubleArraysOnRootProc(all_times, time_counts,
                                   &times.front(), times.size());
-
-    CollectDoubleArraysOnRootProc(all_lengths, length_counts,
-                                  &lengths.front(), lengths.size());
 
     Barrier();
 
@@ -2481,25 +2282,18 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
           fsle_ds = CreateIterativeCalcDataSet();
 
         // Get the stored data arrays
-        vtkDataArray* jacobian[3];
-
         vtkFloatArray *exponents = (vtkFloatArray *)
           fsle_ds->GetPointData()->GetArray(var.c_str());
         vtkFloatArray *component = (vtkFloatArray *)
           fsle_ds->GetPointData()->GetArray("component");
         vtkFloatArray *times = (vtkFloatArray *)
           fsle_ds->GetPointData()->GetArray("times");
-        vtkFloatArray *lengths = (vtkFloatArray *)
-          fsle_ds->GetPointData()->GetArray("lengths");
-        vtkIntArray *mask = (vtkIntArray *)
-          fsle_ds->GetPointData()->GetArray("mask");
 
         size_t nTuples = exponents->GetNumberOfTuples();
 
-        // Storage for the points, times, and lengths
+        // Storage for the points and times
         std::vector<avtVector> remapPoints(nTuples);
         std::vector<double> remapTimes(nTuples);
-        std::vector<double> remapLengths(nTuples);
 
         //update remapPoints with new value bounds from integral curves.
         int par_size = PAR_Size();
@@ -2507,8 +2301,7 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
         for(int i = 0; i < par_size; ++i)
         {
             if(index_counts[i]*3 != point_counts[i] ||
-               index_counts[i]   != time_counts[i] ||
-               index_counts[i]   != length_counts[i])
+               index_counts[i]   != time_counts[i])
             {
               EXCEPTION1(VisItException,
                          "Index count does not the result count." );
@@ -2538,7 +2331,6 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
                                     all_points[k+2]);
 
             remapTimes[index] = all_times[j];
-            remapLengths[index] = all_lengths[j];
 
             // std::cout << PAR_Rank() << " " << index << " "
             //        << remapPoints[index] << std::endl;
@@ -2550,10 +2342,16 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
             //        << std::endl;
         }
 
-        //calculate jacobian in parts (x,y,z).  The jacobian really
-        //contains the xyz distance components in parts which when
-        //combined given the distance between the end points
-        //neighboring integral curves.
+        // Store the times for the exponent.
+        for(size_t l=0; l<nTuples; ++l)
+          times->SetTuple1(l, remapTimes[l]);
+
+        //use static function in avtGradientExpression to calculate
+        //gradients.  since this function only does scalar, break our
+        //vectors into scalar components and calculate one at a time.
+
+        vtkDataArray* jacobian[3];
+
         for(int i = 0; i < 3; ++i)
         {
             // Store the point component by component
@@ -2564,44 +2362,43 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
               avtGradientExpression::CalculateGradient(fsle_ds, "component");
         }
 
-        // Store the times and lengths for the exponent.
-        for(size_t l=0; l<nTuples; ++l)
-        {
-          times->SetTuple1(l, remapTimes[l]);
-          lengths->SetTuple1(l, remapLengths[l]);
-        }
+        for (int i = 0; i < nTuples; i++)
+          component->SetTuple1(i, std::numeric_limits<float>::epsilon());
 
-        // Compute the FSLE
-        ComputeFSLE(jacobian, times, lengths, exponents, mask,
-                    global_resolution[0],
-                    global_resolution[1],
-                    global_resolution[2] );
-
+        //now have the jacobian - 3 arrays with 3 components.
+        ComputeEigenValueLyapunovExponent(jacobian, component);
+        
         jacobian[0]->Delete();
         jacobian[1]->Delete();
         jacobian[2]->Delete();
+      
+        // Compute the FSLE
+        ComputeFSLE( component, times, exponents );
 
         bool haveAllExponents = true;
 
         // For each integral curve check it's mask value to see it
         // additional integration is required.
+
         for(size_t i=0; i<ics.size(); ++i)
         {
           avtStreamlineIC * ic = (avtStreamlineIC *) ics[i];
 
-          size_t l = ic->id; // The curve id is the index into the VTK data.
-
-          if( mask->GetTuple1( l ) < 7 )
+          if( ic->maxSteps < maxSteps )
           {
             ic->maxSteps++;
             ic->status.ClearTerminationMet();
           }
+
+          size_t l = ic->id; // The curve id is the index into the VTK data.
 
           // Check to see if all exponents have been found.
           if( exponents->GetTuple1(l) == std::numeric_limits<float>::min() &&
               ic->maxSteps < maxSteps )
             haveAllExponents = false;
         }
+
+//      std::cerr << haveAllExponents << std::endl;
 
         //cleanup.
         if (all_indices)   delete [] all_indices;
@@ -2613,9 +2410,6 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
         if (all_times)    delete [] all_times;
         if (time_counts)  delete [] time_counts;
 
-        if (all_lengths)    delete [] all_lengths;
-        if (length_counts)  delete [] length_counts;
-
         return haveAllExponents;
     }
 }
@@ -2625,7 +2419,7 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
 //  Method: avtLCSFilter::ComputeFSLE
 //
 //  Purpose:
-//      Computes the FSLE given a Jacobian.
+//      Computes the FSLE given the distances.
 //
 //  Programmer: Allen Sanderson
 //  Creation:   September 5, 2013
@@ -2634,126 +2428,57 @@ avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics 
 //
 // ****************************************************************************
 
-void avtLCSFilter::ComputeFSLE(vtkDataArray *jacobian[3],              
+void avtLCSFilter::ComputeFSLE( vtkDataArray *component,
                                 vtkDataArray *times,
-                                vtkDataArray *lengths,
-                                vtkDataArray *exponents,
-                                vtkDataArray *mask,
-                                int x_max, int y_max, int z_max )
+                                vtkDataArray *exponents )
 {
-  //min and max values over all datasets of the tree.
-  // double minv = std::numeric_limits<double>::max();
-  // double maxv = std::numeric_limits<double>::min();
+  size_t nTuples = component->GetNumberOfTuples();
 
-  size_t l = 0;
-
-  for(int k=0, k1=1, k_1=-1; k<z_max; ++k, ++k1, ++k_1)
+  for(size_t l = 0; l < nTuples; ++l)
   {
-    for(int j=0, j1=1, j_1=-1; j<y_max; ++j, ++j1, ++j_1)
+    double lambda = exponents->GetTuple1(l);
+
+    // if( l == 20200 )
+    //   std::cerr << lambda << std::endl;
+
+    // If the exponent was previously set skip checking it.
+    if( lambda == std::numeric_limits<float>::min() )
     {
-      for(int i=0, i1=1, i_1=-1; i<x_max; ++i, ++i1, ++i_1)
+      // if( l == 20200 )
+      //        std::cerr
+      //          << floor( fabs(times->GetTuple1(l)) / maxStepLength + 0.5) << "  "
+      //          << numSteps << std::endl;
+
+      // Check for a curve that has terminated which will not have
+      // taken a step forward or backwards.
+      if( floor( fabs(times->GetTuple1(l)) / maxStepLength + 0.5) != numSteps )
       {
-        double lambda = exponents->GetTuple1(l);
+        // If a curve has terminated set the exponent to zero.
+        lambda = 0;
+        exponents->SetTuple1(l, lambda);
+      }            
 
-        // If the exponent was previously set skip checking it.
-        if( lambda == std::numeric_limits<float>::min() )
+      // Check the distances between neighbors.
+      else
+      {
+        double size = component->GetTuple1(l);
+
+        minSizeValue = std::min(size, minSizeValue);
+        maxSizeValue = std::max(size, maxSizeValue);
+
+        // Record the Lyapunov exponent if the max
+        // size has been reached.
+        if( maxSize < size )
         {
-          // Check for a curve that has terminated which will not have
-          // taken a step forward or backwards.
-          if( floor( fabs(times->GetTuple1(l)) / maxStepLength + 0.5) !=
-              numSteps )
-          {
-            // If a curve has terminated set the exponent to zero.
-            lambda = 0;
-            exponents->SetTuple1(l, lambda);
-            mask->SetTuple1( l, 7 );
-            
-            // Counter to note that the neighbors do
-            // not need additon advection.
-            Increment( i1,   j,  k,   mask, x_max, y_max, z_max );
-            Increment( i_1,  j,  k,   mask, x_max, y_max, z_max );
-            Increment( i,   j1,  k,   mask, x_max, y_max, z_max );
-            Increment( i,   j_1, k,   mask, x_max, y_max, z_max );
-            Increment( i,   j,   k1,  mask, x_max, y_max, z_max );
-            Increment( i,   j,   k_1, mask, x_max, y_max, z_max );
-          }
-
-          // Check the distances between neighbors.
-          else
-          {
-            double *jac0 = jacobian[0]->GetTuple3(l);
-            double *jac1 = jacobian[1]->GetTuple3(l);
-            double *jac2 = jacobian[2]->GetTuple3(l);
-
-            avtVector dx, dy, dz;
-
-            // It is possible that one neighbor has terminated but not
-            // the other. However, there is not a way to detected this
-            // case when using the gradient expression. As such,
-            // currently both neighbors must be valid.
-
-            //x,y,z components compute left,right
-            if( Value( i,   j, k, times, x_max, y_max, z_max ) ==
-                Value( i1,  j, k, times, x_max, y_max, z_max ) &&
-                Value( i,   j, k, times, x_max, y_max, z_max ) ==
-                Value( i_1, j, k, times, x_max, y_max, z_max ) )
-              dx = avtVector(jac0[0],jac1[0],jac2[0]);
-            else
-              dx = avtVector(0,0,0);
-            
-            //x,y,z components compute top,bottom
-            if( Value( i, j,   k, times, x_max, y_max, z_max ) ==
-                Value( i, j1,  k, times, x_max, y_max, z_max ) &&
-                Value( i, j,   k, times, x_max, y_max, z_max ) ==
-                Value( i, j_1, k, times, x_max, y_max, z_max ) )
-              dy = avtVector(jac0[1],jac1[1],jac2[1]);
-            else
-              dy = avtVector(0,0,0);
-            
-            //x,y,z components compute front,back
-            if( Value( i, j, k,   times, x_max, y_max, z_max ) ==
-                Value( i, j, k1,  times, x_max, y_max, z_max ) &&
-                Value( i, j, k,   times, x_max, y_max, z_max ) ==
-                Value( i, j, k_1, times, x_max, y_max, z_max ) )
-              dz = avtVector(jac0[2],jac1[2],jac2[2]);
-            else
-              dz = avtVector(0,0,0);
-
-            double size = std::max( std::max( dx.length(), dy.length() ),
-                                    dz.length() );
-
-            minSizeValue = std::min(size, minSizeValue);
-            maxSizeValue = std::max(size, maxSizeValue);
-        
-            // Record the Lyapunov exponent if the max
-            // size has been reached.
-            if( maxSize < size )
-            {
-              lambda =
-                log( size / lengths->GetTuple1(l) ) / fabs(times->GetTuple1(l));
+          lambda = log( size ) / fabs(times->GetTuple1(l));
               
-              exponents->SetTuple1(l, lambda);
-
-              // Counter to note that the neighbors do
-              // not need additon advection.
-              Increment( i,    j,  k,   mask, x_max, y_max, z_max );
-              Increment( i1,   j,  k,   mask, x_max, y_max, z_max );
-              Increment( i_1,  j,  k,   mask, x_max, y_max, z_max );
-              Increment( i,   j1,  k,   mask, x_max, y_max, z_max );
-              Increment( i,   j_1, k,   mask, x_max, y_max, z_max );
-              Increment( i,   j,   k1,  mask, x_max, y_max, z_max );
-              Increment( i,   j,   k_1, mask, x_max, y_max, z_max );
-            }
-          }
+          exponents->SetTuple1(l, lambda);
         }
-
-        // minv = std::min(lambda, minv);
-        // maxv = std::max(lambda, maxv);  
-        
-        ++l;
       }
     }
   }
+
+  // std::cerr << minSizeValue << "  " << maxSizeValue << std::endl;
 }
 
 
@@ -2771,7 +2496,7 @@ void avtLCSFilter::ComputeFSLE(vtkDataArray *jacobian[3],
 // ****************************************************************************
 
 int avtLCSFilter::InBounds( int x, int y, int z,
-                             int x_max, int y_max, int z_max )
+                            int x_max, int y_max, int z_max )
 {
   if( 0 <= x && x < x_max &&
       0 <= y && y < y_max &&
@@ -2796,7 +2521,7 @@ int avtLCSFilter::InBounds( int x, int y, int z,
 // ****************************************************************************
 
 void avtLCSFilter::Increment( int x, int y, int z, vtkDataArray *array,
-                               int x_max, int y_max, int z_max )
+                              int x_max, int y_max, int z_max )
 {
   int l = InBounds( x, y, z, x_max, y_max, z_max );
   
@@ -2822,8 +2547,8 @@ void avtLCSFilter::Increment( int x, int y, int z, vtkDataArray *array,
 //
 // ****************************************************************************
 
-bool avtLCSFilter::Value( int x, int y, int z, vtkDataArray *array,
-                                int x_max, int y_max, int z_max )
+double avtLCSFilter::Value( int x, int y, int z, vtkDataArray *array,
+                            int x_max, int y_max, int z_max )
 {
   int l = InBounds( x, y, z, x_max, y_max, z_max );
 
@@ -2911,8 +2636,9 @@ avtLCSFilter::CreateNativeMeshIterativeCalcOutput(std::vector<avtIntegralCurve*>
 //  Method: avtLCSFilter::CreateMultiBlockIterativeCalcOutput
 //
 //  Purpose:
-//      Computes the FSLE for the whole data set, using the 
-//      final particle locations, at the blocks native resolution.
+//      Computes the finial FSLE and similar values that are neighbor
+//      dependent for the whole data set, using the final particle
+//      locations, at the blocks native resolution.
 //
 //  Programmer: Allen Sanderson
 //  Creation:   September 5, 2013
@@ -2970,20 +2696,21 @@ avtLCSFilter::CreateMultiBlockIterativeCalcOutput( avtDataTree_p inDT,
 //  Method: avtLCSFilter::CreateSingleBlockIterativeCalcOutput
 //
 //  Purpose:
-//      Computes the FSLE for a single block of a data set, using the 
-//      final particle locations, at the blocks native resolution.
+//      Computes the finial FSLE and similar values that are neighbor
+//      dependent for a single block of a data set, using the final
+//      particle locations, at the blocks native resolution.
 //
 //  Arguments:
-//      in_ds   The block to calculate the FSLE on
+//      in_ds   The block to calculate the value on
 //      ics     The list of particles for all blocks on this MPI task.
 //      domain  The domain number of in_ds
-//      minv    The minimum FSLE value (output)
-//      maxv    The maximum FSLE value (output)
+//      minv    The minimum value (output)
+//      maxv    The maximum value (output)
 //      count   The number of nodes with a valid exponent
 //
-//  Returns:    The new version of in_ds that includes the FSLE scalar
-//              variable.  The calling function is responsible for dereferencing
-//              this VTK object.
+//  Returns:    The new version of in_ds that includes the scalar
+//              variable.  The calling function is responsible for
+//              dereferencing this VTK object.
 //
 //  Programmer: Allen Sanderson
 //  Creation:   September 5, 2013
@@ -3006,39 +2733,12 @@ avtLCSFilter::CreateSingleBlockIterativeCalcOutput( vtkDataSet *in_ds,
   //variable name.
   std::string var = std::string("operators/LCS/") + outVarName;
 
-  // Set the grid points to the actual grid (i.e. replace the
-  // uniform grid used to get the distances via the gradient
-  // expression).
-  if (out_ds->GetDataObjectType() == VTK_UNIFORM_GRID)
-  {
-    ((vtkUniformGrid*)out_ds)->
-      SetExtent( ((vtkUniformGrid*)in_ds)->GetExtent() );
-  }
-  else if (out_ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
-  {
-    ((vtkRectilinearGrid*)out_ds)->
-      SetXCoordinates( ((vtkRectilinearGrid*)in_ds)->GetXCoordinates() );
-    ((vtkRectilinearGrid*)out_ds)->
-      SetYCoordinates( ((vtkRectilinearGrid*)in_ds)->GetYCoordinates() );
-    ((vtkRectilinearGrid*)out_ds)->
-      SetZCoordinates( ((vtkRectilinearGrid*)in_ds)->GetZCoordinates() );
-  }      
-  else if (out_ds->GetDataObjectType() == VTK_STRUCTURED_GRID)
-  {
-    ((vtkStructuredGrid*)out_ds)->
-      SetPoints( ((vtkStructuredGrid*)in_ds)->GetPoints() );
-  }
-  else
-  {
-    EXCEPTION1(VisItException,
-               "Can only compute SingleBlockCreateIterativeCalcOutput on "
-               "uniform, rectilinear, or structured grids. ");
-  }
-
   vtkFloatArray *exponents = (vtkFloatArray *)
     out_ds->GetPointData()->GetArray(var.c_str());
 
   int nTuples = exponents->GetNumberOfTuples();
+
+  bool clampLogValues = atts.GetClampLogValues();
 
   for(size_t i=0; i<ics.size(); ++i)
   {
@@ -3056,22 +2756,24 @@ avtLCSFilter::CreateSingleBlockIterativeCalcOutput( vtkDataSet *in_ds,
     }
     else
     {
+      ++count;
       ic->status.ClearTerminationMet();
+
+      if( clampLogValues && lambda < 0 )
+      {
+        lambda = 0;
+        exponents->SetTuple1(l, lambda );
+      }
     }
     
     minv = std::min(lambda, minv);
     maxv = std::max(lambda, maxv);
     
-    if( lambda != 0 )
-      ++count;
   }
 
-      
   // Remove the working arrays.
   out_ds->GetPointData()->RemoveArray("component");
   out_ds->GetPointData()->RemoveArray("times");
-  out_ds->GetPointData()->RemoveArray("lengths");
-  out_ds->GetPointData()->RemoveArray("mask");
 
   // Make the exponents the the active scalars.
   out_ds->GetPointData()->SetActiveScalars(var.c_str());
@@ -3106,8 +2808,9 @@ avtLCSFilter::CreateSingleBlockIterativeCalcOutput( vtkDataSet *in_ds,
 //  Method: avtLCSFilter::CreateRectilinearGridIterativeCalcOutput
 //
 //  Purpose:
-//      Computes the FSLE output (via sub-routines) after the PICS filter
-//      has calculated the particle positions.
+//      Computes the finial FSLE and similar values that are neighbor
+//      dependent output (via sub-routines) after the PICS filter has
+//      calculated the particle positions.
 //
 //  Programmer: Allen Sanderson
 //  Creation:   September 5, 2013
@@ -3137,51 +2840,6 @@ avtLCSFilter::CreateRectilinearGridIterativeCalcOutput(std::vector<avtIntegralCu
       //variable name.
       std::string var = std::string("operators/LCS/") + outVarName;
 
-      // Set the grid points to the actual grid (i.e. replace the
-      // uniform grid used to get the distances via the gradient
-      // expression).
-      vtkFloatArray* lxcoord = vtkFloatArray::New();
-      vtkFloatArray* lycoord = vtkFloatArray::New();
-      vtkFloatArray* lzcoord = vtkFloatArray::New();
-      
-      vtkRectilinearGrid *fsle_rect_grid = (vtkRectilinearGrid *) fsle_ds;
-
-      lxcoord->SetNumberOfTuples(global_resolution[0]);
-      for (int i = 0; i < global_resolution[0]; i++)
-      {
-        double pcnt = 0;
-        if (global_resolution[0] > 1)
-          pcnt = ((double)i)/((double)global_resolution[0]-1);
-        lxcoord->SetTuple1(i, global_bounds[0]*(1.0-pcnt) + global_bounds[1]*pcnt);
-      }
-      
-      lycoord->SetNumberOfTuples(global_resolution[1]);
-      for (int i = 0; i < global_resolution[1]; i++)
-      {
-        double pcnt = 0;
-        if (global_resolution[1] > 1)
-          pcnt = ((double)i)/((double)global_resolution[1]-1);
-        lycoord->SetTuple1(i, global_bounds[2]*(1.0-pcnt) + global_bounds[3]*pcnt);
-      }
-      
-      lzcoord->SetNumberOfTuples(global_resolution[2]);
-      for (int i = 0; i < global_resolution[2]; i++)
-      {
-        double pcnt = 0;
-        if (global_resolution[2] > 1)
-          pcnt = ((double)i)/((double)global_resolution[2]-1);
-        lzcoord->SetTuple1(i, global_bounds[4]*(1.0-pcnt) + global_bounds[5]*pcnt);
-      }
-      
-      fsle_rect_grid->SetXCoordinates(lxcoord);
-      fsle_rect_grid->SetYCoordinates(lycoord);
-      fsle_rect_grid->SetZCoordinates(lzcoord);
-      
-      //cleanup
-      lxcoord->Delete();
-      lycoord->Delete();
-      lzcoord->Delete();
-
       vtkFloatArray *exponents = (vtkFloatArray *)
         fsle_ds->GetPointData()->GetArray(var.c_str());
 
@@ -3192,6 +2850,8 @@ avtLCSFilter::CreateRectilinearGridIterativeCalcOutput(std::vector<avtIntegralCu
       double maxv = std::numeric_limits<double>::min();
       
       int count = 0;
+
+      bool clampLogValues = atts.GetClampLogValues();
 
       for(size_t i=0; i<ics.size(); ++i)
       {
@@ -3208,14 +2868,18 @@ avtLCSFilter::CreateRectilinearGridIterativeCalcOutput(std::vector<avtIntegralCu
         }
         else
         {
+          ++count;
           ic->status.ClearTerminationMet();
+
+          if( clampLogValues && lambda < 0 )
+          {
+            lambda = 0;
+            exponents->SetTuple1(l, lambda );
+          }
         }
 
         minv = std::min(lambda, minv);
         maxv = std::max(lambda, maxv);
-
-        if( lambda != 0 )
-          ++count;
       }
 
       if( count <= nTuples/10 )
@@ -3250,8 +2914,6 @@ avtLCSFilter::CreateRectilinearGridIterativeCalcOutput(std::vector<avtIntegralCu
       // Remove the working arrays.
       fsle_ds->GetPointData()->RemoveArray("component");
       fsle_ds->GetPointData()->RemoveArray("times");
-      fsle_ds->GetPointData()->RemoveArray("lengths");
-      fsle_ds->GetPointData()->RemoveArray("mask");
 
       //store this dataset in Cache for next time.
       // double bounds[6];
@@ -3440,6 +3102,11 @@ avtLCSFilter::CreateCacheString(void)
   int   cycle = (int)   GetInput()->GetInfo().GetAttributes().GetCycle();
   float time  = (float) GetInput()->GetInfo().GetAttributes().GetTime();
 
+  // Note the string is a brute force string. That is all attributes
+  // are munged together regarless of whether they are used. Overly
+  // simple but most attributes can not be changed unless an option is
+  // selected. As such, for the most part the brute force approach is
+  // acceptable.
   os << cycle << "  "
      << time << "  "
      << atts.GetSourceType() << " "
@@ -3457,6 +3124,8 @@ avtLCSFilter::CreateCacheString(void)
      << atts.GetIntegrationDirection() << " "
      << atts.GetMaxSteps() << " "
      << atts.GetOperationType() << " "
+     << atts.GetOperatorType() << " "
+     << atts.GetClampLogValues() << " "
      << atts.GetTerminationType() << " "
      << atts.GetTerminateBySize() << " "
      << atts.GetTermSize() << " "
@@ -3576,8 +3245,8 @@ avtLCSFilter::GetCachedNativeDataSet(avtDataTree_p inDT)
         std::string label = inDT->GetDataRepresentation().GetLabel();
         std::string str = CreateCacheString();
         vtkDataSet *rv = (vtkDataSet *)
-                         FetchArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
-                                                 outVarName.c_str(), dom, -1, str.c_str());
+          FetchArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
+                                  outVarName.c_str(), dom, -1, str.c_str());
         if (rv == NULL)
             return NULL;
         else
@@ -3629,9 +3298,8 @@ avtLCSFilter::GetCachedResampledDataSet()
 {
     std::string str = CreateCacheString();
     vtkRectilinearGrid *rv = (vtkRectilinearGrid *)
-                     FetchArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
-                                             outVarName.c_str(), -1, -1,
-                                             str.c_str());
+      FetchArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
+                              outVarName.c_str(), -1, -1, str.c_str());
 
     if(rv != NULL)
     {
