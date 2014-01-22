@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -122,6 +122,9 @@ ENDIF(HAVE_BILIB)
 LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS})
 
 ADD_LIBRARY(visit_vtk ${VISIT_VTK_SOURCES})
-TARGET_LINK_LIBRARIES(visit_vtk lightweight_visit_vtk vtkGraphics vtkImaging ${VTK_TIFF_LIBRARIES})
+TARGET_LINK_LIBRARIES(visit_vtk lightweight_visit_vtk vtkFiltersExtraction vtkFiltersFlowPaths vtkImagingHybrid vtkRenderingOpenGL vtkRenderingFreeType vtkRenderingFreeTypeOpenGL vtkInteractionStyle vtktiff)
+# Add vtk definitions
+ADD_TARGET_DEFINITIONS(visit_vtk "${VTK_DEFINITIONS}")
+
 
 VISIT_INSTALL_TARGETS(visit_vtk)

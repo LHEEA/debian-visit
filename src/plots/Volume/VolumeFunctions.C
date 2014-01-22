@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1037,14 +1037,11 @@ VolumeCalculateGradient_SPH(vtkDataSet *ds, vtkDataArray *opac,
     grad[0] = grad[1] = grad[2] = 0.0;
 
     d3 = vtkDelaunay3D::New();
-    d3->SetInput(ds);
-    outDS = vtkUnstructuredGrid::New();
-    d3->SetOutput(outDS);
+    d3->SetInputData(ds);
+    d3->Update();
+    outDS = d3->GetOutput();
 
-    outDS->Update();
-
-    if (d3)
-        d3->Delete();
+    d3->Delete();
 
     //Loop over all the points.  Collect the points around them (points around points).
     //  build an SPH kernel around them.

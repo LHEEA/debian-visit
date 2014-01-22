@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -116,12 +116,12 @@ TARGET_LINK_LIBRARIES(mdserver
     avtdatabase_ser 
     lightweight_visit_vtk 
     visit_verdict 
-    vtkCommon 
-    vtkIO 
-    ${VTK_TIFF_LIBRARIES}
-    ${VTK_ZLIB_LIBRARIES} 
-    ${VTK_PNG_LIBRARIES}
-    ${VTK_JPEG_LIBRARIES}
+    vtkCommonCore
+    vtkIOCore 
+    vtktiff
+    ${VTKZLIB_LIB}
+    vtkpng
+    vtkjpeg
     ${ZLIB_LIB} 
     ${CMAKE_THREAD_LIBS} 
     ${DL_LIB}

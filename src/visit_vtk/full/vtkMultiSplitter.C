@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,6 +41,8 @@
 #include <vtkCellData.h>
 #include <vtkFloatArray.h>
 #include <vtkImplicitFunction.h>
+#include <vtkInformation.h>
+#include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
 #include <vtkPlane.h>
 #include <vtkPointData.h>
@@ -64,7 +66,6 @@
 #include <FixedLengthBitField.h>
 #include <TimingsManager.h>
 
-vtkCxxRevisionMacro(vtkMultiSplitter, "$Revision: 1.00 $");
 vtkStandardNewMacro(vtkMultiSplitter);
 
 // ****************************************************************************
@@ -137,7 +138,7 @@ vtkMultiSplitter::SetTagBitField(std::vector<FixedLengthBitField<64> > *tags)
 }
 
 // ****************************************************************************
-//  Method:  vtkMultiSplitter::Execute
+//  Method:  vtkMultiSplitter::RequestData
 //
 //  Purpose:
 //    Main execution method.  
@@ -149,37 +150,38 @@ vtkMultiSplitter::SetTagBitField(std::vector<FixedLengthBitField<64> > *tags)
 //
 // ****************************************************************************
 
-void
-vtkMultiSplitter::Execute()
+int
+vtkMultiSplitter::RequestData(
+    vtkInformation *vtkNotUsed(request),
+    vtkInformationVector **inputVector,
+    vtkInformationVector *outputVector)
 {
-    vtkDataSet *ds = GetInput();
+    // get the info objects
+    vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
+    vtkInformation *outInfo = outputVector->GetInformationObject(0);
 
-    if (ds->GetDataObjectType() != VTK_RECTILINEAR_GRID)
-    {
-        debug1 << "vtkMutliSplitter: Can't operate on this dataset.\n";
-        return;
-    }
+    //
+    // Initialize some frequently used values.
+    //
+    vtkRectilinearGrid *rg = vtkRectilinearGrid::SafeDownCast(
+        inInfo->Get(vtkDataObject::DATA_OBJECT()));
+    vtkUnstructuredGrid *output = vtkUnstructuredGrid::SafeDownCast(
+        outInfo->Get(vtkDataObject::DATA_OBJECT()));
 
     //
     // Set general input/output data
     //
-    vtkCellData         *inCD   = ds->GetCellData();
-    vtkUnstructuredGrid *output = (vtkUnstructuredGrid*)GetOutput();
+    vtkCellData *inCD = rg->GetCellData();
 
     //
     // Populate the vfv with all the hexes.
     //
-    vtkRectilinearGrid *rg = NULL;
     int        dims[3];
-    float     *X   = NULL;
-    float     *Y   = NULL;
-    float     *Z   = NULL;
-
-    rg = (vtkRectilinearGrid*)ds;
     rg->GetDimensions(dims);
-    X = (float* ) rg->GetXCoordinates()->GetVoidPointer(0);
-    Y = (float* ) rg->GetYCoordinates()->GetVoidPointer(0);
-    Z = (float* ) rg->GetZCoordinates()->GetVoidPointer(0);
+
+    float *X   = (float* ) rg->GetXCoordinates()->GetVoidPointer(0);
+    float *Y   = (float* ) rg->GetYCoordinates()->GetVoidPointer(0);
+    float *Z   = (float* ) rg->GetZCoordinates()->GetVoidPointer(0);
 
     int npts = dims[0] * dims[1] * dims[2];
     std::vector<float> pts;
@@ -239,7 +241,7 @@ vtkMultiSplitter::Execute()
         // Create the array of the clip values for the current boundary.
         //
         clipFunction->SetCoefficients(&bounds[iBnd*10]);
-        npts = pts.size() / 3;
+        npts = (int)pts.size() / 3;
         float *clipArray = new float[npts];
         for (int i = 0; i < npts; i++)
         {
@@ -514,8 +516,27 @@ vtkMultiSplitter::Execute()
         vfv.UpdatePoints(pts);
     }
 
-    vfv.ConstructDataSet(inCD, output, &pts[0], pts.size()/3, newTags);
+    vfv.ConstructDataSet(inCD, output, &pts[0], (int)pts.size()/3, newTags);
+
+    return 1;
 }
+
+// ****************************************************************************
+//  Method: vtkMultiSplitter::FillInputPortInformation
+//
+// ****************************************************************************
+
+int
+vtkMultiSplitter::FillInputPortInformation(int, vtkInformation *info)
+{
+    info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkRectilinearGrid");
+    return 1;
+}
+
+// ****************************************************************************
+//  Method: vtkMultiSplitter::PrintSelf
+//
+// ****************************************************************************
 
 void vtkMultiSplitter::PrintSelf(ostream& os, vtkIndent indent)
 {

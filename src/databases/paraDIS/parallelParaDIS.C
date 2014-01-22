@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -120,13 +120,6 @@ parse_dirname(char *wholePath)
 }
 
 
-
-//===============================================
-FileSet::FileSet(): mNumFiles(0), mBytesPerElem(0), mFilesAreBinary(false) {
-  mDataTypeSizes[0] = mDataTypeSizes[2] = 8; // doubles and longs
-  mDataTypeSizes[1] = mDataTypeSizes[3] = 4; //floats and ints
-  return; 
-}
 
 //===============================================
 void FileSet::AddVar(string varname, string vartype, int components) {
@@ -598,7 +591,7 @@ void VarElementFetcher:: InterpretTextElement(std::string line, long linenum) {
   }
   debug5 << ")" << endl;
   if (mElementName == "Burgers type" ) {
-    ((int*)mOutputData)[mOutputIndex++] = InterpretBurgersType(); 
+    ((int*)mOutputData)[mOutputIndex++] = InterpretBurgersType(mVarBuffer); 
   } else {
     ((vtkFloatArray *)mOutputData)->SetTuple(mOutputIndex++, mVarBuffer); 
   }
@@ -633,21 +626,25 @@ inline void VarElementFetcher::InterpretBinaryElement(char *elementData){
   debug5 << ")" << endl;
 
   if (mElementName == "Burgers type" ) {
-    ((int*)mOutputData)[mOutputIndex++] = InterpretBurgersType(); 
+    ((int*)mOutputData)[mOutputIndex++] = InterpretBurgersType(mVarBuffer); 
   } else {
     ((vtkFloatArray *)mOutputData)->SetTuple(mOutputIndex++, mVarBuffer); 
   }
   return; 
 }
 
+
 //=============================================================
 /*
-  ParallelData constructor
+  ParallelData initializer
  */
-ParallelData::ParallelData(string filename): mMetaDataFileName(filename) {
+void ParallelData::Clear(void) {
+  mMetaDataFileName = "";
+  mDataDescription = ""; 
+  mNodeFiles.Clear(); 
+  mSegmentFiles.Clear(); 
   return; 
 }
-
 //=============================================================
 /*
   ParallelData destructor

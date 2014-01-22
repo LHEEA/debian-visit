@@ -99,11 +99,11 @@ function bv_cmake_cmake_bin_dir
 
 function bv_cmake_info
 {
-export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.8.8.tar.gz"}
-export CMAKE_VERSION=${CMAKE_VERSION:-"2.8.8"}
-export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-2.8.8"}
-export CMAKE_MD5_CHECKSUM="ba74b22c788a0c8547976b880cd02b17"
-export CMAKE_SHA256_CHECKSUM="2b59897864d6220ff20aa8eac64cac8994e004898a1c0f899c8cb4d7b7570b46"
+export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.8.10.2.tar.gz"}
+export CMAKE_VERSION=${CMAKE_VERSION:-"2.8.10.2"}
+export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-2.8.10.2"}
+export CMAKE_MD5_CHECKSUM="097278785da7182ec0aea8769d06860c"
+export CMAKE_SHA256_CHECKSUM=""
 }
 
 function bv_cmake_print
@@ -162,6 +162,44 @@ function bv_cmake_dry_run
 #                          Function 5, build_cmake                            #
 # *************************************************************************** #
 
+function apply_cmake_patch_2
+{
+   patch -p0 <<\EOF
+*** cmake-2.8.10.2/Modules/Platform/Darwin.cmake
+--- cmake-2.8.10.2/Modules/Platform/Darwin.cmake.patched
+***************
+*** 180,187 ****
+    endif()
+  endif()
+  
+  # Make sure the combination of SDK and Deployment Target are allowed
+! if(CMAKE_OSX_DEPLOYMENT_TARGET)
+    if("${_CMAKE_OSX_SYSROOT_PATH}" MATCHES "^.*/MacOSX([0-9]+\\.[0-9]+)[^/]*\\.sdk")
+      set(_sdk_ver "${CMAKE_MATCH_1}")
+    elseif("${_CMAKE_OSX_SYSROOT_ORIG}" MATCHES "^macosx([0-9]+\\.[0-9]+)$")
+--- 180,192 ----
+    endif()
+  endif()
+  
++ #
++ # This sanity check fails on OS X 10.8 regardless of how values are
++ # set. It has been disabled for this installation of VisIt by using
++ # 'FALSE' as the triggering condition.
++ #
+  # Make sure the combination of SDK and Deployment Target are allowed
+! if(FALSE)
+    if("${_CMAKE_OSX_SYSROOT_PATH}" MATCHES "^.*/MacOSX([0-9]+\\.[0-9]+)[^/]*\\.sdk")
+      set(_sdk_ver "${CMAKE_MATCH_1}")
+    elseif("${_CMAKE_OSX_SYSROOT_ORIG}" MATCHES "^macosx([0-9]+\\.[0-9]+)$")
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch 2 to cmake."
+        return 1
+   else
+        return 0
+   fi
+}
+
 function apply_cmake_patch_1
 {
    patch -p0 <<\EOF
@@ -206,9 +244,18 @@ function apply_cmake_patch
 {
    info "Patching CMake . . ."
 
-   apply_cmake_patch_1
-   if [[ $? != 0 ]] ; then
-      return 1
+   if [[ "${CMAKE_VERSION}" == "2.8.0" ]]; then
+       apply_cmake_patch_1
+       if [[ $? != 0 ]] ; then
+          return 1
+       fi
+   fi
+
+   if [[ "${CMAKE_VERSION}" == "2.8.10.2" ]]; then
+       apply_cmake_patch_2
+       if [[ $? != 0 ]] ; then
+          return 1
+       fi
    fi
 
    return 0

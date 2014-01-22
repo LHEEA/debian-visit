@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -273,7 +273,7 @@ Boundary::DeleteNeighbor(int d, std::vector<Boundary> &wholelist)
     std::vector<int> delete_list;
     for (size_t i=0; i<neighbors.size(); i++)
         if (neighbors[i].domain == d)
-            delete_list.push_back(i);
+            delete_list.push_back((int)i);
 
     if (delete_list.size() == 0)
     {

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -59,6 +59,6 @@ ${VTK_INCLUDE_DIRS}
 LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS})
 
 ADD_LIBRARY(avtmath ${AVTMATH_SOURCES})
-TARGET_LINK_LIBRARIES(avtmath visitcommon vtkCommon)
+TARGET_LINK_LIBRARIES(avtmath visitcommon vtkCommonCore)
 
 VISIT_INSTALL_TARGETS(avtmath)

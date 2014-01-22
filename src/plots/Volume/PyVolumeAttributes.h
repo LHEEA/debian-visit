@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define VOLUMEATTRIBUTES_NMETH 73
+#define VOLUMEATTRIBUTES_NMETH 75
 void           PyVolumeAttributes_StartUp(VolumeAttributes *subj, void *data);
 void           PyVolumeAttributes_CloseDown();
 PyMethodDef *  PyVolumeAttributes_GetMethodTable(int *nMethods);

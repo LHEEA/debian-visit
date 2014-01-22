@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -908,7 +908,7 @@ DBPluginInfoAttributes::RemoveDbReadOptions(int index)
 int
 DBPluginInfoAttributes::GetNumDbReadOptions() const
 {
-    return dbReadOptions.size();
+    return (int)dbReadOptions.size();
 }
 
 // ****************************************************************************
@@ -1059,7 +1059,7 @@ DBPluginInfoAttributes::RemoveDbWriteOptions(int index)
 int
 DBPluginInfoAttributes::GetNumDbWriteOptions() const
 {
-    return dbWriteOptions.size();
+    return (int)dbWriteOptions.size();
 }
 
 // ****************************************************************************

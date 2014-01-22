@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -110,9 +110,9 @@ avtDataBinningFunctionInfo::~avtDataBinningFunctionInfo()
 const std::string &
 avtDataBinningFunctionInfo::GetDomainTupleName(int idx) const
 {
-    if (idx < 0 || idx >= tupleNames.size())
+    if (idx < 0 || idx >= (int)tupleNames.size())
     {
-        EXCEPTION2(BadIndexException, idx, tupleNames.size());
+        EXCEPTION2(BadIndexException, idx, (int)tupleNames.size());
     }
 
     return tupleNames[idx];
@@ -137,9 +137,9 @@ avtDataBinningFunctionInfo::GetBinBasedOnType(int idx) const
     if (binBasedOn.size() == 0)
         return VARIABLE;
 
-    if (idx < 0 || idx >= binBasedOn.size())
+    if (idx < 0 || idx >= (int)binBasedOn.size())
     {
-        EXCEPTION2(BadIndexException, idx, binBasedOn.size());
+        EXCEPTION2(BadIndexException, idx, (int)binBasedOn.size());
     }
 
     return binBasedOn[idx];

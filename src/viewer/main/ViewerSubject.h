@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -499,7 +499,10 @@ class SharedDaemon;
 //
 //    Jonathan Byrd (Allinea Software), Sun Dec 18 2011
 //    Added methods for connecting/disconnecting the viewer with DDT,
-///   and to instruct DDT to focus on a specific domain.
+//    and to instruct DDT to focus on a specific domain.
+//
+//    Kathleen Biagas, Wed Aug  7 12:59:21 PDT 2013
+//    Add SetPrecisionType.
 //
 // ****************************************************************************
 
@@ -626,6 +629,9 @@ private:
 
     void PrintWindow();
     void SaveWindow();
+    void ExportWindow();
+    void ExportHostProfile();
+    void Export();
     void UpdateColorTable();
     void ExportColorTable();
     void WriteConfigFile();
@@ -703,6 +709,7 @@ private:
     void SetCreateMeshQualityExpressions();
     void SetCreateTimeDerivativeExpressions();
     void SetCreateVectorMagnitudeExpressions();
+    void SetPrecisionType();
 
     void MoveWindow();
     void MoveAndResizeWindow();
@@ -819,6 +826,7 @@ private:
     std::vector<std::string> unknownArguments;
     std::vector<std::string> clientArguments;
     SharedDaemon             *shared_viewer_daemon;
+    size_t                   clientIds;
 };
 
 #endif

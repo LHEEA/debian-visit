@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1594,6 +1594,9 @@ QvisGUIApplication::ClientMethodCallback(Subject *s, void *data)
 //   Emit FireInit signal instead of using QTimer::singleShot to
 //   work around a Qt/Glib init problem in linux.
 //
+//   David Camp, Thu Aug  8 08:50:06 PDT 2013
+//   Added the restore from last session feature. 
+//
 // ****************************************************************************
 
 void
@@ -1696,6 +1699,19 @@ QvisGUIApplication::FinalInitialization()
         break;
     case 7:
         {
+        // Check if user has restore set and no session or data file commandline option.
+        if(GetViewerState()->GetGlobalAttributes()->GetUserRestoreSessionFile()
+            && sessionFile.isEmpty() && loadFile.Empty())
+        {
+            QDir dir(GetUserVisItDirectory().c_str());
+            QString restoreFile = "default_restore.session";
+            if(dir.exists() && dir.exists(restoreFile))
+            {
+                sessionFile = GetUserVisItDirectory().c_str();
+                sessionFile += restoreFile;
+            }
+        }
+
         stringVector noFiles;
         // Load the initial session file.
         RestoreSessionFile(sessionFile, noFiles);
@@ -1793,6 +1809,9 @@ QvisGUIApplication::FinalInitialization()
         visitTimer->StopTimer(completeInit, "VisIt to be ready");
         moreInit = false;
         emit VisItIsReady();
+
+        ///initialize the help window since every widget will now have access to it.
+        RegisterHelpWindow(dynamic_cast<QvisHelpWindow*>(GetInitializedWindowPointer(WINDOW_HELP)));
     }
 
     //
@@ -1966,6 +1985,9 @@ QvisGUIApplication::Exec()
 //    Don't prompt the user for whether they want to exit if we launched
 //    the CLI ourselves.
 //
+//    David Camp, Thu Aug  8 08:50:06 PDT 2013
+//    Added the restore from last session feature. 
+//
 // ****************************************************************************
 
 void
@@ -2021,6 +2043,14 @@ QvisGUIApplication::Quit()
     // in determining whether we have a crash recovery file and it makes
     // sense for the viewer to remove its file.
     RemoveCrashRecoveryFile(false);
+
+    // Save default restore session file.
+    if(GetViewerState()->GetGlobalAttributes()->GetUserRestoreSessionFile())
+    {
+        QString restoreFile = GetUserVisItDirectory().c_str();
+        restoreFile += "default_restore.session";
+        SaveSessionFile(restoreFile);
+    }
 
     mainApp->quit();
 }
@@ -4230,13 +4260,13 @@ QvisGUIApplication::EnsureOperatorWindowIsCreated(int i)
 // ****************************************************************************
 
 bool
-QvisGUIApplication::WriteConfigFile(const char *filename)
+QvisGUIApplication::WriteConfigFile(std::ostream& out)
 {
     // Create the root node called "VisIt" and create a "Version"
     // node under it.
     DataNode root("VisIt");
     root.AddNode(new DataNode("Version", std::string(VISIT_VERSION)));
-    
+
     // Create a "GUI" node and add it under "VisIt".
     DataNode *guiNode = new DataNode("GUI");
     root.AddNode(guiNode);
@@ -4305,19 +4335,27 @@ QvisGUIApplication::WriteConfigFile(const char *filename)
         new DataNode("enableWarningMessagePopups",
                      preferencesWin->GetEnableWarningPopups()));
 
+    // Write the output file to stdout for now.
+    out <<  "<?xml version=\"1.0\"?>\n";
+    WriteObject(out, &root);
+    return true;
+}
+
+bool
+QvisGUIApplication::WriteConfigFile(const char *filename)
+{
     // Try to open the output file.
-    if((fp = fopen(filename, "wt")) == 0)
+    std::ofstream outf;
+    outf.open(filename, ios::out | ios::trunc);
+    if(outf.is_open() == false)
         return false;
 
-    // Write the output file to stdout for now.
-    fprintf(fp, "<?xml version=\"1.0\"?>\n");
-    WriteObject(&root);
+    bool res = WriteConfigFile(outf);
 
     // close the file
-    fclose(fp);
-    fp = 0;
+    outf.close();
 
-    return true;
+    return res;
 }
 
 // ****************************************************************************
@@ -4585,14 +4623,16 @@ QvisGUIApplication::UpdateSavedConfigFile()
                 int len = strlen(configFile) + 4 + 1;
                 char *tmpname = new char[len];
                 SNPRINTF(tmpname, len, "%s.bak", configFile);
-                if((fp = fopen(tmpname, "wt")) != 0)
+
+                std::ofstream outf;
+                outf.open(tmpname, ios::out | ios::trunc);
+                if(outf.is_open() != false)
                 {
-                    fprintf(fp, "<?xml version=\"1.0\"?>\n");
-                    WriteObject(visitRoot);
+                    outf <<  "<?xml version=\"1.0\"?>\n";
+                    WriteObject(outf, visitRoot);
 
                     // close the file
-                    fclose(fp);
-                    fp = 0;
+                    outf.close();
 
                     // The temporary file has been written. Move it to
                     // the right filename.
@@ -4665,21 +4705,16 @@ QvisGUIApplication::UpdateSavedConfigFile()
 // ****************************************************************************
 
 DataNode *
-QvisGUIApplication::ReadConfigFile(const char *filename)
+QvisGUIApplication::ReadConfigFile(std::istream& in)
 {
     DataNode *node = 0;
 
-    // Try and open the file for reading.
-    if((fp = fopen(filename, "rt")) == 0)
-        return node;
-
     // Read the XML tag and ignore it.
-    FinishTag();
+    FinishTag(in);
 
     // Create a root node and use it to read the VisIt tree.
     node = new DataNode("ConfigSettings");
-    ReadObject(node);
-    fclose(fp); fp = 0;
+    ReadObject(in, node);
 
     // Look for the VisIt tree.
     DataNode *visitRoot = node->GetNode("VisIt");
@@ -4693,6 +4728,22 @@ QvisGUIApplication::ReadConfigFile(const char *filename)
 
     // Force the appearance attributes to be set from the datanodes.
     GetViewerState()->GetAppearanceAttributes()->SetFromNode(guiNode);
+
+    return node;
+}
+
+DataNode *
+QvisGUIApplication::ReadConfigFile(const char *filename)
+{
+    DataNode *node = 0;
+    std::ifstream inf;
+    // Try and open the file for reading.
+    inf.open(filename, ios::in); // | ios::trunc);
+    if(inf.is_open() == false)
+        return node;
+
+    node = ReadConfigFile(inf);
+    inf.close();
 
     return node;
 }
@@ -5049,7 +5100,7 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
         // Set the name of the session file that we loaded.
         SetSessionNameInWindowTitle(sessionFile);
 
-    restoringSession = false;
+        restoringSession = false;
     }
 }
 
@@ -8091,7 +8142,7 @@ QvisGUIApplication::GetNumMovieFrames()
 void
 QvisGUIApplication::UpdateSessionDir( const std::string &sessionFileName )
 {
-    int idx = sessionFileName.rfind("/");
+    size_t idx = sessionFileName.rfind("/");
     if (idx < 0)
         idx = sessionFileName.rfind("\\");
     if ( idx > 0 )

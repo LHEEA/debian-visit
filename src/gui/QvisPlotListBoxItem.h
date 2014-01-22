@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,6 +73,9 @@
 //   Brad Whitlock, Fri Jul 23 14:55:01 PDT 2010
 //   I added selectionName.
 //
+//   Brad Whitlock, Thu Mar 14 16:21:47 PDT 2013
+//   Added applyOperators.
+//
 // ****************************************************************************
     
 class GUI_API QvisPlotListBoxItem : public QListWidgetItem, private GUIBase
@@ -119,6 +122,8 @@ public:
     int    activeOperatorIndex() const;
     int    textX() const;
 
+    void   setApplyOperators(bool);
+
     const Plot &GetPlot() const { return plot; };
     Plot &GetPlot() { return plot; };
     const QString &GetPrefix() const { return prefix; };
@@ -146,6 +151,7 @@ private:
     int                      maxIconWidth, maxIconHeight;
     ClickableRectangleVector clickable;
     bool                     addClickableRects;
+    bool                     applyOperators;
 
     static QPixmap          *subsetIcon; 
     static QPixmap          *selectionIcon;

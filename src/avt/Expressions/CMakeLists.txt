@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -164,6 +164,7 @@ General/avtNormalizeExpression.C
 General/avtPerMaterialValueExpression.C
 General/avtPerformColorTableLookupExpression.C
 General/avtProcessorIdExpression.C
+General/avtThreadIdExpression.C
 General/avtRandomExpression.C
 General/avtRecenterExpression.C
 General/avtRectilinearLaplacianExpression.C

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -3008,7 +3008,10 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
         // Force an Update.  This needs to be done and if we do it when we
         // read it in, then it guarantees it only happens once.
         //
-        mesh->Update();
+        // FIX_ME_VTK6.0, ESB, I assume this needs to be done for VTK based
+        // readers. Can we eliminate this or do we need to move it somewhere
+        // else. All the tests pass with this commented out.
+        // mesh->Update();
 
         //
         // VTK creates a trivial producer for each data set.  It later does
@@ -3681,7 +3684,7 @@ avtGenericDatabase::MaterialSelect(vtkDataSet *ds, avtMaterial *mat,
         char msg[128];
         SNPRINTF(msg,sizeof(msg),"In domain number %d, the material object "
               "with nzones=%d and dataset object with ncells=%d do not agree.",
-               dom, mat->GetNZones(), ds->GetNumberOfCells());
+               dom, mat->GetNZones(), (int) ds->GetNumberOfCells());
         EXCEPTION1(InvalidDBTypeException, msg); 
     }
 
@@ -3821,7 +3824,7 @@ avtGenericDatabase::MaterialSelect(vtkDataSet *ds, avtMaterial *mat,
 
                 vtkDataSet *in_ds = out_ds[d];
 
-                bf->SetInput((vtkUnstructuredGrid*)in_ds);
+                bf->SetInputData((vtkUnstructuredGrid*)in_ds);
                 in_ds->Delete();
                 out_ds[d] = bf->GetOutput();
                 bf->Update();
@@ -4326,7 +4329,7 @@ avtGenericDatabase::EnumScalarSelect(avtDatasetCollection &dsc,
         enumThreshold->SetEnumerationSelection(selection);
 
         // do the operation
-        enumThreshold->SetInput(ds);
+        enumThreshold->SetInputData(ds);
         vtkDataSet *outds = enumThreshold->GetOutput();
         enumThreshold->Update();
 
@@ -5000,6 +5003,13 @@ avtGenericDatabase::ActivateTimestep(int stateIndex)
 //    Hank Childs, Tue Dec 15 14:55:50 PST 2009
 //    Add support for group IDs based on ranges.
 //
+//    Kathleen Biagas, Tue Aug 27 16:58:30 PDT 2013
+//    Add support for groupNames.
+//
+//    Kathleen Biagas, Wed Aug 28 08:51:16 PDT 2013
+//    Fixed error where domains[i] wasn't being used to get the correct 
+//    groupName, resulting in incorrect labels for the SIL selection.
+//
 // ****************************************************************************
 
 void
@@ -5036,6 +5046,7 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
     sprintf(progressString, "Reading from %s", Interface->GetType());
 
     stringVector blockNames;
+    stringVector groupNames;
     intVector gIds;
     intVector groupIdsBasedOnRange;
     int domOrigin = 0;
@@ -5048,6 +5059,7 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
         blockNames =  GetMetaData(ts)->GetMesh(meshName)->blockNames;
         domOrigin  =  GetMetaData(ts)->GetMesh(meshName)->blockOrigin;
         grpOrigin  =  GetMetaData(ts)->GetMesh(meshName)->groupOrigin;
+        groupNames =  GetMetaData(ts)->GetMesh(meshName)->groupNames;
         gIds       =  GetMetaData(ts)->GetMesh(meshName)->groupIds;
         groupIdsBasedOnRange =  GetMetaData(ts)->GetMesh(meshName)->groupIdsBasedOnRange;
     }
@@ -5185,7 +5197,9 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
         else if (subT == AVT_GROUP_SUBSET)
         {
             char temp[512];
-            if (gIds.size() != 0)
+            if (!groupNames.empty() && !gIds.empty())
+                sprintf(temp, "%s", groupNames[gIds[domains[i]]].c_str());
+            else if (gIds.size() != 0)
                 sprintf(temp, "%d", gIds[domains[i]]);
             else
             {
@@ -6654,10 +6668,10 @@ avtGenericDatabase::CommunicateGhostZonesFromGlobalNodeIds(
         ln->Delete();
         vtkUnstructuredGridFacelistFilter *ff =
                                       vtkUnstructuredGridFacelistFilter::New();
-        ff->SetInput(copy);
+        ff->SetInputData(copy);
         vtkPolyDataRelevantPointsFilter *rpf =
                                         vtkPolyDataRelevantPointsFilter::New();
-        rpf->SetInput(ff->GetOutput());
+        rpf->SetInputConnection(ff->GetOutputPort());
         rpf->Update();
         vtkIntArray *g = (vtkIntArray *)
             rpf->GetOutput()->GetPointData()->GetArray("avtGlobalNodeNumbers");
@@ -11406,4 +11420,21 @@ avtGenericDatabase::SetStrictMode(bool strictMode)
 {
     if (Interface)
         Interface->SetStrictMode(strictMode);
+}
+
+//****************************************************************************
+// Method:  avtGenericDatabase::SetIsEnsemble
+//
+// Programmer:  Dave Pugmire
+// Creation:    February 11, 2013
+//
+// Modifications:
+//
+//****************************************************************************
+
+void
+avtGenericDatabase::SetIsEnsemble(bool v)
+{
+    if (Interface)
+        Interface->SetIsEnsemble(v);
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,7 +43,7 @@
 #include <float.h>
 #include "avtOpenGL3DTextureVolumeRenderer.h"
 
-#include <avtGLEWInitializer.h>
+#include <avtOpenGLExtensionManager.h>
 
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
@@ -212,8 +212,10 @@ avtOpenGL3DTextureVolumeRenderer::Render(
 {
     static bool haveIssuedWarning = false;
 
-    if(!(glewIsSupported("GL_VERSION_1_2") ||
-       glewIsSupported("GL_EXT_texture3D")))
+#ifdef HAVE_LIBGLEW
+    if(!(avt::glew::supported("GL_VERSION_1_2") ||
+         avt::glew::supported("GL_EXT_texture3D")))
+#endif
     {
         if(!haveIssuedWarning)
         {

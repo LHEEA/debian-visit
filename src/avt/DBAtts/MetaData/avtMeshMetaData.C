@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -191,6 +191,7 @@ void avtMeshMetaData::Copy(const avtMeshMetaData &obj)
     groupOrigin = obj.groupOrigin;
     groupPieceName = obj.groupPieceName;
     groupTitle = obj.groupTitle;
+    groupNames = obj.groupNames;
     groupIds = obj.groupIds;
     groupIdsBasedOnRange = obj.groupIdsBasedOnRange;
     disjointElements = obj.disjointElements;
@@ -435,6 +436,7 @@ avtMeshMetaData::operator == (const avtMeshMetaData &obj) const
             (groupOrigin == obj.groupOrigin) &&
             (groupPieceName == obj.groupPieceName) &&
             (groupTitle == obj.groupTitle) &&
+            (groupNames == obj.groupNames) &&
             (groupIds == obj.groupIds) &&
             (groupIdsBasedOnRange == obj.groupIdsBasedOnRange) &&
             (disjointElements == obj.disjointElements) &&
@@ -628,6 +630,7 @@ avtMeshMetaData::SelectAll()
     Select(ID_groupOrigin,                    (void *)&groupOrigin);
     Select(ID_groupPieceName,                 (void *)&groupPieceName);
     Select(ID_groupTitle,                     (void *)&groupTitle);
+    Select(ID_groupNames,                     (void *)&groupNames);
     Select(ID_groupIds,                       (void *)&groupIds);
     Select(ID_groupIdsBasedOnRange,           (void *)&groupIdsBasedOnRange);
     Select(ID_disjointElements,               (void *)&disjointElements);

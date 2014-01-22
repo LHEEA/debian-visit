@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -207,6 +207,11 @@
 //
 //    Kathleen Biagas, Tue Mar  1 11:01:51 PST 2011
 //    Added Generator for MapNode type.
+//
+//    Kathleen Biagas, Tue Jun 18 10:28:36 PDT 2013
+//    Added logic to forego switch statements on GetField* calls that have
+//    no fields, as in the case of derived or place-holder atts that define
+//    no new fields beyond what the base class has defined.
 //
 // ****************************************************************************
 
@@ -1249,7 +1254,7 @@ class AttsGeneratorAttVector : public virtual AttVector , public virtual AttsGen
         c << "int" << Endl;
         c << classname << "::" << methodName << "() const" << Endl;
         c << "{" << Endl;
-        c << "    return " << name << ".size();" << Endl;
+        c << "    return (int)" << name << ".size();" << Endl;
         c << "}" << Endl << Endl;
 
         // Write the Get method
@@ -2265,6 +2270,15 @@ private:
         }
         return false;
     }
+    bool HavePersistentAGVectors()
+    {
+        for (size_t i=0; i<fields.size(); i++)
+        {
+            if (fields[i]->type=="attVector" && fields[i]->persistent)
+                return true;
+        }
+        return false;
+    }
     bool HaveSoloAGVector()
     {
         int count = 0;
@@ -2931,8 +2945,9 @@ private:
         c << "    if(searchNode == 0)" << Endl;
         c << "        return;" << Endl;
         c << Endl;
-        c << "    DataNode *node;" << Endl;
-        if (HaveAGVectors())
+        if (!(fields.size() == 1 && fields[0]->type=="attVector"))
+            c << "    DataNode *node;" << Endl;
+        if (HavePersistentAGVectors())
             c << "    DataNode **children;" << Endl;
         
         if(HasCode(mName, 0))
@@ -2975,18 +2990,28 @@ private:
         c << "std::string" << Endl;
         c << name << "::GetFieldName(int index) const" << Endl;
         c << "{" << Endl;
-        c << "    switch (index)" << Endl;
-        c << "    {" << Endl;
-        for (size_t i=0; i<fields.size(); i++)
+        if (fields.size() > 0)
         {
-            QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
-            c << "    case "<<fieldID<<" return \""<<fields[i]->name<<"\";" << Endl;
+            c << "    switch (index)" << Endl;
+            c << "    {" << Endl;
+            for (size_t i=0; i<fields.size(); i++)
+            {
+                QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
+                c << "    case "<<fieldID<<" return \""<<fields[i]->name<<"\";" << Endl;
+            }
+            if (custombase)
+                c << "    default:  return " << baseClass << "::GetFieldName(index);" << Endl;
+            else
+                c << "    default:  return \"invalid index\";" << Endl;
+            c << "    }" << Endl;
         }
-        if (custombase)
-            c << "    default:  return " << baseClass << "::GetFieldName(index);" << Endl;
         else
-            c << "    default:  return \"invalid index\";" << Endl;
-        c << "    }" << Endl;
+        {
+            if (custombase)
+                c << "    return " << baseClass << "::GetFieldName(index);" << Endl;
+            else
+                c << "    return \"invalid index\";" << Endl;
+        }
         c << "}" << Endl;
         c << Endl;
 
@@ -2996,18 +3021,28 @@ private:
         c << "AttributeGroup::FieldType" << Endl;
         c << name << "::GetFieldType(int index) const" << Endl;
         c << "{" << Endl;
-        c << "    switch (index)" << Endl;
-        c << "    {" << Endl;
-        for (size_t i=0; i<fields.size(); i++)
+        if (fields.size() > 0)
         {
-            QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
-            c << "    case "<<fieldID<<" return FieldType_"<<fields[i]->GetFieldType()<<";" << Endl;
+            c << "    switch (index)" << Endl;
+            c << "    {" << Endl;
+            for (size_t i=0; i<fields.size(); i++)
+            {
+                QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
+                c << "    case "<<fieldID<<" return FieldType_"<<fields[i]->GetFieldType()<<";" << Endl;
+            }
+            if (custombase)
+                c << "    default:  return " << baseClass << "::GetFieldType(index);" << Endl;
+            else
+                c << "    default:  return FieldType_unknown;" << Endl;
+            c << "    }" << Endl;
         }
-        if (custombase)
-            c << "    default:  return " << baseClass << "::GetFieldType(index);" << Endl;
         else
-            c << "    default:  return FieldType_unknown;" << Endl;
-        c << "    }" << Endl;
+        {
+            if (custombase)
+                c << "    return " << baseClass << "::GetFieldType(index);" << Endl;
+            else
+                c << "    return FieldType_unknown;" << Endl;
+        }
         c << "}" << Endl;
         c << Endl;
 
@@ -3017,18 +3052,28 @@ private:
         c << "std::string" << Endl;
         c << name << "::GetFieldTypeName(int index) const" << Endl;
         c << "{" << Endl;
-        c << "    switch (index)" << Endl;
-        c << "    {" << Endl;
-        for (size_t i=0; i<fields.size(); i++)
+        if (fields.size() > 0)
         {
-            QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
-            c << "    case "<<fieldID<<" return \""<<fields[i]->type<<"\";" << Endl;
+            c << "    switch (index)" << Endl;
+            c << "    {" << Endl;
+            for (size_t i=0; i<fields.size(); i++)
+            {
+                QString fieldID(PadStringWithSpaces(fields[i]->FieldID() + QString(":"), maxlen));
+                c << "    case "<<fieldID<<" return \""<<fields[i]->type<<"\";" << Endl;
+            }
+            if (custombase)
+                c << "    default:  return " << baseClass << "::GetFieldTypeName(index);" << Endl;
+            else
+                c << "    default:  return \"invalid index\";" << Endl;
+            c << "    }" << Endl;
         }
-        if (custombase)
-            c << "    default:  return " << baseClass << "::GetFieldTypeName(index);" << Endl;
         else
-            c << "    default:  return \"invalid index\";" << Endl;
-        c << "    }" << Endl;
+        {
+            if (custombase)
+                c << "    return " << baseClass << "::GetFieldTypeName(index);" << Endl;
+            else
+                c << "    return \"invalid index\";" << Endl;
+        }
         c << "}" << Endl;
         c << Endl;
 
@@ -3039,30 +3084,40 @@ private:
         c << name << "::FieldsEqual(int index_, const AttributeGroup *rhs) const" << Endl;
         c << "{" << Endl;
 
-        c << "    const "<<name<<" &obj = *((const "<<name<<"*)rhs);" << Endl;
 
         // Create bool values to evaluate the arrays.
-        c << "    bool retval = false;" << Endl;
-        c << "    switch (index_)" << Endl;
-        c << "    {" << Endl;
-
-        // Create a big boolean return statement.
-        for (size_t i=0; i<fields.size(); i++)
+        if (fields.size() > 0)
         {
-            c << "    case "<<fields[i]->FieldID()<<":" << Endl;
-            c << "        {  // new scope" << Endl;
-            fields[i]->WriteSourceComparisonPrecalc(c, "        ");
-            c << "        retval = ";
-            fields[i]->WriteSourceComparison(c);
-            c << ";" << Endl << "        }" << Endl;
-            c << "        break;" << Endl;
-        }
-        if (custombase)
-            c << "    default: retval = " << baseClass << "::FieldsEqual(index_, rhs);" << Endl;
-        else 
-            c << "    default: retval = false;" << Endl;
-        c << "    }" << Endl << Endl;
+            c << "    const "<<name<<" &obj = *((const "<<name<<"*)rhs);"<<Endl;
+            c << "    bool retval = false;" << Endl;
+            c << "    switch (index_)" << Endl;
+            c << "    {" << Endl;
+
+            // Create a big boolean return statement.
+            for (size_t i=0; i<fields.size(); i++)
+            {
+                c << "    case "<<fields[i]->FieldID()<<":" << Endl;
+                c << "        {  // new scope" << Endl;
+                fields[i]->WriteSourceComparisonPrecalc(c, "        ");
+                c << "        retval = ";
+                fields[i]->WriteSourceComparison(c);
+                c << ";" << Endl << "        }" << Endl;
+                c << "        break;" << Endl;
+            }
+            if (custombase)
+                c << "    default: retval = " << baseClass << "::FieldsEqual(index_, rhs);" << Endl;
+            else 
+                c << "    default: retval = false;" << Endl;
+            c << "    }" << Endl << Endl;
         c << "    return retval;" << Endl;
+        }
+        else
+        {
+            if (custombase)
+                c << "    return " << baseClass << "::FieldsEqual(index_, rhs);" << Endl;
+            else 
+                c << "    return false;" << Endl;
+        }
         c << "}" << Endl << Endl;
     }
 

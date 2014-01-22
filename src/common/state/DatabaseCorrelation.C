@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -651,7 +651,7 @@ DatabaseCorrelation::SetNumStates(int nStates)
     if(method == IndexForIndexCorrelation)
     {
         intVector newIndices;
-        for(size_t i = 0; i < databaseNames.size(); ++i)
+        for(int i = 0; i < (int)databaseNames.size(); ++i)
         {
             for(int j = 0; j < nStates; ++j)
             {
@@ -1293,7 +1293,7 @@ DatabaseCorrelation::AddDatabase(const std::string &database, int nStates,
         int index = 0;         
         for(size_t i = 0; i < databaseNames.size(); ++i)
             for(int j = 0; j < databaseNStates[i]; ++j, ++index)
-                timeAlignmentMap[databaseTimes[index]].push_back(i);
+                timeAlignmentMap[databaseTimes[index]].push_back((int)i);
 
         //
         // Set the condensed times vector
@@ -1338,7 +1338,7 @@ DatabaseCorrelation::AddDatabase(const std::string &database, int nStates,
         int index = 0;         
         for(size_t i = 0; i < databaseNames.size(); ++i)
             for(int j = 0; j < databaseNStates[i]; ++j, ++index)
-                cycleAlignmentMap[databaseCycles[index]].push_back(i);
+                cycleAlignmentMap[databaseCycles[index]].push_back((int)i);
 
         //
         // Set the condensed cycles vector
@@ -1491,7 +1491,7 @@ DatabaseCorrelation::GetInverseCorrelatedTimeState(const std::string &db,
 {
     int retval = -1;
 
-    for(size_t i = 0; i < databaseNames.size() && retval == -1; ++i)
+    for(int i = 0; i < (int)databaseNames.size() && retval == -1; ++i)
     {
         if(databaseNames[i] == db)
         {

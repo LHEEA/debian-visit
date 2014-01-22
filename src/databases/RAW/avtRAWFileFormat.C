@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -444,7 +444,7 @@ avtRAWFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     mmd->meshType = AVT_SURFACE_MESH;
     mmd->spatialDimension = 3;
     mmd->topologicalDimension = 2;
-    mmd->numBlocks = meshes.size();
+    mmd->numBlocks = (int)meshes.size();
     stringVector names;
     for(int i = 0; i < meshes.size(); ++i)
         names.push_back(meshes[i].domainName);

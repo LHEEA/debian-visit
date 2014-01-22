@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -100,7 +100,7 @@ vtkLineLegend::vtkLineLegend()
 
   this->BoundingBox = vtkPolyData::New();
   this->BoundingBoxMapper = vtkPolyDataMapper2D::New();
-  this->BoundingBoxMapper->SetInput(this->BoundingBox);
+  this->BoundingBoxMapper->SetInputData(this->BoundingBox);
   this->BoundingBoxActor = vtkActor2D::New();
   this->BoundingBoxActor->SetMapper(this->BoundingBoxMapper);
   this->BoundingBoxActor->GetPositionCoordinate()->
@@ -120,7 +120,7 @@ vtkLineLegend::vtkLineLegend()
 
   this->Line = vtkPolyData::New();
   this->LineMapper = vtkPolyDataMapper2D::New();
-  this->LineMapper->SetInput(this->Line);
+  this->LineMapper->SetInputData(this->Line);
   this->LineActor = vtkActor2D::New();
   this->LineActor->SetMapper(this->LineMapper);
   this->LineActor->GetPositionCoordinate()->

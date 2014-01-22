@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,10 +89,12 @@ class QvisCylinderWindow : public QvisOperatorWindow
     void point1ProcessText();
     void point2ProcessText();
     void radiusProcessText();
+    void inverseChanged(bool val);
   private:
     QLineEdit *point1;
     QLineEdit *point2;
     QLineEdit *radius;
+    QCheckBox *inverse;
     QLabel *point1Label;
     QLabel *point2Label;
     QLabel *radiusLabel;

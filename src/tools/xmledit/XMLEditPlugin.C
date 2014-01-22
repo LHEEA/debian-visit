@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -848,6 +848,10 @@ XMLEditPlugin::UpdateWindowSensitivity()
 //    Replaced "Extensions" and "Filenames" with "FilePatterns".  Removed
 //    specifiedFilenames.  Added filePatternsStrict and opensWholeDirectory.
 //
+//    Kevin Bensema, Wed Jul 17 17:30 PDT 2013
+//    Added createExpressions to the list of widgets affected by 
+//    BlockAllSignals
+//
 // ****************************************************************************
 
 void
@@ -877,6 +881,7 @@ XMLEditPlugin::BlockAllSignals(bool block)
     hasWriter->blockSignals(block);
     hasOptions->blockSignals(block);
     enabledByDefault->blockSignals(block);
+    createExpressions->blockSignals(block);
 }
 
 // ----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -57,6 +57,7 @@ import os
 import subprocess
 import glob
 import re
+import string
 
 from os.path import join as pjoin
 
@@ -108,9 +109,10 @@ def encode(ipattern,ofile,fdup=None,etype=None,stereo=False):
        patterns,lnks = gen_symlinks(ipattern,fdup)
     if stereo:
        patterns,lnks = gen_symlinks_stereo(ipattern,fdup)
-    encode_patterns(patterns,ofile,etype,stereo)
+    ret = encode_patterns(patterns,ofile,etype,stereo)
     if len(lnks) > 0:
        clean_symlinks(lnks)
+    return ret
 
 def encode_patterns(patterns,ofile,etype,stereo):
     """
@@ -129,25 +131,29 @@ def encode_patterns(patterns,ofile,etype,stereo):
                     (patterns["right"],  ofile_r,False)]
     else:
         outputs = [ (patterns["full"],ofile,False)]
+    nfails = 0
     for out in outputs:
         print "[encoding: %s]" % out[1]
+        cur = 0
         if etype == "sm":
-            encode_sm(out[0],out[1],stereo=out[2])
+            cur = encode_sm(out[0],out[1],stereo=out[2])
         elif etype == "mpg" or etype == "mpeg1":
-            encode_mpeg1(out[0],out[1])
+            cur = encode_mpeg1(out[0],out[1])
         elif etype == "wmv":
-            encode_wmv(out[0],out[1])
+            cur = encode_wmv(out[0],out[1])
         elif etype == "avi":
-            encode_avi(out[0],out[1])
+            cur = encode_avi(out[0],out[1])
         elif etype == "mov":
-            encode_mov(out[0],out[1])
+            cur = encode_mov(out[0],out[1])
         elif etype == "swf":
-            encode_swf(out[0],out[1])
+            cur = encode_swf(out[0],out[1])
         elif etype == "mp4":
-            encode_mp4(out[0],out[1])
+            cur = encode_mp4(out[0],out[1])
         elif etype == "divx":
-            encode_divx(out[0],out[1])
-
+            cur = encode_divx(out[0],out[1])
+        if cur != 0:
+            nfails = nfails + 1
+    return nfails
 
 def encode_sm(ipattern,ofile,stereo=False):
     """
@@ -159,7 +165,7 @@ def encode_sm(ipattern,ofile,stereo=False):
         if stereo:
             cmd += " -stereo"
         cmd += " %s %s " % (ipattern,ofile)
-        sexe(cmd)
+        return sexe(cmd)
     else:
         raise VisItException("img2sm not found: Unable to encode streaming movie.")
 
@@ -169,11 +175,25 @@ def encode_mpeg1(ipattern,ofile):
     """
     enc_bin = ffmpeg_bin()
     if not ffmpeg_bin is None:
-        cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -an -vcodec mpeg1video "
-        cmd += "-mbd -rd -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
-        cmd += "-b 18000000 -r 24 %s"
-        cmd =  cmd % (enc_bin,ipattern,ofile)
-        sexe(cmd)
+        if ffmpeg_version() > .09 :
+            # two pass support with newer versions requires two calls to ffmpeg
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -an -vcodec mpeg1video "
+            cmd += "-trellis 2 -cmp 2 -subcmp 2 -pass %d "
+            cmd += "-b:v 18000000 -r 24 %s"
+            # pass 1
+            cmd_pass1 =  cmd % (enc_bin,ipattern,1,ofile)
+            res = sexe(cmd_pass1)
+            if res == 0:
+                # pass 2
+                cmd_pass2 =  cmd % (enc_bin,ipattern,2,ofile)
+                res = sexe(cmd_pass2)
+        else:
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -an -vcodec mpeg1video "
+            cmd += "-trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
+            cmd += "-b 18000000 -r 24 %s"
+            cmd =  cmd % (enc_bin,ipattern,ofile)
+            res = sexe(cmd)
+        return res
     else:
         raise VisItException("ffmpeg not found: Unable to encode mpeg.")
 
@@ -183,11 +203,25 @@ def encode_wmv(ipattern,ofile):
     """
     enc_bin = ffmpeg_bin()
     if not ffmpeg_bin is None:
-        cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec msmpeg4v2 "
-        cmd += "-mbd -rd -flags +aic -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
-        cmd += "-b 18000000 -r 30 %s"
-        cmd =  cmd % (enc_bin,ipattern,ofile)
-        sexe(cmd)
+        if ffmpeg_version() > .09 :
+            # two pass support with newer versions requires two calls to ffmpeg
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec msmpeg4v2 "
+            cmd += "-flags +aic -trellis 2 -cmp 2 -subcmp 2 -pass %d "
+            cmd += "-b:v 18000000 -r 30 %s"
+            # pass 1
+            cmd_pass1 =  cmd % (enc_bin,ipattern,1,ofile)
+            res = sexe(cmd_pass1)
+            if res == 0:
+                # pass 2
+                cmd_pass2 =  cmd % (enc_bin,ipattern,2,ofile)
+                res = sexe(cmd_pass2)
+        else:
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec msmpeg4v2 "
+            cmd += "-mbd -rd -flags +aic -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
+            cmd += "-b 18000000 -r 30 %s"
+            cmd =  cmd % (enc_bin,ipattern,ofile)
+            res = sexe(cmd)
+        return res
     else:
         raise VisItException("ffmpeg not found: Unable to encode wmv.")
 
@@ -197,11 +231,25 @@ def encode_swf(ipattern,ofile):
     """
     enc_bin = ffmpeg_bin()
     if not ffmpeg_bin is None:
-        cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec flv "
-        cmd += "-mbd -rd -flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
-        cmd += "-b 18000000 -r 30 -f swf %s"
-        cmd =  cmd % (enc_bin,ipattern,ofile)
-        sexe(cmd)
+        if ffmpeg_version() > .09 :
+            # two pass support with newer versions requires two calls to ffmpeg
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec flv "
+            cmd += "-flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass %d "
+            cmd += "-b:v 18000000 -r 30 -f swf %s"
+            # pass 1
+            cmd_pass1 =  cmd % (enc_bin,ipattern,1,ofile)
+            res = sexe(cmd_pass1)
+            if res == 0:
+                # pass 2
+                cmd_pass2 =  cmd % (enc_bin,ipattern,2,ofile)
+                res = sexe(cmd_pass2)
+        else:
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec flv "
+            cmd += "-mbd -rd -flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
+            cmd += "-b 18000000 -r 30 -f swf %s"
+            cmd =  cmd % (enc_bin,ipattern,ofile)
+            res = sexe(cmd)
+        return res
     else:
         raise VisItException("ffmpeg not found: Unable to encode swf.")
 
@@ -212,9 +260,12 @@ def encode_avi(ipattern,ofile):
      """
      enc_bin = ffmpeg_bin()
      if not ffmpeg_bin is None:
-        cmd =  "echo y | %s -f image2 -i %s -vcodec mjpeg -qscale 1 -an %s "
+        if ffmpeg_version() > .09 :
+            cmd =  "echo y | %s -f image2 -i %s -vcodec mjpeg -q:v 1 -an %s "
+        else:
+            cmd =  "echo y | %s -f image2 -i %s -vcodec mjpeg -qscale 1 -an %s "
         cmd =  cmd % (enc_bin,ipattern,ofile)
-        sexe(cmd)
+        return sexe(cmd)
      else:
         raise VisItException("ffmpeg not found: Unable to encode avi.")
 
@@ -225,10 +276,14 @@ def encode_divx(ipattern,ofile):
     """
     enc_bin = ffmpeg_bin()
     if not ffmpeg_bin is None:
-        cmd  = "echo y | %s -f image2 -i %s -vcodec mpeg4 -qscale 1 -f avi "
-        cmd += "-vtag DX50 -an %s "
+        if ffmpeg_version() > .09 :
+            cmd  = "echo y | %s -f image2 -i %s -vcodec mpeg4 -q:v 1 -f avi "
+            cmd += "-vtag DX50 -an %s "
+        else:
+            cmd  = "echo y | %s -f image2 -i %s -vcodec mpeg4 -qscale 1 -f avi "
+            cmd += "-vtag DX50 -an %s "
         cmd  = cmd % (enc_bin,ipattern,ofile)
-        sexe(cmd)
+        return sexe(cmd)
     else:
         raise VisItException("ffmpeg not found: Unable to encode divx avi.")
 
@@ -239,11 +294,25 @@ def encode_mov(ipattern,ofile):
     """
     enc_bin = ffmpeg_bin()
     if not ffmpeg_bin is None:
-        cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec mpeg4 "
-        cmd += "-mbd -rd -flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
-        cmd += "-an -b 18000000 -f mov -r 30 %s"
-        cmd =  cmd % (enc_bin,ipattern,ofile)
-        sexe(cmd)
+        if ffmpeg_version() > .09 :
+            # two pass support with newer versions requires two calls to ffmpeg
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec mpeg4 "
+            cmd += "-flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass %d "
+            cmd += "-an -b:v 18000000 -f mov -r 30 %s"
+            # pass 1
+            cmd_pass1 =  cmd % (enc_bin,ipattern,1,ofile)
+            res = sexe(cmd_pass1)
+            if res == 0:
+                # pass 2
+                cmd_pass2 =  cmd % (enc_bin,ipattern,2,ofile)
+                res = sexe(cmd_pass2)
+        else:
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec mpeg4 "
+            cmd += "-mbd -rd -flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
+            cmd += "-an -b 18000000 -f mov -r 30 %s"
+            cmd =  cmd % (enc_bin,ipattern,ofile)
+            res = sexe(cmd)
+        return res
     else:
         raise VisItException("ffmpeg not found: Unable to encode mov.")
 
@@ -253,11 +322,25 @@ def encode_mp4(ipattern,ofile):
     """
     enc_bin = ffmpeg_bin()
     if not ffmpeg_bin is None:
-        cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec mpeg4 "
-        cmd += "-mbd -rd -flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
-        cmd += "-an -b 18000000 -f mp4 %s"
-        cmd =  cmd % (enc_bin,ipattern,ofile)
-        sexe(cmd)
+        if ffmpeg_version() > .09 :
+            # two pass support with newer versions requires two calls to ffmpeg
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec mpeg4 "
+            cmd += "-flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass %d "
+            cmd += "-an -b:v 18000000 -f mp4 %s"
+            # pass 1
+            cmd_pass1 =  cmd % (enc_bin,ipattern,1,ofile)
+            res = sexe(cmd_pass1)
+            if res == 0:
+                # pass 2
+                cmd_pass2 =  cmd % (enc_bin,ipattern,2,ofile)
+                res = sexe(cmd_pass2)
+        else:
+            cmd =  "echo y | %s -f image2 -i %s -qmin 1 -qmax 2 -g 100 -an -vcodec mpeg4 "
+            cmd += "-mbd -rd -flags +mv4+aic -trellis 2 -cmp 2 -subcmp 2 -pass 1/2 "
+            cmd += "-an -b 18000000 -f mp4 %s"
+            cmd =  cmd % (enc_bin,ipattern,ofile)
+            res = sexe(cmd)
+        return res
     else:
         raise VisItException("ffmpeg not found: Unable to encode mp4.")
 
@@ -378,3 +461,50 @@ def ffmpeg_bin():
         return res
     else:
         return None
+
+def ffmpeg_version():
+    """
+    Returns a floating point number that reflects the version of ffmpeg.
+
+    0.10.3     would be returned as 0.1003
+    1.2        would be returned as 1.02
+    SVN-r24044 would be returned as -1.
+    N-55356-gb11b7ce would be returned as 1.0
+
+
+    Note: This was created b/c the admissible command line syntax 
+    changed between versions of ffmpeg, and we wanted to support both 
+    the old and new way of doing things.
+    """
+    ret = -1.0
+    res = sexe("ffmpeg -version",ret_output=True)[1].strip()
+    idx = res.find("version ")
+    # if no "version" text, return old style args
+    if idx == -1:
+        return res
+    res = res[idx+len("version "):]
+    res = res.replace("\n"," ")
+    try:
+        # github version
+        if res.startswith("N-"):
+            # assume github version supports "new" cmd line syntax (return 1.0)
+            res =  1.0 
+        # svn version
+        if res.startswith("SVN"):
+            # assume svn version supports old version (return -1.0)
+            res = -1.0
+        else: #try to actually parse the version #
+            version = res.split(" ")[0].strip()
+            points  = [float(x) for x in version.split(".")]
+            ver  = 0.0
+            mult = 1.0
+            for p in points:
+                ver = ver + mult * p
+                mult = mult / 100.0
+            ret = ver
+    except: 
+        # fallback, assume this is a new(er) format, that will adhere to the
+        # new style command line options
+        ret = 1.0
+    return ret
+

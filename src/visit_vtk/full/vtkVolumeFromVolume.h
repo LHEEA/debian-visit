@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -233,7 +233,7 @@ class VISIT_VTK_API VertexList : public ShapeList
                                        vtkDataArray *,vtkDataArray *);
 
     int            AddCentroidPoint(vtkIdType n, const vtkIdType *p)
-                        { return -1 - centroid_list.AddPoint(n, p); }
+                        { return -1 - (int)centroid_list.AddPoint(n, p); }
 
     void           AddHex(vtkIdType z, vtkIdType v0, vtkIdType v1, vtkIdType v2, vtkIdType v3,
                           vtkIdType v4, vtkIdType v5, vtkIdType v6, vtkIdType v7)

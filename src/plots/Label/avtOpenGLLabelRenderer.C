@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,7 +39,7 @@
 #include <avtOpenGLLabelRenderer.h>
 #include <arial.h>
 
-#include <avtGLEWInitializer.h>
+#include <avtOpenGLExtensionManager.h>
 
 #include <vtkCamera.h>
 #include <vtkCellData.h>
@@ -1958,6 +1958,10 @@ avtOpenGLLabelRenderer::ClearZBuffer()
 //   Change the zTolerance calculation to match the updated method in the 
 //   mesh renderer.
 //
+//   Eric Brugger, Wed Apr 10 14:03:26 PDT 2013
+//   Changed the check against vtkMesaRenderWindow to vtkOSMesaGLRenderWindow
+//   because of the change to VTK-6.
+//
 // ****************************************************************************
 
 void
@@ -1977,7 +1981,7 @@ avtOpenGLLabelRenderer::InitializeZBuffer(bool haveNodeData,
         zBufferWidth  = VTKRen->GetVTKWindow()->GetSize()[0];
         zBufferHeight = VTKRen->GetVTKWindow()->GetSize()[1];
 
-        if (VTKRen->GetVTKWindow()->IsA("vtkMesaRenderWindow"))
+        if (VTKRen->GetVTKWindow()->IsA("vtkOSMesaGLRenderWindow"))
         {
             // If we're using Mesa then let's just query since we already have
             // the zbuffer in memory.

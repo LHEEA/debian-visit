@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -112,8 +112,8 @@ VisWinRenderingWithoutWindow::VisWinRenderingWithoutWindow(
     //
     renWin = vtkRenderWindow::New();
 #ifdef EXTERNAL_VTK_BUILD
-    if(std::string(renWin->GetClassName()) == "vtkOSOpenGLRenderWindow")
-    if(std::string(renWin->GetClassName()) == "vtkWin32OpenGLRenderWindow")
+    if(std::string(renWin->GetClassName()) == "vtkOSOpenGLRenderWindow" || 
+       std::string(renWin->GetClassName()) == "vtkWin32OpenGLRenderWindow")
         renWin->OffScreenRenderingOn();
 #else
         renWin->OffScreenRenderingOn();
@@ -182,13 +182,15 @@ VisWinRenderingWithoutWindow::GetRenderWindow(void)
 // Creation:   Wed Mar 13 16:06:22 PDT 2013
 //
 // Modifications:
+//   Eric Brugger, Fri May 10 14:39:42 PDT 2013
+//   I removed support for mangled mesa.
 //   
 // ****************************************************************************
 
 void
 VisWinRenderingWithoutWindow::RenderRenderWindow(void)
 {
-#if defined(__unix__) && !defined(__APPLE__) && !defined(VISIT_USE_MANGLED_MESA)
+#if defined(__unix__) && !defined(__APPLE__) && !defined(HAVE_OSMESA)
     if(displayStatus == DS_NOT_CHECKED)
     {
         // On X11 systems not using mangled mesa, make sure that the DISPLAY is set.

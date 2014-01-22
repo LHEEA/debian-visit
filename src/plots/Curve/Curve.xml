@@ -7,11 +7,13 @@
       avtCurveFilter.C
       avtCurveRenderer.C
       avtOpenGLCurveRenderer.C
+      avtPolarToCartesianFilter.C
     </Files>
     <Files components="E">
       avtCurveFilter.C
       avtCurveRenderer.C
       avtOpenGLCurveRenderer.C
+      avtPolarToCartesianFilter.C
     </Files>
     <Attribute name="CurveAttributes" purpose="Attributes for the xy plot" persistent="true" keyframe="true" exportAPI="" exportInclude="" codefile="CurveAttributes.code">
       <Enum name="CurveColor">
@@ -30,6 +32,20 @@
         Circle
         Plus
         X
+      </Enum>
+      <Enum name="CurveFillMode">
+        NoFill
+        Solid
+        HorizontalGradient
+        VerticalGradient
+      </Enum>
+      <Enum name="PolarCoordinateOrder">
+        R_Theta
+        Theta_R
+      </Enum>
+      <Enum name="AngleUnits">
+        Radians
+        Degrees
       </Enum>
       <Field name="showLines" label="showLines" type="bool">
         true
@@ -104,6 +120,30 @@
       </Field>
       <Field name="timeForTimeCue" label="timeForTimeCue" type="double">
         0.000000
+      </Field>
+      <Field name="fillMode" label="Fill Mode" type="enum" subtype="CurveFillMode">
+        NoFill
+      </Field>
+      <Field name="fillColor1" label="Color" type="color" length="4">
+        255
+        0
+        0
+        255
+      </Field>
+      <Field name="fillColor2" label="Color" type="color" length="4">
+        255
+        100
+        100
+        255
+      </Field>
+      <Field name="polarToCartesian" label="Polar to Cartesian" type="bool">
+        false
+      </Field>
+      <Field name="polarCoordinateOrder" label="Polar Coordinate Order" type="enum" subtype="PolarCoordinateOrder" enabler="polarToCartesian:true">
+        R_Theta
+      </Field>
+      <Field name="angleUnits" label="Angle Units" type="enum" subtype="AngleUnits" enabler="polarToCartesian:true">
+        Radians
       </Field>
       <Function name="CopyAttributes" user="false" member="true">
       </Function>

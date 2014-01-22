@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -125,6 +125,7 @@ public:
     const char *GetByName() const;
     static bool RgbStrToRgb(const char *const s, unsigned char rgb[3]);
     static void RgbToRgbStr(unsigned char rgb[3], char *s);
+    static ColorAttribute Blend(const ColorAttribute &a, const ColorAttribute &b, double t);
 
     // IDs that can be used to identify fields in case statements
     enum {

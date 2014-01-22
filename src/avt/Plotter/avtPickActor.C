@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -80,7 +80,7 @@ avtPickActor:: avtPickActor()
     lineSource  = vtkLineSource::New();
         lineSource->SetResolution(1);   // only need one line segment here
     lineMapper  = vtkPolyDataMapper::New();
-        lineMapper->SetInput(lineSource->GetOutput());
+        lineMapper->SetInputConnection(lineSource->GetOutputPort());
     lineActor   = vtkActor::New();
         lineActor->SetMapper(lineMapper); 
         lineActor->PickableOff(); 
@@ -101,7 +101,7 @@ avtPickActor:: avtPickActor()
         glyphSource->FilledOn();
         glyphSource->SetScale(0.5);
     glyphMapper = vtkPolyDataMapper::New();
-        glyphMapper->SetInput(glyphSource->GetOutput());
+        glyphMapper->SetInputConnection(glyphSource->GetOutputPort());
         glyphMapper->ScalarVisibilityOff();
     glyphActor = vtkFollower::New();
         glyphActor->SetMapper(glyphMapper);
@@ -378,7 +378,7 @@ void avtPickActor::SetDesignator(const std::string &l)
     vecText->SetText(l.c_str());
 
     vtkPolyDataMapper *pickMapper = vtkPolyDataMapper::New();
-    pickMapper->SetInput(vecText->GetOutput());
+    pickMapper->SetInputConnection(vecText->GetOutputPort());
 
     letterActor->SetMapper(pickMapper);
 

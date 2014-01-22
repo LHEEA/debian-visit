@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -511,7 +511,6 @@ ExpressionList::SetFromNode(DataNode *parentNode)
     if(searchNode == 0)
         return;
 
-    DataNode *node;
     DataNode **children;
 
     // Clear all the Expressions if we got any.
@@ -679,7 +678,7 @@ ExpressionList::RemoveExpressions(int index)
 int
 ExpressionList::GetNumExpressions() const
 {
-    return expressions.size();
+    return (int)expressions.size();
 }
 
 // ****************************************************************************

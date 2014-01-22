@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -816,7 +816,7 @@ avtSimulationInformation::RemoveGenericCommands(int index)
 int
 avtSimulationInformation::GetNumGenericCommands() const
 {
-    return static_cast<int>(genericCommands.size());
+    return (int)genericCommands.size();
 }
 
 // ****************************************************************************
@@ -967,7 +967,7 @@ avtSimulationInformation::RemoveCustomCommands(int index)
 int
 avtSimulationInformation::GetNumCustomCommands() const
 {
-    return static_cast<int>(customCommands.size());
+    return (int)customCommands.size();
 }
 
 // ****************************************************************************

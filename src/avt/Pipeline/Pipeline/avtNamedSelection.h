@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -155,7 +155,7 @@ class PIPELINE_API avtZoneIdNamedSelection : public avtNamedSelection
     
     virtual void  Read(const std::string &);
     virtual void  Write(const std::string &);
-    virtual int   GetSize(void) { return zoneId.size(); };
+    virtual int   GetSize(void) { return (int)zoneId.size(); };
     virtual SELECTION_TYPE  GetType(void) { return ZONE_ID; };
 
     virtual avtContract_p ModifyContract(avtContract_p c0) const;
@@ -185,7 +185,7 @@ class PIPELINE_API avtFloatingPointIdNamedSelection : public avtNamedSelection
     
     virtual void  Read(const std::string &);
     virtual void  Write(const std::string &);
-    virtual int   GetSize(void) { return ids.size(); };
+    virtual int   GetSize(void) { return (int)ids.size(); };
     virtual SELECTION_TYPE    GetType(void) { return FLOAT_ID; };    
 
     virtual avtContract_p ModifyContract(avtContract_p c0) const;
@@ -211,7 +211,7 @@ class PIPELINE_API avtLocationsNamedSelection : public avtNamedSelection
     
     virtual void  Read(const std::string &);
     virtual void  Write(const std::string &);
-    virtual int   GetSize(void) { return locations.size(); };
+    virtual int   GetSize(void) { return (int)locations.size(); };
     virtual SELECTION_TYPE    GetType(void) { return LOCATIONS; };
 
     virtual avtContract_p ModifyContract(avtContract_p c0) const;

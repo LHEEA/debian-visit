@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,21 +86,21 @@ static const char *WindowType_strings[] = {
 "DomainZone", "DomainZoneVars", "ActualData", 
 "ActualDataVars", "LineDistribution", "HohlraumFlux", 
 "ConnCompSummary", "ShapeletsDecomp", "XRayImage", 
-"StreamlineInfo", "Pick", "Lineout"
-};
+"LineSamplerInfo", "StreamlineInfo", "Pick", 
+"Lineout"};
 
 std::string
 QueryList::WindowType_ToString(QueryList::WindowType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 15) index = 0;
+    if(index < 0 || index >= 16) index = 0;
     return WindowType_strings[index];
 }
 
 std::string
 QueryList::WindowType_ToString(int t)
 {
-    int index = (t < 0 || t >= 15) ? 0 : t;
+    int index = (t < 0 || t >= 16) ? 0 : t;
     return WindowType_strings[index];
 }
 
@@ -108,7 +108,7 @@ bool
 QueryList::WindowType_FromString(const std::string &s, QueryList::WindowType &val)
 {
     val = QueryList::Basic;
-    for(int i = 0; i < 15; ++i)
+    for(int i = 0; i < 16; ++i)
     {
         if(s == WindowType_strings[i])
         {

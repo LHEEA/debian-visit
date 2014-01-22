@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -294,7 +294,7 @@ avtImageColleague::SetOptions(const AnnotationObject &annot)
         if(iData->GetNumberOfScalarComponents() < 4)
         {
                vtkImageData *tmpdata = vtkImageData::New();
-               tmpdata->SetNumberOfScalarComponents(4);
+               tmpdata->SetNumberOfScalarComponents(4, tmpdata->GetInformation());
                tmpdata->SetExtent(iData->GetExtent());
 
                for(int i = 0; i < iData->GetDimensions()[0]; ++i)
@@ -311,7 +311,7 @@ avtImageColleague::SetOptions(const AnnotationObject &annot)
                        tmpdata->SetScalarComponentFromDouble(i, j, 0, 3, 255.);
                    }
 #ifdef RESAMPLE_IMAGE
-               resample->SetInput(tmpdata);
+               resample->SetInputData(tmpdata);
 #endif
                iData->Delete();
                iData = tmpdata;
@@ -489,16 +489,16 @@ avtImageColleague::UpdateImage(std::string filename)
             // Resample the image to the proper size.
 #ifdef RESAMPLE_IMAGE
             resample = vtkImageResample::New();
-            resample->SetInput(iData);
+            resample->SetInputData(iData);
 
-            mapper->SetInput(resample->GetOutput());
+            mapper->SetInputConnection(resample->GetOutputPort());
 #else
-            mapper->SetInput(iData);
+            mapper->SetInputData(iData);
 #endif
         }
         else
         {
-            mapper->SetInput(NULL);
+            mapper->SetInputData(NULL);
             retval = false;
         }
 
@@ -515,7 +515,7 @@ avtImageColleague::UpdateImage(std::string filename)
             avtCallback::IssueWarning(msg.c_str());
         }
 
-        if(mapper) { mapper->SetInput(NULL); }
+        if(mapper) { mapper->SetInputData(NULL); }
 #ifdef RESAMPLE_IMAGE
         if(resample) { resample->Delete(); resample = NULL; }
 #endif

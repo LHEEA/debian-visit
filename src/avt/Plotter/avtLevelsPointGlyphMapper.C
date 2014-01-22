@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -185,14 +185,16 @@ avtLevelsPointGlyphMapper::SetUpFilters(int nDoms)
 //  Creation:   November 12, 2004 
 //
 //  Modifications:
+//    Kathleen Biagas, Wed Feb 6 19:38:27 PDT 2013
+//    Changed signature of InsertFilters.
 //
 // ****************************************************************************
 
-vtkDataSet *
+vtkAlgorithmOutput *
 avtLevelsPointGlyphMapper::InsertFilters(vtkDataSet *ds, int dom)
 {
     if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() != 0)
-        return ds;
+        return NULL;
 
     return InsertGlyphs(ds, dom, 
                  GetInput()->GetInfo().GetAttributes().GetSpatialDimension());
@@ -286,7 +288,11 @@ avtLevelsPointGlyphMapper::SetGlyphType(PointGlyphType type)
                 {
                     if (mappers[i] != NULL)
                     {
-                        mappers[i]->SetInput(InsertFilters(children[i], i));
+                        vtkAlgorithmOutput *output = InsertFilters(children[i], i);
+                        if (output != NULL)
+                            mappers[i]->SetInputConnection(output);
+                        else
+                            mappers[i]->SetInputData(children[i]);
                     }
                 }
                 // this was allocated in GetAllLeaves, need to free it now

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -117,6 +117,12 @@ class AVTFILEWRITER_API avtImageFileWriter : public avtTerminatingImageSink
                                         int quality,
                                         bool progressive,
                                         size_t& len);
+    static const char* WriteToByteArray(avtImageRepresentation &imagerep,
+                                        int quality,
+                                        bool progressive,
+                                        size_t& len,
+                                        int outputWidth,
+                                        int outputHeight);
   protected:
     bool               FileHasExtension(const char *filename, const char *ext)
                              const;

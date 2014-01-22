@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -251,7 +251,7 @@ void avtCurveConstructorFilter::Execute()
 
         for (i = 0; i < nleaves; i++)
         {
-            writer->SetInput(ds[i]);
+            writer->SetInputData(ds[i]);
             writer->Write();
             size =  writer->GetOutputStringLength();
             str  =  writer->RegisterAndGetOutputString();
@@ -311,7 +311,7 @@ void avtCurveConstructorFilter::Execute()
                 return; 
             }
         }
-        outTree = new avtDataTree(labels.size(), ds, -1, labels);
+        outTree = new avtDataTree((int)labels.size(), ds, -1, labels);
     }
 
     SetOutputDataTree(outTree);

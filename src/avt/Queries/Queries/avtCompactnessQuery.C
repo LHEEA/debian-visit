@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,6 +49,7 @@
 #include <vtkGeometryFilter.h>
 #include <vtkPolyData.h>
 #include <vtkPolyDataRelevantPointsFilter.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkVisItFeatureEdges.h>
 
@@ -473,6 +474,9 @@ avtCompactnessQuery::PostExecute(void)
 //    Hank Childs, Fri Feb 15 15:30:32 PST 2008
 //    Fix memory leak.
 //
+//    Kathleen Biagas, Fri Jan 25 16:32:38 PST 2013
+//    Call Update on filter, not data object.
+//
 // ****************************************************************************
 
 void
@@ -486,10 +490,10 @@ avtCompactnessQuery::Execute1(vtkDataSet *ds, const int dom)
     //
     vtkDataSetRemoveGhostCells *gzFilter2 = vtkDataSetRemoveGhostCells::New();
 
-    gzFilter2->SetInput(ds);
-    vtkDataSet *ds_2d_nogz = gzFilter2->GetOutput();
+    gzFilter2->SetInputData(ds);
+    gzFilter2->Update();
 
-    ds_2d_nogz->Update();
+    vtkDataSet *ds_2d_nogz = gzFilter2->GetOutput();
 
     //
     // Create the area, volume and centroid arrays
@@ -554,17 +558,19 @@ avtCompactnessQuery::Execute1(vtkDataSet *ds, const int dom)
 
     vtkDataSetRemoveGhostCells *gzFilter1 = vtkDataSetRemoveGhostCells::New();
 
-    geomFilter->SetInput(ds);
-    boundaryFilter->SetInput(geomFilter->GetOutput());
-    boundaryFilter->GetOutput()->SetUpdateGhostLevel(2);
-    boundaryFilter->GetOutput()->Update();
+    geomFilter->SetInputData(ds);
+    boundaryFilter->SetInputConnection(geomFilter->GetOutputPort());
+    // FIX_ME_VTK6.0, ESB, is this correct?
+    vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(boundaryFilter->GetInformation(), 2);
+    //boundaryFilter->GetOutput()->SetUpdateGhostLevel(2);
+    //boundaryFilter->Update();
 
-    vtkPolyData *allLines = boundaryFilter->GetOutput();
+    //vtkPolyData *allLines = boundaryFilter->GetOutput();
     //allLines->SetSource(NULL);
 
-    gzFilter1->SetInput(allLines);
+    gzFilter1->SetInputConnection(boundaryFilter->GetOutputPort());
+    gzFilter1->Update();
     vtkDataSet *ds_1d_nogz = gzFilter1->GetOutput();
-    ds_1d_nogz->Update();
 
     // We need polydata, and should have it by now.
     if (ds_1d_nogz->GetDataObjectType() != VTK_POLY_DATA)
@@ -588,7 +594,7 @@ avtCompactnessQuery::Execute1(vtkDataSet *ds, const int dom)
     //
     vtkPolyDataRelevantPointsFilter *relPts =
                                     vtkPolyDataRelevantPointsFilter::New();
-    relPts->SetInput(pd_1d_nogz_allpts);
+    relPts->SetInputData(pd_1d_nogz_allpts);
     vtkPolyData *pd_1d_nogz = relPts->GetOutput();
     relPts->Update();
 
@@ -648,6 +654,9 @@ avtCompactnessQuery::Execute1(vtkDataSet *ds, const int dom)
 //    Hank Childs, Mon Aug 30 17:15:30 PDT 2004
 //    Remove call to SetGhostLevel.
 //
+//    Kathleen Biagas, Fri Jan 25 16:32:38 PST 2013
+//    Call Update on filter, not data object.
+//
 // ****************************************************************************
 
 void
@@ -660,10 +669,9 @@ avtCompactnessQuery::Execute2(vtkDataSet *ds, const int dom)
     //
     vtkDataSetRemoveGhostCells *gzFilter2 = vtkDataSetRemoveGhostCells::New();
 
-    gzFilter2->SetInput(ds);
+    gzFilter2->SetInputData(ds);
+    gzFilter2->Update();
     vtkDataSet *ds_2d_nogz = gzFilter2->GetOutput();
-
-    ds_2d_nogz->Update();
 
     //
     // Create the area, volume and centroid arrays

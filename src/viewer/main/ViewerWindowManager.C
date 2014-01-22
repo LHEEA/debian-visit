@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -10559,4 +10559,21 @@ bool ViewerWindowManager::SetCreateVectorMagnitudeExpressions(bool newVal)
     return oldVal;
 }
 
+// ****************************************************************************
+//  Method: ViewerWindowManager::SetPrecisionType
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   August 7, 2013
+//
+// ****************************************************************************
+
+void ViewerWindowManager::SetPrecisionType(int newVal)
+{
+    if (clientAtts->GetPrecisionType() != newVal)
+    {
+        clientAtts->SetPrecisionType(GlobalAttributes::PrecisionType(newVal));
+        ViewerEngineManager::Instance()->UpdatePrecisionType(newVal);
+        clientAtts->Notify();
+    }
+}
 

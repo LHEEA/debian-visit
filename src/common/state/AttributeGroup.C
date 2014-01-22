@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -366,14 +366,14 @@ AttributeGroup::InterpolateConst(const AttributeGroup *atts1,
                 AttributeGroupVector &out=*(AttributeGroupVector*)addrOut;
                 AttributeGroupVector &a1 =*(AttributeGroupVector*)addr1;
                 AttributeGroupVector &a2 =*(AttributeGroupVector*)addr2;
-                int l0 = out.size();
-                int l1 = a1.size();
-                int l2 = a2.size();
-                int lmax = (l1 > l2) ? l1 : l2;
+                size_t l0 = out.size();
+                size_t l1 = a1.size();
+                size_t l2 = a2.size();
+                size_t lmax = (l1 > l2) ? l1 : l2;
                 out.resize(lmax);
                 if (lmax > l0)
                 {
-                    for (int j=l0; j<lmax; j++)
+                    for (size_t j=l0; j<lmax; j++)
                     {
                         out[j] = CreateSubAttributeGroup(i);
                     }
@@ -534,8 +534,8 @@ AttributeGroup::InterpolateLinear(const AttributeGroup *atts1,
                 AttributeGroupVector &out=*(AttributeGroupVector*)addrOut;
                 AttributeGroupVector &a1 =*(AttributeGroupVector*)addr1;
                 AttributeGroupVector &a2 =*(AttributeGroupVector*)addr2;
-                int l0 = out.size();
-                int l1 = a1.size();
+                size_t l0 = out.size();
+                size_t l1 = a1.size();
                 int l2 = a2.size();
                 int lmax = (l1 > l2) ? l1 : l2;
                 out.resize(lmax);
@@ -785,7 +785,457 @@ AttributeGroup::TypeName() const
 //
 // ****************************************************************************
 void
-AttributeGroup::WriteTypeMeta(MapNode &map, int attrId, AttributeGroup::typeInfo &info)
+AttributeGroup::WriteAPI(JSONNode &map, int attrId, AttributeGroup::typeInfo &info)
+{
+//    char buf[1024];
+//    sprintf(buf,"%d",attrId);
+    std::string name = GetFieldName(attrId);
+
+    switch(info.typeCode)
+    {
+    case msgTypeBool:
+    case msgTypeChar:
+    case msgTypeUnsignedChar:
+    case msgTypeInt:
+    case msgTypeLong:
+    case msgTypeFloat:
+    case msgTypeDouble:
+    case msgTypeString:
+    case msgTypeListBool:
+    case msgTypeListChar:
+    case msgTypeListUnsignedChar:
+    case msgTypeListInt:
+    case msgTypeListLong:
+    case msgTypeListFloat:
+    case msgTypeListDouble:
+    case msgTypeListString:
+    case msgTypeVectorBool:
+    case msgTypeVectorChar:
+    case msgTypeVectorUnsignedChar:
+    case msgTypeVectorInt:
+    case msgTypeVectorLong:
+    case msgTypeVectorFloat:
+    case msgTypeVectorDouble:
+    case msgTypeVectorString:
+    case msgTypeMapNode:
+        map[name] = attrId;
+        break;
+    case msgTypeAttributeGroup:
+        {
+           // new scope
+           // Cast the address into another attributeGroup and write the
+           // sub-AttributeGroup onto the connection.
+           AttributeGroup *aptr = (AttributeGroup *)(info.address);
+
+           map[name] = JSONNode::JSONArray();
+           JSONNode::JSONArray& array = map[name].GetArray();
+
+           JSONNode child;
+           aptr->WriteAPI(child);
+
+           array.push_back(attrId);
+           array.push_back(child);
+        }
+        break;
+    case msgTypeListAttributeGroup:
+        { // new scope
+          AttributeGroup **aptr = (AttributeGroup **)(info.address);
+
+          map[name] = JSONNode::JSONArray();
+
+          JSONNode::JSONArray& array = map[name].GetArray();
+
+          array.push_back(attrId);
+          for(int i = 0; i < info.length; ++i, ++aptr)
+          {
+              JSONNode child;
+              if((*aptr) != 0)
+                  (*aptr)->WriteAPI(child);
+              array.push_back(child);
+          }
+        }
+        break;
+    case msgTypeVectorAttributeGroup:
+        { // new scope
+          AttributeGroupVector *va = (AttributeGroupVector *)(info.address);
+          AttributeGroupVector::iterator apos;
+
+          map[name] = JSONNode::JSONArray();
+
+          JSONNode::JSONArray& array = map[name].GetArray();
+
+          // Write out the AttributeGroups
+          array.push_back(attrId);
+          for(apos = va->begin(); apos != va->end(); ++apos)
+          {
+              JSONNode child;
+              (*apos)->WriteAPI(child);
+              array.push_back(child);
+          }
+        }
+        break;
+    case msgTypeNone:
+    default:
+        ; // nothing.
+    }
+}
+
+void
+AttributeGroup::WriteMetaData(JSONNode &map, int attrId, AttributeGroup::typeInfo &info)
+{
+//    char buf[1024];
+//    sprintf(buf,"%d",attrId);
+//    std::string name = GetFieldName(attrId);
+    int name = attrId;
+
+    switch(info.typeCode)
+    {
+    case msgTypeBool:
+        map[name] = Variant::BOOL_TYPE;
+        break;
+    case msgTypeChar:
+        map[name] = Variant::CHAR_TYPE;
+        break;
+    case msgTypeUnsignedChar:
+        map[name] = Variant::UNSIGNED_CHAR_TYPE;
+        break;
+    case msgTypeInt:
+        map[name] = Variant::INT_TYPE;
+        break;
+    case msgTypeLong:
+        map[name] = Variant::LONG_TYPE;
+        break;
+    case msgTypeFloat:
+        map[name] = Variant::FLOAT_TYPE;
+        break;
+    case msgTypeDouble:
+        map[name] = Variant::DOUBLE_TYPE;
+        break;
+    case msgTypeString:
+        map[name] = Variant::STRING_TYPE;
+        break;
+    case msgTypeListBool:
+    case msgTypeVectorBool:
+        map[name] = Variant::BOOL_VECTOR_TYPE;
+        break;
+    case msgTypeListChar:
+    case msgTypeVectorChar:
+        map[name] = Variant::CHAR_VECTOR_TYPE;
+        break;
+    case msgTypeListUnsignedChar:
+    case msgTypeVectorUnsignedChar:
+        map[name] = Variant::UNSIGNED_CHAR_VECTOR_TYPE;
+        break;
+    case msgTypeListInt:
+    case msgTypeVectorInt:
+        map[name] = Variant::INT_VECTOR_TYPE;
+        break;
+    case msgTypeListLong:
+    case msgTypeVectorLong:
+        map[name] = Variant::LONG_VECTOR_TYPE;
+        break;
+    case msgTypeListFloat:
+    case msgTypeVectorFloat:
+        map[name] = Variant::FLOAT_VECTOR_TYPE;
+        break;
+    case msgTypeListDouble:
+    case msgTypeVectorDouble:
+        map[name] = Variant::DOUBLE_VECTOR_TYPE;
+        break;
+    case msgTypeListString:
+    case msgTypeVectorString:
+        map[name] = Variant::STRING_VECTOR_TYPE;
+        break;
+    case msgTypeMapNode:
+        map[name] = MapNode::MapNodeType;
+        break;
+    case msgTypeAttributeGroup:
+        {
+           AttributeGroup *aptr = (AttributeGroup *)(info.address);
+
+           map[name] = JSONNode::JSONArray();
+           JSONNode::JSONArray& array = map[name].GetArray();
+
+           JSONNode child;
+           aptr->WriteMetaData(child);
+           array.push_back(child);
+        }
+        break;
+    case msgTypeListAttributeGroup:
+        { // new scope
+          AttributeGroup **aptr = (AttributeGroup **)(info.address);
+
+          map[name] = JSONNode::JSONArray();
+
+          JSONNode::JSONArray& array = map[name].GetArray();
+
+          for(int i = 0; i < info.length; ++i, ++aptr)
+          {
+              JSONNode child;
+              if((*aptr) != 0)
+                  (*aptr)->WriteMetaData(child);
+              array.push_back(child);
+          }
+        }
+        break;
+    case msgTypeVectorAttributeGroup:
+        { // new scope
+          AttributeGroupVector *va = (AttributeGroupVector *)(info.address);
+          AttributeGroupVector::iterator apos;
+
+          map[name] = JSONNode::JSONArray();
+
+          JSONNode::JSONArray& array = map[name].GetArray();
+
+          // Write out the AttributeGroups
+          for(apos = va->begin(); apos != va->end(); ++apos)
+          {
+              JSONNode child;
+              (*apos)->WriteMetaData(child);
+              array.push_back(child);
+          }
+        }
+        break;
+    case msgTypeNone:
+    default:
+        ; // nothing.
+    }
+}
+
+void
+AttributeGroup::WriteType(JSONNode &map, int attrId, AttributeGroup::typeInfo &info)
+{
+    int name = attrId;
+
+    switch(info.typeCode)
+    {
+    case msgTypeChar:
+        map[name] = (*((char *)info.address));
+        break;
+    case msgTypeUnsignedChar:
+        map[name] = (*((unsigned char *)info.address));
+        break;
+    case msgTypeInt:
+        map[name] = (*((int *)info.address));
+        break;
+    case msgTypeLong:
+        map[name] = (*((long *)info.address));
+        break;
+    case msgTypeFloat:
+        map[name] = (*((float *)info.address));
+        break;
+    case msgTypeDouble:
+        map[name] = (*((double *)info.address));
+        break;
+    case msgTypeString:
+        { // new scope
+          // Write a std::string to the map
+          std::string *sptr = (std::string *)(info.address);
+          map[name] = *sptr;
+        }
+        break;
+    case msgTypeAttributeGroup:
+        {
+           AttributeGroup *aptr = (AttributeGroup *)(info.address);
+
+           map[name] = JSONNode::JSONArray();
+           JSONNode::JSONArray& array = map[name].GetArray();
+
+           JSONNode child;
+           aptr->Write(child);
+           array.push_back(child);
+        }
+        break;
+    case msgTypeBool:
+        // Write a bool as a character.
+        if(*((bool *)info.address))
+            map[name] = (bool)(1);
+        else
+            map[name] = (bool)(0);
+
+        break;
+    case msgTypeListChar:
+        { // new scope
+           char *cptr = (char *)(info.address);
+           charVector v(info.length);
+
+           for(int i = 0; i < info.length; ++i, ++cptr)
+              v[i] = (*cptr);
+           map[name] = v;
+        }
+        break;
+    case msgTypeListUnsignedChar:
+        { // new scope
+           unsigned char *uptr = (unsigned char *)(info.address);
+
+           unsignedCharVector v(info.length);
+           for(int i = 0; i < info.length; ++i, ++uptr)
+              v[i] = (*uptr);
+           map[name] = v;
+        }
+        break;
+    case msgTypeListInt:
+        { // new scope
+          int *iptr = (int *)(info.address);
+
+          intVector v(info.length);
+          for(int i = 0; i < info.length; ++i, ++iptr)
+              v[i] = (*iptr);
+          map[name] = v;
+        }
+        break;
+    case msgTypeListLong:
+        { // new scope
+          long *lptr = (long *)(info.address);
+
+          longVector v(info.length);
+          for(int i = 0; i < info.length; ++i, ++lptr)
+              v[i] = (*lptr);
+          map[name] = v;
+        }
+        break;
+    case msgTypeListFloat:
+        { // new scope
+          float *fptr = (float *)(info.address);
+
+          floatVector v(info.length);
+          for(int i = 0; i < info.length; ++i, ++fptr)
+              v[i] = (*fptr);
+          map[name] = v;
+        }
+        break;
+    case msgTypeListDouble:
+        { // new scope
+          double *dptr = (double *)(info.address);
+
+          doubleVector v(info.length);
+          for(int i = 0; i < info.length; ++i, ++dptr)
+              v[i] = (*dptr);
+          map[name] = v;
+        }
+        break;
+    case msgTypeListString:
+        { // new scope
+          std::string *sptr = (std::string *)(info.address);
+          stringVector v(info.length);
+          for(int i = 0; i < info.length; ++i)
+              v[i] = (sptr[i]);
+          map[name] = v;
+        }
+        break;
+    case msgTypeListAttributeGroup:
+        { // new scope
+          AttributeGroup **aptr = (AttributeGroup **)(info.address);
+
+          map[name] = JSONNode::JSONArray();
+
+          JSONNode::JSONArray& array = map[name].GetArray();
+
+          for(int i = 0; i < info.length; ++i, ++aptr)
+          {
+              JSONNode child;
+              if((*aptr) != 0)
+                  (*aptr)->Write(child);
+              array.push_back(child);
+          }
+        }
+        break;
+    case msgTypeListBool:
+        { // new scope
+           bool *bptr = (bool *)(info.address);
+
+           boolVector v(info.length);
+           for(int i = 0; i < info.length; ++i, ++bptr)
+           {
+               if(*bptr)
+                   v[i] = (bool)(1);
+               else
+                   v[i] = (bool)(0);
+           }
+           map[name] = v;
+        }
+        break;
+    case msgTypeVectorBool:
+        { // new scope
+          boolVector *vb = (boolVector *)(info.address);
+          map[name] = *vb;
+        }
+        break;
+    case msgTypeVectorChar:
+        { // new scope
+          charVector *vc = (charVector *)(info.address);
+          map[name] = *vc;
+        }
+        break;
+    case msgTypeVectorUnsignedChar:
+        { // new scope
+          unsignedCharVector *vc = (unsignedCharVector *)(info.address);
+          map[name] = *vc;
+        }
+        break;
+    case msgTypeVectorInt:
+        { // new scope
+          intVector *vi = (intVector *)(info.address);
+          map[name] = *vi;
+        }
+        break;
+    case msgTypeVectorLong:
+        { // new scope
+          longVector *vl = (longVector *)(info.address);
+          map[name] = *vl;
+        }
+        break;
+    case msgTypeVectorFloat:
+        { // new scope
+          floatVector *vf = (floatVector *)(info.address);
+          map[name] = *vf;
+        }
+        break;
+    case msgTypeVectorDouble:
+        { // new scope
+          doubleVector *vd = (doubleVector *)(info.address);
+          map[name] = *vd;
+        }
+        break;
+    case msgTypeVectorString:
+        { // new scope
+          stringVector *vs = (stringVector *)(info.address);
+          map[name] = *vs;
+        }
+        break;
+    case msgTypeVectorAttributeGroup:
+        { // new scope
+          AttributeGroupVector *va = (AttributeGroupVector *)(info.address);
+          AttributeGroupVector::iterator apos;
+
+          map[name] = JSONNode::JSONArray();
+
+          JSONNode::JSONArray& array = map[name].GetArray();
+
+          // Write out the AttributeGroups
+          for(apos = va->begin(); apos != va->end(); ++apos)
+          {
+              JSONNode child;
+              (*apos)->Write(child);
+              array.push_back(child);
+          }
+        }
+        break;
+    case msgTypeMapNode:
+        { // new scope
+          MapNode *m = (MapNode *)(info.address);
+          JSONNode child = (*m).ToJSONNode();
+          map[name] = child;
+        }
+        break;
+    case msgTypeNone:
+    default:
+        ; // nothing.
+    }
+}
+
+void
+AttributeGroup::WriteAPI(MapNode &map, int attrId, AttributeGroup::typeInfo &info)
 {
 //    char buf[1024];
 //    sprintf(buf,"%d",attrId);
@@ -827,7 +1277,7 @@ AttributeGroup::WriteTypeMeta(MapNode &map, int attrId, AttributeGroup::typeInfo
            // sub-AttributeGroup onto the connection.
            AttributeGroup *aptr = (AttributeGroup *)(info.address);
            MapNode child;
-           aptr->WriteMeta(child);
+           aptr->WriteAPI(child);
            map[name] = child;
         }
         break;
@@ -844,7 +1294,7 @@ AttributeGroup::WriteTypeMeta(MapNode &map, int attrId, AttributeGroup::typeInfo
               sprintf(buffer,"%s_child_%d",name.c_str(),i);
               MapNode child;
               if((*aptr) != 0)
-                  (*aptr)->WriteMeta(child);
+                  (*aptr)->WriteAPI(child);
               node[buffer] = child;
           }
           map[name] = node;
@@ -866,7 +1316,136 @@ AttributeGroup::WriteTypeMeta(MapNode &map, int attrId, AttributeGroup::typeInfo
               char buffer[1024];
               sprintf(buffer,"%s_child_%d",name.c_str(),index);
               MapNode child;
-              (*apos)->WriteMeta(child);
+              (*apos)->WriteAPI(child);
+              std::string tmp = std::string(buffer);
+              node[tmp] = child;
+              ++index;
+          }
+          map[name] = node;
+        }
+        break;
+    case msgTypeNone:
+    default:
+        ; // nothing.
+    }
+}
+
+void
+AttributeGroup::WriteMetaData(MapNode &map, int attrId, AttributeGroup::typeInfo &info)
+{
+    char buf[1024];
+    sprintf(buf,"%d",attrId);
+    std::string name = GetFieldName(attrId);
+
+    switch(info.typeCode)
+    {
+    case msgTypeBool:
+        map[name] = Variant::BOOL_TYPE;
+        break;
+    case msgTypeChar:
+        map[name] = Variant::CHAR_TYPE;
+        break;
+    case msgTypeUnsignedChar:
+        map[name] = Variant::UNSIGNED_CHAR_TYPE;
+        break;
+    case msgTypeInt:
+        map[name] = Variant::INT_TYPE;
+        break;
+    case msgTypeLong:
+        map[name] = Variant::LONG_TYPE;
+        break;
+    case msgTypeFloat:
+        map[name] = Variant::FLOAT_TYPE;
+        break;
+    case msgTypeDouble:
+        map[name] = Variant::DOUBLE_TYPE;
+        break;
+    case msgTypeString:
+        map[name] = Variant::STRING_TYPE;
+        break;
+    case msgTypeListBool:
+    case msgTypeVectorBool:
+        map[name] = Variant::BOOL_VECTOR_TYPE;
+        break;
+    case msgTypeListChar:
+    case msgTypeVectorChar:
+        map[name] = Variant::CHAR_VECTOR_TYPE;
+        break;
+    case msgTypeListUnsignedChar:
+    case msgTypeVectorUnsignedChar:
+        map[name] = Variant::UNSIGNED_CHAR_VECTOR_TYPE;
+        break;
+    case msgTypeListInt:
+    case msgTypeVectorInt:
+        map[name] = Variant::INT_VECTOR_TYPE;
+        break;
+    case msgTypeListLong:
+    case msgTypeVectorLong:
+        map[name] = Variant::LONG_VECTOR_TYPE;
+        break;
+    case msgTypeListFloat:
+    case msgTypeVectorFloat:
+        map[name] = Variant::FLOAT_VECTOR_TYPE;
+        break;
+    case msgTypeListDouble:
+    case msgTypeVectorDouble:
+        map[name] = Variant::DOUBLE_VECTOR_TYPE;
+        break;
+    case msgTypeListString:
+    case msgTypeVectorString:
+        map[name] = Variant::STRING_VECTOR_TYPE;
+        break;
+    case msgTypeMapNode:
+        map[name] = MapNode::MapNodeType;
+        break;
+    case msgTypeAttributeGroup:
+        {
+           // new scope
+           // Cast the address into another attributeGroup and write the
+           // sub-AttributeGroup onto the connection.
+           AttributeGroup *aptr = (AttributeGroup *)(info.address);
+
+           MapNode child;
+           aptr->WriteMetaData(child);
+           map[name] = child;
+        }
+        break;
+    case msgTypeListAttributeGroup:
+        { // new scope
+          AttributeGroup **aptr = (AttributeGroup **)(info.address);
+
+          MapNode node;
+          node["components"] = (int)info.length;
+
+          for(int i = 0; i < info.length; ++i, ++aptr)
+          {
+              char buffer[1024];
+              sprintf(buffer,"%s_child_%d",name.c_str(),i);
+              MapNode child;
+              if((*aptr) != 0)
+                  (*aptr)->Write(child);
+              node[buffer] = child;
+          }
+          map[name] = node;
+        }
+        break;
+    case msgTypeVectorAttributeGroup:
+        { // new scope
+          AttributeGroupVector *va = (AttributeGroupVector *)(info.address);
+          AttributeGroupVector::iterator apos;
+
+          MapNode node;
+          std::string components = "components";
+          node[components] = (int)va->size();
+
+          // Write out the AttributeGroups
+          int index = 0;
+          for(apos = va->begin(); apos != va->end(); ++apos)
+          {
+              char buffer[1024];
+              sprintf(buffer,"%s_child_%d",name.c_str(),index);
+              MapNode child;
+              (*apos)->Write(child);
               std::string tmp = std::string(buffer);
               node[tmp] = child;
               ++index;
@@ -1259,7 +1838,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           boolVector *vb = (boolVector *)(info.address);
           boolVector::iterator bpos;
 
-          conn.WriteInt(vb->size());
+          conn.WriteInt((int)vb->size());
           for(bpos = vb->begin(); bpos != vb->end(); ++bpos)
           {
               if (*bpos)
@@ -1274,7 +1853,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           charVector *vc = (charVector *)(info.address);
           charVector::iterator cpos;
 
-          conn.WriteInt(vc->size());
+          conn.WriteInt((int)vc->size());
           for(cpos = vc->begin(); cpos != vc->end(); ++cpos)
               conn.WriteChar(*cpos);
         }
@@ -1284,7 +1863,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           unsignedCharVector *vc = (unsignedCharVector *)(info.address);
           unsignedCharVector::iterator cpos;
 
-          conn.WriteInt(vc->size());
+          conn.WriteInt((int)vc->size());
           for(cpos = vc->begin(); cpos != vc->end(); ++cpos)
               conn.WriteUnsignedChar(*cpos);
         }
@@ -1293,7 +1872,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
         { // new scope
           intVector *vi = (intVector *)(info.address);
           intVector::iterator ipos;
-          conn.WriteInt(vi->size());
+          conn.WriteInt((int)vi->size());
           for(ipos = vi->begin(); ipos != vi->end(); ++ipos)
               conn.WriteInt(*ipos);
         }
@@ -1303,7 +1882,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           longVector *vl = (longVector *)(info.address);
           longVector::iterator lpos;
 
-          conn.WriteInt(vl->size());
+          conn.WriteInt((int)vl->size());
           for(lpos = vl->begin(); lpos != vl->end(); ++lpos)
               conn.WriteLong(*lpos);
         }
@@ -1313,7 +1892,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           floatVector *vf = (floatVector *)(info.address);
           floatVector::iterator fpos;
 
-          conn.WriteInt(vf->size());
+          conn.WriteInt((int)vf->size());
           for(fpos = vf->begin(); fpos != vf->end(); ++fpos)
               conn.WriteFloat(*fpos);
         }
@@ -1323,7 +1902,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           doubleVector *vd = (doubleVector *)(info.address);
           doubleVector::iterator dpos;
 
-          conn.WriteInt(vd->size());
+          conn.WriteInt((int)vd->size());
           for(dpos = vd->begin(); dpos != vd->end(); ++dpos)
               conn.WriteDouble(*dpos);
         }
@@ -1333,7 +1912,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           stringVector *vs = (stringVector *)(info.address);
           stringVector::iterator spos;
 
-          conn.WriteInt(vs->size());
+          conn.WriteInt((int)vs->size());
           // Write the strings out as C strings.
           for(spos = vs->begin(); spos != vs->end(); ++spos)
               conn.WriteString(*spos);
@@ -1344,7 +1923,7 @@ AttributeGroup::WriteType(Connection &conn, AttributeGroup::typeInfo &info)
           AttributeGroupVector *va = (AttributeGroupVector *)(info.address);
           AttributeGroupVector::iterator apos;
 
-          conn.WriteInt(va->size());
+          conn.WriteInt((int)va->size());
           // Write out the AttributeGroups
           for(apos = va->begin(); apos != va->end(); ++apos)
           {
@@ -2043,6 +2622,61 @@ AttributeGroup::VersionLessThan(const char *configVersion, const char *version)
 //    Made length write using unsigned chars.
 //   
 // ****************************************************************************
+
+void
+AttributeGroup::Write(JSONNode &map)
+{
+    // If there are no selected components. Select them all.
+    if(NumAttributesSelected() == 0)
+        SelectAll();
+
+    // Write the selected attributes.
+    for(size_t i = 0; i < typeMap.size(); ++i)
+    {
+        if(typeMap[i].selected)
+        {
+            // Write the attribute's data
+            WriteType(map, (int)i, typeMap[i]);
+        }
+    }
+}
+
+void
+AttributeGroup::WriteMetaData(JSONNode &map)
+{
+    // If there are no selected components. Select them all.
+    if(NumAttributesSelected() == 0)
+        SelectAll();
+
+    // Write the selected attributes.
+    for(size_t i = 0; i < typeMap.size(); ++i)
+    {
+        if(typeMap[i].selected)
+        {
+            // Write the attribute's data
+            WriteMetaData(map, (int)i, typeMap[i]);
+        }
+    }
+}
+
+void
+AttributeGroup::WriteAPI(JSONNode &map)
+{
+    // If there are no selected components. Select them all.
+    if(NumAttributesSelected() == 0)
+        SelectAll();
+
+    // Write the selected attributes.
+    for(size_t i = 0; i < typeMap.size(); ++i)
+    {
+        if(typeMap[i].selected)
+        {
+            // Write the attribute's data
+            WriteAPI(map, (int)i, typeMap[i]);
+        }
+    }
+}
+
 void
 AttributeGroup::Write(MapNode &map)
 {
@@ -2056,13 +2690,13 @@ AttributeGroup::Write(MapNode &map)
         if(typeMap[i].selected)
         {
             // Write the attribute's data
-            WriteType(map, i, typeMap[i]);
+            WriteType(map, (int)i, typeMap[i]);
         }
     }
 }
 
 void
-AttributeGroup::WriteMeta(MapNode &map)
+AttributeGroup::WriteMetaData(MapNode &map)
 {
     // If there are no selected components. Select them all.
     if(NumAttributesSelected() == 0)
@@ -2074,7 +2708,25 @@ AttributeGroup::WriteMeta(MapNode &map)
         if(typeMap[i].selected)
         {
             // Write the attribute's data
-            WriteTypeMeta(map, i, typeMap[i]);
+            WriteMetaData(map, (int)i, typeMap[i]);
+        }
+    }
+}
+
+void
+AttributeGroup::WriteAPI(MapNode &map)
+{
+    // If there are no selected components. Select them all.
+    if(NumAttributesSelected() == 0)
+        SelectAll();
+
+    // Write the selected attributes.
+    for(size_t i = 0; i < typeMap.size(); ++i)
+    {
+        if(typeMap[i].selected)
+        {
+            // Write the attribute's data
+            WriteAPI(map, (int)i, typeMap[i]);
         }
     }
 }
@@ -2101,7 +2753,7 @@ AttributeGroup::Write(Connection &conn)
             if(typeMap.size() < 256)
                 conn.WriteUnsignedChar((unsigned char)i);
             else
-                conn.WriteInt(i);
+                conn.WriteInt((int)i);
 
             // Write the attribute's data
             WriteType(conn, typeMap[i]);
@@ -2620,6 +3272,10 @@ AttributeGroup::DeclareMapNode()
 //   Brad Whitlock, Tue Jan  6 13:31:50 PST 2009
 //   Added MapNode support.
 //
+//   Brad Whitlock, Thu Oct  4 11:40:04 PDT 2012
+//   Don't reserve space in the typemap since we're pushing onto it anyway and
+//   valgrind was reporting it as memory leaks.
+//
 // ****************************************************************************
 
 void
@@ -2638,7 +3294,6 @@ AttributeGroup::CreateTypeMap(const char *formatString)
         return;
 
     // Go through the format string and add the types.
-    typeMap.reserve(nDeclares);
     for(int i = 0; i < nDeclares; ++i)
     {
         char baseFormat = formatString[i];

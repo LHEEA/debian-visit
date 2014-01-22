@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -96,7 +96,6 @@ class IVP_API avtIVPM3DC1Field: public avtIVPVTKField
                 int *vertexIndexs, int side, int element, int *neighborList);
   
   int get_tri_coords2D(double *x, double *xout) const;
-  int get_tri_coords2D(double *x, int el, double *xout) const;
 
   Result    operator()( const double &t, const avtVector &v, avtVector &retV ) const;
 

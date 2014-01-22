@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -60,6 +60,7 @@ class QScrollArea;
 class QSpinBox;
 class QTextEdit;
 class QVBoxLayout;
+class QListWidgetItem;
 
 class QvisDialogLineEdit;
 class QvisVariableButton;
@@ -131,6 +132,11 @@ private slots:
     void targetDatabaseOpenClicked();
     void donorDatabaseOpenClicked();
 
+    void donorListClicked(QListWidgetItem*);
+    void addDonor();
+    void deleteDonor();
+    void deleteDonors();
+
 private:
     enum {
         Page_DonorType,                   // page0
@@ -186,7 +192,8 @@ private:
     QComboBox                          *donorDatabase;
     QPushButton                        *donorDatabaseOpen;
     QvisCustomSourceVariableButton     *donorFieldVar;
-
+    QListWidget *donorList;
+    QPushButton *donorListDeleteDonor, *donorListDeleteAllDonors, *donorListAddDonor;
 
     // Set up the absolute vs relative time.
     QWizardPage            *page2;

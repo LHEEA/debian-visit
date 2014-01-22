@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -262,7 +262,7 @@ avtAMRStitchCellFilter::PreExecute(void)
     logicalDomainBoundingBox[0][5] = std::numeric_limits<int>::min();
  
     std::vector<int> le;
-    for (size_t dom = 0; dom < domainNesting->GetNumberOfDomains(); ++dom)
+    for (int dom = 0; dom < (int)domainNesting->GetNumberOfDomains(); ++dom)
     {
         if (domainNesting->GetDomainLevel(dom) == 0)
         {
@@ -285,8 +285,8 @@ avtAMRStitchCellFilter::PreExecute(void)
     // Compute logical bounding box in index space of each level
     for (size_t l=1; l<nLevels; ++l)
     {
-        const std::vector<int>& refRatio = domainNesting->GetLevelRefinementRatios(l);
-        if (refRatio.size() != 3)
+        const std::vector<int>& refRatio = domainNesting->GetLevelRefinementRatios((int)l);
+        if (refRatio.size() != topologicalDimension)
             EXCEPTION1(ImproperUseException,
                     "Refinement ratio provided by database via domain nesting is invalid. "
                     "Expected a vector of length three.");
@@ -318,7 +318,7 @@ avtAMRStitchCellFilter::PreExecute(void)
     cellSize.resize(nLevels);
     for (size_t l=0; l<nLevels; ++l)
     {
-        cellSize[l] = domainNesting->GetLevelCellSizes(l);
+        cellSize[l] = domainNesting->GetLevelCellSizes((int)l);
         if (cellSize[l].size() != spatialDimension)
         {
             EXCEPTION1(ImproperUseException,
@@ -894,6 +894,10 @@ avtAMRStitchCellFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
 //  Programmer: Gunther H. Weber
 //  Creation:   Thu Jul 8 15:14:01 PST 2010
 //
+//  Modifications:
+//    Gunther H. Weber, Wed Jul 10 14:54:09 PDT 2013
+//    Add updating centering
+//
 // ****************************************************************************
 
 void
@@ -901,6 +905,15 @@ avtAMRStitchCellFilter::UpdateDataObjectInfo(void)
 {
     GetOutput()->GetInfo().GetValidity().InvalidateZones();
     GetOutput()->GetInfo().GetValidity().InvalidateDataMetaData();
+    avtDataAttributes &out_atts = GetOutput()->GetInfo().GetAttributes();
+    // Change centering for all variables from zone to node centered
+    for (int varNo = 0; varNo < out_atts.GetNumberOfVariables(); ++varNo)
+    {
+        std::string varname = out_atts.GetVariableName(varNo);
+        if (out_atts.GetCentering(varname.c_str()) == AVT_ZONECENT)
+            out_atts.SetCentering(AVT_NODECENT, varname.c_str());
+    }
+    //GetOutput()->GetInfo().GetAttributes().SetCentering(AVT_NODECENT);
 }
  
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -103,9 +103,9 @@ class FilledBoundaryViewerPluginInfo : public virtual ViewerPlotPluginInfo, publ
 
     virtual avtPlot *AllocAvtPlot();
 
-    virtual void InitializePlotAtts(AttributeSubject *atts, ViewerPlot *);
-    virtual void ReInitializePlotAtts(AttributeSubject *atts, ViewerPlot *);
-    virtual void ResetPlotAtts(AttributeSubject *atts, ViewerPlot *);
+    virtual void InitializePlotAtts(AttributeSubject *atts, const ViewerPlot *);
+    virtual void ReInitializePlotAtts(AttributeSubject *atts, const ViewerPlot *);
+    virtual void ResetPlotAtts(AttributeSubject *atts, const ViewerPlot *);
     virtual QString *GetMenuName() const;
     virtual const char **XPMIconData() const;
     virtual int GetVariableTypes() const;
@@ -116,7 +116,7 @@ class FilledBoundaryViewerPluginInfo : public virtual ViewerPlotPluginInfo, publ
     static FilledBoundaryAttributes *clientAtts;
     // User-defined functions
   private:
-    void   PrivateSetPlotAtts(AttributeSubject *atts, ViewerPlot *);
+    void   PrivateSetPlotAtts(AttributeSubject *atts, const ViewerPlot *);
 };
 
 class FilledBoundaryEnginePluginInfo : public virtual EnginePlotPluginInfo, public virtual FilledBoundaryCommonPluginInfo

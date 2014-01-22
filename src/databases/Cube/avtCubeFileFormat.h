@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,6 +63,9 @@ class DBOptionsAttributes;
 //
 //  Programmer: oruebel -- Rename to Cube and removed Walker functionality
 //  Modified:   Thu May 12 11:18 PDT 2009
+//
+//  Programmer: jfavre -- Added a boolean to extend the grid by one cell for CP2K users
+//  Modified:   Fri Apr 26 11:12:38 CEST 2013
 // ****************************************************************************
 
 class avtCubeFileFormat : public avtMTSDFileFormat
@@ -96,14 +99,13 @@ class avtCubeFileFormat : public avtMTSDFileFormat
     virtual vtkDataSet    *GetMesh(int, const char *);
     virtual vtkDataArray  *GetVar(int, const char *);
     virtual vtkDataArray  *GetVectorVar(int, const char *);
-
   protected:
     // DATA MEMBERS
 
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
 
     CubeReader *creader;
-
+    bool ExtendVolumeByOneCell;
 };
 
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -352,6 +352,9 @@ avtDatasetFileWriter::WriteOBJTree(avtDataTree_p dt, int idx,
 //    Brad Whitlock, Thu Feb 16 10:08:08 PST 2012
 //    Add vtkGeometryFilter to ensure that we have polydata for the OBJ writer.
 //
+//    Kathleen Biagas, Fri Feb 22 15:39:02 PST 2013
+//    If using cd2pd, use it's ouput port as input to the geometry filter.
+//
 // ****************************************************************************
 
 void
@@ -359,24 +362,27 @@ avtDatasetFileWriter::WriteOBJFile(vtkDataSet *ds, const char *fname,
                                    const char *label)
 {
     vtkDataSet *activeDS = ds;
-    vtkCellDataToPointData *cd2pd = NULL;
+
+    // Make sure that we have polydata.
+    vtkGeometryFilter *geom = vtkGeometryFilter::New();
 
     //
     // The OBJ file is going to expect the dataset as having node-centered
     // data.  
     //
+    vtkCellDataToPointData *cd2pd = NULL;
     if (activeDS->GetCellData()->GetScalars() != NULL)
     {
         cd2pd = vtkCellDataToPointData::New();
-        cd2pd->SetInput(activeDS);
-        activeDS = cd2pd->GetOutput();
+        cd2pd->SetInputData(activeDS);
+        geom->SetInputConnection(cd2pd->GetOutputPort());
     }
-
-    // Make sure that we have polydata.
-    vtkGeometryFilter *geom = vtkGeometryFilter::New();
-    geom->SetInput(activeDS);
+    else 
+    {
+        geom->SetInputData(activeDS);
+    }
+    geom->Update();
     activeDS = geom->GetOutput();
-    activeDS->Update();
 
     vtkDataSet *toBeWritten = (vtkDataSet *) activeDS->NewInstance();
     toBeWritten->ShallowCopy(activeDS);
@@ -422,7 +428,7 @@ avtDatasetFileWriter::WriteOBJFile(vtkDataSet *ds, const char *fname,
     {
         writer->SetLabel(label);
     }
-    writer->SetInput((vtkPolyData *) toBeWritten);
+    writer->SetInputData((vtkPolyData *) toBeWritten);
     writer->SetFileName(fname);
     writer->Write();
     writer->Delete();
@@ -518,7 +524,7 @@ void
 avtDatasetFileWriter::WriteVTKFile(vtkDataSet *ds, const char *fname, bool bin)
 {
     vtkDataSetWriter *writer = vtkDataSetWriter::New();
-    writer->SetInput(ds);
+    writer->SetInputData(ds);
     if (bin)
     {
         writer->SetFileTypeToBinary();
@@ -628,7 +634,7 @@ avtDatasetFileWriter::WriteSTLFile(const char *filename, bool binary)
     vtkTriangleFilter *tris = vtkTriangleFilter::New();
     tris->SetPassLines(false);
     tris->SetPassVerts(false);
-    tris->SetInput((vtkPolyData *) ds);
+    tris->SetInputData((vtkPolyData *) ds);
 
     vtkVisItSTLWriter *writer = vtkVisItSTLWriter::New();
     if (binary)
@@ -640,7 +646,7 @@ avtDatasetFileWriter::WriteSTLFile(const char *filename, bool binary)
         writer->SetFileTypeToASCII();
     }
     writer->SetFileName(filename);
-    writer->SetInput(tris->GetOutput());
+    writer->SetInputConnection(tris->GetOutputPort());
     writer->Write();
     writer->Delete();
     ds->Delete();
@@ -685,7 +691,7 @@ avtDatasetFileWriter::WritePLYFile(const char *filename, bool binary)
     if (arr)
         writer->SetArrayName(arr->GetName());
     
-    writer->SetInput(ds);
+    writer->SetInputData(ds);
     writer->SetFileName(filename);
     
     vtkScalarsToColors *lut = (arr ? GetColorTableFromEnv() : NULL);
@@ -907,7 +913,7 @@ avtDatasetFileWriter::GetSingleDataset(void)
         for (int i = 0 ; i < numInputs ; i++)
         {
             inInfo = pmap.pf->GetInputPortInformation(i);
-            pmap.af->AddInput(vtkPolyData::SafeDownCast(
+            pmap.af->AddInputData(vtkPolyData::SafeDownCast(
                               inInfo->Get(vtkDataObject::DATA_OBJECT()))); 
         }
         pmap.pf->RemoveAllInputs();
@@ -941,7 +947,8 @@ avtDatasetFileWriter::GetSingleDataset(void)
         }
     }
     rv->Register(NULL);
-    rv->Update();
+    // FIX_ME_VTK6.0, ESB, can we remove the update safely?
+    //rv->Update();
     pmap.af->Delete();
     pmap.pf->Delete();
     return rv;
@@ -1610,19 +1617,19 @@ avtDatasetFileWriter::WritePOVRayFile(vtkDataSet *ds,
     //
     if (ds->GetDataObjectType() != VTK_POLY_DATA)
     {
-        geom->SetInput(ds);
-        tris->SetInput(geom->GetOutput());
+        geom->SetInputData(ds);
+        tris->SetInputConnection(geom->GetOutputPort());
     }
     else
     {
-        tris->SetInput((vtkPolyData*)ds);
+        tris->SetInputData((vtkPolyData*)ds);
     }
 
     //
     // Get a bunch of info from the dataset
     //
+    tris->Update();
     vtkPolyData *pd = (vtkPolyData *) tris->GetOutput();
-    pd->Update();
 
     vtkDataArray *ptscalars = pd->GetPointData()->GetScalars();
     vtkDataArray *ptvectors = pd->GetPointData()->GetVectors();

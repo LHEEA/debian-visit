@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,7 +107,7 @@ VisWinAxes3D::VisWinAxes3D(VisWindowColleagueProxy &p) : VisWinColleague(p),
 
     axesBoxSource = vtkOutlineSource::New();
     axesBoxMapper = vtkPolyDataMapper::New();
-    axesBoxMapper->SetInput(axesBoxSource->GetOutput());
+    axesBoxMapper->SetInputConnection(axesBoxSource->GetOutputPort());
     axesBox = vtkActor::New();
     axesBox->SetMapper(axesBoxMapper);
     axesBox->PickableOff();

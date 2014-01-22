@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,6 +49,9 @@
 #include <vtkDataSet.h>
 #include <vtkGeometryFilter.h>
 #include <vtkDataSetWriter.h>
+#include <vtkPolyDataReader.h>
+#include <vtkPolyDataWriter.h>
+#include <vtkCharArray.h>
 #include <vtkPolyData.h>
 #include <vtkSTLWriter.h>
 #include <vtkTriangleFilter.h>
@@ -57,6 +60,10 @@
 #include <DBOptionsAttributes.h>
 
 #include <DebugStream.h>
+#include <avtParallel.h>
+#ifdef PARALLEL
+  #include <mpi.h>
+#endif
 
 using     std::string;
 using     std::vector;
@@ -143,9 +150,9 @@ avtSTLWriter::WriteChunk(vtkDataSet *ds, int chunk)
     if(pd == NULL)
     {
         vtkGeometryFilter *geom = vtkGeometryFilter::New();
-        geom->SetInput(ds);
+        geom->SetInputData(ds);
 
-        tri->SetInput(geom->GetOutput());        
+        tri->SetInputConnection(geom->GetOutputPort());        
         tri->Update();
         pd = tri->GetOutput();
         pd->Register(NULL);
@@ -153,7 +160,7 @@ avtSTLWriter::WriteChunk(vtkDataSet *ds, int chunk)
     }
     else
     {
-        tri->SetInput(pd);        
+        tri->SetInputData(pd);        
         tri->Update();
         pd = tri->GetOutput();
         pd->Register(NULL);
@@ -164,6 +171,99 @@ avtSTLWriter::WriteChunk(vtkDataSet *ds, int chunk)
     polydatas.push_back(pd);
 }
 
+
+//****************************************************************************
+// Method:  avtSTLWriter::SendPolyDataToRank0
+//
+// Purpose:
+//   Move all the data to rank0
+//
+// Programmer:  Dave Pugmire
+// Creation:    April 15, 2013
+//
+// Modifications:
+//
+//****************************************************************************
+
+#ifdef PARALLEL
+void
+avtSTLWriter::SendPolyDataToRank0()
+{
+    int *inA = new int[PAR_Size()], *outA = new int[PAR_Size()];
+    for (int i = 0; i < PAR_Size(); i++)
+        inA[i] = outA[i] = 0;
+
+    if (PAR_Rank() != 0)
+    {
+        vtkPolyDataWriter *writer = NULL;
+        int len = 0;
+        
+        if (polydatas.size() == 0)
+            len = 0;
+        else
+        {
+            writer = vtkPolyDataWriter::New();
+            writer->WriteToOutputStringOn();
+            writer->SetFileTypeToBinary();
+            if (polydatas.size() == 1)
+                writer->SetInputData(polydatas[0]);
+            else
+            {
+                vtkAppendPolyData *f = vtkAppendPolyData::New();
+                for(size_t i = 0; i < polydatas.size(); ++i)
+                    f->AddInputData(polydatas[i]);
+                
+                writer->SetInputConnection(f->GetOutputPort());
+            }
+            
+            writer->Write();
+            len = writer->GetOutputStringLength();
+            for(size_t i = 0; i < polydatas.size(); ++i)
+                polydatas[i]->Delete();
+            polydatas.clear();
+        }
+        
+        inA[PAR_Rank()] = len;
+        MPI_Reduce(inA, outA, PAR_Size(), MPI_INT, MPI_SUM, 0, VISIT_MPI_COMM);
+        if (len > 0)
+        {
+            char *data = writer->GetOutputString();
+            MPI_Send(data, len, MPI_CHAR, 0, 0, VISIT_MPI_COMM);
+            writer->Delete();
+        }
+    }
+    else
+    {
+        MPI_Reduce(inA, outA, PAR_Size(), MPI_INT, MPI_SUM, 0, VISIT_MPI_COMM);
+        for (int i = 1; i < PAR_Size(); i++)
+        {
+            if (outA[i] > 0)
+            {
+                char *data = new char[outA[i]];
+                MPI_Status stat;
+                MPI_Recv(data, outA[i], MPI_CHAR, i, 0, VISIT_MPI_COMM, &stat);
+
+                vtkPolyDataReader *rdr = vtkPolyDataReader::New();
+                rdr->ReadFromInputStringOn();
+                vtkCharArray *charArray = vtkCharArray::New();
+                charArray->SetArray(data, outA[i], 1);
+                rdr->SetInputArray(charArray);
+                rdr->Update();
+                vtkPolyData *pd = rdr->GetOutput();
+                pd->Register(NULL);
+                polydatas.push_back(pd);
+
+                delete [] data;
+                rdr->Delete();
+                charArray->Delete();
+            }
+        }
+    }
+
+    delete [] inA;
+    delete [] outA;
+}
+#endif
 
 // ****************************************************************************
 //  Method: avtSTLWriter::CloseFile
@@ -177,30 +277,40 @@ avtSTLWriter::WriteChunk(vtkDataSet *ds, int chunk)
 //  Modifications:
 //    Brad Whitlock, Fri Jan 27 10:00:47 PST 2012
 //    Combine all of the polydata here and write it out.
+//
+//   Dave Pugmire, Tue Apr 16 16:48:33 EDT 2013
+//   Support for exporting file in parallel
 // 
 // ****************************************************************************
 
 void
 avtSTLWriter::CloseFile(void)
 {
+#ifdef PARALLEL
+    SendPolyDataToRank0();
+    if (PAR_Rank() != 0)
+        return;
+#endif
+
     std::string filename(stem + ".stl");
     vtkSTLWriter *writer = vtkSTLWriter::New();
+    
     writer->SetFileName(filename.c_str());
     if(doBinary)
         writer->SetFileTypeToBinary();
 
     if(polydatas.size() == 1)
     {
-        writer->SetInput(polydatas[0]);
+        writer->SetInputData(polydatas[0]);
         writer->Update();
     }
     else if(polydatas.size() > 1)
     {
         vtkAppendPolyData *f = vtkAppendPolyData::New();
         for(size_t i = 0; i < polydatas.size(); ++i)
-            f->AddInput(polydatas[i]);
+            f->AddInputData(polydatas[i]);
 
-        writer->SetInput(f->GetOutput());
+        writer->SetInputConnection(f->GetOutputPort());
         writer->Update();
 
         f->Delete();

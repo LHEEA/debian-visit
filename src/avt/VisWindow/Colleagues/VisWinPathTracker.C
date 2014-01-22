@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,10 +76,10 @@ VisWinPathTracker *VisWinPathTracker::instance=0;
 int
 FindLastSlash(const string &subject)
 {
-    int idx = subject.rfind("/");
+    size_t idx = subject.rfind("/");
     if (idx == string::npos)
         idx = subject.rfind("\\");
-    return idx;
+    return (int)idx;
 }
 
 

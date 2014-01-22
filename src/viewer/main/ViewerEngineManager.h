@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -318,6 +318,9 @@ class SelectionProperties;
 //    Brad Whitlock, Tue Nov 29 19:22:56 PST 2011
 //    Add CreateEngineEx.
 //
+//    Kathleen Biagas, Wed Aug  7 13:01:55 PDT 2013
+//    Added UpdatePrecisionType.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerEngineManager : public ViewerServerManager,
@@ -403,6 +406,7 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
     static void SetConstructDataBinningAtts(ConstructDataBinningAttributes *);
 
     void UpdateDefaultFileOpenOptions(FileOpenOptions*);
+    void UpdatePrecisionType(const int);
 
     //
     // Engine RPCs

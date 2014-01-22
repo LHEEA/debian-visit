@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -79,6 +79,10 @@
 #
 #   Eric Brugger, Fri Nov 18 14:52:52 PST 2011
 #   I added xdmf_binary.C.
+#
+#   Eric Brugger, Fri Oct 18 14:55:19 PDT 2013
+#   I changed the name of the test target to testdata, since test no longer
+#   works with cmake 2.8.10.2.
 #
 #****************************************************************************/
 
@@ -277,7 +281,7 @@ BUILD_DATA_TARGET(${VTK_TARGET}
                   LIB_DIRS
                     ${VTK_LIBRARY_DIRS}
                   LIBS
-                    vtkIO
+                    vtkIOLegacy
                  )
 ENDFOREACH(VTK_TARGET ${VTK_TARGETS})
 
@@ -285,13 +289,6 @@ ENDFOREACH(VTK_TARGET ${VTK_TARGETS})
 # If we have HDF5 build all HDF5 Data Gen Target Programs
 #-----------------------------------------------------------------------------
 IF(HDF5_FOUND)
-  IF(WIN32)
-      # Need special defines on Windows
-      SET(HDF5_DEFS "-D_HDF5USEDLL_")
-  ELSE(WIN32)
-      SET(HDF5_DEFS "")
-  ENDIF(WIN32)
-  
 FOREACH(HDF5_TARGET ${HDF5_TARGETS})
     BUILD_DATA_TARGET(${HDF5_TARGET}
                       INCLUDE_DIRS
@@ -301,8 +298,6 @@ FOREACH(HDF5_TARGET ${HDF5_TARGETS})
                         ${HDF5_LIBRARY_DIR}
                       LIBS
                         ${HDF5_LIB}
-                      DEFS
-                        ${HDF5_DEFS}
                      )
 ENDFOREACH(HDF5_TARGET ${HDF5_TARGETS})
 ENDIF(HDF5_FOUND)
@@ -421,11 +416,11 @@ FOREACH(DATASET_TARGET_FILE ${ARCHIVED_TARGETS})
 ENDFOREACH(DATASET_TARGET_FILE IN ${ARCHIVED_DATASETS})
 
 #-----------------------------------------------------------------------------
-# Add custom targets: "data" & "test"
+# Add custom targets: "data" & "testdata"
 #-----------------------------------------------------------------------------
 ADD_CUSTOM_TARGET(data DEPENDS ${DATA_TARGET_DEPENDS})
-ADD_CUSTOM_TARGET(test)
-ADD_DEPENDENCIES(test data)
+ADD_CUSTOM_TARGET(testdata)
+ADD_DEPENDENCIES(testdata data)
 
 #-----------------------------------------------------------------------------
 # Add install command for contents of "data"

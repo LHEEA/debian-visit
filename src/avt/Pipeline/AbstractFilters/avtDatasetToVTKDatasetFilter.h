@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -90,7 +90,7 @@ class PIPELINE_API avtDatasetToVTKDatasetFilter : public avtDatasetToDatasetFilt
 };
 
 
-#include <vtkUnstructuredGridSource.h>
+#include <vtkUnstructuredGridAlgorithm.h>
 
 // ****************************************************************************
 //  Class: vtkAVTPipelineBridge
@@ -113,7 +113,7 @@ class PIPELINE_API avtDatasetToVTKDatasetFilter : public avtDatasetToDatasetFilt
 //
 // ****************************************************************************
 
-class PIPELINE_API vtkAVTPipelineBridge : public vtkUnstructuredGridSource
+class PIPELINE_API vtkAVTPipelineBridge : public vtkUnstructuredGridAlgorithm
 {
   public:
     static vtkAVTPipelineBridge   *New();

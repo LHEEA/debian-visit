@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -113,10 +113,14 @@ avtSurfaceNormalExpression::~avtSurfaceNormalExpression()
 //    Mark C. Miller, Sat Aug 25 22:06:48 PDT 2012
 //    Changed leak fix and put n->Delete() both in exception block at at end
 //    of routine rather than ahead of arr->Register().
+//
+//    Kathleen Biagas, Fri Jan 25 16:28:49 PST 2013
+//    Call 'Update' on filter instead of data object.
+//
 // ****************************************************************************
 
 vtkDataArray *
-avtSurfaceNormalExpression::DeriveVariable(vtkDataSet *in_ds)
+avtSurfaceNormalExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     if (in_ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
     {
@@ -144,9 +148,9 @@ avtSurfaceNormalExpression::DeriveVariable(vtkDataSet *in_ds)
         n->SetNormalTypeToPoint();
     else
         n->SetNormalTypeToCell();
-    n->SetInput(pd);
+    n->SetInputData(pd);
+    n->Update();
     vtkPolyData *out = n->GetOutput();
-    out->Update();
 
     vtkDataArray *arr = NULL;
     if (isPoint)

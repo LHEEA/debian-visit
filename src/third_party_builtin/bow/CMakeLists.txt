@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -38,6 +38,9 @@
 #   Kathleen Bonnell, Wed Jan 05 10:22:08 PST 2010
 #   Add folder property.
 #
+#   Brad Whitlock, Thu Apr 18 14:40:01 PDT 2013
+#   Provide a macro name for zlib.
+#
 #****************************************************************************/
 
 SET(BOW_SOURCES
@@ -56,7 +59,7 @@ ${VTK_INCLUDE_DIRS}
 LINK_DIRECTORIES(${VTK_LIBRARY_DIRS})
 
 ADD_LIBRARY(bow ${BOW_SOURCES})
-TARGET_LINK_LIBRARIES(bow ${VTK_ZLIB_LIBRARIES})
+TARGET_LINK_LIBRARIES(bow ${VTKZLIB_LIB})
 
 VISIT_INSTALL_TARGETS(bow)
 SET_TARGET_PROPERTIES(bow PROPERTIES FOLDER thirdparty_builtin/bow)

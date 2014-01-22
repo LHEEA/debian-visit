@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -215,7 +215,7 @@ FilledBoundaryViewerPluginInfo::AllocAvtPlot()
 
 void
 FilledBoundaryViewerPluginInfo::InitializePlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     *(FilledBoundaryAttributes*)atts = *defaultAtts;
 
@@ -242,7 +242,7 @@ FilledBoundaryViewerPluginInfo::InitializePlotAtts(AttributeSubject *atts,
 
 void
 FilledBoundaryViewerPluginInfo::ReInitializePlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     PrivateSetPlotAtts(atts, plot);
 }
@@ -281,7 +281,7 @@ FilledBoundaryViewerPluginInfo::ReInitializePlotAtts(AttributeSubject *atts,
 
 void
 FilledBoundaryViewerPluginInfo::ResetPlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 
 {
     PrivateSetPlotAtts(atts, plot);
@@ -420,7 +420,7 @@ FilledBoundaryViewerPluginInfo::XPMIconData() const
 
 void
 FilledBoundaryViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts, 
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     FilledBoundaryAttributes *boundaryAtts = (FilledBoundaryAttributes *)atts;
 

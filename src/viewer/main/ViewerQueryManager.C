@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -4052,6 +4052,7 @@ ViewerQueryManager::InitializeQueryList()
     QueryList::WindowType shp_wt  = QueryList::ShapeletsDecomp;
     QueryList::WindowType xri  = QueryList::XRayImage;
     QueryList::WindowType sli  = QueryList::StreamlineInfo;
+    QueryList::WindowType lsi  = QueryList::LineSamplerInfo;
     QueryList::WindowType pick  = QueryList::Pick;
     QueryList::WindowType line  = QueryList::Lineout;
 
@@ -4143,6 +4144,7 @@ ViewerQueryManager::InitializeQueryList()
     queryTypes->AddQuery("Population Statistics", dq, vr, basic, 1, 0, qo);
 
     queryTypes->AddQuery("Streamline Info", dq, misc_r, sli, 1, 0, qo);
+    queryTypes->AddQuery("Line Sampler Info", dq, misc_r, lsi, 1, 0, qo);
     queryTypes->SelectAll();
 }
 

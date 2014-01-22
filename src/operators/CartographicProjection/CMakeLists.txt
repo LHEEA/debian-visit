@@ -33,6 +33,11 @@ avtCartographicProjectionFilter.C
 ${COMMON_SOURCES}
 )
 
+
+IF(VISIT_PYTHON_SCRIPTING)
+    SET(PYINCLUDES ${PYTHON_INCLUDE_PATH} ${VISIT_INCLUDE_DIR}/visitpy/visitpy)
+ENDIF(VISIT_PYTHON_SCRIPTING)
+
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
 ${VISIT_COMMON_INCLUDES}
@@ -79,8 +84,7 @@ ${QT_INCLUDE_DIR}
 ${QT_QTCORE_INCLUDE_DIR}
 ${QT_QTGUI_INCLUDE_DIR}
 ${VTK_INCLUDE_DIRS} 
-${PYTHON_INCLUDE_PATH} 
-${VISIT_INCLUDE_DIR}/visitpy/visitpy 
+${PYINCLUDES}
 )
 
 
@@ -117,12 +121,12 @@ IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO
 ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(ECartographicProjectionOperator_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(ECartographicProjectionOperator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser vtkGeovis )
+TARGET_LINK_LIBRARIES(ECartographicProjectionOperator_ser visitcommon avtexpressions_ser avtfilters_ser avtpipeline_ser vtkGeovisCore )
 SET(INSTALLTARGETS ${INSTALLTARGETS} ECartographicProjectionOperator_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(ECartographicProjectionOperator_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(ECartographicProjectionOperator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par vtkGeovis )
+    TARGET_LINK_LIBRARIES(ECartographicProjectionOperator_par visitcommon avtexpressions_par avtfilters_par avtpipeline_par vtkGeovisCore )
     SET(INSTALLTARGETS ${INSTALLTARGETS} ECartographicProjectionOperator_par)
 ENDIF(VISIT_PARALLEL)
 

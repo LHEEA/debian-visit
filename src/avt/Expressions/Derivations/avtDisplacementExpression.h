@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -70,7 +70,7 @@ class EXPRESSION_API avtDisplacementExpression
     virtual int               NumVariableArguments() { return 2; }
 
   protected:
-    virtual vtkDataArray     *DeriveVariable(vtkDataSet *in);
+    virtual vtkDataArray     *DeriveVariable(vtkDataSet *in, int currentDomainsIndex);
     virtual avtVarType        GetVariableType(void) { return AVT_VECTOR_VAR; };
     virtual int               GetNumberOfComponentsInOutput(int ncompsIn1,
                                                             int ncompsIn2)

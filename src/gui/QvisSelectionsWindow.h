@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,7 +106,8 @@ protected:
     void    UpdateSelectionProperties();
     void    UpdateSelectionSummary();
     void    UpdateHistogram(const double *values, int nvalues,
-                            int minBin, int maxBin, bool useBins);
+                            int minBin, int maxBin, bool useBins,
+                            double minAxisValue, double maxAxisValue);
     void    UpdateHistogram();
     void    UpdateHistogramTitle();
     void    UpdateMinMaxBins(bool, bool, bool);
@@ -183,6 +184,9 @@ private:
 
     QvisHistogram           *cqHistogram;
     QLabel                  *cqHistogramTitle;
+    QLabel                  *cqHistogramMinAxisLabel;
+    QLabel                  *cqHistogramMaxAxisLabel;
+    QLabel                  *cqHistogramAxisLabel;
     QButtonGroup            *cqHistogramType;
     QRadioButton            *cqHistogramVariableButton;
     QvisVariableButton      *cqHistogramVariable;

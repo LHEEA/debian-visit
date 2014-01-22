@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,7 +46,7 @@
 #include <plotter_exports.h>
 
 #include <avtSurfaceAndWireframeRenderer.h>
-#include <avtGLEWInitializer.h> // needed for GLenum
+#include <avtOpenGLExtensionManager.h> // needed for GLenum
 #include <vtkType.h>  // for vtkIdType
 
 class vtkCellArray;

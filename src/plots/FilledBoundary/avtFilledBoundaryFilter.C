@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -173,9 +173,9 @@ avtFilledBoundaryFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
         if (in_ds->GetDataObjectType() != VTK_POLY_DATA)
         {
             geom = vtkGeometryFilter::New();
-            geom->SetInput(in_ds);
+            geom->SetInputData(in_ds);
+            geom->Update();
             in_ds = geom->GetOutput();
-            in_ds->Update();
         }
 
         vtkPolyData *in_pd = (vtkPolyData *)in_ds;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -818,7 +818,7 @@ FileOpenOptions::RemoveOpenOptions(int index)
 int
 FileOpenOptions::GetNumOpenOptions() const
 {
-    return openOptions.size();
+    return (int)openOptions.size();
 }
 
 // ****************************************************************************
@@ -1216,7 +1216,7 @@ FileOpenOptions::AddAssumedFormatsToPreferred(const stringVector &given)
 {
     // for each format, prepend it; visit them in reverse order
     // so the first one given winds up first in the new list
-    for (int i=given.size()-1; i>=0; i--)
+    for (int i=(int)given.size()-1; i>=0; i--)
     {
         // get its actual ID
         std::string id = "";

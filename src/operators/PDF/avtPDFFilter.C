@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -535,7 +535,7 @@ avtPDFFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
             new_in->CopyStructure(in_ds);
             new_in->GetPointData()->AddArray(
                       in_ds->GetPointData()->GetArray(atts.GetVar2().c_str()));
-            pd2cd->SetInput(new_in);
+            pd2cd->SetInputData(new_in);
             pd2cd->Update();
             arr2 = pd2cd->GetOutput()->GetCellData()
                                             ->GetArray(atts.GetVar2().c_str());
@@ -551,7 +551,7 @@ avtPDFFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
             new_in->CopyStructure(in_ds);
             new_in->GetCellData()->AddArray(
                        in_ds->GetCellData()->GetArray(atts.GetVar2().c_str()));
-            cd2pd->SetInput(new_in);
+            cd2pd->SetInputData(new_in);
             cd2pd->Update();
             arr2 = cd2pd->GetOutput()->GetPointData()
                                            ->GetArray(atts.GetVar2().c_str());
@@ -588,7 +588,7 @@ avtPDFFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
                 new_in->CopyStructure(in_ds);
                 new_in->GetPointData()->AddArray(
                       in_ds->GetPointData()->GetArray(atts.GetVar3().c_str()));
-                pd2cd->SetInput(new_in);
+                pd2cd->SetInputData(new_in);
                 pd2cd->Update();
                 arr3 = pd2cd->GetOutput()->
                                GetCellData()->GetArray(atts.GetVar3().c_str());
@@ -604,7 +604,7 @@ avtPDFFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
                 new_in->CopyStructure(in_ds);
                 new_in->GetCellData()->AddArray(
                        in_ds->GetCellData()->GetArray(atts.GetVar3().c_str()));
-                cd2pd->SetInput(new_in);
+                cd2pd->SetInputData(new_in);
                 cd2pd->Update();
                 arr3 = cd2pd->GetOutput()->
                               GetPointData()->GetArray(atts.GetVar3().c_str());

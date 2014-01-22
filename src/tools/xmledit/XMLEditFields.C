@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1088,7 +1088,7 @@ XMLEditFields::initChanged()
     else
     {
         std::vector<QString> splitvalues = SplitValues(values->toPlainText());
-        int length = splitvalues.size();
+        int length = (int)splitvalues.size();
         if (!f->isVector && (length > f->length))
             length = f->length;
         f->ClearValues();
@@ -1136,7 +1136,7 @@ XMLEditFields::valuesChanged()
     else
     {
         std::vector<QString> splitvalues = SplitValues(values->toPlainText());
-        int length = splitvalues.size();
+        int length = (int)splitvalues.size();
         if (!f->isVector && (length > f->length))
             length = f->length;
         f->ClearValues();

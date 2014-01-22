@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -137,6 +137,9 @@ avtSmoothPolyDataFilter::SetSmoothingLevel(int sl)
 //    Jeremy Meredith, Mon Feb 23 16:58:50 EST 2009
 //    Added deletion of geometry filter.
 //
+//    Kathleen Biagas, Fri Jan 25 16:04:46 PST 2013
+//    Call Update on the filter, not the data object.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -155,7 +158,7 @@ avtSmoothPolyDataFilter::ExecuteData(vtkDataSet *inDS, int, string)
     if (inDS->GetDataObjectType() != VTK_POLY_DATA)
     {
         geom = vtkGeometryFilter::New();
-        geom->SetInput(inDS);
+        geom->SetInputData(inDS);
         inDS = geom->GetOutput();
     }
 
@@ -163,7 +166,7 @@ avtSmoothPolyDataFilter::ExecuteData(vtkDataSet *inDS, int, string)
     // Set up and apply the filter
     //
     vtkSmoothPolyDataFilter *smoothPolyData = vtkSmoothPolyDataFilter::New();
-    smoothPolyData->SetInput((vtkPolyData*)inDS);
+    smoothPolyData->SetInputData((vtkPolyData*)inDS);
     vtkPolyData *newDS = vtkPolyData::New();
     smoothPolyData->SetOutput(newDS);
 
@@ -191,7 +194,7 @@ avtSmoothPolyDataFilter::ExecuteData(vtkDataSet *inDS, int, string)
         break;
     }
 
-    newDS->Update();
+    smoothPolyData->Update();
 
     vtkDataSet *outDS = NULL;
     if (newDS->GetNumberOfCells() > 0)

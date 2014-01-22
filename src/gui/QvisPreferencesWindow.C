@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -191,6 +191,12 @@ QvisPreferencesWindow::~QvisPreferencesWindow()
 //   Eric Brugger, Tue Aug 24 12:33:44 PDT 2010
 //   I added a toggle button to enable warning message popups.
 //
+//   Kathleen Biagas, Wed Aug  7 13:07:54 PDT 2013
+//   Added controls for precision type.
+//
+//   David Camp, Thu Aug  8 08:50:06 PDT 2013
+//   Added the restore from last session feature. 
+//
 // ****************************************************************************
 
 void
@@ -241,6 +247,27 @@ QvisPreferencesWindow::CreateWindowContents()
     connect(enableWarningPopupsToggle, SIGNAL(toggled(bool)),
             this, SLOT(enableWarningPopupsToggled(bool)));
     topLayout->addWidget(enableWarningPopupsToggle);
+
+    //
+    // Create radio button controls to change the precision.
+    //
+    QGroupBox *precisionGroup = new QGroupBox(central);
+    precisionGroup->setTitle(tr("Floating point precision:"));
+    topLayout->addWidget(precisionGroup);
+    precisionType = new QButtonGroup(central);
+    connect(precisionType, SIGNAL(buttonClicked(int)),
+            this, SLOT(precisionTypeChanged(int)));
+
+    QHBoxLayout *precLayout = new QHBoxLayout(precisionGroup);
+    QRadioButton *dec = new QRadioButton(tr("Float"), precisionGroup);
+    precisionType->addButton(dec,0);
+    precLayout->addWidget(dec);
+    QRadioButton *nat = new QRadioButton(tr("Native"), precisionGroup);
+    precisionType->addButton(nat,1);
+    precLayout->addWidget(nat);
+    QRadioButton *inc = new QRadioButton(tr("Double"), precisionGroup);
+    precisionType->addButton(inc,2);
+    precLayout->addWidget(inc);
 
     //
     //
@@ -311,6 +338,13 @@ QvisPreferencesWindow::CreateWindowContents()
     connect(saveCrashRecoveryFileToggle, SIGNAL(toggled(bool)),
             this, SLOT(saveCrashRecoveryFileToggled(bool)));
     sessionOptionsLayout->addWidget(saveCrashRecoveryFileToggle);
+
+    userRestoreSessionFileToggle =
+        new QCheckBox(tr("Restore session on startup"),
+                      sessionControlsGroup);
+    connect(userRestoreSessionFileToggle, SIGNAL(toggled(bool)),
+            this, SLOT(userRestoreSessionFileToggled(bool)));
+    sessionOptionsLayout->addWidget(userRestoreSessionFileToggle);
 
     //
     // Create group box for time controls.
@@ -478,6 +512,12 @@ QvisPreferencesWindow::Update(Subject *TheChangedSubject)
 //   Eric Brugger, Tue Aug 24 12:33:44 PDT 2010
 //   I added a toggle button to enable warning message popups.
 //
+//   Kathleen Biagas, Wed Aug  7 13:08:23 PDT 2013
+//   Handle precisionType.
+//
+//   David Camp, Thu Aug  8 08:50:06 PDT 2013
+//   Added the restore from last session feature. 
+//
 // ****************************************************************************
 
 void
@@ -607,11 +647,26 @@ QvisPreferencesWindow::UpdateWindow(bool doAll)
         saveCrashRecoveryFileToggle->blockSignals(false);
     }
 
+    if (doAll || atts->IsSelected(GlobalAttributes::ID_userRestoreSessionFile))
+    {
+        userRestoreSessionFileToggle->blockSignals(true);
+        userRestoreSessionFileToggle->setChecked(
+            atts->GetUserRestoreSessionFile());
+        userRestoreSessionFileToggle->blockSignals(false);
+    }
+
     if(doAll || atts->IsSelected(GlobalAttributes::ID_replacePlots))
     {
         replacePlotsToggle->blockSignals(true);
         replacePlotsToggle->setChecked(atts->GetReplacePlots());
         replacePlotsToggle->blockSignals(false);
+    }
+
+    if(doAll || atts->IsSelected(GlobalAttributes::ID_precisionType))
+    {
+        precisionType->blockSignals(true);
+        precisionType->button((int)atts->GetPrecisionType())->setChecked(true);
+        precisionType->blockSignals(false);
     }
 
     if(doAll)
@@ -1246,5 +1301,58 @@ QvisPreferencesWindow::enableWarningPopupsToggled(bool val)
 {
     enableWarnPopups = val;
     emit enableWarningPopups(val);
+}
+
+// ****************************************************************************
+// Method: QvisPreferencesWindow::userRestoreSessionFileToggle
+//
+// Purpose: 
+//   This is a Qt slot function called when userRestoreSessionFileToggle is toggled.
+//
+// Arguments:
+//   val : The new value.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: David Camp
+// Creation:   Tue Jul 30 08:34:16 PDT 2013
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisPreferencesWindow::userRestoreSessionFileToggled(bool val)
+{
+    atts->SetUserRestoreSessionFile(val);
+    SetUpdate(false);
+    atts->Notify();
+}
+
+// ****************************************************************************
+// Method: QvisPreferencesWindow::precisionTypeChanged
+//
+// Purpose:
+//   This is a Qt slot function that is called when the precision
+//   is changed.
+//
+// Arguments:
+//   val : The new precision value.
+//
+// Programmer: Kathleen Biagas
+// Creation:   July 25, 2013
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisPreferencesWindow::precisionTypeChanged(int val)
+{
+    atts->SetPrecisionType(GlobalAttributes::PrecisionType(val));
+    GetViewerProxy()->GetViewerMethods()->SetPrecisionType(val);
+    atts->Notify();
 }
 

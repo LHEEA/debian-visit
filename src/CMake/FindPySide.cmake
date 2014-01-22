@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -91,22 +91,6 @@ IF(PySide_FOUND)
                         WORLD_READ WORLD_EXECUTE
             CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
             )
-
-    # On OSX patch install names for the PySide module.
-    IF(APPLE)
-        FOREACH(pysidelib ${pysidelibs})
-            GET_FILENAME_COMPONENT(libname ${pysidelib} NAME)
-            INSTALL(CODE
-                    "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                    COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH}
-                    \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${PYSIDE_MODULE_INSTALLED_DIR}/${libname}\"
-                    OUTPUT_VARIABLE OSXOUT)
-                    MESSAGE(STATUS \"\${OSXOUT}\")
-                    ")
-        ENDFOREACH(pysidelib ${pysidelibs})
-    ENDIF(APPLE)
-
-
 ENDIF(PySide_FOUND)
 
 

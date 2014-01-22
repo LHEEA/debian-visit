@@ -40,17 +40,17 @@ function bv_visit_info
     # release tag.
     ############################################################################
 
-    export VISIT_VERSION=${VISIT_VERSION:-"2.6.1"}
+    export VISIT_VERSION=${VISIT_VERSION:-"2.6.3"}
     
     ####
     # Trunk:
     ####
-    #export SVN_SOURCE_PATH="trunk/src"
+    export SVN_SOURCE_PATH="trunk/src"
 
     ###
     # Release:
     ###
-    export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
+    #export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
 }
 
 #print variables used by this module
@@ -148,138 +148,10 @@ function bv_visit_print_build_command
    echo "visit has no build commands set"
 }
 
-# *************************************************************************** #
-#                          Function 9.1, build_visit                          #
-# *************************************************************************** #
-
-function build_visit
+# Modify the makefiles that cmake generated.
+function bv_visit_modify_makefiles
 {
-    if [[ "$DO_SVN" != "yes" || "$USE_VISIT_FILE" == "yes" ]] ; then
-        #
-        # Unzip the file, provided a gzipped file exists.
-        #
-        if [[ -f ${VISIT_FILE} ]] ; then
-           info "Unzipping/untarring ${VISIT_FILE} . . ."
-           uncompress_untar ${VISIT_FILE}
-           if [[ $? != 0 ]] ; then
-              warn \
-"Unable to untar ${VISIT_FILE}.  Corrupted file or out of space on device?"
-              return 1
-           fi
-        elif [[ -f ${VISIT_FILE%.*} ]] ; then
-           info "Unzipping ${VISIT_FILE%.*} . . ."
-           $TAR xf ${VISIT_FILE%.*}
-           if [[ $? != 0 ]] ; then
-              warn  \
-"Unable to untar ${VISIT_FILE%.*}.  Corrupted file or out of space on device?"
-              return 1
-           fi
-        fi
-    fi
-
-    #
-    # Set up the config-site file, which gives configure the information it
-    # needs about the third party libraries.
-    #
-    local VISIT_DIR="${VISIT_FILE%.tar*}/src"
-    if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
-        VISIT_DIR="src" 
-    else
-        #visit2.5.0 needs a patch for ModelFit operator
-        if [[ "${VISIT_FILE%.tar*}" == "visit2.5.0" ]]; then
-            bv_patch_2_5_0
-        fi
-    fi
-    
-    if [[ "$DO_MANGLED_LIBRARIES" == "yes" ]]; then
-        mangle_libraries "$VISIT_DIR" "mangled_$VISIT_DIR"
-    
-        if [[ $? == 0 ]]; then
-            #TODO: fix and remove this
-            #modify cmake to find library
-            cd "mangled_$VISIT_DIR"
-            mangle_file "$CMAKE_ROOT"/Modules/FindVTK.cmake CMake/FindMTK.cmake
-patch -f -p0 <<\EOF
-*** CMake/FindVisItMTK_tmp.cmake    2012-02-29 18:56:18.770322939 -0800
---- CMake/FindVisItMTK.cmake    2012-02-29 19:11:10.950323153 -0800
-***************
-*** 72,78 ****
-  SET(MTK_DIR ${VISIT_MTK_DIR}/lib)
-  
-  MESSAGE(STATUS "Checking for MTK in ${MTK_DIR}")
-! INCLUDE(${CMAKE_ROOT}/Modules/FindMTK.cmake)
-  
-  # Set the VisIt mangled mesa off of the MTK mangled mesa variable.
-  IF("${MTK_USE_MANGLED_MESA}" STREQUAL "ON")
---- 72,78 ----
-  SET(MTK_DIR ${VISIT_MTK_DIR}/lib)
-  
-  MESSAGE(STATUS "Checking for MTK in ${MTK_DIR}")
-! INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMTK.cmake)
-  
-  # Set the VisIt mangled mesa off of the MTK mangled mesa variable.
-  IF("${MTK_USE_MANGLED_MESA}" STREQUAL "ON")
-EOF
-            cd ..
-            [[ $VISIT_DIR != "src" ]] && cd ..
-            cp -R $VISIT_DIR/bin/shaders "mangled_${VISIT_DIR}/bin/shaders"
-            VISIT_DIR="mangled_$VISIT_DIR"
-        else
-            error "Mangling VisIt failed"
-            exit 0
-        fi
-    fi
-    cd $VISIT_DIR
-    #cp $START_DIR/$(hostname).cmake config-site
-
-    #
-    # Call cmake
-    # 
-    info "Configuring VisIt . . ."
-    FEATURES="-DVISIT_CONFIG_SITE:FILEPATH=${START_DIR}/${HOSTCONF}"
-    FEATURES="${FEATURES} -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON"
-    if [[ "$parallel" == "yes" ]] ; then
-        FEATURES="${FEATURES} -DVISIT_PARALLEL:BOOL=ON"
-    fi
-    FEATURES="${FEATURES} -DCMAKE_BUILD_TYPE:STRING=${VISIT_BUILD_MODE}"
-    FEATURES="${FEATURES} -DVISIT_C_COMPILER:FILEPATH=${C_COMPILER}"
-    FEATURES="${FEATURES} -DVISIT_CXX_COMPILER:FILEPATH=${CXX_COMPILER}"
-    
-    FEATURES="${FEATURES} -DVISIT_C_FLAGS:STRING=\"${CFLAGS} ${C_OPT_FLAGS}\""
-    if [[ "$parallel" == "yes" ]] ; then
-        CXXFLAGS="$CXXFLAGS $PAR_INCLUDE"
-    fi
-    FEATURES="${FEATURES} -DVISIT_CXX_FLAGS:STRING=\"${CXXFLAGS} ${CXX_OPT_FLAGS}\""
-
-    if [[ "${DO_MODULE}" == "yes" ]] ; then
-       FEATURES="${FEATURES} -DVISIT_PYTHON_MODULE:BOOL=ON"
-    fi
-    if [[ "${DO_JAVA}" == "yes" ]] ; then
-       FEATURES="${FEATURES} -DVISIT_JAVA:BOOL=ON"
-    fi
-    if [[ "${DO_SLIVR}" == "yes" ]] ; then
-       FEATURES="${FEATURES} -DVISIT_SLIVR:BOOL=ON"
-    fi
-    if [[ "${VISIT_INSTALL_PREFIX}" != "" ]] ; then
-       FEATURES="${FEATURES} -DCMAKE_INSTALL_PREFIX:PATH=${VISIT_INSTALL_PREFIX}"
-    fi
-    # Select a specialized build mode.
-    if [[ "${DO_DBIO_ONLY}" == "yes" ]] ; then
-       FEATURES="${FEATURES} -DVISIT_DBIO_ONLY:BOOL=ON"
-    elif [[ "${DO_ENGINE_ONLY}" = "yes" ]] ; then
-       FEATURES="${FEATURES} -DVISIT_ENGINE_ONLY:BOOL=ON"
-    elif [[ "${DO_SERVER_COMPONENTS_ONLY}" = "yes" ]] ; then
-       FEATURES="${FEATURES} -DVISIT_SERVER_COMPONENTS_ONLY:BOOL=ON"
-    fi
-
-    CMAKE_INSTALL=${CMAKE_INSTALL:-"$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"}
-    CMAKE_BIN="${CMAKE_INSTALL}/cmake"
-    rm -f CMakeCache.txt
-    issue_command "${CMAKE_BIN}" ${FEATURES} . 
-    if [[ $? != 0 ]] ; then
-       echo "VisIt configure failed.  Giving up"
-       return 1
-    fi
+    # NOTE: We are inside the VisIt src directory when this function is called.
 
     if [[ "$OPSYS" == "Darwin" ]]; then
         # Check for version < 8.0.0 (MacOS 10.4, Tiger) for gcc < 4.x
@@ -361,6 +233,134 @@ EOF
         mv -f databases/Fluent/Makefile databases/Fluent/Makefile.orig
         mv -f Make.tmp databases/Fluent/Makefile
     fi
+
+    if [[ "$BUILD_VISIT_BGQ" == "yes" ]] ; then
+        # Filter the engine link line so it will not include X11 libraries. CMake is adding
+        # them even though we don't want them.
+        for target in engine_ser_exe.dir engine_par_exe.dir
+        do
+            edir="engine/main/CMakeFiles/$target"
+            if test -e "$edir/link.txt" ; then
+                sed "s/-lX11//g" $edir/link.txt > $edir/link1.txt
+                sed "s/-lXext//g" $edir/link1.txt > $edir/link2.txt
+                rm -f $edir/link1.txt
+                mv $edir/link2.txt $edir/link.txt
+            else
+                echo "***** DID NOT SEE: $edir/link.txt   pwd=`pwd`"
+            fi
+            if test -e "$edir/relink.txt" ; then
+                sed "s/-lX11//g" $edir/relink.txt > $edir/relink1.txt
+                sed "s/-lXext//g" $edir/relink1.txt > $edir/relink2.txt
+                rm -f $edir/relink1.txt
+                mv $edir/relink2.txt $edir/relink.txt
+            else
+                echo "***** DID NOT SEE: $edir/relink.txt   pwd=`pwd`"
+            fi
+        done
+    fi
+
+    return 0
+}
+
+# *************************************************************************** #
+#                          Function 9.1, build_visit                          #
+# *************************************************************************** #
+
+function build_visit
+{
+    if [[ "$DO_SVN" != "yes" || "$USE_VISIT_FILE" == "yes" ]] ; then
+        #
+        # Unzip the file, provided a gzipped file exists.
+        #
+        if [[ -f ${VISIT_FILE} ]] ; then
+           info "Unzipping/untarring ${VISIT_FILE} . . ."
+           uncompress_untar ${VISIT_FILE}
+           if [[ $? != 0 ]] ; then
+              warn \
+"Unable to untar ${VISIT_FILE}.  Corrupted file or out of space on device?"
+              return 1
+           fi
+        elif [[ -f ${VISIT_FILE%.*} ]] ; then
+           info "Unzipping ${VISIT_FILE%.*} . . ."
+           $TAR xf ${VISIT_FILE%.*}
+           if [[ $? != 0 ]] ; then
+              warn  \
+"Unable to untar ${VISIT_FILE%.*}.  Corrupted file or out of space on device?"
+              return 1
+           fi
+        fi
+    fi
+
+    #
+    # Set up the config-site file, which gives configure the information it
+    # needs about the third party libraries.
+    #
+    local VISIT_DIR="${VISIT_FILE%.tar*}/src"
+    if [[ "$DO_SVN" == "yes" && "$USE_VISIT_FILE" == "no" ]] ; then
+        VISIT_DIR="src" 
+    else
+        #visit2.5.0 needs a patch for ModelFit operator
+        if [[ "${VISIT_FILE%.tar*}" == "visit2.5.0" ]]; then
+            bv_patch_2_5_0
+        fi
+    fi
+    
+    cd $VISIT_DIR
+    #cp $START_DIR/$(hostname).cmake config-site
+
+    #
+    # Call cmake
+    # 
+    info "Configuring VisIt . . ."
+    FEATURES="-DVISIT_CONFIG_SITE:FILEPATH=${START_DIR}/${HOSTCONF}"
+    FEATURES="${FEATURES} -DVISIT_INSTALL_THIRD_PARTY:BOOL=ON"
+    if [[ "$parallel" == "yes" ]] ; then
+        FEATURES="${FEATURES} -DVISIT_PARALLEL:BOOL=ON"
+    fi
+    FEATURES="${FEATURES} -DCMAKE_BUILD_TYPE:STRING=${VISIT_BUILD_MODE}"
+    FEATURES="${FEATURES} -DVISIT_C_COMPILER:FILEPATH=${C_COMPILER}"
+    FEATURES="${FEATURES} -DVISIT_CXX_COMPILER:FILEPATH=${CXX_COMPILER}"
+
+    if test -n "${CFLAGS}" || test -n "${C_OPT_FLAGS}" ; then
+        FEATURES="${FEATURES} -DVISIT_C_FLAGS:STRING=\"${CFLAGS} ${C_OPT_FLAGS}\""
+    fi
+    if [[ "$parallel" == "yes" ]] ; then
+        CXXFLAGS="$CXXFLAGS $PAR_INCLUDE"
+    fi
+    if test -n "${CXXFLAGS}" || test -n "${CXX_OPT_FLAGS}" ; then
+        FEATURES="${FEATURES} -DVISIT_CXX_FLAGS:STRING=\"${CXXFLAGS} ${CXX_OPT_FLAGS}\""
+    fi
+    if [[ "${DO_JAVA}" == "yes" ]] ; then
+       FEATURES="${FEATURES} -DVISIT_JAVA:BOOL=ON"
+    fi
+    if [[ "${DO_SLIVR}" == "no" ]] ; then
+       FEATURES="${FEATURES} -DVISIT_SLIVR:BOOL=OFF"
+    fi
+    if [[ "${VISIT_INSTALL_PREFIX}" != "" ]] ; then
+       FEATURES="${FEATURES} -DCMAKE_INSTALL_PREFIX:PATH=${VISIT_INSTALL_PREFIX}"
+    fi
+    # Select a specialized build mode.
+    if [[ "${DO_DBIO_ONLY}" == "yes" ]] ; then
+       FEATURES="${FEATURES} -DVISIT_DBIO_ONLY:BOOL=ON"
+    elif [[ "${DO_ENGINE_ONLY}" = "yes" ]] ; then
+       FEATURES="${FEATURES} -DVISIT_ENGINE_ONLY:BOOL=ON"
+    elif [[ "${DO_SERVER_COMPONENTS_ONLY}" = "yes" ]] ; then
+       FEATURES="${FEATURES} -DVISIT_SERVER_COMPONENTS_ONLY:BOOL=ON"
+    fi
+
+    CMAKE_INSTALL=${CMAKE_INSTALL:-"$VISITDIR/cmake/${CMAKE_VERSION}/$VISITARCH/bin"}
+    CMAKE_BIN="${CMAKE_INSTALL}/cmake"
+    rm -f CMakeCache.txt
+    issue_command "${CMAKE_BIN}" ${FEATURES} . 
+    if [[ $? != 0 ]] ; then
+       echo "VisIt configure failed.  Giving up"
+       return 1
+    fi
+
+    #
+    # Some platforms like to modify the generated Makefiles.
+    #
+    bv_visit_modify_makefiles
 
     #
     # Build VisIt

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -187,7 +187,7 @@ avtSphereSliceFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 {
     vtkVisItCutter *cutter = vtkVisItCutter::New();
     cutter->SetCutFunction(quadric);
-    cutter->SetInput(in_ds);
+    cutter->SetInputData(in_ds);
     cutter->Update();
 
     vtkDataSet *out_ds = cutter->GetOutput();

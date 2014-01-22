@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -521,7 +521,6 @@ avtIVPDopri5::Step(avtIVPField* field, double t_max,
                    avtIVPStep* ivpstep) 
 {    
     const double direction = sign( 1.0, t_max - t );
-    avtIVPSolver::Result res;
     avtIVPField::Result fieldResult;
 
     // compute maximum stepsize

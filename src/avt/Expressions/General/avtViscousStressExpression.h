@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,7 +75,7 @@ class EXPRESSION_API avtViscousStressExpression
                              { return "Calculating viscous stress";};
 
   protected:
-    virtual vtkDataArray    *DeriveVariable(vtkDataSet *);
+    virtual vtkDataArray    *DeriveVariable(vtkDataSet *, int currentDomainsIndex);
     virtual avtVarType       GetVariableType(void) { return AVT_TENSOR_VAR; };
     virtual bool             IsPointVariable(void) { return false; };
     virtual void             CalculateVStress2D(vtkDataSet *ds,

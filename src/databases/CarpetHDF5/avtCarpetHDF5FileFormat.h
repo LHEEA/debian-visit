@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -45,15 +45,13 @@
 #include <avtMTMDFileFormat.h>
 #include <avtSpatialBoxSelection.h>
 
+#include <hdf5.h>
+
 #include <string>
 #include <vector>
 #include <map>
 #include <algorithm>
 #include <math.h>
-
-//#define H5_USE_16_API 1
-#include <hdf5.h>
-
 
 // ****************************************************************************
 //  Class: avtCarpetHDF5FileFormat
@@ -560,9 +558,9 @@ class avtCarpetHDF5FileFormat : public avtMTMDFileFormat
     int get_nblocks(const int timestep, const bool is_Cartesian)
     {
       if (is_Cartesian)
-         return data_file->timesteps[timestep].cart_comp[0].size();
+         return (int)data_file->timesteps[timestep].cart_comp[0].size();
       else
-         return data_file->timesteps[timestep].multi_comp[0].size();
+         return (int)data_file->timesteps[timestep].multi_comp[0].size();
     }
     
     int get_max_reflevels(const int timestep, const bool is_Cartesian)

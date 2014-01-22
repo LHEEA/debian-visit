@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -115,7 +115,7 @@ avtCylindricalRadiusExpression::~avtCylindricalRadiusExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtCylindricalRadiusExpression::DeriveVariable(vtkDataSet *in_ds)
+avtCylindricalRadiusExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     vtkIdType npts = in_ds->GetNumberOfPoints();
     vtkDataArray *rv = CreateArrayFromMesh(in_ds);

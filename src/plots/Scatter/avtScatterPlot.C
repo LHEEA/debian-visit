@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -159,7 +159,7 @@ avtScatterPlot::Create()
 // ****************************************************************************
 
 void
-avtScatterPlot::SetScaling(int mode, float skew)
+avtScatterPlot::SetScaling(int mode, double skew)
 {
     varLegend->SetLookupTable(avtLUT->GetLookupTable());
     varLegend->SetScaling(mode, skew);
@@ -198,9 +198,9 @@ avtScatterPlot::SetLimitsMode()
     // Get color information.
     std::string colorString;
     int mode = 0;
-    float skew = 1.f;
+    double skew = 1.;
     bool minFlag = false, maxFlag = false;
-    float minVal, maxVal;
+    double minVal, maxVal;
     GetColorInformation(colorString, mode, skew, minFlag, minVal,
         maxFlag, maxVal);
 
@@ -209,8 +209,8 @@ avtScatterPlot::SetLimitsMode()
     //
     double min, max;
     glyphMapper->GetVarRange(min, max);
-    float userMin = minFlag ? minVal : min;
-    float userMax = maxFlag ? maxVal : max;
+    double userMin = minFlag ? minVal : min;
+    double userMax = maxFlag ? maxVal : max;
 
 #define LM_ORIGINAL_DATA_LIMITS 0
 #define LM_CURRENT_PLOT_LIMITS  1
@@ -309,8 +309,8 @@ avtScatterPlot::SetLimitsMode()
 
 void
 avtScatterPlot::GetColorInformation(std::string &colorString,
-    int &mode, float &skew, bool &minFlag, float &minVal,
-    bool &maxFlag, float &maxVal)
+    int &mode, double &skew, bool &minFlag, double &minVal,
+    bool &maxFlag, double &maxVal)
 {
     bool printIt = false;
 
@@ -396,6 +396,9 @@ avtScatterPlot::GetColorInformation(std::string &colorString,
 //    Kathleen Bonnell, Mon Jan 17 18:13:11 MST 2011
 //    Consider InvertColorTable flag when setting updateColors.
 //
+//    Brad Whitlock, Mon Jan  7 17:00:39 PST 2013
+//    I added some new glyph types.
+//
 // ****************************************************************************
 
 void
@@ -432,6 +435,12 @@ avtScatterPlot::SetAtts(const AttributeGroup *a)
         glyphMapper->SetGlyphType(avtPointGlypher::Axis);
     else if (atts.GetPointType() == ScatterAttributes::Icosahedron)
         glyphMapper->SetGlyphType(avtPointGlypher::Icosahedron);
+    else if (atts.GetPointType() == ScatterAttributes::Octahedron)
+        glyphMapper->SetGlyphType(avtPointGlypher::Octahedron);
+    else if (atts.GetPointType() == ScatterAttributes::Tetrahedron)
+        glyphMapper->SetGlyphType(avtPointGlypher::Tetrahedron);
+    else if (atts.GetPointType() == ScatterAttributes::SphereGeometry)
+        glyphMapper->SetGlyphType(avtPointGlypher::SphereGeometry);
     else if (atts.GetPointType() == ScatterAttributes::Point)
         glyphMapper->SetGlyphType(avtPointGlypher::Point);
     else if (atts.GetPointType() == ScatterAttributes::Sphere)
@@ -440,9 +449,9 @@ avtScatterPlot::SetAtts(const AttributeGroup *a)
     // Get color information.
     std::string colorString;
     int mode = 0;
-    float skew = 1.f;
+    double skew = 1.;
     bool minFlag = false, maxFlag = false;
-    float minVal, maxVal;
+    double minVal, maxVal;
     GetColorInformation(colorString, mode, skew, minFlag, minVal,
         maxFlag, maxVal);
 

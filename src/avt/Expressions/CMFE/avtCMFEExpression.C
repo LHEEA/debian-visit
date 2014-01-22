@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -127,12 +127,25 @@ avtCMFEExpression::~avtCMFEExpression()
 //  Programmer: Hank Childs
 //  Creation:   January 5, 2006
 //
+//  Modifications:
+//
+//    Hank Childs, Sun Aug  4 11:35:08 PDT 2013
+//    Tell the base class infrastructure about secondary variables.
+//
 // ****************************************************************************
 
 void
 avtCMFEExpression::AddInputVariableName(const char *vname)
 {
     avtExpressionFilter::AddInputVariableName(vname);
+    if (varnames.size() > 0)
+    {
+        // Every time we get a new variable, let's declare the previous
+        // one as secondary.  This particularly works well, since the
+        // module that calls AddInputVariableName is also making the variable
+        // that gets passed in the active variable automatically.
+        AddSecondaryVariable(varnames[varnames.size()-1].c_str());
+    }
     varnames.push_back(vname);
 }
 
@@ -176,6 +189,10 @@ avtCMFEExpression::PreExecute(void)
 //
 //    Hank Childs, Thu Jan  5 16:33:39 PST 2006
 //    Add support for a third variable to set up default values.
+//
+//    Hank Childs, Thu Aug  1 09:33:48 PDT 2013
+//    Push the variable name on the stack, to prevent name collision with
+//    multiple CMFEs in one pipeline.
 //
 // ****************************************************************************
 
@@ -224,6 +241,7 @@ avtCMFEExpression::ProcessArguments(ArgsExpr *args,
     // Pull off the first argument and see if it's a string or a list.
     ArgExpr *firstarg = (*arguments)[0];
     argument_expression = firstarg->GetText();
+    state->PushName(argument_expression);
     ExprParseTreeNode *firstTree = firstarg->GetExpr();
     bool oldVal = VarExpr::GetVarLeavesRequiresCurrentDB();
     VarExpr::SetGetVarLeavesRequiresCurrentDB(false);
@@ -375,6 +393,10 @@ avtCMFEExpression::ProcessArguments(ArgsExpr *args,
 //    Add support for only reading necessary domains to evaluate CMFE.
 //    (specifically for pos_cmfe + PICS/parallelize over seeds)
 //
+//    Kathleen Biagas, Tue Jul  2 16:44:43 MST 2013
+//    CMFE may contain expressions, but the ParsingExprList won't contain them,
+//    so add any Expression from the donor's MetaData to the new_list.
+//
 // ****************************************************************************
 
 void
@@ -387,10 +409,16 @@ avtCMFEExpression::Execute()
         EXCEPTION1(InvalidFilesException, db.c_str());
 
     int actualTimestep = GetTimestate(dbp);
-
+    avtDatabaseMetaData *md = dbp->GetMetaData(actualTimestep);
     ParsingExprList *pel = ParsingExprList::Instance();
     ExpressionList original_list = *(pel->GetList());
+    ExpressionList db_list = md->GetExprList();
     ExpressionList new_list = original_list;
+    if (db_list != original_list)
+    {
+        for (int i = 0; i < db_list.GetNumExpressions(); ++i)
+            new_list.AddExpressions(db_list.GetExpressions(i));
+    }
     Expression exp2;
     exp2.SetName("_avt_internal_cmfe_expr");
     std::string var_wo_quotes = var;

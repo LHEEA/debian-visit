@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -148,12 +148,14 @@ public:
     virtual void PrepareForFinalCommunication(void)
                      { _serializeFlags = avtIntegralCurve::SERIALIZE_STEPS; };
 
-    typedef std::vector<float>::const_iterator iterator;
-
     size_t  GetNumberOfSamples() const;
     Sample  GetSample( size_t n ) const;
     
     virtual bool CheckForTermination(avtIVPStep &step, avtIVPField *) = 0;
+
+    virtual double GetTime();
+    virtual double GetDistance();
+    virtual avtVector GetEndPoint();
 
   protected:
     avtStateRecorderIntegralCurve( const avtStateRecorderIntegralCurve& );
@@ -167,9 +169,10 @@ public:
     unsigned char       historyMask;
 
   protected:
+    double time;
     double distance;
 
-    std::vector<float>  history;
+    std::vector<double>  history;
     static const double epsilon;
 
     void RecordStep( const avtIVPField* field, 

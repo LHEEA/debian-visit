@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -104,7 +104,7 @@ class VolumeViewerPluginInfo : public virtual ViewerPlotPluginInfo, public virtu
     virtual avtPlot *AllocAvtPlot();
 
     virtual bool Permits2DViewScaling() const;
-    virtual void InitializePlotAtts(AttributeSubject *atts, ViewerPlot *);
+    virtual void InitializePlotAtts(AttributeSubject *atts, const ViewerPlot *);
     virtual QString *GetMenuName() const;
     virtual const char **XPMIconData() const;
     virtual int GetVariableTypes() const;

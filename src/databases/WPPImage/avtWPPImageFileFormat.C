@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -518,7 +518,7 @@ void avtWPPImageFileFormat::Initialize()
         debug5 << "x_min = " << m_xmin[b] << " y_min = " << m_ymin[b] 
                << " z_min = " << m_zmin[b] << endl;
     }
-    m_offset[0] = header_offset;
+    m_offset[0] = (off_t)header_offset;
     int datasize;
     if( m_prec == 4 )
         datasize = sizeof(float);

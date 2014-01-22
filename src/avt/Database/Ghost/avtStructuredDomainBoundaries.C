@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,6 +50,7 @@
 #include <vtkIntArray.h>
 #include <vtkPointData.h>
 #include <vtkRectilinearGrid.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkStructuredGrid.h>
 #include <vtkUnsignedCharArray.h>
 
@@ -2839,7 +2840,9 @@ avtStructuredDomainBoundaries::CreateGhostZones(vtkDataSet *outMesh,
 
     outMesh->GetCellData()->AddArray(ghostCells);
     ghostCells->Delete();
-    outMesh->SetUpdateGhostLevel(0);
+    // FIX_ME_VTK6.0, ESB, is this correct?
+    vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(outMesh->GetInformation(), 0);
+    //outMesh->SetUpdateGhostLevel(0);
 
     //
     //  Create a field-data array indicating the extents of real zones.

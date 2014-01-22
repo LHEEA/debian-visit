@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -81,6 +81,9 @@
 //    Hank Childs, Wed Aug 25 09:42:13 PDT 2010
 //    Initialize resample filter.
 //
+//    Kathleen Biagas, Wed Feb 6 19:43:12 PST 2013
+//    Use glyph's output port when creating avtVectorGlyphMapper.
+//
 // ****************************************************************************
 
 avtVectorPlot::avtVectorPlot()
@@ -91,7 +94,7 @@ avtVectorPlot::avtVectorPlot()
     resampleFilter = NULL;
     ghostFilter  = new avtGhostZoneFilter();
     ghostFilter->GhostDataMustBeRemoved();
-    glyphMapper  = new avtVectorGlyphMapper(glyph->GetOutput());
+    glyphMapper  = new avtVectorGlyphMapper(glyph->GetOutputPort());
     avtLUT       = new avtLookupTable();
 
     varLegend = new avtVariableLegend;
@@ -533,12 +536,13 @@ avtVectorPlot::SetAtts(const AttributeGroup *a)
     glyph->SetHeadSize(atts.GetHeadSize());
     glyph->SetLineStem(atts.GetLineStem());
     glyph->SetStemWidth(atts.GetStemWidth());
-    if (atts.GetGeometryQuality())
+
+    if (atts.GetGeometryQuality() == VectorAttributes::High)
     {
         glyph->HighQualityOn();
         glyph->CapEndsOn();
     }
-    else
+    else //if (atts.GetGeometryQuality() == VectorAttributes::Fast)
     {
         glyph->HighQualityOff();
         glyph->CapEndsOff();

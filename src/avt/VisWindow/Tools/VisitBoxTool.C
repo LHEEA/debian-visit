@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -502,7 +502,7 @@ VisitBoxTool::CreateBoxActor()
     boxData->Register(NULL);
 
     boxMapper = vtkPolyDataMapper::New();
-    boxMapper->SetInput(boxData);
+    boxMapper->SetInputData(boxData);
 
     boxActor = vtkActor::New();
     boxActor->GetProperty()->SetRepresentationToWireframe();
@@ -1051,7 +1051,7 @@ VisitBoxTool::UpdateOutline()
              outlineData[i]->Register(NULL);
              source->Delete();
              // Set the mapper's input to be the new dataset.
-             outlineMapper[i]->SetInput(outlineData[i]);
+             outlineMapper[i]->SetInputData(outlineData[i]);
              double color[3];
              color[0] = (i == 0) ? 1. : 0.;
              color[1] = (i == 1) ? 1. : 0.;
@@ -1131,7 +1131,7 @@ VisitBoxTool::UpdateOutline()
             }
 
             // Set the mapper's input to be the new dataset.
-            outlineMapper[j]->SetInput(outlineData[j]);
+            outlineMapper[j]->SetInputData(outlineData[j]);
         }
 
         //

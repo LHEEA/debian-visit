@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -61,6 +61,13 @@
 class STATE_API GlobalAttributes : public AttributeSubject
 {
 public:
+    enum PrecisionType
+    {
+        Float,
+        Native,
+        Double
+    };
+
     // These constructors are for objects of this class
     GlobalAttributes();
     GlobalAttributes(const GlobalAttributes &obj);
@@ -114,6 +121,8 @@ public:
     void SetSaveCrashRecoveryFile(bool saveCrashRecoveryFile_);
     void SetIgnoreExtentsFromDbs(bool ignoreExtentsFromDbs_);
     void SetExpandNewPlots(bool expandNewPlots_);
+    void SetUserRestoreSessionFile(bool userRestoreSessionFile_);
+    void SetPrecisionType(PrecisionType precisionType_);
 
     // Property getting methods
     const stringVector &GetSources() const;
@@ -142,11 +151,19 @@ public:
     bool               GetSaveCrashRecoveryFile() const;
     bool               GetIgnoreExtentsFromDbs() const;
     bool               GetExpandNewPlots() const;
+    bool               GetUserRestoreSessionFile() const;
+    PrecisionType      GetPrecisionType() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
     virtual void SetFromNode(DataNode *node);
 
+    // Enum conversion functions
+    static std::string PrecisionType_ToString(PrecisionType);
+    static bool PrecisionType_FromString(const std::string &, PrecisionType &);
+protected:
+    static std::string PrecisionType_ToString(int);
+public:
 
     // Keyframing methods
     virtual std::string               GetFieldName(int index) const;
@@ -181,6 +198,8 @@ public:
         ID_saveCrashRecoveryFile,
         ID_ignoreExtentsFromDbs,
         ID_expandNewPlots,
+        ID_userRestoreSessionFile,
+        ID_precisionType,
         ID__LAST
     };
 
@@ -209,11 +228,13 @@ private:
     bool         saveCrashRecoveryFile;
     bool         ignoreExtentsFromDbs;
     bool         expandNewPlots;
+    bool         userRestoreSessionFile;
+    int          precisionType;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define GLOBALATTRIBUTES_TMFS "s*i*ibbbbbbbibbbbbbbbbbbbb"
+#define GLOBALATTRIBUTES_TMFS "s*i*ibbbbbbbibbbbbbbbbbbbbbi"
 
 #endif

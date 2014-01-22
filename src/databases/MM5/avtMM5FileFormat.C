@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -266,7 +266,7 @@ avtMM5FileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeStat
         pos != meshNames.end(); ++pos)
     {
         int sdims, tdims; 
-        sdims = tdims = pos->second.size();
+        sdims = tdims = (int)pos->second.size();
         avtMeshMetaData *mmd = new avtMeshMetaData(pos->first,
             1, 1, 1, 0, sdims, tdims,
             AVT_RECTILINEAR_MESH);

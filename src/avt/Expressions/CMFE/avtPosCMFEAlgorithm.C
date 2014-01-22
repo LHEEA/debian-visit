@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -252,7 +252,7 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
     //
     int t2 = visitTimer->StartTimer();
     avtDataTree_p *leaves = new avtDataTree_p[output_list.datasets.size()];
-    for (size_t i = 0 ; i < output_list.datasets.size() ; i++)
+    for (int i = 0 ; i < (int)output_list.datasets.size() ; i++)
     {
         vtkDataSet *in_ds1 = output_list.datasets[i];
         vtkDataArray *defaultVar = NULL;
@@ -309,7 +309,7 @@ avtPosCMFEAlgorithm::PerformCMFE(avtDataTree_p output_mesh,
     }
     avtDataTree_p rv;
     if (output_list.datasets.size() > 0)
-        rv = new avtDataTree(output_list.datasets.size(), leaves);
+        rv = new avtDataTree((int)output_list.datasets.size(), leaves);
     else
         rv = new avtDataTree();
     delete [] leaves;
@@ -1400,6 +1400,9 @@ avtPosCMFEAlgorithm::FastLookupGrouping::ClearAllInputMeshes(void)
 //    Kathleen Bonnell, Mon Aug 14 16:40:30 PDT 2006
 //    API change for avtIntervalTree.
 //
+//    Cyrus Harrison, Fri May  3 16:07:29 PDT 2013
+//    Make sure to init map_to_ds for the degenerate mesh case.
+//
 // ****************************************************************************
 
 void
@@ -1437,13 +1440,19 @@ avtPosCMFEAlgorithm::FastLookupGrouping::Finalize(void)
             cell->GetBounds(bounds);
             itree->AddElement(index, bounds);
 
-            map_to_ds[index] = i;
+            map_to_ds[index] = (int)i;
             index++;
         }
     }
     if (degenerate)
     {
         double bounds[6] = { 0, 1, 0, 1, 0, 1 };
+        //
+        // make sure to init this value for the
+        // degenerate case. It will be used for a ghost zone
+        // check on the empty mesh.
+        //
+        map_to_ds[0]=0;
         itree->AddElement(0, bounds);
     }
 
@@ -1711,9 +1720,9 @@ avtPosCMFEAlgorithm::FastLookupGrouping::RelocateDataUsingPartition(
             {
                 vtkUnstructuredGridRelevantPointsFilter *ugrpf = 
                                 vtkUnstructuredGridRelevantPointsFilter::New();
-                ugrpf->SetInput(meshForProcP[j]);
+                ugrpf->SetInputData(meshForProcP[j]);
                 ugrpf->Update();
-                appenders[j]->AddInput(ugrpf->GetOutput());
+                appenders[j]->AddInputData(ugrpf->GetOutput());
                 ugrpf->Delete();
                 meshForProcP[j]->Delete();
             }
@@ -1742,7 +1751,7 @@ avtPosCMFEAlgorithm::FastLookupGrouping::RelocateDataUsingPartition(
         }
         appenders[j]->Update();
         vtkUnstructuredGridWriter *wrtr = vtkUnstructuredGridWriter::New();
-        wrtr->SetInput(appenders[j]->GetOutput());
+        wrtr->SetInputConnection(appenders[j]->GetOutputPort());
         wrtr->SetWriteToOutputString(1);
         wrtr->SetFileTypeToBinary();
         wrtr->Write();
@@ -1805,8 +1814,8 @@ avtPosCMFEAlgorithm::FastLookupGrouping::RelocateDataUsingPartition(
         vtkUnstructuredGridReader *reader = vtkUnstructuredGridReader::New();
         reader->SetReadFromInputString(1);
         reader->SetInputArray(charArray);
+        reader->Update();
         vtkUnstructuredGrid *ugrid = reader->GetOutput();
-        ugrid->Update();
         AddMesh(ugrid);
         // using SetSource(NULL) on vtkDataSets is no longer a good idea.
         //ugrid->SetSource(NULL);

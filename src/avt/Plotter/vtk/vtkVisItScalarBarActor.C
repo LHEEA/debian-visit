@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -165,7 +165,7 @@ vtkVisItScalarBarActor::vtkVisItScalarBarActor() : definedLabels(), definedDoubl
 
   this->ColorBar = vtkPolyData::New();
   this->ColorBarMapper = vtkPolyDataMapper2D::New();
-  this->ColorBarMapper->SetInput(this->ColorBar);
+  this->ColorBarMapper->SetInputData(this->ColorBar);
   this->ColorBarActor = vtkActor2D::New();
   this->ColorBarActor->SetMapper(this->ColorBarMapper);
   this->ColorBarActor->GetPositionCoordinate()->
@@ -173,7 +173,7 @@ vtkVisItScalarBarActor::vtkVisItScalarBarActor() : definedLabels(), definedDoubl
 
   this->Tics = vtkPolyData::New();
   this->TicsMapper = vtkPolyDataMapper2D::New();
-  this->TicsMapper->SetInput(this->Tics);
+  this->TicsMapper->SetInputData(this->Tics);
   this->TicsActor = vtkActor2D::New();
   this->TicsActor->SetMapper(this->TicsMapper);
   this->TicsActor->GetPositionCoordinate()->
@@ -181,7 +181,7 @@ vtkVisItScalarBarActor::vtkVisItScalarBarActor() : definedLabels(), definedDoubl
 
   this->BoundingBox = vtkPolyData::New();
   this->BoundingBoxMapper = vtkPolyDataMapper2D::New();
-  this->BoundingBoxMapper->SetInput(this->BoundingBox);
+  this->BoundingBoxMapper->SetInputData(this->BoundingBox);
   this->BoundingBoxActor = vtkActor2D::New();
   this->BoundingBoxActor->SetMapper(this->BoundingBoxMapper);
   this->BoundingBoxActor->GetPositionCoordinate()->
@@ -557,6 +557,10 @@ void vtkVisItScalarBarActor::BuildRange(vtkViewport *viewport)
 //    Brad Whitlock, Mon Feb 27 16:12:33 PST 2012
 //    Switch to vtkTextActor.
 //
+//    Kathleen Biagas, Tue May  7 16:11:52 PDT 2013
+//    VTK's text renderer now renders empty strings as 'blobs', so send a space
+//    instead of an empty string to get around this for now.
+//
 // ****************************************************************************
 
 void 
@@ -700,6 +704,14 @@ vtkVisItScalarBarActor::BuildLabels(vtkViewport * viewport, double bo,
           }
         else // not using supplied labels
           sprintf(labelString, "%s", this->definedLabels[idx].c_str());
+
+        // Sending an empty string or empty input to the text renderer yields
+        // blobs, so send a space instead.
+        if (labelString[0] == '\0')
+          {
+          labelString[0] = ' ';
+          labelString[1] = '\0';
+          }
         this->LabelActors[i]->SetInput(labelString);
         }
         break;
@@ -733,6 +745,13 @@ vtkVisItScalarBarActor::BuildLabels(vtkViewport * viewport, double bo,
           else
             {
             sprintf(labelString, "%s", "");
+            }
+          // Sending an empty string or empty input to the text renderer yields
+          // blobs, so send a space instead.
+          if (labelString[0] == '\0')
+            {
+            labelString[0] = ' ';
+            labelString[1] = '\0';
             }
           this->LabelActors[i]->SetInput(labelString);
           }
@@ -783,6 +802,13 @@ vtkVisItScalarBarActor::BuildLabels(vtkViewport * viewport, double bo,
             }
           calculatedValues.push_back(val);
           sprintf(labelString, this->LabelFormat, val);
+          // Sending an empty string or empty input to the text renderer yields
+          // blobs, so send a space instead.
+          if (labelString[0] == '\0')
+            {
+            labelString[0] = ' ';
+            labelString[1] = '\0';
+            }
           this->LabelActors[i]->SetInput(labelString);
           }
         this->NumberOfLabelsBuilt = nLabels;
@@ -1212,7 +1238,7 @@ void vtkVisItScalarBarActor::BuildColorBar(vtkViewport *viewport)
       else
         {
         double fuzzFactor = 0.9; // <1 allows a little font squeezing
-        numColors = this->definedLabels.size();
+        numColors = (int)this->definedLabels.size();
         if (this->Orientation == VERTICAL_TEXT_ON_RIGHT || 
             this->Orientation == VERTICAL_TEXT_ON_LEFT)
           {
@@ -1228,7 +1254,7 @@ void vtkVisItScalarBarActor::BuildColorBar(vtkViewport *viewport)
       if (this->UseSuppliedLabels)
         {
         numColors = this->MaximumNumberOfColors;
-        numLabels = this->suppliedValues.size();
+        numLabels = (int)this->suppliedValues.size();
         }
       else
         {

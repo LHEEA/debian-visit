@@ -321,6 +321,16 @@
 #    is indeed (forced) cached so it winds up in CMakeCache.txt and
 #    adjusted name of the shell script to recmake_visit.sh.
 #
+#    Mark C. Miller, Wed Feb  6 16:23:09 PST 2013
+#    Fix missing '#' in first line of recmake_visit.sh file.
+#
+#    Kathleen Biagas, Tue Feb 26 13:58:12 MST 2013
+#    Added VISIT_XXX_DEFAULT internal cache vars that store values set in
+#    config-site cmake files via VISIT_OPTION_DEFAULT.  This allows for
+#    VISIT_XXX vars to be overridden by changes to CMakeCache.txt.  If values
+#    in the config-site cmake files change, they will still take precedence
+#    over changes made to CMakeCache.txt (ie preserves old behavior).
+#
 #    Eric Brugger, Tue Mar 19 10:40:49 PDT 2013
 #    Added code to only build the paraDIS reader if boost 1.36.0 or later
 #    was installed on the system.
@@ -333,6 +343,22 @@
 #    recommended by Gunther. The other option was to add more of boost
 #    to the internal boost so that it could be used by paraDIS, but that
 #    seemed like more work.
+#
+#    Kathleen Biagas, Thur May 2 14:08:27 MST 2013
+#    Don't bother finding bulk of thirdparty libs if building minimal plugins.
+#
+#    Kathleen Biagas, Wed May  8 16:24:01 PDT 2013
+#    Remove EXODUS, no longer needed.
+#
+#    Eric Brugger, Thu May  9 17:09:27 PDT 2013
+#    Removed support for mangled mesa.
+#
+#    Kathleen Biagas, Tue Sep  3 11:06:51 PDT 2013
+#    Turn off SLIVR if we aren't using GLEW.
+#
+#    Cyrus Harrison, on Oct 28 14:39:05 PDT 2013
+#    Fix exported VTK targets for VTK-6. Fix VTK-6 include dirs 
+#    for make install / package.
 #
 #****************************************************************************/
 
@@ -421,8 +447,15 @@ FUNCTION(VISIT_OPTION_DEFAULT var)
     ENDIF(${opt_ARG_PREV} STREQUAL "TYPE")
     SET(opt_ARG_PREV ${opt_ARG})
   ENDFOREACH(opt_ARG in ${ARGN})
-  SET(${var} "${opt_ARGS}" CACHE ${opt_TYPE} "${var} default value" FORCE)
+  ## 
+  SET(default_base "${var}_DEFAULT")
+  SET(default_base_val  "${${default_base}}")
+  IF(NOT "${default_base_val}" STREQUAL "${opt_ARGS}")
+      SET("${default_base}" "${opt_ARGS}" CACHE INTERNAL "${var} default value" FORCE)
+      SET(${var} "${opt_ARGS}" CACHE ${opt_TYPE} "${var} value" FORCE)
+  ENDIF(NOT "${default_base_val}" STREQUAL "${opt_ARGS}")
 ENDFUNCTION(VISIT_OPTION_DEFAULT var)
+
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMake/SetupITAPS.cmake)
 
 #-----------------------------------------------------------------------------
@@ -579,10 +612,20 @@ IF(WIN32)
   ENDIF(VISIT_WINDOWS_APPLICATION)
 ENDIF(WIN32)
 IF(VISIT_MESA_DIR)
-  OPTION(VISIT_USE_MANGLED_MESA "Enable use of mangled Mesa classes in VisIt"
-ON)
+  OPTION(VISIT_USE_MANGLED_MESA "Enable use of mangled Mesa classes in VisIt" OFF)
 ENDIF(VISIT_MESA_DIR)
+
+OPTION(VISIT_INSTALL_AS_BETA "Install as beta (symlink beta instead of current to installed version)." OFF)
 OPTION(VISIT_MPICH_INSTALL "Install MPICH into VisIt binary distribution" OFF)
+IF(APPLE OR WIN32)
+    OPTION(VISIT_USE_X "Use X11" OFF)
+ELSE(APPLE OR WIN32)
+    OPTION(VISIT_USE_X "Use X11" ON)
+ENDIF(APPLE OR WIN32)
+OPTION(VISIT_USE_GLEW "Use GLEW to call GL functions." ON)
+OPTION(VISIT_USE_BOOST "Use system boost library." ON)
+
+OPTION(VISIT_THREAD "Build VisIt with thread support." OFF)
 
 SET(VISIT_INSTALL_PROFILES_TO_HOSTS "" CACHE STRING "Install specified host profiles (no action if empty)." )
 
@@ -631,7 +674,6 @@ VISIT_3RDPARTY_VAR(TCMALLOC_DIR   "Path containing the tcmalloc library's includ
 IF(WIN32)
   VISIT_3RDPARTY_VAR(JPEG_DIR   "Path containing the jpeg library's include and lib")
   VISIT_3RDPARTY_VAR(SZIP_DIR   "Path containing the szip library's include and lib")
-  VISIT_3RDPARTY_VAR(ZLIB_DIR   "Path containing the zlib library's include and lib")
 ENDIF(WIN32)
 
 # Define the options that let us pick I/O library installation locations. When
@@ -650,8 +692,6 @@ VISIT_3RDPARTY_VAR(CCMIO_DIR     "Path containing the CCMIO library's include an
 VISIT_3RDPARTY_VAR(CFITSIO_DIR   "Path containing the CFITSIO library's include and lib")
 VISIT_3RDPARTY_VAR(CGNS_DIR      "Path containing the CGNS library's include and lib")
 VISIT_3RDPARTY_DEP(CGNS_LIBDEP   "CGNS library dependencies")
-VISIT_3RDPARTY_VAR(EXODUSII_DIR  "Path containing the ExodusII library's include and lib")
-VISIT_3RDPARTY_DEP(EXODUSII_LIBDEP "ExodusII library dependencies")
 VISIT_3RDPARTY_VAR(FASTBIT_DIR   "Path containing the Fastbit library's include and lib")
 VISIT_3RDPARTY_VAR(GDAL_DIR      "Path containing the GDAL library's include and lib")
 VISIT_3RDPARTY_VAR(HDF4_DIR      "Path containing the HDF4 library's include and lib")
@@ -661,16 +701,18 @@ VISIT_3RDPARTY_DEP(HDF5_LIBDEP   "HDF5 library dependencies")
 VISIT_3RDPARTY_VAR(H5PART_DIR    "Path containing the H5Part library's include and lib")
 VISIT_3RDPARTY_DEP(H5PART_LIBDEP "H5Part library dependencies")
 VISIT_3RDPARTY_VAR(MILI_DIR      "Path containing the Mili library's include and lib")
+VISIT_3RDPARTY_VAR(OPENGL_DIR    "Path containing the OpenGL library's include and lib")
 VISIT_3RDPARTY_VAR(NETCDF_DIR    "Path containing the NETCDF library's include and lib")
 VISIT_3RDPARTY_DEP(NETCDF_LIBDEP "NETCDF library dependencies")
 VISIT_3RDPARTY_VAR(R_DIR         "Path containing the R library's include and lib")
 VISIT_3RDPARTY_VAR(SILO_DIR      "Path containing the Silo library's include and lib")
 VISIT_3RDPARTY_DEP(SILO_LIBDEP   "Silo library dependencies")
-VISIT_3RDPARTY_VAR(VISUS_DIR     "Path containing the ViSUS library's include and lib")
 VISIT_3RDPARTY_VAR(XDMF_DIR      "Path containing the Xdmf library's include and lib")
 VISIT_3RDPARTY_DEP(XDMF_LIBDEP   "Xdmf library dependencies")
 VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include and lib")
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
+VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
+
 #-----------------------------------------------------------------------------
 # Read the version
 #-----------------------------------------------------------------------------
@@ -747,13 +789,23 @@ ELSE(WIN32)
     # have a bunch of files with paths greater than 100 character so this
     # fails in our case.
     #
-    INSTALL(CODE "
-      MESSAGE(\"Symlinking current to ${VISIT_VERSION}\")
-      EXECUTE_PROCESS(WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}
-        COMMAND \${CMAKE_COMMAND} -E create_symlink
-        \"${VISIT_VERSION}\"
-        \"${CMAKE_INSTALL_PREFIX}/current\")
-    ")
+    IF(VISIT_INSTALL_AS_BETA)
+        INSTALL(CODE "
+          MESSAGE(\"Symlinking beta to ${VISIT_VERSION}\")
+          EXECUTE_PROCESS(WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}
+            COMMAND \${CMAKE_COMMAND} -E create_symlink
+            \"${VISIT_VERSION}\"
+            \"${CMAKE_INSTALL_PREFIX}/beta\")
+        ")
+    ELSE(VISIT_INSTALL_AS_BETA)
+        INSTALL(CODE "
+          MESSAGE(\"Symlinking current to ${VISIT_VERSION}\")
+          EXECUTE_PROCESS(WORKING_DIRECTORY \${CMAKE_INSTALL_PREFIX}
+            COMMAND \${CMAKE_COMMAND} -E create_symlink
+            \"${VISIT_VERSION}\"
+            \"${CMAKE_INSTALL_PREFIX}/current\")
+        ")
+    ENDIF(VISIT_INSTALL_AS_BETA)
 ENDIF(WIN32)
 MARK_AS_ADVANCED(
 VISIT_INSTALLED_VERSION_BIN
@@ -792,55 +844,6 @@ MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
                         WORLD_READ             WORLD_EXECUTE
             CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
         )
-        IF(APPLE)
-            FOREACH(target ${ARGN})
-                GET_TARGET_PROPERTY(type ${target} TYPE)
-                IF(${type} STREQUAL "SHARED_LIBRARY")
-                    # This turns out to be a better way to get the
-                    # base filename of the output target.
-                    GET_TARGET_PROPERTY(filename ${target} LOCATION)
-                    GET_FILENAME_COMPONENT(filename ${filename} NAME)
-                    INSTALL(CODE
-                        "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}/${filename}\"
-                             OUTPUT_VARIABLE OSXOUT)
-                         MESSAGE(STATUS \"\${OSXOUT}\")
-                        ")
-                ELSEIF(${type} STREQUAL "MODULE_LIBRARY")
-                    # This turns out to be a better way to get the
-                    # base filename of the output target.
-                    GET_TARGET_PROPERTY(filename ${target} LOCATION)
-                    GET_FILENAME_COMPONENT(filename ${filename} NAME)
-                    INSTALL(CODE
-                        "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                             COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${dest_dir}/${filename}\"
-                             OUTPUT_VARIABLE OSXOUT)
-                         MESSAGE(STATUS \"\${OSXOUT}\")
-                        ")
-                ELSEIF(${type} STREQUAL "EXECUTABLE")
-                    GET_TARGET_PROPERTY(filename ${target} OUTPUT_NAME)
-                    IF(filename STREQUAL "filename-NOTFOUND")
-                        SET(filename ${target})
-                    ENDIF(filename STREQUAL "filename-NOTFOUND")
-                    GET_TARGET_PROPERTY(bundle ${target} MACOSX_BUNDLE)
-                    IF(${bundle} STREQUAL "ON")
-                        INSTALL(CODE
-                            "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -bundle ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}/${dest_dir}\" ${filename}
-                                OUTPUT_VARIABLE OSXOUT)
-                             MESSAGE(STATUS \"\${OSXOUT}\")
-                            ")
-                    ELSE(${bundle} STREQUAL "ON")
-                        INSTALL(CODE
-                            "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                                COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -exe ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_BIN}//${dest_dir}${filename}\"
-                                OUTPUT_VARIABLE OSXOUT)
-                             MESSAGE(STATUS \"\${OSXOUT}\")
-                            ")
-                    ENDIF(${bundle} STREQUAL "ON")
-                ENDIF(${type} STREQUAL "SHARED_LIBRARY")
-            ENDFOREACH(target)
-        ENDIF(APPLE)
     ENDIF(VISIT_STATIC)
 ENDMACRO(VISIT_INSTALL_TARGETS_RELATIVE)
 
@@ -878,8 +881,23 @@ INCLUDE(${CMAKE_ROOT}/Modules/CMakeBackwardCompatibilityCXX.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckTypeSize.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckFunctionExists.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckSymbolExists.cmake)
-INCLUDE(${CMAKE_ROOT}/Modules/FindBoost.cmake)
-INCLUDE(${CMAKE_ROOT}/Modules/FindX11.cmake)
+IF(VISIT_USE_BOOST)
+    INCLUDE(${CMAKE_ROOT}/Modules/FindBoost.cmake)
+ENDIF(VISIT_USE_BOOST)
+IF(VISIT_USE_X)
+    INCLUDE(${CMAKE_ROOT}/Modules/FindX11.cmake)
+    IF(NOT X11_X11_LIB)
+        SET(VISIT_USE_X OFF)
+        SET(HAVE_LIBX11 0)
+    ELSE(NOT X11_X11_LIB)
+        SET(HAVE_LIBX11 1)
+    ENDIF(NOT X11_X11_LIB)
+ELSE(VISIT_USE_X)
+    SET(HAVE_LIBX11 0)
+    SET(CMAKE_X_LIBS "" CACHE INTERNAL "X11 libs.")
+    SET(CMAKE_X_CFLAGS "" CACHE INTERNAL "X11 extra flags.")
+    SET(CMAKE_HAS_X 0 CACHE INTERNAL "Is X11 around.")
+ENDIF(VISIT_USE_X)
 INCLUDE(${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
 
 # Set Boost_USABLE_PARADIS if boost 1.36.0 or later is found. ParaDIS
@@ -937,15 +955,40 @@ CHECK_INCLUDE_FILES (unistd.h    HAVE_UNISTD_H)
 CHECK_INCLUDE_FILES (zlib.h      HAVE_ZLIB_H)
 CHECK_INCLUDE_FILES (stdbool.h   HAVE_STDBOOL_H)
 
-# Configure OpenGL support.
-IF(NOT VISIT_DBIO_ONLY)
-    INCLUDE(${CMAKE_ROOT}/Modules/FindOpenGL.cmake)
-ENDIF(NOT VISIT_DBIO_ONLY)
-
 # Configure Mesa support.
 IF(NOT WIN32 AND VISIT_MESA_DIR AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItMesa.cmake)
+    IF(MESA_FOUND)
+        SET(HAVE_OSMESA 1)
+    ENDIF(MESA_FOUND)
 ENDIF(NOT WIN32 AND VISIT_MESA_DIR AND NOT VISIT_DBIO_ONLY)
+
+# Configure OpenGL support.
+IF(NOT VISIT_DBIO_ONLY)
+    IF(VISIT_OPENGL_DIR)
+        SET(OPENGL_FOUND ON)
+        SET(OPENGL_GLU_FOUND ON)
+        SET(OPENGL_INCLUDE_DIR ${VISIT_OPENGL_DIR}/include)
+        # Hack for BG/Q. Assume if Mesa has been set and we're telling
+        # VisIt where to look for GL that we're using Mesa for GL.
+        IF(HAVE_OSMESA)
+            SET(LIBGL OSMesa)
+        ELSE(HAVE_OSMESA)
+            SET(LIBGL GL)
+        ENDIF(HAVE_OSMESA)
+        IF(VISIT_STATIC)
+            SET(OPENGL_gl_LIBRARY ${VISIT_OPENGL_DIR}/lib/lib${LIBGL}.a)
+            SET(OPENGL_glu_LIBRARY ${VISIT_OPENGL_DIR}/lib/libGLU.a)
+        ELSE(VISIT_STATIC)
+            SET(OPENGL_gl_LIBRARY ${VISIT_OPENGL_DIR}/lib/lib${LIBGL}.so)
+            SET(OPENGL_glu_LIBRARY ${VISIT_OPENGL_DIR}/lib/libGLU.so)
+        ENDIF(VISIT_STATIC)
+        SET(OPENGL_LIBRARIES ${OPENGL_gl_LIBRARY} ${OPENGL_glu_LIBRARY})
+        MESSAGE(STATUS "Found OpenGL ${OPENGL_gl_LIBRARY}")
+    ELSE(VISIT_OPENGL_DIR)
+        INCLUDE(${CMAKE_ROOT}/Modules/FindOpenGL.cmake)
+    ENDIF(VISIT_OPENGL_DIR)
+ENDIF(NOT VISIT_DBIO_ONLY)
 
 IF(VISIT_R_DIR)
     # Configure R support.
@@ -955,10 +998,38 @@ ENDIF(VISIT_R_DIR)
 # Configure VTK support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItVTK.cmake)
 
+# Enable thread build of VisIt
+IF(VISIT_THREAD)
+    ADD_DEFINITIONS(-DVISIT_ATOMIC_USE_GCC_ATOMIC)
+    ADD_DEFINITIONS(-DVISIT_THREADS)
+
+    IF(APPLE)
+        ADD_DEFINITIONS(-DTURN_OFF_THREAD_SET_AFFINITY)
+    ENDIF(APPLE)
+
+    MESSAGE(STATUS "Threading for VisIt: ON")
+ELSE(VISIT_THREAD)
+    MESSAGE(STATUS "Threading for VisIt: OFF")
+ENDIF(VISIT_THREAD)
+
 #-----------------------------------------------------------------------------
 # If we are doing a static build or the VTK Python wrappers do not exist:
 #   Disable python filters.
 #-----------------------------------------------------------------------------
+
+# If we did not find Python then turn off VISIT_PYTHON_SCRIPTING
+IF(VISIT_PYTHON_SCRIPTING AND NOT PYTHONLIBS_FOUND)
+    SET(VISIT_PYTHON_SCRIPTING OFF)
+    MESSAGE(STATUS "Python scripting disabled because Python was not found.")
+ENDIF(VISIT_PYTHON_SCRIPTING AND NOT PYTHONLIBS_FOUND)
+
+# Disable Python scripting if we're doing a static build for engine-only or server-components-only.
+IF(VISIT_PYTHON_SCRIPTING AND VISIT_STATIC)
+    IF(VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
+        SET(VISIT_PYTHON_SCRIPTING OFF)
+        MESSAGE(STATUS "Python scripting disabled because an engine-only or server-components-only build was selected.")
+    ENDIF(VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
+ENDIF(VISIT_PYTHON_SCRIPTING AND VISIT_STATIC)
 
 # Disable Python filters if we don't have Python.
 IF(VISIT_PYTHON_FILTERS AND NOT PYTHONLIBS_FOUND)
@@ -1010,11 +1081,17 @@ ENDIF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
                              AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Treat GLEW as a 3rd party builtin.
-SET(GLEW_FOUND 1)
-ADD_DEFINITIONS(-DHAVE_LIBGLEW)
-SET(GLEW_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/glew/glew/include)
-SET(GLEW_LIBRARY_DIR ${VISIT_SOURCE_DIR}/lib)
-SET(GLEW_LIB visitGLEW)
+IF(VISIT_USE_GLEW)
+    SET(GLEW_FOUND 1)
+    ADD_DEFINITIONS(-DHAVE_LIBGLEW)
+    SET(GLEW_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/glew/glew/include)
+    SET(GLEW_LIBRARY_DIR ${VISIT_SOURCE_DIR}/lib)
+    SET(GLEW_LIB visitGLEW)
+ELSE(VISIT_USE_GLEW)
+    # We're not using GLEW but we need to substitute GL
+    SET(GLEW_INCLUDE_DIR ${OPENGL_INCLUDE_DIR})
+    VISIT_OPTION_DEFAULT(VISIT_SLIVR false TYPE BOOL)
+ENDIF(VISIT_USE_GLEW)
 
 # Set up the tuvok library if it was enabled.
 IF(VISIT_TUVOK)
@@ -1053,136 +1130,128 @@ ENDIF(VISIT_PARALLEL)
 # Include TCMALLOC support if we can.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindTCMALLOC.cmake)
 
-# zlib, szip and jpeg
-IF(CMAKE_HOST_UNIX)
-  SET(ZLIB_LIB z)
-  SET(ZLIB_FOUND 1)
-  SET(DL_LIB dl)
-  ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
-ELSE(CMAKE_HOST_UNIX)
-  IF(WIN32)
-    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindZlib.cmake)
+# zlib
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindZlib.cmake)
+
+# szip and jpeg
+IF(WIN32)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindJPEG.cmake)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindSzip.cmake)
-  ENDIF(WIN32)
+ENDIF(WIN32)
+
+# dl and large file support.
+IF(CMAKE_HOST_UNIX)
+  SET(DL_LIB dl)
+  ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
 ENDIF(CMAKE_HOST_UNIX)
 
-# Configure HDF5 support. Do it before the other libraries since many can depend on it.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindHDF5.cmake)
-IF(HDF5_FOUND)
-    SET(HAVE_LIBHDF5 1)
-ENDIF(HDF5_FOUND)
+IF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
+    # Configure HDF5 support. 
+    # Do it before the other libraries since many can depend on it.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindHDF5.cmake)
+    IF(HDF5_FOUND)
+        SET(HAVE_LIBHDF5 1)
+    ENDIF(HDF5_FOUND)
 
-# Configure adios support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindADIOS.cmake)
-IF(ADIOS_FOUND)
-    SET(HAVE_LIBADIOS 1)
-ENDIF(ADIOS_FOUND)
+    # Configure adios support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindADIOS.cmake)
+    IF(ADIOS_FOUND)
+        SET(HAVE_LIBADIOS 1)
+    ENDIF(ADIOS_FOUND)
 
-# Configure advio support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindADVIO.cmake)
-IF(ADVIO_FOUND)
-    SET(HAVE_LIBADVIO 1)
-ENDIF(ADVIO_FOUND)
+    # Configure advio support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindADVIO.cmake)
+    IF(ADVIO_FOUND)
+        SET(HAVE_LIBADVIO 1)
+    ENDIF(ADVIO_FOUND)
 
-# Configure Boxlib support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindBoxlib.cmake)
-IF(BOXLIB_FOUND)
-    SET(HAVE_LIBBOXLIB 1)
-ENDIF(BOXLIB_FOUND)
+    # Configure Boxlib support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindBoxlib.cmake)
+    IF(BOXLIB_FOUND)
+        SET(HAVE_LIBBOXLIB 1)
+    ENDIF(BOXLIB_FOUND)
 
-# Configure ccmio support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindCCMIO.cmake)
-IF(CCMIO_FOUND)
-    SET(HAVE_LIBCCMIO 1)
-ENDIF(CCMIO_FOUND)
+    # Configure ccmio support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindCCMIO.cmake)
+    IF(CCMIO_FOUND)
+        SET(HAVE_LIBCCMIO 1)
+    ENDIF(CCMIO_FOUND)
 
-# Configure cfitsio support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindCFITSIO.cmake)
-IF(CFITSIO_FOUND)
-    SET(HAVE_LIBCFITSIO 1)
-ENDIF(CFITSIO_FOUND)
+    # Configure cfitsio support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindCFITSIO.cmake)
+    IF(CFITSIO_FOUND)
+        SET(HAVE_LIBCFITSIO 1)
+    ENDIF(CFITSIO_FOUND)
 
-# Configure CGNS support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindCGNS.cmake)
-IF(CGNS_FOUND)
-    SET(HAVE_LIBCGNS 1)
-ENDIF(CGNS_FOUND)
+    # Configure CGNS support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindCGNS.cmake)
+    IF(CGNS_FOUND)
+        SET(HAVE_LIBCGNS 1)
+    ENDIF(CGNS_FOUND)
 
-# Configure Fastbit support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindFastBit.cmake)
-IF(FASTBIT_FOUND)
-    SET(HAVE_LIBFASTBIT 1)
-ENDIF(FASTBIT_FOUND)
+    # Configure Fastbit support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindFastBit.cmake)
+    IF(FASTBIT_FOUND)
+        SET(HAVE_LIBFASTBIT 1)
+    ENDIF(FASTBIT_FOUND)
 
-# Configure gdal support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindGDAL.cmake)
-IF(GDAL_FOUND)
-    SET(HAVE_LIBGDAL 1)
-ENDIF(GDAL_FOUND)
+    # Configure gdal support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindGDAL.cmake)
+    IF(GDAL_FOUND)
+        SET(HAVE_LIBGDAL 1)
+    ENDIF(GDAL_FOUND)
 
-# Configure HDF4 support.
-IF(VISIT_STATIC)
-  # There's a problem including HDF4 and Netcdf in the same executable due
-  # to some netcdf-like symbols in libmfhdf
-  MESSAGE(STATUS "HDF4 disabled for static builds due to collision with NetCDF.")
-ELSE(VISIT_STATIC)
-  INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindHDF4.cmake)
-  IF(HDF4_FOUND)
-      SET(HAVE_LIBHDF4 1)
-  ENDIF(HDF4_FOUND)
-ENDIF(VISIT_STATIC)
+    # Configure HDF4 support.
+    IF(VISIT_STATIC)
+      # There's a problem including HDF4 and Netcdf in the same executable due
+      # to some netcdf-like symbols in libmfhdf
+      MESSAGE(STATUS "HDF4 disabled for static builds due to collision with NetCDF.")
+    ELSE(VISIT_STATIC)
+      INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindHDF4.cmake)
+      IF(HDF4_FOUND)
+          SET(HAVE_LIBHDF4 1)
+      ENDIF(HDF4_FOUND)
+    ENDIF(VISIT_STATIC)
 
-# Configure h5part support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindH5Part.cmake)
-IF(H5PART_FOUND)
-    SET(HAVE_LIBH5PART 1)
-ENDIF(H5PART_FOUND)
+    # Configure h5part support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindH5Part.cmake)
+    IF(H5PART_FOUND)
+        SET(HAVE_LIBH5PART 1)
+    ENDIF(H5PART_FOUND)
 
-# Configure ITAPS support -- it's treated specially.
-CONFIGURE_ITAPS()
+    # Configure ITAPS support -- it's treated specially.
+    CONFIGURE_ITAPS()
 
-# Configure Mili support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMili.cmake)
-IF(MILI_FOUND)
-    SET(HAVE_LIBMILI 1)
-ENDIF(MILI_FOUND)
+    # Configure Mili support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMili.cmake)
+    IF(MILI_FOUND)
+        SET(HAVE_LIBMILI 1)
+    ENDIF(MILI_FOUND)
 
-# Configure netcdf support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNetcdf.cmake)
-IF(NETCDF_FOUND)
-    SET(HAVE_LIBNETCDF 1)
+    # Configure netcdf support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNetcdf.cmake)
+    IF(NETCDF_FOUND)
+        SET(HAVE_LIBNETCDF 1)
+    ENDIF(NETCDF_FOUND)
 
-    # Configure ExodusII support (Depends on NETCDF)
-    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindExodusII.cmake)
-    IF(EXODUSII_FOUND)
-        SET(HAVE_LIBEXODUSII 1)
-    ENDIF(EXODUSII_FOUND)
-ENDIF(NETCDF_FOUND)
+    # Configure Silo support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindSilo.cmake)
+    IF(SILO_FOUND)
+        SET(HAVE_LIBSILO 1)
+    ENDIF(SILO_FOUND)
 
-# Configure Silo support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindSilo.cmake)
-IF(SILO_FOUND)
-    SET(HAVE_LIBSILO 1)
-ENDIF(SILO_FOUND)
+    # Configure Xdmf support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindXdmf.cmake)
+    IF(XDMF_FOUND)
+        SET(HAVE_LIBXDMF 1)
+    ENDIF(XDMF_FOUND)
 
-# Configure ViSUS support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisus.cmake)
-IF(VISUS_FOUND)
-    SET(HAVE_LIBVISUS 1)
-ENDIF(VISUS_FOUND)
-
-# Configure Xdmf support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindXdmf.cmake)
-IF(XDMF_FOUND)
-    SET(HAVE_LIBXDMF 1)
-ENDIF(XDMF_FOUND)
-
-# Configure MDSplus support.
-INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMDSplus.cmake)
-IF(MDSPLUS_FOUND)
-    SET(HAVE_LIBMDSPLUS 1)
-ENDIF(MDSPLUS_FOUND)
+    # Configure MDSplus support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMDSplus.cmake)
+    IF(MDSPLUS_FOUND)
+        SET(HAVE_LIBMDSPLUS 1)
+    ENDIF(MDSPLUS_FOUND)
+ENDIF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
 
 # Configure Manta support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindManta.cmake)
@@ -1255,6 +1324,11 @@ FUNCTION(DETECT_MPI_SETTINGS COMP mlibs mflags mlflags mrpath)
 ENDFUNCTION(DETECT_MPI_SETTINGS)
 
 IF(VISIT_PARALLEL)
+    IF(WIN32)
+        SET(VPFLAGS "PARALLEL MPICH_IGNORE_CXX_SEEK OMPI_SKIP_MPICXX")
+    ELSE(WIN32)
+        SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX")
+    ENDIF(WIN32)
     IF(VISIT_MPI_COMPILER)
         MESSAGE(STATUS "Setting up MPI using compiler wrapper")
 
@@ -1266,6 +1340,8 @@ IF(VISIT_PARALLEL)
             VISIT_PARALLEL_RPATH
         )
         SET(VISIT_PARALLEL_CXXFLAGS ${VISIT_PARALLEL_CFLAGS} CACHE STRING "Parallel CXXFLAGS")
+        SET(VISIT_PARALLEL_CFLAGS "${VPFLAGS} ${VISIT_PARALLEL_CFLAGS}")
+        SET(VISIT_PARALLEL_CXXFLAGS "${VPFLAGS} ${VISIT_PARALLEL_CXXFLAGS}")
 
         # Detect the MPI settings that Fortran wants
         IF(VISIT_FORTRAN AND VISIT_MPI_FORTRAN_COMPILER)
@@ -1275,14 +1351,10 @@ IF(VISIT_PARALLEL)
                 VISIT_PARALLEL_FORTRAN_LINKER_FLAGS
                 VISIT_PARALLEL_RPATH
             )
+            SET(VISIT_PARALLEL_FORTRAN_FLAGS "${VPFLAGS} ${VISIT_PARALLEL_FORTRAN_FLAGS}")
         ENDIF(VISIT_FORTRAN AND VISIT_MPI_FORTRAN_COMPILER)
 
     ELSE(VISIT_MPI_COMPILER)
-        IF(WIN32)
-            SET(VPFLAGS "PARALLEL MPICH_IGNORE_CXX_SEEK")
-        ELSE(WIN32)
-            SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK")
-        ENDIF(WIN32)
         IF(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)
             MESSAGE(STATUS "Setting up MPI using user defined flags")
             SET(VISIT_PARALLEL_LIBS          ${VISIT_MPI_LIBS}
@@ -1965,11 +2037,11 @@ ENDIF(NOT WIN32)
 IF(UNIX)
    SET(python_include_relative_path "/python/include/python@PYTHON_VERSION@")
    SET(exodusii_include_relative_path "/exodusii/inc")
-   SET(vtk_include_relative_path "/vtk/include")
+   SET(vtk_include_relative_path "/vtk/vtk-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}")
 ELSE(UNIX)
    SET(python_include_relative_path "/python")
    SET(exodusii_include_relative_path "/exodusii/include")
-   SET(vtk_include_relative_path "/vtk/vtk-5.8")
+   SET(vtk_include_relative_path "/vtk/vtk-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}")
 ENDIF(UNIX)
 
 # If we're installing MPICH as our MPI then filter the parallel flags so
@@ -2064,16 +2136,6 @@ IF(VISIT_MPICH_INSTALL)
                               WORLD_READ             WORLD_EXECUTE
         CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
     )
-    IF(APPLE)
-        FOREACH(filename libmpich.dylib libopa.dylib libmpl.dylib libpmpich.dylib)
-            INSTALL(CODE
-                    "EXECUTE_PROCESS(WORKING_DIRECTORY ${CMAKE_INSTALL_PREFIX}
-                        COMMAND /bin/sh ${VISIT_SOURCE_DIR}/CMake/osxfixup -lib ${VISIT_MPICH_INSTALL} ${VISIT_OSX_USE_RPATH} \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION_LIB}/${filename}\"
-                        OUTPUT_VARIABLE OSXOUT)
-                     MESSAGE(STATUS \"\${OSXOUT}\")
-                    ")
-        ENDFOREACH(filename)
-    ENDIF(APPLE)
 ENDIF(VISIT_MPICH_INSTALL)
 
 #-----------------------------------------------------------------------------
@@ -2210,10 +2272,50 @@ IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
     ENDIF(VISIT_OUT_OF_SOURCE_BUILD)
 ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
 
+
+#-----------------------------------------------------------------------------
+# Add the "test" directory if it exists
+#-----------------------------------------------------------------------------
+IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
+    IF(VISIT_OUT_OF_SOURCE_BUILD)
+        ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../test
+                         ${CMAKE_CURRENT_BINARY_DIR}/test)
+    ELSE(VISIT_OUT_OF_SOURCE_BUILD)
+        ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../test
+                         ${VISIT_SOURCE_DIR}/../test)
+    ENDIF(VISIT_OUT_OF_SOURCE_BUILD)
+ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
+
+
 #-----------------------------------------------------------------------------
 # Create library dependencies file
 #-----------------------------------------------------------------------------
 EXPORT_LIBRARY_DEPENDENCIES(${VISIT_BINARY_DIR}/include/VisItLibraryDependencies.cmake.in)
+
+FOREACH(VTK_TARGET ${VTK_LIBRARIES})
+    IF(TARGET ${VTK_TARGET})
+        # this lets us know if this is a real VTK lib, not a depend lib (such as python)
+        GET_PROPERTY(VTK_TARGET_IMPORT_LOC_EXISTS TARGET ${VTK_TARGET} 
+                                                  PROPERTY IMPORT_LOCATION SET)
+        IF(${VTK_TARGET_IMPORT_LOC_EXISTS})
+            # We can follow the import loc property  to get the actual filename, but we 
+            # will want to link with -lvkt , not libvtk ...
+            #
+            # So for now, we create the suffix manually. Keeping this code in case
+            # we need it to create something more sophisticated in the future. 
+            # 
+            # GET_PROPERTY(VTK_LIB_TARGET_LOC TARGET ${VTK_TARGET} 
+            #                                 PROPERTY IMPORT_LOCATION)
+            # get_filename_component(VTK_TRUE_TARGET ${VTK_LIB_TARGET_LOC} NAME_WE)
+            #
+            SET(VTK_TRUE_TARGET "${VTK_TARGET}-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}") 
+            MESSAGE(STATUS "${VTK_TARGET} vs ${VTK_TRUE_TARGET}")
+            LIST(APPEND VTK_VALID_TARGETS  ${VTK_TARGET})
+            LIST(APPEND VTK_TRUE_TARGETS  ${VTK_TRUE_TARGET})
+        ENDIF()
+    ENDIF()
+ENDFOREACH()
+
 
 IF(WIN32)
     get_filename_component(PD ${PYTHON_LIBRARIES} PATH)
@@ -2223,6 +2325,13 @@ INSTALL(CODE "
 FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
     FILE(STRINGS \${filename}.in lines)
     FILE(WRITE \${filename} \"# Filtered version\\n\")
+    # we need to steal the lists from the parent scope so they can 
+    # be used in our install code
+    SET(FVTK_VALID_TARGETS ${VTK_VALID_TARGETS})
+    SET(FVTK_TRUE_TARGETS ${VTK_TRUE_TARGETS})
+    MESSAGE(STATUS \"VALID_TARGETS: \${FVTK_VALID_TARGETS}\")
+    MESSAGE(STATUS \"TRUE_TARGETS:  \${FVTK_TRUE_TARGETS}\")
+
     FOREACH(line \${lines})
         SET(outputLine TRUE)
         IF(\"\${line}\" MATCHES \".*Plot[_ser|_par]*_LIB_DEPENDS.*\")
@@ -2261,15 +2370,36 @@ FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
                        filteredline4
                        \"\${filteredline3}\")
             ENDIF(\"${VISIT_MPICH_DIR}\" STREQUAL \"\")
+            
+            #
+            # fix the names of any vtk dep targets
+            #
+            
+            LIST(LENGTH FVTK_TRUE_TARGETS  L_FVTK_TRUE_TARGETS)
+            MESSAGE(STATUS \"${L_FVTK_TRUE_TARGETS}\")
+            SET(filtered_line \"\${filteredline4}\")
+            LIST(LENGTH FVTK_TRUE_TARGETS  L_FVTK_TRUE_TARGETS)
+            MATH(EXPR t_max_index \"\${L_FVTK_TRUE_TARGETS}-1\")
+            message(STATUS \"\${t_max_index}\")
+            FOREACH(i RANGE \${t_max_index})
+                LIST(GET FVTK_VALID_TARGETS \${i} A)
+                LIST(GET FVTK_TRUE_TARGETS  \${i} B)
+                STRING(REPLACE \"\${A};\" 
+                               \"\${B};\"
+                               fl_temp 
+                               \"\${filtered_line}\")
+
+                SET(filtered_line \"\${fl_temp}\")
+            ENDFOREACH()
 
             IF(NOT WIN32)
-                FILE(APPEND \${filename} \"\${filteredline4}\\n\")
+                FILE(APPEND \${filename} \"\${filtered_line}\\n\")
             ELSE(NOT WIN32)
                 # extra replacements that need to be made on Windows.
                 STRING(REPLACE \"${PD}\"
                        \"\\\${VISIT_LIBRARY_DIR}\"
                        filteredline5
-                       \"\${filteredline4}\")
+                       \"\${filtered_line}\")
                 STRING(REPLACE \"${ZLIB_LIBRARY_DIR}\"
                        \"\\\${VISIT_LIBRARY_DIR}\"
                        filteredline6
@@ -2283,6 +2413,9 @@ FUNCTION(FILTER_LIBRARY_DEPENDENCIES filename)
                        filteredline8 \"\${filteredline7}\")
                 FILE(APPEND \${filename} \"\${filteredline8}\\n\")
             ENDIF(NOT WIN32)
+            
+
+            
         ENDIF(\${outputLine} STREQUAL \"TRUE\")
     ENDFOREACH(line)
 ENDFUNCTION(FILTER_LIBRARY_DEPENDENCIES)
@@ -2385,6 +2518,16 @@ ELSE (NOT WIN32)
       ENDIF(${MAKENSIS_FOUND})
     ENDIF(VISIT_MAKE_NSIS_INSTALLER)
 ENDIF (NOT WIN32)
+
+#CMake add subdirectory forces this action to go last
+#todo: find way for this function to execute as last
+#step of make install process
+#ADD_CUSTOM_TARGET(osxfixup ALL 
+#     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/osxfixup/osxfixup.py \$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${VISIT_INSTALLED_VERSION} @executable_path/.. 3)
+#ADD_DEPENDENCIES(osxfixup install)
+
+#todo: replace add_subdirectory with the lines above
+ADD_SUBDIRECTORY(osxfixup)
 
 IF (NOT WIN32)
     MESSAGE(STATUS "\n\nUse recmake_visit.sh or search for `CMAKE_INVOKE' in CMakeCache.txt to re-run CMake with the same arguments\n\n")

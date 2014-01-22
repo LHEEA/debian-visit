@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -52,7 +52,6 @@
 #include <vtkRenderWindow.h>
 #include <vtkToolkits.h>
 
-#include <avtGLEWInitializer.h>
 #include "avtMoleculeRenderer.h"
 
 #include <avtCallback.h>
@@ -193,10 +192,10 @@ avtMoleculeRenderer::Render(vtkDataSet *ds)
             delete rendererImplementation;
 #ifdef VISIT_MANTA
         if (avtCallback::UseManta())
-          rendererImplementation = new avtMantaMoleculeRenderer;
+            rendererImplementation = new avtMantaMoleculeRenderer;
         else
-#endif VISIT_MANTA
-          rendererImplementation = new avtOpenGLMoleculeRenderer;
+#endif
+            rendererImplementation = new avtOpenGLMoleculeRenderer;
 
         currentRendererIsValid = true;
 

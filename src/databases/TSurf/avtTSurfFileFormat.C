@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -499,7 +499,7 @@ avtTSurfFileFormat::ReadFile(const char *name, int nLines)
         int rpfTime = visitTimer->StartTimer();
         vtkUnstructuredGridRelevantPointsFilter *rpf = 
             vtkUnstructuredGridRelevantPointsFilter::New();
-        rpf->SetInput(ugrid);
+        rpf->SetInputData(ugrid);
         rpf->Update();
 
         meshDS = vtkUnstructuredGrid::New();

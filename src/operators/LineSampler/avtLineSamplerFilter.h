@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,6 +49,7 @@
 #include <avtTimeLoopFilter.h>
 #include <avtDatasetToDatasetFilter.h>
 
+#include <avtVector.h>
 #include <avtExtents.h>
 
 #include <LineSamplerAttributes.h>
@@ -97,18 +98,18 @@ class avtLineSamplerFilter : virtual public avtPluginFilter,
     virtual void CreateFinalOutput(void);
     virtual bool ExecutionSuccessful(void);
 
-    virtual vtkDataSet *ExecuteChannelData(vtkDataSet *, int, std::string);
-//  virtual vtkDataSet *ExecuteChannelList(vtkDataSet *, int, std::string);
+    virtual vtkDataSet* ExecuteChannelData(vtkDataSet *, int, std::string);
+//  virtual vtkDataSet* ExecuteChannelList(vtkDataSet *, int, std::string);
 
-    virtual vtkDataSet* createPoint( avtVector startPoint,
+    virtual vtkPolyData* createPoint( avtVector startPoint,
                                      avtVector stopPoint,
                                      bool allocateScalars );
   
-    virtual vtkDataSet *createLine( avtVector startPoint,
+    virtual vtkPolyData* createLine( avtVector startPoint,
                                     avtVector stopPoint,
                                     bool allocateScalars );
   
-    virtual vtkDataSet *createCone( avtVector startPoint,
+    virtual vtkDataSet* createCone( avtVector startPoint,
                                     avtVector stopPoint,
                                     avtVector normal,
                                     double radius,
@@ -125,7 +126,9 @@ class avtLineSamplerFilter : virtual public avtPluginFilter,
     void checkBounds( vtkDataSet *in_ds,
                       avtVector &startPoint, avtVector &stopPoint );
 
-    void checkWall( avtVector &startPoint, avtVector &stopPoint );
+    unsigned int checkWall( avtVector &startPoint, avtVector &stopPoint );
+
+    std::vector< std::vector< std::pair< avtVector, float > > > lineSamples;
 
     vtkDataSet *composite_ds;
 

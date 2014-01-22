@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -314,6 +314,65 @@ avtPlot::GetDataExtents(std::vector<double> &extents)
 
 
 // ****************************************************************************
+//  Method: avtPlot::SetPlotTitle
+//
+//  Purpose:
+//      Sets the title for the plot.
+//
+//  Arguments:
+//      title     The title of the plot.
+//
+//  Programmer:  Allen Sanderson
+//  Creation:    April 13, 2013
+//
+//  Modifications:
+//    Kathleen Biagas, Wed Apr 17 17:08:25 PDT 2013
+//    Make sure legend exists before attempting to set its title.
+//
+// ****************************************************************************
+
+void
+avtPlot::SetPlotTitle(const char *title)
+{
+    avtLegend_p legend = GetLegend();
+
+    if (*legend != NULL)
+    {
+        if( title && strlen(title) )
+        {
+            legend->SetTitle( title );
+        }
+        else
+        {
+            // Get the name of the plot 
+            std::string plotName( GetName() );
+
+            // All plots should end in "Plot" so strip that off.
+            std::size_t pos = plotName.find_last_of("Plot");
+
+            if( pos != std::string::npos)
+                plotName.erase( pos-3, 4 );
+
+            // Next search for an upper case letter and add space between.
+            pos = 1;
+
+            while( pos < plotName.length() )
+            {
+                if( 'A' <= plotName[pos] && plotName[pos] <= 'Z' )
+                {
+                    plotName.insert( pos, " " );
+                    pos += 2;
+                }
+                else
+                    ++pos;
+            }
+
+            legend->SetTitle( plotName.c_str() );
+        }
+    }
+}
+
+// ****************************************************************************
 //  Method: avtPlot::SetVarName
 //
 //  Purpose:
@@ -515,14 +574,14 @@ avtDataObjectWriter_p
 avtPlot::Execute(avtDataObject_p input, avtContract_p contract,
                  const WindowAttributes *atts, const bool combinedExecute)
 {
-    std::string varname = contract->GetDataRequest()->GetVariable();
-    SetVarName(varname.c_str());
+    std::string varName = contract->GetDataRequest()->GetVariable();
+    SetVarName(varName.c_str());
 
     //
     // We don't know that the varname is has extents.  It might be a mesh or a material.  But
     // that won't hurt anything ... the extents calculation won't happen in that case any way.
     //
-    contract->SetCalculateVariableExtents(varname, true);
+    contract->SetCalculateVariableExtents(varName, true);
 
     if (*input == NULL)
     {

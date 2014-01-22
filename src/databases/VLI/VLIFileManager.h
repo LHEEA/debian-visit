@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,10 +57,12 @@ class VLIDataset;
 // Creation:   Fri Aug 10 11:48:00 EDT 2007 
 //
 // Modifications:
+//    Kathleen Biagas, Wed Sep 11 09:33:55 PDT 2013
+//    Remove 'STATE_API'.  Added stream versions of Read/WriteConfigFile.
 //
 // ****************************************************************************
 
-class STATE_API VLIFileManager : public ConfigManager
+class VLIFileManager : public ConfigManager
 {
 public:
                       VLIFileManager();
@@ -68,6 +70,9 @@ public:
 
     virtual bool      WriteConfigFile(const char *filename);
     virtual DataNode *ReadConfigFile(const char *filename);
+    virtual bool      WriteConfigFile(std::ostream &out);
+    virtual DataNode *ReadConfigFile(std::istream &in);
+
     VLIDataset       *getDataset();
     void              setDataset(VLIDataset *);
     std::string       getName();
@@ -97,7 +102,7 @@ private:
     int               nservers;
 };
    
-class STATE_API VLIAttribute
+class VLIAttribute
 {
 public:
                         VLIAttribute();
@@ -120,7 +125,7 @@ private:
     bool                isScaled;
 };
 
-class STATE_API VLIDataset
+class VLIDataset
 {
 public:
                           VLIDataset();

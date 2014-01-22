@@ -5,7 +5,16 @@
     <Files components="E">
       avtPoincareFilter.C
       FieldlineAnalyzerLib.C
+      RationalSurfaceLib.C
+      skelet.C
+      dir_graph.C
     </Files>
+    <LIBS components="ESer">
+      avtivp_ser
+    </LIBS>
+    <LIBS components="EPar">
+      avtivp_par
+    </LIBS>
     <Attribute name="PoincareAttributes" purpose="Attributes for the Poincare plot" persistent="true" keyframe="true" exportAPI="" exportInclude="" codefile="Poincare.code">
       <Enum name="SourceType">
         SpecifiedPoint
@@ -13,17 +22,18 @@
       </Enum>
       <Enum name="FieldType">
         Default
+        FlashField
         M3DC12DField
         M3DC13DField
+        Nek5000Field
         NIMRODField
-        FlashField
       </Enum>
       <Enum name="IntegrationType">
         Euler
         Leapfrog
         DormandPrince
         AdamsBashforth
-        Reserved_4
+        RK4
         M3DC12DIntegrator
       </Enum>
       <Enum name="SizeType">
@@ -77,15 +87,23 @@
         WindingPointOrder
         WindingPointOrderModulo
       </Enum>
-      <Enum name="StreamlineAlgorithmType">
+      <Enum name="ParallelizationAlgorithmType">
         LoadOnDemand
         ParallelStaticDomains
         MasterSlave
+        VisItSelects
+      </Enum>
+      <Enum name="PathlinesCMFE">
+        CONN_CMFE
+        POS_CMFE
       </Enum>
       <Enum name="PointType">
         Box
         Axis
         Icosahedron
+        Octahedron
+        Tetrahedron
+        SphereGeometry
         Point
         Sphere
       </Enum>
@@ -104,7 +122,7 @@
       <Field name="puncturePlane" label="Puncture Plane" type="enum" subtype="PuncturePlaneType">
         Poloidal
       </Field>
-      <Field name="sourceType" label="Streamline Source" type="enum" subtype="SourceType">
+      <Field name="sourceType" label="Source" type="enum" subtype="SourceType">
         SpecifiedPoint
       </Field>
       <Field name="pointSource" label="Point Source" type="doubleArray" length="3" enabler="sourceType:SpecifiedPoint">
@@ -127,6 +145,9 @@
       </Field>
       <Field name="fieldType" label="Field" type="enum" subtype="FieldType">
         Default
+      </Field>
+      <Field name="forceNodeCenteredData" label="forceNodeCenteredData" type="bool">
+        false
       </Field>
       <Field name="fieldConstant" label="Constant" type="double" subtype="FieldConstant">
         1.0
@@ -223,6 +244,12 @@
       <Field name="dataValue" label="dataValue" type="enum" subtype="DataValue">
         SafetyFactorQ
       </Field>
+      <Field name="showRationalSurfaces" label="Detect Rational Surfaces" type="bool">
+        false
+      </Field>
+      <Field name="RationalSurfaceMaxIterations" label="Maximum Iterations" type="int">
+        2
+      </Field>
       <Field name="showOPoints" label="Detect O Points" type="bool">
         false
       </Field>
@@ -286,10 +313,10 @@
       <Field name="lightingFlag" label="Lighting" type="bool">
         true
       </Field>
-      <Field name="streamlineAlgorithmType" label="Streamline algorithm type" type="enum" subtype="StreamlineAlgorithmType">
-        LoadOnDemand
+      <Field name="parallelizationAlgorithmType" label="Parallelization algorithm type" type="enum" subtype="ParallelizationAlgorithmType">
+        VisItSelects
       </Field>
-      <Field name="maxStreamlineProcessCount" label="maxStreamlineProcessCount" type="int">
+      <Field name="maxProcessCount" label="maxProcessCount" type="int">
         10
       </Field>
       <Field name="maxDomainCacheSize" label="Max domain cache" type="int">
@@ -298,9 +325,35 @@
       <Field name="workGroupSize" label="Work group size" type="int">
         32
       </Field>
-      <Field name="forceNodeCenteredData" label="forceNodeCenteredData" type="bool">
+
+
+      <Field name="pathlines" label="Do pathlines" type="bool">
         false
       </Field>
+      <Field name="pathlinesOverrideStartingTimeFlag" label="Override Starting Time" type="bool" enabler="pathlines:true">
+        false
+      </Field>
+      <Field name="pathlinesOverrideStartingTime" label="Starting Time" type="double" enabler="pathlines:true">
+        0.000000
+      </Field>
+      <Field name="pathlinesCMFE" label="CMFE" type="enum" subtype="PathlinesCMFE">
+        POS_CMFE
+      </Field>
+
+      <Field name="issueTerminationWarnings" label="Issue Warning When Termination Criteria Is Not Met" type="bool">
+        true
+      </Field>
+      <Field name="issueStiffnessWarnings" label="Issue warnings when stiffness is encountered" type="bool">
+        true
+      </Field>
+      <Field name="issueCriticalPointsWarnings" label="Issue warnings when critical points are reached" type="bool">
+        true
+      </Field>
+      <Field name="criticalPointThreshold" label="criticalPointThreshold" type="double" enabler="issueCriticalPointsWarnings:true">
+        0.001000
+      </Field>
+
+
       <Function name="CopyAttributes" user="false" member="true">
       </Function>
       <Function name="CreateCompatible" user="false" member="true">

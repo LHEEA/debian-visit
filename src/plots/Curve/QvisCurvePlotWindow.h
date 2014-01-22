@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,7 @@ class QSpinBox;
 class QvisColorButton;
 class QvisLineStyleWidget;
 class QvisLineWidthWidget;
+class QvisOpacitySlider;
 
 // ****************************************************************************
 // Class: QvisCurvePlotWindow
@@ -85,6 +86,12 @@ class QvisLineWidthWidget;
 //   Hank Childs, Thu Jul 15 18:20:26 PDT 2010
 //   Add cue for the current location.
 //
+//   Brad Whitlock, Fri Jul  5 16:54:02 PDT 2013
+//   Add fill color.
+//
+//   Kathleen Biagas, Wed Sep 11 17:17:42 PDT 2013
+//   Added polarToggle and useDegreesToggle, added widgets for saving tabs.
+//
 // ****************************************************************************
 
 class QvisCurvePlotWindow : public QvisPostableWindowObserver
@@ -103,9 +110,14 @@ class QvisCurvePlotWindow : public QvisPostableWindowObserver
     virtual void makeDefault();
     virtual void reset();
   protected:
+    void CreateDataTab(QWidget *);
+    void CreateGeometryTab(QWidget *);
+    void CreateExtrasTab(QWidget *);
+
     void UpdateWindow(bool doAll);
     void GetCurrentValues(int which_widget);
     void Apply(bool ignore = false);
+ 
   private slots:
     void showLinesChanged(bool val);
     void lineStyleChanged(int style);
@@ -119,9 +131,17 @@ class QvisCurvePlotWindow : public QvisPostableWindowObserver
     void curveColorClicked(int val);
     void curveColorChanged(const QColor &color);
 
+    void fillModeChanged(int);
+
+    void fillColor1Changed(const QColor &color);
+    void fillColor1OpacityChanged(int opacity, const void*);
+
+    void fillColor2Changed(const QColor &color);
+    void fillColor2OpacityChanged(int opacity, const void*);
+
     void symbolTypeChanged(int);
     void symbolDensityChanged(int);
-    void fillModeChanged(int);
+    void symbolFillModeChanged(int);
 
     void doBallTimeCueChanged(bool val);
     void ballTimeCueColorChanged(const QColor &color);
@@ -131,6 +151,10 @@ class QvisCurvePlotWindow : public QvisPostableWindowObserver
     void lineTimeCueWidthChanged(int);
     void doCropTimeCueChanged(bool val);
     void timeForTimeCueProcessText();
+
+    void polarToggled(bool val);
+    void polarOrderChanged(int);
+    void angleUnitsChanged(int);
 
   private:
     int plotType;
@@ -143,6 +167,16 @@ class QvisCurvePlotWindow : public QvisPostableWindowObserver
     QCheckBox           *cycleColors;
     QButtonGroup        *curveColorButtons;
     QvisColorButton     *curveColor;
+
+    QComboBox           *fillMode;
+
+    QLabel              *fillLabel1;
+    QvisColorButton     *fillColor1;
+    QvisOpacitySlider   *fillOpacity1;
+
+    QLabel              *fillLabel2;
+    QvisColorButton     *fillColor2;
+    QvisOpacitySlider   *fillOpacity2;
 
     QCheckBox           *labelsToggle;
     QCheckBox           *legendToggle;
@@ -175,6 +209,12 @@ class QvisCurvePlotWindow : public QvisPostableWindowObserver
     QLabel              *timeCueBallSizeLabel;
     QLabel              *lineTimeCueWidthLabel;
     QLabel              *timeForTimeCueLabel;
+
+    QCheckBox           *polarToggle;
+    QComboBox           *polarOrder;
+    QLabel              *polarOrderLabel;
+    QComboBox           *angleUnits;
+    QLabel              *angleUnitsLabel;
 
     CurveAttributes *atts;
 };

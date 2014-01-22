@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -159,7 +159,7 @@ class avtPseudocolorPlot : public avtSurfaceDataPlot
 
     void                        SetLimitsMode(int);
 
-    void                        SetOpacityFromAtts();
+    bool                        SetOpacityFromAtts();
     void                        SetScaling(int, double);
 
   protected:

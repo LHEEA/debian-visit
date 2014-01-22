@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,6 +55,7 @@ class QvisColorButton;
 class QvisLineStyleWidget;
 class QvisLineWidthWidget;
 class QvisVariableButton;
+class QComboBox;
 
 // ****************************************************************************
 // Class: QvisPeaksOverThresholdWindow
@@ -88,60 +89,77 @@ class QvisPeaksOverThresholdWindow : public QvisOperatorWindow
   private slots:
     void dataYearBeginProcessText();
     void dataAnalysisYearRangeEnabledChanged(bool val);
-    void dataAnalysisYearRangeProcessText();
+    void dataAnalysisYear1ProcessText();
+    void dataAnalysisYear2ProcessText();
+    void ensembleChanged(bool val);
+    void numEnsemblesProcessText();
+    void cutoffProcessText();
+    void cutoffModeChanged(int val);
+    void dataScalingProcessText();
     void aggregationChanged(int val);
+    void optimizationChanged(int val);
     void annualPercentileProcessText();
     void seasonalPercentileProcessText();
     void monthlyPercentileProcessText();
-    void displaySeasonChanged(int val);
-    void displayMonthChanged(int val);
-    void cutoffProcessText();
-    void computeParamValuesChanged(bool val);
-    void computeCovariatesChanged(bool val);
-    void covariateReturnYearsProcessText();
+    void daysPerYearProcessText();
+    void daysPerMonthProcessText();
+    void covariateModelScaleChanged(bool val);
     void covariateModelLocationChanged(bool val);
     void covariateModelShapeChanged(bool val);
-    void covariateModelScaleChanged(bool val);
+    void computeCovariatesChanged(bool val);
+    void covariateReturnYearsProcessText();
     void computeRVDifferencesChanged(bool val);
-    void rvDifferencesProcessText();
-    void dataScalingProcessText();
+    void rvDifference1ProcessText();
+    void rvDifference2ProcessText();
+    void computeParamValuesChanged(bool val);
+    void displaySeasonChanged(int val);
+    void displayMonthChanged(int val);
     void dumpDataChanged(bool val);
+    void dumpDebugChanged(bool val);
+    void noConsecutiveDayChanged(bool val);
   private:
     QLineEdit *dataYearBegin;
+    QCheckBox *noConsecutiveDay;
     QCheckBox *dataAnalysisYearRangeEnabled;
-    QLineEdit *dataAnalysisYearRange;
+    QLineEdit *dataAnalysisYear1, *dataAnalysisYear2;
+    QCheckBox *ensemble;
+    QLineEdit *numEnsembles;
+    QLineEdit *cutoff;
+    QWidget      *cutoffMode;
+    QButtonGroup *cutoffModeButtonGroup;
+    QLineEdit *dataScaling;
     QWidget      *aggregation;
     QButtonGroup *aggregationButtonGroup;
+    QComboBox  *aggregationSelect;
+    QComboBox  *optimizationSelect;
+    QLabel     *displayLabel;
+    QComboBox  *displaySeasonSelect;
+    QComboBox  *displayMonthSelect;
     QLineEdit *annualPercentile;
     QLineEdit *seasonalPercentile;
     QLineEdit *monthlyPercentile;
-    QWidget      *displaySeason;
-    QButtonGroup *displaySeasonButtonGroup;
-    QWidget      *displayMonth;
-    QButtonGroup *displayMonthButtonGroup;
-    QLineEdit *cutoff;
-    QCheckBox *computeParamValues;
-    QCheckBox *computeCovariates;
-    QLineEdit *covariateReturnYears;
+    QLineEdit *daysPerYear;
+    QLineEdit *daysPerMonth;
+    QCheckBox *covariateModelScale;
     QCheckBox *covariateModelLocation;
     QCheckBox *covariateModelShape;
-    QCheckBox *covariateModelScale;
+    QCheckBox *computeCovariates;
+    QLineEdit *covariateReturnYears;
     QCheckBox *computeRVDifferences;
-    QLineEdit *rvDifferences;
-    QLineEdit *dataScaling;
+    QLineEdit *rvDifference1, *rvDifference2;
+    QCheckBox *computeParamValues;
     QCheckBox *dumpData;
+    QCheckBox *dumpDebug;
     QLabel *dataYearBeginLabel;
     QLabel *dataAnalysisYearRangeLabel;
-    QLabel *aggregationLabel;
-    QLabel *annualPercentileLabel;
-    QLabel *seasonalPercentileLabel;
-    QLabel *monthlyPercentileLabel;
+    QLabel *numEnsemblesLabel;
+    QLabel *cutoffLabel;
+    QLabel *cutoffModeLabel;
+    QLabel *dataScalingLabel;
+    QLabel *daysPerYearLabel;
+    QLabel *daysPerMonthLabel;
     QLabel *displaySeasonLabel;
     QLabel *displayMonthLabel;
-    QLabel *cutoffLabel;
-    QLabel *covariateReturnYearsLabel;
-    QLabel *rvDifferencesLabel;
-    QLabel *dataScalingLabel;
 
     PeaksOverThresholdAttributes *atts;
 };

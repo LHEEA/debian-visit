@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -184,6 +184,9 @@ avtLabeledCurveMapper::SetUpFilters(int nInputs)
 //    Use label associated with input if multiple labels set.
 //    Keep track of input number an actor is associated with.
 //
+//    Kathleen Biagas, Fri Jan 25 16:04:46 PST 2013
+//    Call Update on the filter, not the data object.
+//
 // ****************************************************************************
 
 void
@@ -205,9 +208,9 @@ avtLabeledCurveMapper::SetDatasetInput(vtkDataSet *ds, int inNum)
         filter[inNum] = vtkMaskPoints::New();
     }
 
-    filter[inNum]->SetInput(ds);
+    filter[inNum]->SetInputData(ds);
     filter[inNum]->SetOnRatio(ds->GetNumberOfPoints()/5);
-    filter[inNum]->GetOutput()->Update();
+    filter[inNum]->Update();
     vtkPoints *points = filter[inNum]->GetOutput()->GetPoints();
     double pos[3];        
     vtkIdType i;

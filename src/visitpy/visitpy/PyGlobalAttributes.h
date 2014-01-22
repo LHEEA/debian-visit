@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define GLOBALATTRIBUTES_NMETH 48
+#define GLOBALATTRIBUTES_NMETH 54
 void VISITPY_API           PyGlobalAttributes_StartUp(GlobalAttributes *subj, void *data);
 void VISITPY_API           PyGlobalAttributes_CloseDown();
 VISITPY_API PyMethodDef *  PyGlobalAttributes_GetMethodTable(int *nMethods);

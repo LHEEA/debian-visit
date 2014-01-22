@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,13 +51,14 @@
 #include <vtkCellData.h>
 #include <vtkDataSet.h>
 #include <vtkDataSetReader.h>
+#include <vtkFloatArray.h>
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
-#include <vtkUnstructuredGrid.h>
+#include <vtkRectilinearGrid.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkStructuredGrid.h>
 #include <vtkStructuredPoints.h>
-#include <vtkRectilinearGrid.h>
-#include <vtkFloatArray.h>
+#include <vtkUnstructuredGrid.h>
 #include <vtkXMLImageDataReader.h>
 #include <vtkXMLPolyDataReader.h>
 #include <vtkXMLRectilinearGridReader.h>
@@ -127,6 +128,10 @@ double avtVTKFileReader::INVALID_TIME = -DBL_MAX;
 //    Eric Brugger, Mon Jun 18 12:28:25 PDT 2012
 //    I enhanced the reader so that it can read parallel VTK files.
 //
+//    Eric Brugger, Tue Jul  9 09:36:44 PDT 2013
+//    I modified the reading of pvti, pvtr and pvts files to handle the case
+//    where the piece extent was a subset of the whole extent.
+//
 // ****************************************************************************
 
 avtVTKFileReader::avtVTKFileReader(const char *fname, DBOptionsAttributes *) 
@@ -137,6 +142,7 @@ avtVTKFileReader::avtVTKFileReader(const char *fname, DBOptionsAttributes *)
     nblocks = 1;
     pieceFileNames = NULL;
     pieceDatasets = NULL;
+    pieceExtents = NULL;
 
     readInDataset = false;
     matvarname = NULL;
@@ -185,6 +191,10 @@ avtVTKFileReader::avtVTKFileReader(const char *fname, DBOptionsAttributes *)
 //    Eric Brugger, Mon Jun 18 12:28:25 PDT 2012
 //    I enhanced the reader so that it can read parallel VTK files.
 //
+//    Eric Brugger, Tue Jul  9 09:36:44 PDT 2013
+//    I modified the reading of pvti, pvtr and pvts files to handle the case
+//    where the piece extent was a subset of the whole extent.
+//
 // ****************************************************************************
 
 avtVTKFileReader::~avtVTKFileReader()
@@ -209,6 +219,15 @@ avtVTKFileReader::~avtVTKFileReader()
                 pieceDatasets[i]->Delete();
         }
         delete [] pieceDatasets;
+    }
+    if (pieceExtents != NULL)
+    {
+        for (int i = 0; i < nblocks; i++)
+        {
+            if (pieceExtents[i] != NULL)
+                delete [] pieceExtents[i];
+        }
+        delete [] pieceExtents;
     }
     for(std::map<std::string, vtkRectilinearGrid *>::iterator pos = vtkCurves.begin();
         pos != vtkCurves.end(); ++pos)
@@ -253,6 +272,9 @@ avtVTKFileReader::GetNumberOfDomains()
 //  Creation:   June 18, 2012
 //
 //  Modifications:
+//    Eric Brugger, Tue Jul  9 09:36:44 PDT 2013
+//    I modified the reading of pvti, pvtr and pvts files to handle the case
+//    where the piece extent was a subset of the whole extent.
 //
 // ****************************************************************************
 
@@ -275,6 +297,24 @@ avtVTKFileReader::ReadInFile(void)
             strcpy(pieceFileNames[i], xmlpReader->GetPieceFileName(i));
         }
 
+        pieceExtents = new int*[nblocks];
+        for (int i = 0; i < nblocks; i++)
+        {
+            int *readerExtent = xmlpReader->GetExtent(i);
+            if (readerExtent == NULL)
+            {
+                pieceExtents[i] = NULL;
+            }
+            else
+            {
+                pieceExtents[i] = new int[6];
+                int *ext = pieceExtents[i];
+                ext[0] = readerExtent[0]; ext[1] = readerExtent[1];
+                ext[2] = readerExtent[2]; ext[3] = readerExtent[3];
+                ext[4] = readerExtent[4]; ext[5] = readerExtent[5];
+            }
+        }
+
         xmlpReader->Delete();
 
         pieceDatasets = new vtkDataSet*[nblocks];
@@ -293,6 +333,9 @@ avtVTKFileReader::ReadInFile(void)
 
         pieceDatasets = new vtkDataSet*[nblocks];
         pieceDatasets[0] = NULL;
+
+        pieceExtents = new int*[nblocks];
+        pieceExtents[0] = NULL;
 
         pieceExtension = fileExtension;
     }
@@ -349,6 +392,13 @@ avtVTKFileReader::ReadInFile(void)
 //    Eric Brugger, Mon Jun 18 12:28:25 PDT 2012
 //    I enhanced the reader so that it can read parallel VTK files.
 //
+//    Kathleen Biagas, Mon Jan 28 11:06:32 PST 2013
+//    Remove calls to ds->Update.
+//
+//    Eric Brugger, Tue Jul  9 09:36:44 PDT 2013
+//    I modified the reading of pvti, pvtr and pvts files to handle the case
+//    where the piece extent was a subset of the whole extent.
+//
 // ****************************************************************************
 
 void
@@ -390,13 +440,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-
-        //
-        // Force the read and make sure that the reader is really gone, 
-        // so we don't eat up too many file descriptors.
-        //
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     }
     else if (pieceExtension == "vti")
@@ -410,8 +453,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else if (pieceExtension == "vtr") 
@@ -426,8 +467,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else if (pieceExtension == "vts")
@@ -442,8 +481,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else if (pieceExtension == "vtp") 
@@ -457,8 +494,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else if (pieceExtension == "vtu") 
@@ -473,8 +508,6 @@ avtVTKFileReader::ReadInDataset(int domain)
             EXCEPTION1(InvalidFilesException, pieceFileNames[domain]);
         }
         dataset->Register(NULL);
-        dataset->Update();
-        //dataset->SetSource(NULL);
         reader->Delete();
     } 
     else
@@ -501,7 +534,8 @@ avtVTKFileReader::ReadInDataset(int domain)
         // The old dataset passed in will be deleted, a new one will be 
         // returned.
         //
-        dataset = ConvertStructuredPointsToRGrid((vtkStructuredPoints*)dataset);
+        dataset = ConvertStructuredPointsToRGrid((vtkStructuredPoints*)dataset,
+                                                 pieceExtents[domain]);
     }
 
     if(dataset->GetDataObjectType() == VTK_RECTILINEAR_GRID)
@@ -704,7 +738,7 @@ avtVTKFileReader::GetAuxiliaryData(const char *var, int domain,
             matnamestmp[i] = (char*) matnames[i].c_str();
         }
 
-        avtMaterial *mat = new avtMaterial(matnos.size(), //silomat->nmat,
+        avtMaterial *mat = new avtMaterial((int)matnos.size(), //silomat->nmat,
                                            matnostmp,     //silomat->matnos,
                                            matnamestmp,   //silomat->matnames,
                                            1,             //silomat->ndims,
@@ -1346,7 +1380,7 @@ avtVTKFileReader::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             }
 
             avtMaterialMetaData *mmd = new avtMaterialMetaData("materials", MESHNAME,
-                                               valMap.size(), matnames);
+                                              (int)valMap.size(), matnames);
             md->Add(mmd);
 
             if (strncmp(name, "internal_var_Subsets", strlen("internal_var_Subsets")) == 0)
@@ -1451,30 +1485,57 @@ GetListOfUniqueCellTypes(vtkUnstructuredGrid *ug, vtkUnsignedCharArray *uca)
 //  Programmer: Kathleen Bonnell 
 //  Creation:   March 9, 2004
 //
+//  Modifications:
+//    Eric Brugger, Tue Jul  9 09:36:44 PDT 2013
+//    I modified the reading of pvti, pvtr and pvts files to handle the case
+//    where the piece extent was a subset of the whole extent.
+//
 // ****************************************************************************
 
 vtkDataSet *
-avtVTKFileReader::ConvertStructuredPointsToRGrid(vtkStructuredPoints *inSP)
+avtVTKFileReader::ConvertStructuredPointsToRGrid(vtkStructuredPoints *inSP,
+    int *extents)
 {
-    int coordDims[3]; 
+    int wholeDims[3]; 
     double spacing[3];
-    double origin[3];
-    inSP->GetDimensions(coordDims);
+    double wholeOrigin[3];
+    inSP->GetDimensions(wholeDims);
     inSP->GetSpacing(spacing);
-    inSP->GetOrigin(origin);
+    inSP->GetOrigin(wholeOrigin);
+
+    int pieceDims[3];
+    int pieceOrigin[3];
+    if (extents == NULL)
+    {
+        pieceDims[0] = wholeDims[0];
+        pieceDims[1] = wholeDims[1];
+        pieceDims[2] = wholeDims[2];
+        pieceOrigin[0] = wholeOrigin[0];
+        pieceOrigin[1] = wholeOrigin[1];
+        pieceOrigin[2] = wholeOrigin[2];
+    }
+    else
+    {
+        pieceDims[0] = extents[1] - extents[0] + 1;
+        pieceDims[1] = extents[3] - extents[2] + 1;
+        pieceDims[2] = extents[5] - extents[4] + 1;
+        pieceOrigin[0] = wholeOrigin[0] + extents[0] * spacing[0];
+        pieceOrigin[1] = wholeOrigin[1] + extents[2] * spacing[1];
+        pieceOrigin[2] = wholeOrigin[2] + extents[4] * spacing[2];
+    }
 
     vtkFloatArray *x = vtkFloatArray::New();
     x->SetNumberOfComponents(1);
-    x->SetNumberOfTuples(coordDims[0]);
+    x->SetNumberOfTuples(pieceDims[0]);
     vtkFloatArray *y = vtkFloatArray::New();
     y->SetNumberOfComponents(1);
-    y->SetNumberOfTuples(coordDims[1]);
+    y->SetNumberOfTuples(pieceDims[1]);
     vtkFloatArray *z = vtkFloatArray::New();
     z->SetNumberOfComponents(1);
-    z->SetNumberOfTuples(coordDims[2]);
+    z->SetNumberOfTuples(pieceDims[2]);
 
     vtkRectilinearGrid *outRG = vtkRectilinearGrid::New();
-    outRG->SetDimensions(coordDims);
+    outRG->SetDimensions(pieceDims);
     outRG->SetXCoordinates(x);
     outRG->SetYCoordinates(y);
     outRG->SetZCoordinates(z);
@@ -1484,22 +1545,101 @@ avtVTKFileReader::ConvertStructuredPointsToRGrid(vtkStructuredPoints *inSP)
 
     int i;
     float *ptr = x->GetPointer(0);
-    for (i = 0; i < coordDims[0]; i++, ptr++)
-        *ptr = origin[0] + i * spacing[0]; 
+    for (i = 0; i < pieceDims[0]; i++, ptr++)
+        *ptr = pieceOrigin[0] + i * spacing[0]; 
 
     ptr = y->GetPointer(0);
-    for (i = 0; i < coordDims[1]; i++, ptr++)
-        *ptr = origin[1] + i * spacing[1]; 
+    for (i = 0; i < pieceDims[1]; i++, ptr++)
+        *ptr = pieceOrigin[1] + i * spacing[1]; 
 
     ptr = z->GetPointer(0);
-    for (i = 0; i < coordDims[2]; i++, ptr++)
-        *ptr = origin[2] + i * spacing[2]; 
+    for (i = 0; i < pieceDims[2]; i++, ptr++)
+        *ptr = pieceOrigin[2] + i * spacing[2]; 
   
-    for (i = 0; i < inSP->GetPointData()->GetNumberOfArrays(); i++)
-        outRG->GetPointData()->AddArray(inSP->GetPointData()->GetArray(i));
+    if (extents == NULL)
+    {
+        for (i = 0; i < inSP->GetPointData()->GetNumberOfArrays(); i++)
+            outRG->GetPointData()->AddArray(inSP->GetPointData()->GetArray(i));
 
-    for (i = 0; i < inSP->GetCellData()->GetNumberOfArrays(); i++)
-        outRG->GetCellData()->AddArray(inSP->GetCellData()->GetArray(i));
+        for (i = 0; i < inSP->GetCellData()->GetNumberOfArrays(); i++)
+            outRG->GetCellData()->AddArray(inSP->GetCellData()->GetArray(i));
+    }
+    else
+    {
+        for (i = 0; i < inSP->GetPointData()->GetNumberOfArrays(); i++)
+        {
+            vtkDataArray *in = inSP->GetPointData()->GetArray(i);
+
+            vtkDataArray *out = vtkDataArray::CreateDataArray(in->GetDataType());
+            out->SetName(in->GetName());
+            out->SetNumberOfComponents(in->GetNumberOfComponents());
+
+            unsigned long ntuples = pieceDims[0] * pieceDims[1] * pieceDims[2];
+            out->SetNumberOfTuples(ntuples);
+
+            vtkIdType outIndex = 0;
+            vtkIdType nx  = wholeDims[0];
+            vtkIdType nxy = wholeDims[0] * wholeDims[1];
+            for (unsigned int iZ = extents[4]; iZ < extents[5]; iZ++) 
+            {
+                for (unsigned int iY = extents[2]; iY < extents[3]; iY++) 
+                {
+                    for (unsigned int iX = extents[0]; iX < extents[1]; iX++) 
+                    {
+                        vtkIdType inIndex = iZ * nxy + iY * nx + iX;
+                        out->SetTuple(outIndex, inIndex, in);
+                        outIndex++;
+                    }
+                }
+            }
+            outRG->GetPointData()->AddArray(out);
+        }
+
+        for (i = 0; i < inSP->GetCellData()->GetNumberOfArrays(); i++)
+        {
+            vtkDataArray *in = inSP->GetCellData()->GetArray(i);
+
+            vtkDataArray *out = vtkDataArray::CreateDataArray(in->GetDataType());
+            out->SetName(in->GetName());
+            out->SetNumberOfComponents(in->GetNumberOfComponents());
+
+            int pieceZonalDims[3];
+            pieceZonalDims[0] = (pieceDims[0] <= 1) ? 1 : (pieceDims[0] - 1);
+            pieceZonalDims[1] = (pieceDims[1] <= 1) ? 1 : (pieceDims[1] - 1);
+            pieceZonalDims[2] = (pieceDims[2] <= 1) ? 1 : (pieceDims[2] - 1);
+            out->SetNumberOfTuples(pieceZonalDims[0] *
+                                   pieceZonalDims[1] *
+                                   pieceZonalDims[2]);
+
+            int wholeZonalDims[3];
+            wholeZonalDims[0] = (wholeDims[0] <= 1) ? 1 : (wholeDims[0] - 1);
+            wholeZonalDims[1] = (wholeDims[1] <= 1) ? 1 : (wholeDims[1] - 1);
+            wholeZonalDims[2] = (wholeDims[2] <= 1) ? 1 : (wholeDims[2] - 1);
+            vtkIdType outIndex = 0;
+            vtkIdType nX  = wholeZonalDims[0];
+            vtkIdType nXY = wholeZonalDims[0] * wholeZonalDims[1];
+            int zoneExtents[6];
+            zoneExtents[0] = extents[0];
+            zoneExtents[1] = extents[0] + pieceZonalDims[0];
+            zoneExtents[2] = extents[2];
+            zoneExtents[3] = extents[2] + pieceZonalDims[1];
+            zoneExtents[4] = extents[4];
+            zoneExtents[5] = extents[4] + pieceZonalDims[2];
+            for (int iZ = zoneExtents[4]; iZ < zoneExtents[5]; iZ++) 
+            {
+                for (int iY = zoneExtents[2]; iY < zoneExtents[3]; iY++) 
+                {
+                    for (int iX = zoneExtents[0]; iX < zoneExtents[1]; iX++) 
+                    {
+                        vtkIdType inIndex = iZ * nXY + iY * nX + iX;
+                        out->SetTuple(outIndex, inIndex, in);
+                        outIndex++;
+                    }
+                }
+            }
+            outRG->GetCellData()->AddArray(out);
+        }
+    }
    
     inSP->Delete(); 
     return outRG; 

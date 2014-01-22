@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -280,6 +280,9 @@ ADD_SIMV2_SIMULATION(sim12 sim12.c)
 ADD_FORTRAN_SIMV2_SIMULATION(fsim12 fsim12.f)
 
 ADD_SIMV2_SIMULATION(species species.c)
+
+ADD_SIMV2_SIMULATION(ucdcurve ucdcurve.c)
+ADD_PARALLEL_SIMV2_SIMULATION(ucdcurve_par ucdcurve.c)
 
 ADD_SIMV2_SIMULATION(unstructured unstructured.c)
 ADD_FORTRAN_SIMV2_SIMULATION(funstructured funstructured.f)

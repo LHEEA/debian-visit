@@ -31,7 +31,7 @@ class VISIT_VTK_API vtkVisItTIFFWriter : public vtkImageWriter
 {
 public:
   static vtkVisItTIFFWriter *New();
-  vtkTypeRevisionMacro(vtkVisItTIFFWriter,vtkImageWriter);
+  vtkTypeMacro(vtkVisItTIFFWriter,vtkImageWriter);
   virtual void PrintSelf(ostream& os, vtkIndent indent);
 
 //BTX
@@ -59,8 +59,8 @@ protected:
   vtkVisItTIFFWriter();
   ~vtkVisItTIFFWriter() {}
 
-  virtual void WriteFile(ofstream *file, vtkImageData *data, int ext[6]);
-  virtual void WriteFileHeader(ofstream *, vtkImageData *);
+  virtual void WriteFile(ofstream *file, vtkImageData *data, int ext[6], int wExt[6]);
+  virtual void WriteFileHeader(ofstream *, vtkImageData *, int wExt[6]);
   virtual void WriteFileTrailer(ofstream *, vtkImageData *);
 
   void* TIFFPtr;

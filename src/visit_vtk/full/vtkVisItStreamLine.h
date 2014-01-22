@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 class VISIT_VTK_API vtkVisItStreamLine : public vtkStreamer
 {
 public:
-  vtkTypeRevisionMacro(vtkVisItStreamLine,vtkStreamer);
+  vtkTypeMacro(vtkVisItStreamLine,vtkStreamer);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
@@ -55,7 +55,7 @@ public:
   // Specify the length of a line segment. The length is expressed in terms of
   // elapsed time. Smaller values result in smoother appearing streamlines, but
   // greater numbers of line primitives.
-  vtkSetClampMacro(StepLength,double,0.000001,VTK_LARGE_FLOAT);
+  vtkSetClampMacro(StepLength,double,0.000001,VTK_FLOAT_MAX);
   vtkGetMacro(StepLength,double);
 
 protected:

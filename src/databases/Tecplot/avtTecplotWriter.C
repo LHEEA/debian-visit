@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -866,7 +866,7 @@ avtTecplotWriter::WriteDataArrays(vtkDataSet *ds1)
 {
     int npts = ds1->GetNumberOfPoints();
     vtkVisItCellDataToPointData *c2p = vtkVisItCellDataToPointData::New();
-    c2p->SetInput(ds1);
+    c2p->SetInputData(ds1);
     c2p->Update();
     vtkUnstructuredGrid *ds2 = (vtkUnstructuredGrid*)(c2p->GetOutput());
 

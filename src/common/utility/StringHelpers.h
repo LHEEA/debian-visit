@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -52,6 +52,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <snprintf.h>
+#include <visit-config.h> // FOR VISIT_SLASH_STRING
 
 #if __GNUC__ >= 3
 #   define MUST_CHECK __attribute__ ((warn_unused_result))
@@ -95,10 +96,19 @@ namespace StringHelpers
                                                 const char *arg1Type, ...);
 
     const char UTILITY_API *Basename(const char *path);
+    std::string UTILITY_API Basename(std::string const path);
     const char UTILITY_API *Dirname(const char *path);
-    const char UTILITY_API *Absname(const char *cwd_context, const char *path);
-    const char UTILITY_API *Normalize(const char *path);
-    std::string UTILITY_API Normalize(const std::string& path);
+    std::string UTILITY_API  Dirname(std::string const path);
+    const char UTILITY_API *Absname(const char *cwd_context, 
+                                const char *path,
+                                const char *pathSep = VISIT_SLASH_STRING);
+    std::string UTILITY_API Absname(std::string const cwd_context, 
+                                std::string const path,
+                                std::string const pathSep = VISIT_SLASH_STRING);
+    const char UTILITY_API *Normalize(const char *path,
+                                const char *pathSep = VISIT_SLASH_STRING);
+    std::string UTILITY_API Normalize(const std::string& path,
+                                std::string const pathSep = VISIT_SLASH_STRING);
 
     std::string UTILITY_API car(const std::string, const char separator);
     std::string UTILITY_API cdr(const std::string, const char separator);
@@ -117,7 +127,7 @@ namespace StringHelpers
     std::string UTILITY_API Plural(int, const std::string &noun);
     std::string UTILITY_API HumanReadableList(const std::vector<std::string>&);
     bool UTILITY_API IsPureASCII(const std::string &txt);
-    bool UTILITY_API IsPureASCII(const char *const txt, int length);
+    bool UTILITY_API IsPureASCII(const char *const txt, size_t length);
     bool UTILITY_API CaseInsenstiveEqual(const std::string &str_a,
                                          const std::string &str_b);
 

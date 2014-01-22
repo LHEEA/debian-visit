@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                              EngineMethods.h                            //
+//                              EngineMethods.h                              //
 // ************************************************************************* //
 
 #ifndef ENGINE_METHODS_H
@@ -132,6 +132,7 @@ public:
                                              const int winID);
 
     void                     SetDefaultFileOpenOptions(const FileOpenOptions&);
+    void                     SetPrecisionType(const int);
 
     avtDataObjectReader_p    Render(bool, const intVector&, int, int, bool,
                                  void (*waitCB)(void *), void *cbData);

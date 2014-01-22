@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -112,16 +112,16 @@ avtArrayComposeWithBinsExpression::~avtArrayComposeWithBinsExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtArrayComposeWithBinsExpression::DeriveVariable(vtkDataSet *in_ds)
+avtArrayComposeWithBinsExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     if (varnames.size() == 0)
         EXCEPTION0(ImproperUseException);
 
-    size_t nvars = varnames.size();
+    int nvars = (int)varnames.size();
     vtkDataArray **vars = new vtkDataArray*[nvars];
     avtCentering  *centering = new avtCentering[nvars];
 
-    for (size_t i = 0 ; i < nvars ; i++)
+    for (int i = 0 ; i < nvars ; i++)
     {
         vars[i] = in_ds->GetPointData()->GetArray(varnames[i]);
         centering[i] = AVT_NODECENT;
@@ -133,7 +133,7 @@ avtArrayComposeWithBinsExpression::DeriveVariable(vtkDataSet *in_ds)
     }
 
     int outType = VTK_FLOAT;
-    for (size_t i = 0 ; i < nvars ; i++)
+    for (int i = 0 ; i < nvars ; i++)
     {
         if (vars[i] == NULL)
             EXCEPTION2(ExpressionException, outputVariableName, 
@@ -154,7 +154,7 @@ avtArrayComposeWithBinsExpression::DeriveVariable(vtkDataSet *in_ds)
     vtkIdType nvals = vars[0]->GetNumberOfTuples();
     rv->SetNumberOfTuples(nvals);
     for (vtkIdType i = 0 ; i < nvals ; i++)
-        for (size_t j = 0 ; j < nvars ; j++)
+        for (int j = 0 ; j < nvars ; j++)
             rv->SetComponent(i, j, vars[j]->GetTuple1(i));
 
     delete [] vars;
@@ -187,7 +187,7 @@ avtArrayComposeWithBinsExpression::ProcessArguments(ArgsExpr *args,
 {
     // Check the number of arguments
     std::vector<ArgExpr*> *arguments = args->GetArgs();
-    nvars = arguments->size()-1;
+    nvars = (int)arguments->size()-1;
 
     int idx_of_list = arguments->size()-1;
     ArgExpr *listarg = (*arguments)[idx_of_list];
@@ -274,11 +274,11 @@ avtArrayComposeWithBinsExpression::UpdateDataObjectInfo(void)
         return;
 
     std::vector<std::string> subnames(varnames.size());
-    for (int i = 0 ; i < varnames.size() ; i++)
+    for (size_t i = 0 ; i < varnames.size() ; i++)
         subnames[i] = varnames[i];
 
     avtDataAttributes &outAtts = GetOutput()->GetInfo().GetAttributes();
-    outAtts.SetVariableDimension(varnames.size(), outputVariableName);
+    outAtts.SetVariableDimension((int)varnames.size(), outputVariableName);
     outAtts.SetVariableSubnames(subnames, outputVariableName);
     outAtts.SetVariableBinRanges(binRanges, outputVariableName);
 }

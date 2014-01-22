@@ -42,7 +42,6 @@ PURPOSE.  See the above copyright notice for more information.
 
 #include <list>
 
-vtkCxxRevisionMacro(vtkCEAucdReader, "$Revision: 1.26 $");
 vtkStandardNewMacro(vtkCEAucdReader);
 
 #ifdef VERBOSE_DEBUG
@@ -633,6 +632,11 @@ void vtkCEAucdReader::GetNodeDataRange(int nodeComp, int index, float *min, floa
 }
 
 //----------------------------------------------------------------------------
+// Modifications
+// 
+//   Mark C. Miller, Wed Feb  6 17:18:37 PST 2013
+//   VTK-6 port: eliminated calls to SetMaximumNumberOfPieces. There are clues
+//   from orig. VTK source that these calls should not be necessary anyways.
 void vtkCEAucdReader::ReadGeometry(vtkInformationVector *outputVector)
 {
    int i;
@@ -648,7 +652,7 @@ void vtkCEAucdReader::ReadGeometry(vtkInformationVector *outputVector)
       {
          vtkDebugMacro(<<"Rebuild geometry from cache\n");
 
-         this->NumberOfMaterials = this->CachedOutputs.size();
+         this->NumberOfMaterials = (int)this->CachedOutputs.size();
          int numberOfOutputPorts = this->GetNumberOfOutputPorts ();
          this->SetNumberOfOutputPorts (this->NumberOfMaterials);
          for(i=numberOfOutputPorts; i<this->NumberOfMaterials; i++)
@@ -656,7 +660,6 @@ void vtkCEAucdReader::ReadGeometry(vtkInformationVector *outputVector)
             vtkUnstructuredGrid * ug = vtkUnstructuredGrid::New();
             ug->Initialize();
             this->GetExecutive()->SetOutputData (i, ug);
-            ug->SetMaximumNumberOfPieces (-1);
             ug->Delete();
          }     
 
@@ -723,7 +726,6 @@ void vtkCEAucdReader::ReadGeometry(vtkInformationVector *outputVector)
          vtkUnstructuredGrid * ug = vtkUnstructuredGrid::New();
          ug->Initialize();
          this->GetExecutive()->SetOutputData (i, ug);
-         ug->SetMaximumNumberOfPieces (-1);
          ug->Delete();
       }
 
@@ -1611,7 +1613,8 @@ void vtkCEAucdReader::DisableAllCellArrays()
 //----------------------------------------------------------------------------
 int vtkCEAucdReader::GetLabel(char *string, int number, char *label)
 {
-   int   i, j, k, len;
+   int   i, j;
+   size_t k, len;
    char  current;
 
 

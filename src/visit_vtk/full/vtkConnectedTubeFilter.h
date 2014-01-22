@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,7 +40,7 @@
 #define __vtkConnectedTubeFilter_h
 #include <visit_vtk_exports.h>
 
-#include "vtkPolyDataToPolyDataFilter.h"
+#include "vtkPolyDataAlgorithm.h"
 
 class vtkCellArray;
 class vtkPoints;
@@ -55,14 +55,17 @@ class vtkPoints;
 //  Programmer:  Jeremy Meredith
 //  Creation:    November  1, 2002
 //
+//  Modifications:
+//    Eric Brugger, Wed Jan  9 11:29:49 PST 2013
+//    Modified to inherit from vtkPolyDataAlgorithm.
+//
 // ****************************************************************************
-class VISIT_VTK_API vtkConnectedTubeFilter :
-    public vtkPolyDataToPolyDataFilter
+class VISIT_VTK_API vtkConnectedTubeFilter : public vtkPolyDataAlgorithm
 {
   public:
-    vtkTypeRevisionMacro(vtkConnectedTubeFilter,vtkPolyDataToPolyDataFilter);
+    vtkTypeMacro(vtkConnectedTubeFilter,vtkPolyDataAlgorithm);
     void PrintSelf(ostream& os, vtkIndent indent);
-    bool BuildConnectivityArrays();
+    bool BuildConnectivityArrays(vtkPolyData *);
 
     // Description:
     // Construct object with radius 0.5, radius variation turned off, the number 
@@ -71,12 +74,12 @@ class VISIT_VTK_API vtkConnectedTubeFilter :
 
     // Description:
     // Set the minimum tube radius (minimum because the tube radius may vary).
-    vtkSetClampMacro(Radius,float,0.0,VTK_LARGE_FLOAT);
+    vtkSetClampMacro(Radius,float,0.0,VTK_FLOAT_MAX);
     vtkGetMacro(Radius,float);
 
     // Description:
     // Set the number of sides for the tube. At a minimum, number of sides is 3.
-    vtkSetClampMacro(NumberOfSides,int,3,VTK_LARGE_INTEGER);
+    vtkSetClampMacro(NumberOfSides,int,3,VTK_INT_MAX);
     vtkGetMacro(NumberOfSides,int);
 
     // Description:
@@ -99,17 +102,19 @@ class VISIT_VTK_API vtkConnectedTubeFilter :
     //  Purpose:
     //    Encapsulates a single doubly connected point sequence.
     //
+    //    Jean Favre, Tue May  7 16:38:37 CEST 2013
+    //    Used vtkIdType where needed
     // ************************************************************************
     struct PointSequence
     {
         int length;
-        int *index;
-        int *cellindex;
+        vtkIdType *index;
+        vtkIdType *cellindex;
       public:
         PointSequence();
         ~PointSequence();
         void Init(int maxlen);
-        void Add(int i, int ci);
+        void Add(vtkIdType i, vtkIdType ci);
     };
 
     // ************************************************************************
@@ -119,24 +124,25 @@ class VISIT_VTK_API vtkConnectedTubeFilter :
     //    Encapsulates a list of separate point sequences.
     //
     //  Modifications:
-    //
     //    Rich Cook and Hank Childs, Thu Oct  2 16:31:45 PDT 2008
     //    Added data member to support tubing over loops.
     //
+    //    Jean Favre, Tue May  7 16:38:37 CEST 2013
+    //    Used vtkIdType where needed
     // ************************************************************************
     class PointSequenceList
     {
       private:
         // connectivity data
         int          len;
-        int         *numneighbors;
-        int         *connectivity[2];
-        int         *cellindex;
+        vtkIdType         *numneighbors;
+        vtkIdType         *connectivity[2];
+        vtkIdType         *cellindex;
         vtkPoints   *pts;
 
         // traversal variables
         bool  *visited;
-        int    index;
+        vtkIdType    index;
         bool   lookforloops;
       public:
         PointSequenceList();
@@ -150,8 +156,9 @@ class VISIT_VTK_API vtkConnectedTubeFilter :
     vtkConnectedTubeFilter();
     ~vtkConnectedTubeFilter();
 
-    // Usual data generation method
-    void Execute();
+    virtual int RequestData(vtkInformation *,
+                            vtkInformationVector **,
+                            vtkInformationVector *);
 
     float Radius;      // minimum radius of tube
     int NumberOfSides; // number of sides to create tube

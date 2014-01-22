@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,7 +58,7 @@ class VISIT_VTK_API vtkCSGCell : public vtkCell
 {
 public:
   static vtkCSGCell *New();
-  vtkTypeRevisionMacro(vtkCSGCell,vtkCell);
+  vtkTypeMacro(vtkCSGCell,vtkCell);
 
   // Description:
   // See the vtkCell API for descriptions of these methods.

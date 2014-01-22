@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -84,6 +84,6 @@ ADD_LIBRARY(lightweight_visit_vtk
     ${LIGHTWEIGHT_VISIT_VTK_SOURCES}
 )
 
-TARGET_LINK_LIBRARIES(lightweight_visit_vtk visitcommon vtkCommon vtkFiltering vtkIO)
+TARGET_LINK_LIBRARIES(lightweight_visit_vtk visitcommon vtkCommonCore vtkFiltersCore vtkIOLegacy)
 
 VISIT_INSTALL_TARGETS(lightweight_visit_vtk)

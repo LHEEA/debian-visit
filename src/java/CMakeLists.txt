@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -50,6 +50,9 @@
 #
 #   Brad Whitlock, Thu Feb  2 10:48:50 PST 2012
 #   Adding in initial Variant, MapNode classes to rehab the Java client.
+#
+#   Kathleen Biagas, Mon Jul  8 12:11:38 PDT 2013
+#   Added ThresholdOpAttributes.java.
 #
 #****************************************************************************/
 
@@ -157,10 +160,14 @@ SelectionSummary.java
 SelectionVariableSummary.java
 StatusAttributes.java 
 SyncAttributes.java 
+ThresholdOpAttributes.java 
 Variant.java
 View2DAttributes.java 
 View3DAttributes.java 
 ViewAxisArrayAttributes.java 
+ViewerClientAttributes.java
+ViewerClientInformation.java
+ViewerClientInformationElement.java
 ViewCurveAttributes.java 
 ViewerRPC.java 
 WindowInformation.java

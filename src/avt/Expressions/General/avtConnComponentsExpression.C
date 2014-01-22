@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -341,11 +341,9 @@ avtConnComponentsExpression::Execute()
         for( i = 0 ; i < nsets ; i++)
         {
             ghost_filters[i] = vtkDataSetRemoveGhostCells::New();
-            ghost_filters[i]->SetInput(data_sets[i]);
+            ghost_filters[i]->SetInputData(data_sets[i]);
             ghost_filters[i]->Update();
-            vtkDataSet *ds_filtered = ghost_filters[i]->GetOutput();
-            ds_filtered->Update();
-            data_sets[i] = ds_filtered;
+            data_sets[i] = ghost_filters[i]->GetOutput();
         }
     }
     visitTimer->StopTimer(t_gzrm,"Ghost Zone Removal");
@@ -1086,7 +1084,7 @@ avtConnComponentsExpression::GlobalLabelShift
 
 #ifdef PARALLEL
     // loop indices
-    int i,j;
+    int i;
 
     // get the processor id and # of processors
     int procid = PAR_Rank();
@@ -2048,7 +2046,7 @@ avtConnComponentsExpression::BoundarySet::GetIntersectionSet(
     ub[2] = isect_bounds[5];
 
     src_itree->GetElementsListFromRange(lb,ub,src_isect_cells);
-    nsrc_isect_cells = src_isect_cells.size();
+    nsrc_isect_cells = (int)src_isect_cells.size();
 
     // if there are no source cells in this range, we are done
     if (nsrc_isect_cells == 0)
@@ -2074,7 +2072,7 @@ avtConnComponentsExpression::BoundarySet::GetIntersectionSet(
         ub[2] = src_cell_bounds[5];
 
         can_itree->GetElementsListFromRange(lb,ub,can_isect_cells);
-        ncan_isect_cells = can_isect_cells.size();
+        ncan_isect_cells = (int)can_isect_cells.size();
         // if there are no source cells in this range, check next source cell
         if (ncan_isect_cells == 0)
             continue;
@@ -2388,10 +2386,10 @@ avtConnComponentsExpression::BoundarySet::RelocateUsingPartition
                 // use this filter to remove unnecessary points
                 vtkUnstructuredGridRelevantPointsFilter *ugrpf=
                     vtkUnstructuredGridRelevantPointsFilter::New();
-                ugrpf->SetInput(des_mesh);
+                ugrpf->SetInputData(des_mesh);
                 ugrpf->Update();
                 // add the filter output to the proper appender
-                appenders[j]->AddInput(ugrpf->GetOutput());
+                appenders[j]->AddInputData(ugrpf->GetOutput());
                 // dec ref count for the filter
                 ugrpf->Delete();
                 // delete the temporary mesh
@@ -2433,7 +2431,7 @@ avtConnComponentsExpression::BoundarySet::RelocateUsingPartition
 
         // serialize mesh data to a char array using an UnstructredGrid Writer
         vtkUnstructuredGridWriter *wtr = vtkUnstructuredGridWriter::New();
-        wtr->SetInput(appenders[i]->GetOutput());
+        wtr->SetInputConnection(appenders[i]->GetOutputPort());
         wtr->SetWriteToOutputString(1);
         wtr->SetFileTypeToBinary();
         wtr->Write();
@@ -2520,9 +2518,9 @@ avtConnComponentsExpression::BoundarySet::RelocateUsingPartition
         vtkUnstructuredGridReader *reader = vtkUnstructuredGridReader::New();
         reader->SetReadFromInputString(1);
         reader->SetInputArray(char_array);
+        reader->Update();
 
         vtkUnstructuredGrid *mesh = reader->GetOutput();
-        mesh->Update();
 
         // add new mesh to the boundary set
         AddMesh(mesh);

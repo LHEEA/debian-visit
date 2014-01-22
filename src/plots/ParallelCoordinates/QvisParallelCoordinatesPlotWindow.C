@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -623,7 +623,7 @@ QvisParallelCoordinatesPlotWindow::UpdateWindow(bool doAll)
     
     // Set enabled states
     
-    nitems = atts->GetScalarAxisNames().size();
+    nitems = (int)atts->GetScalarAxisNames().size();
     axisDelButton->setEnabled( nitems > 2 &&
                               axisTree->currentItem()!= NULL);
     axisUpButton->setEnabled(nitems  > 0 &&

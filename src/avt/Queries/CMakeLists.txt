@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -114,6 +114,7 @@ Queries/avtLineScanQuery.C
 Queries/avtLineScanTransformQuery.C
 Queries/avtL2NormQuery.C
 Queries/avtL2NormBetweenCurvesQuery.C
+Queries/avtLineSamplerInfoQuery.C
 Queries/avtLocalizedCompactnessFactorQuery.C
 Queries/avtLocateAndPickNodeQuery.C
 Queries/avtLocateAndPickZoneQuery.C
@@ -132,6 +133,7 @@ Queries/avtSampleStatisticsQuery.C
 Queries/avtShapeletDecompositionQuery.C
 Queries/avtSkewnessQuery.C
 Queries/avtSphericalCompactnessFactorQuery.C
+Queries/avtStreamlineInfoQuery.C
 Queries/avtSummationQuery.C
 Queries/avtTimeQuery.C
 Queries/avtTotalLengthQuery.C
@@ -149,7 +151,6 @@ Queries/avtWeightedVariableSummationQuery.C
 Queries/avtXRayImageQuery.C
 Queries/avtZoneCenterQuery.C
 Queries/MinMaxInfo.C
-Queries/avtStreamlineInfoQuery.C
 )
 
 IF(VISIT_PYTHON_FILTERS)

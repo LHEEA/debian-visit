@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,6 +43,7 @@
 #include <limits.h>
 #include <string.h>
 #include <Namescheme.h>
+#include <Utility.h>
 
 #define FREE(M) if(M)free(M);
 
@@ -173,7 +174,6 @@ Namescheme::DBexprnode *Namescheme::BuildExprTree(const char **porig)
                 char typec = *p;
                 char tokbuf[129];
                 char *tp = tokbuf;
-                Namescheme::DBexprnode *subtree;
                 p++;
                 while (*p != '[')
                     *tp++ = *p++;
@@ -181,12 +181,6 @@ Namescheme::DBexprnode *Namescheme::BuildExprTree(const char **porig)
                 *tp = '\0';
                 errno = 0;
                 tree = UpdateTree(tree, typec, 0, tokbuf);
-                p++;
-                subtree = BuildExprTree(&p);
-                if (tree->left == 0)
-                    tree->left = subtree;
-                else if (tree->right == 0)
-                    tree->right = subtree;
                 break;
             }
 
@@ -198,7 +192,7 @@ Namescheme::DBexprnode *Namescheme::BuildExprTree(const char **porig)
                 break;
             }
 
-            case '(':
+            case '(': case '[':
             {
                 Namescheme::DBexprnode *subtree;
                 p++;
@@ -252,13 +246,30 @@ Namescheme::DBexprnode *Namescheme::BuildExprTree(const char **porig)
     return tree;
 }
 
-// very simple circular cache for a handful of embedded strings
-int Namescheme::SaveString(Namescheme *ns, const char *sval)
+/* very simple circular cache for a handful of embedded strings used internally */
+int Namescheme::SaveInternalString(Namescheme *ns, char const * const sval)
 {
     int modn = ns->nembed++ % Namescheme::max_expstrs;
     FREE(ns->embedstrs[modn]);
     ns->embedstrs[modn] = strdup(sval);
     return modn;
+}
+
+/* very simple circular cache for strings returned to caller from GetName */
+char * Namescheme::SaveReturnedString(char const * const retstr)
+{
+    static unsigned int n = 0;
+    int modn = n++ % Namescheme::max_retstrs;
+    if (retstr == 0)
+    {
+        for (n = 0; n < Namescheme::max_retstrs; n++)
+            FREE(retstrbuf[n]);
+        n = 0;
+        return 0;
+    }
+    FREE(retstrbuf[modn]);
+    retstrbuf[modn] = strdup(retstr);
+    return retstrbuf[modn];
 }
 
 int Namescheme::EvalExprTree(Namescheme *ns, Namescheme::DBexprnode *tree, int n)
@@ -273,7 +284,7 @@ int Namescheme::EvalExprTree(Namescheme *ns, Namescheme::DBexprnode *tree, int n
             if (strcmp(tree->sval, ns->arrnames[i]) == 0)
             {
                 if (tree->type == '$')
-                    return SaveString(ns,  ((char**)ns->arrvals[i])[q]);
+                    return SaveInternalString(ns,  ((char**)ns->arrvals[i])[q]);
                 else
                     return ((int*)ns->arrvals[i])[q];
             }
@@ -286,7 +297,7 @@ int Namescheme::EvalExprTree(Namescheme *ns, Namescheme::DBexprnode *tree, int n
         else if (tree->type == 'n')
             return n;
         else if (tree->type == 's')
-            return SaveString(ns, tree->sval);
+            return SaveInternalString(ns, tree->sval);
     }
     else if (tree->left != 0 && tree->right != 0)
     {
@@ -295,9 +306,16 @@ int Namescheme::EvalExprTree(Namescheme *ns, Namescheme::DBexprnode *tree, int n
         {
             vc = EvalExprTree(ns, tree->left, n);
             tree = tree->right;
+            if (vc) 
+                vl = EvalExprTree(ns, tree->left, n);
+            else
+                vr = EvalExprTree(ns, tree->right, n);
         }
-        vl = EvalExprTree(ns, tree->left, n);
-        vr = EvalExprTree(ns, tree->right, n);
+        else
+        {
+            vl = EvalExprTree(ns, tree->left, n);
+            vr = EvalExprTree(ns, tree->right, n);
+        }
         switch (tree->type)
         {
             case '+': return vl + vr;
@@ -316,6 +334,7 @@ int Namescheme::EvalExprTree(Namescheme *ns, Namescheme::DBexprnode *tree, int n
 
 const int Namescheme::max_expstrs = 8;
 const int Namescheme::max_fmtlen  = 4096;
+char * Namescheme::retstrbuf[max_retstrs];
 
 // ****************************************************************************
 //  Method: Constructor 
@@ -365,9 +384,7 @@ Namescheme::Namescheme(const char *fmt, ...)
         return;
 
     // grab just the part of fmt that is the printf-style format string
-    this->fmt = (char *)calloc(n, sizeof(char));
-    strncpy(this->fmt, &fmt[1], n-1);
-
+    this->fmt = C_strndup(&fmt[1],n-1);
     this->fmtlen = n-1;
 
     // In 2 passes, count conversion specs. and then setup pointers to each 
@@ -508,8 +525,12 @@ Namescheme::~Namescheme()
 // ****************************************************************************
 const char *Namescheme::GetName(int natnum)
 {
+    char *currentExpr, *tmpExpr;
     static char retval[1024];
     int i;
+
+    /* a hackish way to cleanup the saved returned string buffer */
+    if (natnum < 0) return SaveReturnedString(0);
 
     retval[0] = '\0';
     strncat(retval, this->fmt, this->fmtptrs[0] - this->fmt);
@@ -524,13 +545,21 @@ const char *Namescheme::GetName(int natnum)
                             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
                             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
                             0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-        int theVal = EvalExprTree(this, this->exprtrees[i], natnum);
+        DBexprnode *exprtree;
+        int theVal;
+
+        currentExpr = strdup(this->exprstrs[i]);
+        tmpExpr = currentExpr;
+        exprtree = BuildExprTree((const char **)&currentExpr);
+        theVal = EvalExprTree(this, exprtree, natnum);
+        FreeTree(exprtree);
         strncpy(tmpfmt, this->fmtptrs[i], this->fmtptrs[i+1] - this->fmtptrs[i]);
-        if (strcmp(tmpfmt, "%s") == 0)
+        if (strncmp(tmpfmt, "%s", 2) == 0 && 0 <= theVal && theVal < max_retstrs)
             sprintf(tmp, tmpfmt, this->embedstrs[theVal]);
         else
             sprintf(tmp, tmpfmt, theVal);
         strcat(retval, tmp);
+        FREE(tmpExpr);
     }
-    return retval;
+    return SaveReturnedString(retval);
 }

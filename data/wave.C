@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -550,7 +550,6 @@ WriteFile(char *filename, double time, double time_minus_1, int cycle,
     if (single_file == 1)
     {
         char tmpDirName[256];
-        char tmpFileName[256];
         if (cycle == 0)
         {
             dbfile = DBCreate(filename, 0, DB_LOCAL, "The Wave", driver);

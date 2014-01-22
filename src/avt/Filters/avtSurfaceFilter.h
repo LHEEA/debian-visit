@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -122,7 +122,6 @@ class AVTFILTERS_API avtSurfaceFilter : public avtDataTreeIterator
 
   protected:
     SurfaceFilterAttributes    atts;
-    vtkSurfaceFilter          *filter;
     double                     min;
     double                     max;
     double                     Ms;

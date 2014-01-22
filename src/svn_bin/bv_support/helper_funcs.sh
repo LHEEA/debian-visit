@@ -1268,12 +1268,32 @@ function build_hostconf
         echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS -fvisibility=hidden\" TYPE STRING)" >> $HOSTCONF
         echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS -fvisibility=hidden\" TYPE STRING)" >> $HOSTCONF
     else
-        echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS\" TYPE STRING)" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS\" TYPE STRING)" >> $HOSTCONF
+        if test -n "$CFLAGS" ; then
+            echo "VISIT_OPTION_DEFAULT(VISIT_C_FLAGS \"$CFLAGS\" TYPE STRING)" >> $HOSTCONF
+        fi
+        if test -n "$CXXFLAGS" ; then
+            echo "VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS \"$CXXFLAGS\" TYPE STRING)" >> $HOSTCONF
+        fi
     fi
 
     if [[ "${DO_JAVA}" == "yes" ]] ; then
         echo "VISIT_OPTION_DEFAULT(VISIT_JAVA ON TYPE BOOL)" >> $HOSTCONF
+    fi
+
+    if [[ "$BUILD_VISIT_BGQ" == "yes" ]] ; then
+        echo >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "## BG/Q-specific settings" >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "SET(CMAKE_CROSSCOMPILING    ON)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_USE_X            OFF)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_USE_GLEW         OFF)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_SLIVR            OFF)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_USE_BOOST        OFF)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_DISABLE_SELECT   ON)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_USE_NOSPIN_BCAST OFF)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_OPENGL_DIR       \${VISITHOME}/mesa/$MESA_VERSION/\${VISITARCH})" >> $HOSTCONF
+        echo >> $HOSTCONF
     fi
 
     if [[ "$parallel" == "yes" ]] ; then
@@ -1284,11 +1304,21 @@ function build_hostconf
         echo "VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)" >> $HOSTCONF
         # we either set an mpi wrapper compiler in the host conf
         if [[ "$VISIT_MPI_COMPILER" != "" ]] ; then
-            echo "## (configured w/ mpi compiler wrapper)" >> $HOSTCONF
-            echo "VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER $VISIT_MPI_COMPILER TYPE FILEPATH)"  >> $HOSTCONF
+            if [[ "$BUILD_VISIT_BGQ" == "yes" ]] ; then
+                echo "## (inserted by build_visit for BG/Q. Some adjustment may be needed)" >> $HOSTCONF
+                echo "SET(BLUEGENEQ /bgsys/drivers/V1R2M0/ppc64)" >> $HOSTCONF
+                echo "VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)" >> $HOSTCONF
+                echo "VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"-I\${BLUEGENEQ} -I\${BLUEGENEQ}/comm/sys/include -I\${BLUEGENEQ}/spi/include -I\${BLUEGENEQ}/spi/include/kernel/cnk -I\${BLUEGENEQ}/comm/xl/include\" TYPE STRING)" >> $HOSTCONF
+                echo "VISIT_OPTION_DEFAULT(VISIT_MPI_C_FLAGS   \"-I\${BLUEGENEQ} -I\${BLUEGENEQ}/comm/sys/include -I\${BLUEGENEQ}/spi/include -I\${BLUEGENEQ}/spi/include/kernel/cnk -I\${BLUEGENEQ}/comm/xl/include\" TYPE STRING)" >> $HOSTCONF
+                echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"-L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/sys/lib -L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/sys/lib -L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/xl/lib -R/opt/ibmcmp/lib64/bg\" TYPE STRING)" >> $HOSTCONF
+                echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS     mpich opa mpl pami SPI SPI_cnk rt pthread stdc++ pthread TYPE STRING)" >> $HOSTCONF
+            else
+                echo "## (configured w/ mpi compiler wrapper)" >> $HOSTCONF
+                echo "VISIT_OPTION_DEFAULT(VISIT_MPI_COMPILER $VISIT_MPI_COMPILER TYPE FILEPATH)"  >> $HOSTCONF
+            fi
         else
             # or we just set the flags.
-            echo "## (configued w/ user provided CXX (PAR_INCLUDE) & LDFLAGS (PAR_LIBS) flags)" \
+            echo "## (configured w/ user provided CXX (PAR_INCLUDE) & LDFLAGS (PAR_LIBS) flags)" \
              >> $HOSTCONF
             echo "VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"$PAR_INCLUDE\" TYPE STRING)"     >> $HOSTCONF
             echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"$PAR_LINKER_FLAGS\" TYPE STRING)" >> $HOSTCONF
@@ -1303,6 +1333,16 @@ function build_hostconf
         echo "##" >> $HOSTCONF
         echo \
         "VISIT_OPTION_DEFAULT(VISIT_STATIC ON TYPE BOOL)" >> $HOSTCONF
+    fi
+
+    echo >> $HOSTCONF
+    echo "##" >> $HOSTCONF
+    echo "## VisIt Thread Option" >> $HOSTCONF
+    echo "##" >> $HOSTCONF
+    if [[ "$DO_THREAD_BUILD" == "yes" ]] ; then
+        echo "VISIT_OPTION_DEFAULT(VISIT_THREAD ON TYPE BOOL)" >> $HOSTCONF
+    else
+        echo "VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)" >> $HOSTCONF
     fi
 
     echo >> $HOSTCONF
@@ -1334,15 +1374,15 @@ function build_hostconf
     #
     # Patch for Ubuntu 11.04
     #
-    if test -d "/usr/lib/x86_64-linux-gnu" ; then
-        numLibs=$(ls -1 /usr/lib/x86_64-linux-gnu | wc -l)
-        if (( $numLibs > 10 )) ; then
-           rm -f $HOSTCONF.tmp
-           cat $HOSTCONF | sed "s/\/usr\/lib/\/usr\/lib\/x86_64-linux-gnu/" > $HOSTCONF.tmp
-           rm $HOSTCONF
-           mv $HOSTCONF.tmp $HOSTCONF
-        fi
-    fi
+    #if test -d "/usr/lib/x86_64-linux-gnu" ; then
+    #    numLibs=$(ls -1 /usr/lib/x86_64-linux-gnu | wc -l)
+    #    if (( $numLibs > 10 )) ; then
+    #       rm -f $HOSTCONF.tmp
+    #       cat $HOSTCONF | sed "s/\/usr\/lib/\/usr\/lib\/x86_64-linux-gnu/" > $HOSTCONF.tmp
+    #       rm $HOSTCONF
+    #       mv $HOSTCONF.tmp $HOSTCONF
+    #    fi
+    #fi
 
     cd "$START_DIR"
     echo "Done creating $HOSTCONF"
@@ -1413,7 +1453,6 @@ function usage
   printf "%-15s %s [%s]\n" "--parallel" "Enable parallel build, display MPI prompt" "$parallel"
   printf "%-15s %s [%s]\n" "--prefix" "The directory to which VisIt should be installed once it is built" "$VISIT_INSTALL_PREFIX"
   printf "%-15s %s [%s]\n" "--print-vars" "Display user settable environment variables" "false"
-  printf "%-15s %s [%s]\n" "--python-module" "Build with the VisIt Python module" "$DO_MODULE"
   printf "%-15s %s [%s]\n" "--server-components-only" "Only build VisIt's server components (mdserver,vcl,engine)." "$DO_SERVER_COMPONENTS_ONLY"
   printf "%-15s %s [%s]\n" "--slivr" "Build with SLIVR shader support" "$DO_SLIVR"
   printf "%-15s %s [%s]\n" "--static" "Build using static linking" "$DO_STATIC_BUILD"

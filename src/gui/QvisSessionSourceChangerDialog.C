@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -211,7 +211,7 @@ QvisSessionSourceChangerDialog::SplitPrompt(const QString &s) const
     {
         stringVector words(SplitValues(std::string(s.toStdString()), ' '));
         QString r;
-        int len = 0;
+        size_t len = 0;
         for(size_t i = 0; i < words.size(); ++i)
         {
             if(len > 0)

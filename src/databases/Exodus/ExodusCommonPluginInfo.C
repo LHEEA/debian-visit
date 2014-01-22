@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,8 +40,6 @@
 #include <avtExodusFileFormat.h>
 #include <avtMTSDFileFormatInterface.h>
 #include <avtGenericDatabase.h>
-
-#include <string>
 
 // ****************************************************************************
 //  Method:  ExodusCommonPluginInfo::GetDatabaseType
@@ -93,6 +91,7 @@ ExodusCommonPluginInfo::GetDatabaseType()
 //    as domains so multiblock files work again.
 //
 // ****************************************************************************
+#include <string>
 
 avtDatabase *
 ExodusCommonPluginInfo::SetupDatabase(const char *const *list,
@@ -149,7 +148,13 @@ ExodusCommonPluginInfo::SetupDatabase(const char *const *list,
     }
 
     int nTimestepGroups = 1;
-    nBlock = nList;
+    if(nBlock == -1)
+    {
+        // If nBlock == -1 then we're in here recursively and we're dealing
+        // with a list of domains.
+        nBlock = nList;
+    }
+    nTimestepGroups = nList / nBlock;
 
     avtMTSDFileFormat ***ffl = new avtMTSDFileFormat**[nTimestepGroups];
     for (int i = 0 ; i < nTimestepGroups ; i++)

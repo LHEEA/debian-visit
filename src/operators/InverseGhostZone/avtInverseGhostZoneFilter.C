@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -250,9 +250,9 @@ avtInverseGhostZoneFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     t->ThresholdBetween(0.5, 1.5);
     t->SetInputArrayToProcess(0,0,0,vtkDataObject::FIELD_ASSOCIATION_CELLS,
                               "avtRetainThese");
-    t->SetInput(temp_ds);
+    t->SetInputData(temp_ds);
+    t->Update();
     vtkDataSet *out_ds = t->GetOutput();
-    out_ds->Update();
     out_ds->GetCellData()->RemoveArray("avtRetainThese");
     if (in_ds->GetCellData()->GetScalars() != NULL)
         out_ds->GetCellData()->SetActiveScalars(

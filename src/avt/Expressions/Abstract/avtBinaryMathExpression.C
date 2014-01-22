@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -139,7 +139,7 @@ avtBinaryMathExpression::~avtBinaryMathExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtBinaryMathExpression::DeriveVariable(vtkDataSet *in_ds)
+avtBinaryMathExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     // Our first operand is in the active variable.  We don't know if it's
     // point data or cell data, so check which one is non-NULL.

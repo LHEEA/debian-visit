@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -109,7 +109,7 @@ avtRectilinearLaplacianExpression::~avtRectilinearLaplacianExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtRectilinearLaplacianExpression::DeriveVariable(vtkDataSet *in_ds)
+avtRectilinearLaplacianExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     if (in_ds->GetDataObjectType() != VTK_RECTILINEAR_GRID)
     {

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -844,7 +844,7 @@ avtCCMFileFormat::GetMesh(int domain, const char *meshname)
 
         // Read the cell connectivity
         CellInfoVector cellInfo;
-        int minFaceSize = VTK_LARGE_INTEGER;
+        int minFaceSize = VTK_INT_MAX;
         int maxFaceSize = -1;
         int t1 = visitTimer->StartTimer();
         ReadCellInfo(dom, meshname,
@@ -912,7 +912,7 @@ avtCCMFileFormat::GetMesh(int domain, const char *meshname)
                         break;
                     case 5 :
                         {
-                        int nNodes = 0;
+                        size_t nNodes = 0;
                         for (size_t j = 0; j < ci.faces.size(); j++)
                         {
                             nNodes += ci.faces[j].nodes.size();
@@ -1892,22 +1892,22 @@ avtCCMFileFormat::TesselateCell(const int domain, const CellInfoVector &civ,
 
         oc[1] = ci.id;
         int nFaces  = ci.faces.size();
-        int nPts = 0;
+        size_t nPts = 0;
         doubleVector fbounds;
         for (j = 0; j < nFaces; ++j)
         {
             nPts += ci.faces[j].nodes.size();
-            fbounds.push_back(VTK_LARGE_FLOAT);
-            fbounds.push_back(-VTK_LARGE_FLOAT);
-            fbounds.push_back(VTK_LARGE_FLOAT);
-            fbounds.push_back(-VTK_LARGE_FLOAT);
-            fbounds.push_back(VTK_LARGE_FLOAT);
-            fbounds.push_back(-VTK_LARGE_FLOAT);
+            fbounds.push_back(VTK_FLOAT_MAX);
+            fbounds.push_back(VTK_FLOAT_MIN);
+            fbounds.push_back(VTK_FLOAT_MAX);
+            fbounds.push_back(VTK_FLOAT_MIN);
+            fbounds.push_back(VTK_FLOAT_MAX);
+            fbounds.push_back(VTK_FLOAT_MIN);
         }
         double *pt;
-        double cbounds[6] = {VTK_LARGE_FLOAT, -VTK_LARGE_FLOAT,
-                             VTK_LARGE_FLOAT, -VTK_LARGE_FLOAT,
-                             VTK_LARGE_FLOAT, -VTK_LARGE_FLOAT};
+        double cbounds[6] = {VTK_FLOAT_MAX, VTK_FLOAT_MIN,
+                             VTK_FLOAT_MAX, VTK_FLOAT_MIN,
+                             VTK_FLOAT_MAX, VTK_FLOAT_MIN};
 
         int cnt = 0;
         for (j = 0; j < nFaces; ++j)
@@ -2853,7 +2853,7 @@ avtCCMFileFormat::IDMap::IDMap()
 void
 avtCCMFileFormat::IDMap::SetIDs(const intVector &v)
 {
-    numIDs = v.size();
+    numIDs = (int)v.size();
 
     bSequential = true;
     bReverseMap = false;
@@ -2862,7 +2862,7 @@ avtCCMFileFormat::IDMap::SetIDs(const intVector &v)
     int min = v[0], max = v[0];
 
     int ii;
-    for (ii = 1; ii < v.size(); ii++)
+    for (ii = 1; ii < numIDs; ii++)
     {
         if (v[ii-1]+1 != v[ii])
             bSequential = false;
@@ -2876,13 +2876,13 @@ avtCCMFileFormat::IDMap::SetIDs(const intVector &v)
     if (bSequential)
         return;
 
-    if (max-min+1 <= v.size()*2)
+    if (max-min+1 <= numIDs*2)
     {
         bReverseMap = true;
         iFirstElem = min;
 
         ids.resize(max-min+1, -1);
-        for (ii = 0; ii < v.size(); ii++)
+        for (ii = 0; ii < numIDs; ii++)
         {
             ids[v[ii]-iFirstElem] = ii;
         }
@@ -2893,7 +2893,7 @@ avtCCMFileFormat::IDMap::SetIDs(const intVector &v)
 
         ids.resize(v.size()*2);
 
-        for (ii = 0; ii < v.size(); ii++)
+        for (ii = 0; ii < numIDs; ii++)
         {
             ids[ii*2]   = v[ii];
             ids[ii*2+1] = ii;

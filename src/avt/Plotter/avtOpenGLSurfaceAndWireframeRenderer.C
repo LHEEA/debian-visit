@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -42,7 +42,7 @@
 
 #include "avtOpenGLSurfaceAndWireframeRenderer.h"
 
-#include <avtGLEWInitializer.h>
+#include <avtOpenGLExtensionManager.h>
 
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
@@ -945,7 +945,6 @@ avtOpenGLSurfaceAndWireframeRenderer::GenericDrawPolygons(
 {
     vtkIdType *pts = 0;
     vtkIdType npts = 0;
-    double polyNorm[3];
     for (ca->InitTraversal(); ca->GetNextCell(npts,pts); )
     { 
         glBegin(rep);
@@ -2009,7 +2008,6 @@ avtOpenGLSurfaceAndWireframeRenderer::DrawSurface2()
 {
     int rep;
     vtkPoints *p;
-    vtkCellArray *aPrim;
     vtkUnsignedCharArray *c=NULL;
     vtkDataArray *n;
     vtkDataArray *t;

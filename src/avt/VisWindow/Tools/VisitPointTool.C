@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -223,7 +223,11 @@ VisitPointTool::Disable()
 //    Disabled for AxisArray window mode.
 //
 //    Eric Brugger, Tue Dec  9 14:03:27 PST 2008
-//    Disabled for AxisParallel window mode.
+//    Disabled for ParallelAxes window mode.
+//
+//    Eric Brugger, Mon Nov  5 15:56:04 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
 //
 // ****************************************************************************
 
@@ -232,7 +236,8 @@ VisitPointTool::IsAvailable() const
 {
 
     return proxy.GetMode() != WINMODE_AXISARRAY &&
-           proxy.GetMode() != WINMODE_AXISPARALLEL &&  proxy.HasPlots();
+           proxy.GetMode() != WINMODE_PARALLELAXES &&
+           proxy.GetMode() != WINMODE_VERTPARALLELAXES &&  proxy.HasPlots();
 }
 
 // ****************************************************************************
@@ -779,7 +784,7 @@ VisitPointTool::UpdateGuide()
     CREATEQUAD(4,7,6,3);
 
     // Set the mapper's input to be the new dataset.
-    guideMapper->SetInput(guideData);
+    guideMapper->SetInputData(guideData);
 }
 
 // ****************************************************************************
@@ -905,7 +910,8 @@ VisitPointTool::UpdateSphere()
     source->SetThetaResolution(15);
 
     vtkPolyDataNormals *pdn = vtkPolyDataNormals::New();
-    pdn->AddInput(source->GetOutput());
+    // FIX_ME_VTK6.0, ESB, should this be a AddInputConnection?
+    pdn->AddInputData(source->GetOutput());
     pdn->Update();
     sphereData = pdn->GetOutput();
     sphereData->Register(NULL);
@@ -928,7 +934,8 @@ VisitPointTool::UpdateSphere()
     sphereActor->GetProperty()->SetColor(fg);
 
     // Set the mapper's input to be the new dataset.
-    sphereMapper->SetInput(sphereData);
+    // FIX_NE_VTK6.0, ESB, why isn't this all one large pipeline
+    sphereMapper->SetInputData(sphereData);
 }
 
 // ****************************************************************************

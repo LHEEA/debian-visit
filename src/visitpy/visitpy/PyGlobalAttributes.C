@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -130,6 +130,16 @@ PyGlobalAttributes_ToString(const GlobalAttributes *atts, const char *prefix)
     else
         SNPRINTF(tmpStr, 1000, "%sapplyOperator = 0\n", prefix);
     str += tmpStr;
+    if(atts->GetApplySelection())
+        SNPRINTF(tmpStr, 1000, "%sapplySelection = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sapplySelection = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetApplyWindow())
+        SNPRINTF(tmpStr, 1000, "%sapplyWindow = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sapplyWindow = 0\n", prefix);
+    str += tmpStr;
     if(atts->GetExecuting())
         SNPRINTF(tmpStr, 1000, "%sexecuting = 1\n", prefix);
     else
@@ -192,11 +202,6 @@ PyGlobalAttributes_ToString(const GlobalAttributes *atts, const char *prefix)
     else
         SNPRINTF(tmpStr, 1000, "%ssaveCrashRecoveryFile = 0\n", prefix);
     str += tmpStr;
-    if(atts->GetApplySelection())
-        SNPRINTF(tmpStr, 1000, "%sapplySelection = 1\n", prefix);
-    else
-        SNPRINTF(tmpStr, 1000, "%sapplySelection = 0\n", prefix);
-    str += tmpStr;
     if(atts->GetIgnoreExtentsFromDbs())
         SNPRINTF(tmpStr, 1000, "%signoreExtentsFromDbs = 1\n", prefix);
     else
@@ -207,6 +212,30 @@ PyGlobalAttributes_ToString(const GlobalAttributes *atts, const char *prefix)
     else
         SNPRINTF(tmpStr, 1000, "%sexpandNewPlots = 0\n", prefix);
     str += tmpStr;
+    if(atts->GetUserRestoreSessionFile())
+        SNPRINTF(tmpStr, 1000, "%suserRestoreSessionFile = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%suserRestoreSessionFile = 0\n", prefix);
+    str += tmpStr;
+    const char *precisionType_names = "Float, Native, Double";
+    switch (atts->GetPrecisionType())
+    {
+      case GlobalAttributes::Float:
+          SNPRINTF(tmpStr, 1000, "%sprecisionType = %sFloat  # %s\n", prefix, prefix, precisionType_names);
+          str += tmpStr;
+          break;
+      case GlobalAttributes::Native:
+          SNPRINTF(tmpStr, 1000, "%sprecisionType = %sNative  # %s\n", prefix, prefix, precisionType_names);
+          str += tmpStr;
+          break;
+      case GlobalAttributes::Double:
+          SNPRINTF(tmpStr, 1000, "%sprecisionType = %sDouble  # %s\n", prefix, prefix, precisionType_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
     return str;
 }
 
@@ -448,6 +477,54 @@ GlobalAttributes_GetApplyOperator(PyObject *self, PyObject *args)
 {
     GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
     PyObject *retval = PyInt_FromLong(obj->data->GetApplyOperator()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+GlobalAttributes_SetApplySelection(PyObject *self, PyObject *args)
+{
+    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the applySelection in the object.
+    obj->data->SetApplySelection(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+GlobalAttributes_GetApplySelection(PyObject *self, PyObject *args)
+{
+    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetApplySelection()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+GlobalAttributes_SetApplyWindow(PyObject *self, PyObject *args)
+{
+    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the applyWindow in the object.
+    obj->data->SetApplyWindow(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+GlobalAttributes_GetApplyWindow(PyObject *self, PyObject *args)
+{
+    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetApplyWindow()?1L:0L);
     return retval;
 }
 
@@ -764,30 +841,6 @@ GlobalAttributes_GetSaveCrashRecoveryFile(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-GlobalAttributes_SetApplySelection(PyObject *self, PyObject *args)
-{
-    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
-
-    int ival;
-    if(!PyArg_ParseTuple(args, "i", &ival))
-        return NULL;
-
-    // Set the applySelection in the object.
-    obj->data->SetApplySelection(ival != 0);
-
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-/*static*/ PyObject *
-GlobalAttributes_GetApplySelection(PyObject *self, PyObject *args)
-{
-    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(obj->data->GetApplySelection()?1L:0L);
-    return retval;
-}
-
-/*static*/ PyObject *
 GlobalAttributes_SetIgnoreExtentsFromDbs(PyObject *self, PyObject *args)
 {
     GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
@@ -835,6 +888,63 @@ GlobalAttributes_GetExpandNewPlots(PyObject *self, PyObject *args)
     return retval;
 }
 
+/*static*/ PyObject *
+GlobalAttributes_SetUserRestoreSessionFile(PyObject *self, PyObject *args)
+{
+    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the userRestoreSessionFile in the object.
+    obj->data->SetUserRestoreSessionFile(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+GlobalAttributes_GetUserRestoreSessionFile(PyObject *self, PyObject *args)
+{
+    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetUserRestoreSessionFile()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+GlobalAttributes_SetPrecisionType(PyObject *self, PyObject *args)
+{
+    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the precisionType in the object.
+    if(ival >= 0 && ival < 3)
+        obj->data->SetPrecisionType(GlobalAttributes::PrecisionType(ival));
+    else
+    {
+        fprintf(stderr, "An invalid precisionType value was given. "
+                        "Valid values are in the range of [0,2]. "
+                        "You can also use the following names: "
+                        "Float, Native, Double.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+GlobalAttributes_GetPrecisionType(PyObject *self, PyObject *args)
+{
+    GlobalAttributesObject *obj = (GlobalAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetPrecisionType()));
+    return retval;
+}
+
 
 
 PyMethodDef PyGlobalAttributes_methods[GLOBALATTRIBUTES_NMETH] = {
@@ -853,6 +963,10 @@ PyMethodDef PyGlobalAttributes_methods[GLOBALATTRIBUTES_NMETH] = {
     {"GetReplacePlots", GlobalAttributes_GetReplacePlots, METH_VARARGS},
     {"SetApplyOperator", GlobalAttributes_SetApplyOperator, METH_VARARGS},
     {"GetApplyOperator", GlobalAttributes_GetApplyOperator, METH_VARARGS},
+    {"SetApplySelection", GlobalAttributes_SetApplySelection, METH_VARARGS},
+    {"GetApplySelection", GlobalAttributes_GetApplySelection, METH_VARARGS},
+    {"SetApplyWindow", GlobalAttributes_SetApplyWindow, METH_VARARGS},
+    {"GetApplyWindow", GlobalAttributes_GetApplyWindow, METH_VARARGS},
     {"SetExecuting", GlobalAttributes_SetExecuting, METH_VARARGS},
     {"GetExecuting", GlobalAttributes_GetExecuting, METH_VARARGS},
     {"SetWindowLayout", GlobalAttributes_SetWindowLayout, METH_VARARGS},
@@ -879,12 +993,14 @@ PyMethodDef PyGlobalAttributes_methods[GLOBALATTRIBUTES_NMETH] = {
     {"GetUserDirForSessionFiles", GlobalAttributes_GetUserDirForSessionFiles, METH_VARARGS},
     {"SetSaveCrashRecoveryFile", GlobalAttributes_SetSaveCrashRecoveryFile, METH_VARARGS},
     {"GetSaveCrashRecoveryFile", GlobalAttributes_GetSaveCrashRecoveryFile, METH_VARARGS},
-    {"SetApplySelection", GlobalAttributes_SetApplySelection, METH_VARARGS},
-    {"GetApplySelection", GlobalAttributes_GetApplySelection, METH_VARARGS},
     {"SetIgnoreExtentsFromDbs", GlobalAttributes_SetIgnoreExtentsFromDbs, METH_VARARGS},
     {"GetIgnoreExtentsFromDbs", GlobalAttributes_GetIgnoreExtentsFromDbs, METH_VARARGS},
     {"SetExpandNewPlots", GlobalAttributes_SetExpandNewPlots, METH_VARARGS},
     {"GetExpandNewPlots", GlobalAttributes_GetExpandNewPlots, METH_VARARGS},
+    {"SetUserRestoreSessionFile", GlobalAttributes_SetUserRestoreSessionFile, METH_VARARGS},
+    {"GetUserRestoreSessionFile", GlobalAttributes_GetUserRestoreSessionFile, METH_VARARGS},
+    {"SetPrecisionType", GlobalAttributes_SetPrecisionType, METH_VARARGS},
+    {"GetPrecisionType", GlobalAttributes_GetPrecisionType, METH_VARARGS},
     {NULL, NULL}
 };
 
@@ -927,6 +1043,10 @@ PyGlobalAttributes_getattr(PyObject *self, char *name)
         return GlobalAttributes_GetReplacePlots(self, NULL);
     if(strcmp(name, "applyOperator") == 0)
         return GlobalAttributes_GetApplyOperator(self, NULL);
+    if(strcmp(name, "applySelection") == 0)
+        return GlobalAttributes_GetApplySelection(self, NULL);
+    if(strcmp(name, "applyWindow") == 0)
+        return GlobalAttributes_GetApplyWindow(self, NULL);
     if(strcmp(name, "executing") == 0)
         return GlobalAttributes_GetExecuting(self, NULL);
     if(strcmp(name, "windowLayout") == 0)
@@ -953,12 +1073,21 @@ PyGlobalAttributes_getattr(PyObject *self, char *name)
         return GlobalAttributes_GetUserDirForSessionFiles(self, NULL);
     if(strcmp(name, "saveCrashRecoveryFile") == 0)
         return GlobalAttributes_GetSaveCrashRecoveryFile(self, NULL);
-    if(strcmp(name, "applySelection") == 0)
-        return GlobalAttributes_GetApplySelection(self, NULL);
     if(strcmp(name, "ignoreExtentsFromDbs") == 0)
         return GlobalAttributes_GetIgnoreExtentsFromDbs(self, NULL);
     if(strcmp(name, "expandNewPlots") == 0)
         return GlobalAttributes_GetExpandNewPlots(self, NULL);
+    if(strcmp(name, "userRestoreSessionFile") == 0)
+        return GlobalAttributes_GetUserRestoreSessionFile(self, NULL);
+    if(strcmp(name, "precisionType") == 0)
+        return GlobalAttributes_GetPrecisionType(self, NULL);
+    if(strcmp(name, "Float") == 0)
+        return PyInt_FromLong(long(GlobalAttributes::Float));
+    if(strcmp(name, "Native") == 0)
+        return PyInt_FromLong(long(GlobalAttributes::Native));
+    if(strcmp(name, "Double") == 0)
+        return PyInt_FromLong(long(GlobalAttributes::Double));
+
 
     return Py_FindMethod(PyGlobalAttributes_methods, self, name);
 }
@@ -987,6 +1116,10 @@ PyGlobalAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = GlobalAttributes_SetReplacePlots(self, tuple);
     else if(strcmp(name, "applyOperator") == 0)
         obj = GlobalAttributes_SetApplyOperator(self, tuple);
+    else if(strcmp(name, "applySelection") == 0)
+        obj = GlobalAttributes_SetApplySelection(self, tuple);
+    else if(strcmp(name, "applyWindow") == 0)
+        obj = GlobalAttributes_SetApplyWindow(self, tuple);
     else if(strcmp(name, "executing") == 0)
         obj = GlobalAttributes_SetExecuting(self, tuple);
     else if(strcmp(name, "windowLayout") == 0)
@@ -1013,12 +1146,14 @@ PyGlobalAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = GlobalAttributes_SetUserDirForSessionFiles(self, tuple);
     else if(strcmp(name, "saveCrashRecoveryFile") == 0)
         obj = GlobalAttributes_SetSaveCrashRecoveryFile(self, tuple);
-    else if(strcmp(name, "applySelection") == 0)
-        obj = GlobalAttributes_SetApplySelection(self, tuple);
     else if(strcmp(name, "ignoreExtentsFromDbs") == 0)
         obj = GlobalAttributes_SetIgnoreExtentsFromDbs(self, tuple);
     else if(strcmp(name, "expandNewPlots") == 0)
         obj = GlobalAttributes_SetExpandNewPlots(self, tuple);
+    else if(strcmp(name, "userRestoreSessionFile") == 0)
+        obj = GlobalAttributes_SetUserRestoreSessionFile(self, tuple);
+    else if(strcmp(name, "precisionType") == 0)
+        obj = GlobalAttributes_SetPrecisionType(self, tuple);
 
     if(obj != NULL)
         Py_DECREF(obj);

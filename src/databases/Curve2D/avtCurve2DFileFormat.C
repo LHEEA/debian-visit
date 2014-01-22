@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -449,7 +449,7 @@ avtCurve2DFileFormat::ReadFile(void)
                 headerName = lineName;
             }
             centering.push_back(useCentering);
-            cutoff.push_back(xl.size());
+            cutoff.push_back((int)xl.size());
             justStartedNewCurve = true;
             break;
           }
@@ -530,7 +530,7 @@ avtCurve2DFileFormat::ReadFile(void)
     // Now we can construct the curve as vtkPolyData.
     //
     int start = 0;
-    cutoff.push_back(xl.size());       // Make logic easier.
+    cutoff.push_back((int)xl.size());       // Make logic easier.
     centering.push_back(useCentering); //      ditto
     int curveIndex = 0;
     for (int i = 0 ; i < cutoff.size() ; i++)

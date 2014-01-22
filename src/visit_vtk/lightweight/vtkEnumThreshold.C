@@ -107,7 +107,6 @@ ComboDigitsFromId(double id, int n, int maxr, const vector<vector<int> > &ptMap,
 }
 
 
-vtkCxxRevisionMacro(vtkEnumThreshold, "$Revision: 1.68 $");
 vtkStandardNewMacro(vtkEnumThreshold);
 
 //  Modifications:  
@@ -510,7 +509,7 @@ int vtkEnumThreshold::RequestData(
 
     if (faceMap.size() || edgeMap.size() || nodeMap.size())
     {
-        int idCount = 0;
+        size_t idCount = 0;
         map<unsigned int, vector<vtkIdType> >::iterator it;
 
         for (it = faceMap.begin(); it != faceMap.end(); it++)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define PROCESSATTRIBUTES_NMETH 10
+#define PROCESSATTRIBUTES_NMETH 12
 void VISITPY_API           PyProcessAttributes_StartUp(ProcessAttributes *subj, void *data);
 void VISITPY_API           PyProcessAttributes_CloseDown();
 VISITPY_API PyMethodDef *  PyProcessAttributes_GetMethodTable(int *nMethods);

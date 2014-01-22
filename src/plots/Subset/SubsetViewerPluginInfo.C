@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -215,7 +215,7 @@ SubsetViewerPluginInfo::AllocAvtPlot()
 
 void
 SubsetViewerPluginInfo::InitializePlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     *(SubsetAttributes*)atts = *defaultAtts;
 
@@ -245,7 +245,7 @@ SubsetViewerPluginInfo::InitializePlotAtts(AttributeSubject *atts,
 
 void
 SubsetViewerPluginInfo::ReInitializePlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     PrivateSetPlotAtts(atts, plot);
 }
@@ -284,7 +284,7 @@ SubsetViewerPluginInfo::ReInitializePlotAtts(AttributeSubject *atts,
 
 void
 SubsetViewerPluginInfo::ResetPlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 
 {
     PrivateSetPlotAtts(atts, plot);
@@ -404,6 +404,9 @@ SubsetViewerPluginInfo::XPMIconData() const
 //    Hank Childs, Tue Dec 15 15:08:41 PST 2009
 //    Add support for groups based on ranges.
 //
+//    Kathleen Biagas, Tue Aug 27 16:59:10 PDT 2013
+//    Add support for groupNames.
+//
 // ****************************************************************************
 #include <stdio.h>
 
@@ -419,7 +422,7 @@ SubsetViewerPluginInfo::XPMIconData() const
 
 void
 SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts, 
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     SubsetAttributes *subsetAtts = (SubsetAttributes *)atts;
 
@@ -483,7 +486,14 @@ SubsetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
           debug5 << "Variable for subset plot is a group Mesh." << endl; 
           subsetAtts->SetSubsetType(SubsetAttributes::Group);
           defaultAtts->SetSubsetType(SubsetAttributes::Group);
-          if (mesh->groupIds.size() > 0)
+          if (!mesh->groupNames.empty())
+          {
+              for (size_t i = 0; i < mesh->groupNames.size(); ++i)
+              {
+                  sv.push_back(mesh->groupNames[i]);
+              }
+          }
+          else if (mesh->groupIds.size() > 0)
           {
               for (size_t i = 0; i < mesh->groupIds.size(); i++)
               {

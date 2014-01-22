@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -71,8 +71,15 @@ public:
                              bool completeSave = true);
     bool              Import(const std::string &filename);
 
+    bool              Export(std::ostream& out,
+                             bool completeSave = true);
+    bool              Import(std::istream& in);
+
     virtual bool      WriteConfigFile(const char *filename);
     virtual DataNode *ReadConfigFile(const char *filename);
+
+    virtual bool      WriteConfigFile(std::ostream& out);
+    virtual DataNode *ReadConfigFile(std::istream& in);
 protected:
 private:
     AttributeGroup *attribute;

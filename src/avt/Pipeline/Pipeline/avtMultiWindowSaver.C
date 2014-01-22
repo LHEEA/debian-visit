@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -143,9 +143,7 @@ avtMultiWindowSaver::CreateImage()
     const int nColorComponents = 3;
     vtkImageData *newImage = vtkImageData::New();
     newImage->SetDimensions(width, height, 1);
-    newImage->SetScalarTypeToUnsignedChar();
-    newImage->SetNumberOfScalarComponents(nColorComponents);
-    newImage->AllocateScalars();
+    newImage->AllocateScalars(VTK_UNSIGNED_CHAR, nColorComponents);
     unsigned char *out_ptr = (unsigned char *)newImage->GetScalarPointer();
 
     int nLayers = 16;

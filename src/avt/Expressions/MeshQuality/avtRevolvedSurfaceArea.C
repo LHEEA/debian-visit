@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,7 @@
 #include <vtkIntArray.h>
 #include <vtkPoints.h>
 #include <vtkPolyData.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkVisItFeatureEdges.h>
 
 #include <avtCallback.h>
@@ -149,10 +150,14 @@ avtRevolvedSurfaceArea::PreExecute(void)
 //
 //    Mark C. Miller, Wed Aug 22 09:43:01 PDT 2012
 //    Fixed leaks of VTK objects from early return.
+//
+//    Kathleen Biagas, Fri Jan 25 16:30:50 PST 2013
+//    Call Update on filter not data object.
+//   
 // ****************************************************************************
 
 vtkDataArray *
-avtRevolvedSurfaceArea::DeriveVariable(vtkDataSet *in_ds)
+avtRevolvedSurfaceArea::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     //
     // Create a copy of the input with each zone's id number.  This will be 
@@ -179,20 +184,20 @@ avtRevolvedSurfaceArea::DeriveVariable(vtkDataSet *in_ds)
     avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
     if (atts.GetTopologicalDimension() == 2)
     {
-        geomFilter->SetInput(tmp_ds);
+        geomFilter->SetInputData(tmp_ds);
         boundaryFilter->BoundaryEdgesOn();
         boundaryFilter->FeatureEdgesOff();
         boundaryFilter->NonManifoldEdgesOff();
         boundaryFilter->ManifoldEdgesOff();
         boundaryFilter->ColoringOff();
     
-        boundaryFilter->SetInput(geomFilter->GetOutput());
-        boundaryFilter->GetOutput()->SetUpdateGhostLevel(2);
-        boundaryFilter->GetOutput()->Update();
+        boundaryFilter->SetInputConnection(geomFilter->GetOutputPort());
+        // FIX_ME_VTK6.0, ESB, is this correct?
+        vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(boundaryFilter->GetInformation(), 2);
+        //boundaryFilter->GetOutput()->SetUpdateGhostLevel(2);
+        boundaryFilter->Update();
 
         allLines = boundaryFilter->GetOutput();
-        // using SetSource(NULL) for vtkDataSets no longer a good idea.
-        //allLines->SetSource(NULL);
     }
     else if (tmp_ds->GetDataObjectType() == VTK_POLY_DATA)
     {
@@ -200,19 +205,17 @@ avtRevolvedSurfaceArea::DeriveVariable(vtkDataSet *in_ds)
     }
     else
     {
-        geomFilter->SetInput(tmp_ds);
+        geomFilter->SetInputData(tmp_ds);
         allLines = geomFilter->GetOutput();
-        // using SetSource(NULL) for vtkDataSets no longer a good idea.
-        //allLines->SetSource(NULL);
     }
 
     //
     // Remove ghost zones.
     //
     vtkDataSetRemoveGhostCells *gzFilter = vtkDataSetRemoveGhostCells::New();
-    gzFilter->SetInput(allLines);
+    gzFilter->SetInputData(allLines);
+    gzFilter->Update();
     vtkDataSet *ds_1d_nogz = gzFilter->GetOutput();
-    ds_1d_nogz->Update();
 
     // We need line segment polydata, and should have it by now.
     if (ds_1d_nogz->GetDataObjectType() != VTK_POLY_DATA)

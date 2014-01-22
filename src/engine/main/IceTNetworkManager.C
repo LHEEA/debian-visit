@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -300,10 +300,14 @@ IceTNetworkManager::TileLayout(size_t width, size_t height) const
 //    Brad Whitlock, Fri Jul 20 16:42:05 PDT 2012
 //    Use a different compositing strategy for curve windows.
 //
+//    Hank Childs, Tue Jul  9 15:12:18 PDT 2013
+//    Pass along checkThreshold argument so we can get kicked out of SR-mode
+//    when Ice-T falls back to normal compositing.
+//
 // ****************************************************************************
 
 avtDataObject_p
-IceTNetworkManager::Render(bool, intVector networkIds, bool getZBuffer,
+IceTNetworkManager::Render(bool checkThreshold, intVector networkIds, bool getZBuffer,
                            int annotMode, int windowID, bool leftEye)
 {
     int t0 = visitTimer->StartTimer();
@@ -344,7 +348,7 @@ IceTNetworkManager::Render(bool, intVector networkIds, bool getZBuffer,
         {
             debug2 << "Encountered transparency: falling back to old "
                       "SR / compositing routines." << std::endl;
-            CATCH_RETURN2(1, NetworkManager::Render(false, networkIds,
+            CATCH_RETURN2(1, NetworkManager::Render(checkThreshold, networkIds,
                                                     getZBuffer, annotMode,
                                                     windowID, leftEye));
         }
@@ -714,8 +718,7 @@ IceTNetworkManager::Readback(VisWindow * const viswin,
     // components and reallocate the data; unfortunately this means we do an
     // allocate in NewImage and then immediately throw it away when doing an
     // allocate here.
-    image->SetNumberOfScalarComponents(3);
-    image->AllocateScalars();
+    image->AllocateScalars(VTK_UNSIGNED_CHAR, 3);
     {
         unsigned char *img_pix = (unsigned char *) image->GetScalarPointer();
         const int numPix = width*height;

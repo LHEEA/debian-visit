@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -154,7 +154,6 @@ using std::vector;
 
 #define NUM_QCOEFFS 10 // # coefficients in a quadric rep
 
-vtkCxxRevisionMacro(vtkCSGGrid, "$Revision: 1.53 $");
 vtkStandardNewMacro(vtkCSGGrid);
 
 // internal type used only for implementation
@@ -942,9 +941,9 @@ vtkCSGGrid::PrintSelf(ostream& os, vtkIndent indent)
                     os << ", is a boolean ";
                     switch (boolFunc->GetOperationType())
                     {
-                        case VTK_INTERSECTION: os << "intersection "; break;
-                        case VTK_UNION:        os << "union "; break;
-                        case VTK_DIFFERENCE:   os << "difference "; break;
+                        case vtkImplicitBoolean::VTK_INTERSECTION: os << "intersection "; break;
+                        case vtkImplicitBoolean::VTK_UNION:        os << "union "; break;
+                        case vtkImplicitBoolean::VTK_DIFFERENCE:   os << "difference "; break;
                     }
 
                     vtkIdType leftId  = funcMap[leftFunc];
@@ -2089,17 +2088,16 @@ vtkCSGGrid::DiscretizeSurfaces(
         regSample->CappingOn();
 
         vtkContourFilter *regContour = vtkContourFilter::New();
-        regContour->SetInput((vtkDataSet*)regSample->GetOutput());
+        regContour->SetInputConnection(regSample->GetOutputPort());
         regContour->SetValue(0, 0.0);
 
-        appender->AddInput(regContour->GetOutput());
+        appender->AddInputConnection(regContour->GetOutputPort());
         regContour->Delete();
         regSample->Delete();
         reg->Delete();
     }
-
+    appender->Update();
     vtkPolyData *rv = appender->GetOutput();
-    rv->Update();
     rv->Register(0);
     appender->Delete();
     return rv;
@@ -2196,19 +2194,20 @@ vtkCSGGrid::DiscretizeSpace(
 
         // Clip it!
         vtkVisItClipper *regClipper = vtkVisItClipper::New();
-        regClipper->SetInput(rgrid);
+        regClipper->SetInputData(rgrid);
         regClipper->SetClipFunction(reg);
         regClipper->SetInsideOut(true);
         regClipper->Update();
 
-        appender->AddInput(regClipper->GetOutput());
+        appender->AddInputConnection(regClipper->GetOutputPort());
         regClipper->Delete();
         rgrid->Delete();
         reg->Delete();
     }
 
+    appender->Update();
+
     vtkUnstructuredGrid *rv = appender->GetOutput();
-    rv->Update();
     rv->Register(0);
     appender->Delete();
     return rv;
@@ -2410,7 +2409,7 @@ vtkCSGGrid::DiscretizeSpaceMultiPass(const double bnds[6], const int dims[3],
 
     multipassTags = new vector<FixedLengthBitField<64> >;
 
-    regClipper->SetInput(rgrid);
+    regClipper->SetInputData(rgrid);
     regClipper->SetTagBitField(multipassTags);
     regClipper->SetClipFunctions(gridBoundaries, numBoundaries);
 
@@ -2419,7 +2418,6 @@ vtkCSGGrid::DiscretizeSpaceMultiPass(const double bnds[6], const int dims[3],
     output = regClipper->GetOutput();
 
     output->Register(0);
-    output->SetSource(NULL);
     regClipper->Delete();
     rgrid->Delete();
 
@@ -2466,7 +2464,7 @@ vtkCSGGrid::GetMultiPassDiscretization(int specificZone)
 
     // Threshold out the cells for this region
     vtkThreshold *threshold = vtkThreshold::New();
-    threshold->SetInput(rv);
+    threshold->SetInputData(rv);
     threshold->ThresholdByUpper(0.5);
     threshold->Update();
     rv = threshold->GetOutput();
@@ -2712,7 +2710,7 @@ vtkCSGGrid::MakeMeshZonesByCuttingBox4(const Box *theBox,
                 vtkQuadric *quadric = vtkQuadric::New();
                 quadric->SetCoefficients(&gridBoundaries[NUM_QCOEFFS*bndId]);
                 vtkVisItClipper *pieceCutter = vtkVisItClipper::New();
-                pieceCutter->SetInput((*piecesCurrent)[i]);
+                pieceCutter->SetInputData((*piecesCurrent)[i]);
                 pieceCutter->SetUseZeroCrossings(true);
                 pieceCutter->SetClipFunction(quadric);
 
@@ -2728,7 +2726,7 @@ vtkCSGGrid::MakeMeshZonesByCuttingBox4(const Box *theBox,
                     pieceCutter->Modified();
                     //pieceCutter->Update();
 
-                    pieceCutter->GetOutput()->Update();
+                    pieceCutter->Update();
                     vtkUnstructuredGrid *thePiece = vtkUnstructuredGrid::New();
                     thePiece->ShallowCopy(pieceCutter->GetOutput());
 
@@ -2840,7 +2838,7 @@ vtkCSGGrid::MakeMeshZonesByCuttingBox2(const Box *theBox,
             const int theInt = it->first;
 
             vtkVisItClipper *boxCutter = vtkVisItClipper::New();
-            boxCutter->SetInput(boxUgrid);
+            boxCutter->SetInputData(boxUgrid);
             boxCutter->SetUseZeroCrossings(true);
 
             vtkQuadric *quadric = vtkQuadric::New();
@@ -2852,7 +2850,6 @@ vtkCSGGrid::MakeMeshZonesByCuttingBox2(const Box *theBox,
             boxCutter->Update();
 
             vtkUnstructuredGrid *cutBox = boxCutter->GetOutput();
-            cutBox->Update();
             cutBox->Register(NULL);
 
             quadric->Delete();

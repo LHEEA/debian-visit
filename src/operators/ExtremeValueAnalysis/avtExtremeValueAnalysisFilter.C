@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -161,15 +161,11 @@ void
 avtExtremeValueAnalysisFilter::Execute()
 {
     avtRExtremesFilter *f = new avtRExtremesFilter();
-    f->aggregation = atts.GetAggregation();
-    f->displayMonth = atts.GetDisplayMonth();
-    f->displaySeason = atts.GetDisplaySeason();
+    f->atts = atts;
 
     std::string vlibdir = GetVisItLibraryDirectory() + VISIT_SLASH_CHAR + "r_support";
     std::string vlibrdir  = vlibdir  + VISIT_SLASH_CHAR + "Rscripts" + VISIT_SLASH_CHAR;
     f->codeDir = vlibrdir;
-    f->dumpData = atts.GetDumpData();
-    f->scalingVal = atts.GetDataScaling();
 
     f->SetInput(GetInput());
     

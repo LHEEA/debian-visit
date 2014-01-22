@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1307,11 +1307,11 @@ PP_ZFileReader::PopulateDatabaseMetaData(int timestep, avtDatabaseMetaData *md)
         // Add material metadata to the metadata.
         //
         avtMaterialMetaData *mmd = new avtMaterialMetaData("material",
-            "mesh", materialNames.size(), materialNames);
+            "mesh", (int)materialNames.size(), materialNames);
         md->Add(mmd);
 
         mmd = new avtMaterialMetaData("material2",
-            "revolved_mesh", materialNames.size(), materialNames);
+            "revolved_mesh", (int)materialNames.size(), materialNames);
         md->Add(mmd);
 
         //

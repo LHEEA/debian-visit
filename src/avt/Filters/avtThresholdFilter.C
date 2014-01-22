@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -276,6 +276,9 @@ avtThresholdFilter::Equivalent(const AttributeGroup *a)
 //    the Threshold filter inherits from the structured mesh chunker, which
 //    assumes the return value has an extra reference.
 //
+//    Kathleen Biagas, Mon Jan 28 11:09:02 PST 2013
+//    Call Update on the fitler not the data object.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -340,7 +343,7 @@ avtThresholdFilter::ProcessOneChunk(
         {
             curVarName = curVariables[curVarNum].c_str();
             
-            threshold->SetInput(curOutDataSet);
+            threshold->SetInputData(curOutDataSet);
             // We registered curOutDataSet so it wouldn't be deleted.  But now that
             // we have fed it back into the threshold filter, we are done with it.
             // So decrement its reference count.
@@ -389,8 +392,8 @@ avtThresholdFilter::ProcessOneChunk(
                 EXCEPTION1(VisItException, errMsg);
             }
 
+            threshold->Update();
             curOutDataSet = threshold->GetOutput();
-            curOutDataSet->Update();
         }
 
         if (curOutDataSet->GetNumberOfCells() <= 0)
@@ -865,7 +868,7 @@ avtThresholdFilter::PreExecute(void)
             inputVarNames.push_back(inputVarName);
     }
     
-    inputVarCount = inputVarNames.size();
+    inputVarCount = (int)inputVarNames.size();
     bool allScalars = true;
     stringVector curListedVarNames = atts.GetListedVarNames();
     for (int i = 0 ; i < curListedVarNames.size() ; i++)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,12 +89,14 @@ public:
     void SelectPids();
     void SelectPpids();
     void SelectHosts();
+    void SelectMemory();
 
     // Property setting methods
     void SetPids(const intVector &pids_);
     void SetPpids(const intVector &ppids_);
     void SetHosts(const stringVector &hosts_);
     void SetIsParallel(bool isParallel_);
+    void SetMemory(const intVector &memory_);
 
     // Property getting methods
     const intVector    &GetPids() const;
@@ -104,6 +106,8 @@ public:
     const stringVector &GetHosts() const;
           stringVector &GetHosts();
     bool               GetIsParallel() const;
+    const intVector    &GetMemory() const;
+          intVector    &GetMemory();
 
 
     // Keyframing methods
@@ -119,6 +123,7 @@ public:
         ID_ppids,
         ID_hosts,
         ID_isParallel,
+        ID_memory,
         ID__LAST
     };
 
@@ -127,11 +132,12 @@ private:
     intVector    ppids;
     stringVector hosts;
     bool         isParallel;
+    intVector    memory;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define PROCESSATTRIBUTES_TMFS "i*i*s*b"
+#define PROCESSATTRIBUTES_TMFS "i*i*s*bi*"
 
 #endif

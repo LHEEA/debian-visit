@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -485,7 +485,7 @@ vtkTimeSliderActor::CreateSlider(vtkViewport *viewport)
     // Create the actors, etc.
     //
     this->SliderMapper = vtkPolyDataMapper2D::New();
-    this->SliderMapper->SetInput(this->SliderPolyData);
+    this->SliderMapper->SetInputData(this->SliderPolyData);
 #ifndef CREATE_POLYDATA_IN_SCREEN_SPACE
     // If we're not creating the polydata in screen space then we're defining it
     // once in viewport coordinates. Set the transform coordinate so the mapper

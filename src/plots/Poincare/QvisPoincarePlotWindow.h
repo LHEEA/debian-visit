@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -99,6 +99,7 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     virtual void makeDefault();
     virtual void reset();
   protected:
+    void CreateAdvancedTab(QWidget *pageAdvanced);
     void UpdateWindow(bool doAll);
     void GetCurrentValues(int which_widget);
     void UpdateFieldAttributes();
@@ -147,6 +148,8 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void setOpaacityClicked(int on);
     void changedOpacity(int opacity, const void *);
     void dataValueChanged(int val);
+    void showRationalSurfacesChanged(bool val);
+    void rationalSurfaceMaxIterationsChanged(int val);
     void showOPointsChanged(bool val);
     void OPointMaxIterationsChanged(int val);
     void performOLineAnalysisChanged(bool val);
@@ -167,10 +170,22 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     void show1DPlotsChanged(bool val);
     void legendToggled(bool val);
     void lightingToggled(bool val);
-    void streamlineAlgorithmChanged(int val);
+
+    void parallelAlgorithmChanged(int val);
     void maxSLCountChanged(int val);
     void maxDomainCacheChanged(int val);
     void workGroupSizeChanged(int val);
+
+    void icButtonGroupChanged(int val);
+    void pathlineOverrideStartingTimeFlagChanged(bool val);
+    void pathlineOverrideStartingTimeProcessText();
+    void pathlineCMFEButtonGroupChanged(int val);
+
+    void issueWarningForMaxStepsChanged(bool);
+    void issueWarningForStiffnessChanged(bool);
+    void issueWarningForCriticalPointsChanged(bool);
+    void criticalPointThresholdProcessText();
+
     void forceNodalChanged(bool);
   private:
     QTabWidget      *propertyTabs;
@@ -242,6 +257,9 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QvisOpacitySlider    *opacitySlider;
     QWidget      *dataValue;
     QComboBox *dataValueCombo;
+    QCheckBox *showRationalSurfaces;
+    QLabel *rationalSurfaceMaxIterationsLabel;
+    QSpinBox *rationalSurfaceMaxIterations;
     QCheckBox *showOPoints;
     QLabel *OPointMaxIterationsLabel;
     QSpinBox *OPointMaxIterations;
@@ -291,14 +309,25 @@ class QvisPoincarePlotWindow : public QvisPostableWindowObserver
     QLabel *colorTableNameLabel;
     QLabel *dataValueLabel;
 
-    QLabel    *slAlgoLabel;
-    QComboBox *slAlgo;
+    QLabel    *parallelAlgoLabel;
+    QComboBox *parallelAlgo;
     QLabel    *maxSLCountLabel;
     QSpinBox  *maxSLCount;
     QLabel    *maxDomainCacheLabel;
     QSpinBox  *maxDomainCache;
     QLabel    *workGroupSizeLabel;
     QSpinBox  *workGroupSize;
+
+    QButtonGroup *icButtonGroup;
+    QCheckBox *pathlineOverrideStartingTimeFlag;
+    QLineEdit *pathlineOverrideStartingTime;
+    QButtonGroup *pathlineCMFEButtonGroup;
+
+    QCheckBox *issueWarningForMaxSteps;
+    QCheckBox *issueWarningForStiffness;
+    QCheckBox *issueWarningForCriticalPoints;
+    QLineEdit *criticalPointThreshold;
+    QLabel    *criticalPointThresholdLabel;
 
     QWidget *firstTab;
     QWidget *secondTab;

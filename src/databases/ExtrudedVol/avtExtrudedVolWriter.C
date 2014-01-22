@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -161,7 +161,7 @@ avtExtrudedVolWriter::WriteChunk(vtkDataSet *ds, int chunk)
     if (timestep == -1)
     {
         vtkDataSetWriter *wrtr = vtkDataSetWriter::New();
-        wrtr->SetInput(ds);
+        wrtr->SetInputData(ds);
         char filename[1024];
         SNPRINTF(filename, 1024, "%s.%d.exvol_conn", stem.c_str(), chunk);
         wrtr->SetFileName(filename);

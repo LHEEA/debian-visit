@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -43,24 +43,33 @@
 #include <string>
 #include <vtkFloatArray.h>
 #include "ParaDISFileSet.h" 
+#include "paradis_c_interface.h"
 
 struct Dumpfile: public ParaDISFileSet {
  public:
-  Dumpfile(std::string filename, DBOptionsAttributes *rdatts); 
+ 
+  Dumpfile(const char *filename, DBOptionsAttributes *rdatts); 
   ~Dumpfile(); 
 
+  void Clear(void); 
+  //void Init(std::string filename, DBOptionsAttributes *rdatts); 
   bool FileIsValid(void);
   virtual vtkDataSet *GetMesh(std::string meshname);
   virtual vtkDataArray *GetVar(std::string varname); 
   virtual void *GetAuxiliaryData(const char *var, const char *type,
                          DestructorFunction &df);
+  uint8_t BurgersTypeToIndex(int btype); 
+
   /*!
     paraDIS data SERIAL
   */
-  std::vector<std::string> mNodeNeighborValues, mSegmentMNTypes;
+  std::vector<int> mSegmentBurgerTypes; 
+  std::vector<std::string> mNodeNeighborValues, mSegmentBurgerTypeNames, mMetaArmTypes;
   
+  double mExtents[6]; // xxyyzz
+  uint32_t mNumMetaArmSegments; // computed in GetMesh() to avoid having to recompute at GetVar() 
   int mVerbosity; 
-  int mMaterialSetChoice; 
+  //int mMaterialSetChoice; 
   std::string mFilename; 
   std::string mDebugFile; 
 }; 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -160,6 +160,35 @@ avtVarTypeToString(avtVarType v)
         return "species";
       case AVT_CURVE:
         return "curve";
+      default:
+        break;
+    }
+    return "unknown";
+}
+
+
+// ****************************************************************************
+//  Function: avtPrecisionTypeToString
+//
+//  Purpose:
+//      Creates a string from an avtPrecisionType.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   July 29, 2013
+//
+// ****************************************************************************
+
+std::string
+avtPrecisionTypeToString(avtPrecisionType v)
+{
+    switch (v)
+    {
+      case AVT_PRECISION_FLOAT:
+        return "float";
+      case AVT_PRECISION_NATIVE:
+        return "native";
+      case AVT_PRECISION_DOUBLE:
+        return "double";
       default:
         break;
     }

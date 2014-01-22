@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -236,17 +236,24 @@ avtCylinderFilter::Equivalent(const AttributeGroup *a)
 //    Brad Whitlock, Fri May  6 13:41:40 PDT 2011
 //    Do clipping instead of cutting so we can leave the dataset interior.
 //
+//   Dave Pugmire, Fri Aug 30 14:43:48 EDT 2013
+//   Add Inverse clipping option.
+//
 // ****************************************************************************
 
 vtkDataSet *
 avtCylinderFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 {
     vtkVisItClipper *clipper = vtkVisItClipper::New();
-    clipper->SetInsideOut(true);
+    if (atts.GetInverse())
+        clipper->SetInsideOut(false);
+    else
+        clipper->SetInsideOut(true);
+    
     clipper->SetClipFunction(cylinderSlice);
-    clipper->SetInput(in_ds);
+    clipper->SetInputData(in_ds);
+    clipper->Update();
     vtkDataSet *rv = clipper->GetOutput();
-    rv->Update();
 
     ManageMemory(rv);
     clipper->Delete();

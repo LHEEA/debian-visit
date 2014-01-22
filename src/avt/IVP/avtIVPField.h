@@ -1,6 +1,6 @@
  /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -139,5 +139,23 @@ class IVP_API avtIVPField
  protected:
     unsigned int order;
 };
+
+// ostream operators for avtICStatus
+inline std::ostream& operator<<(std::ostream& out, 
+                                avtIVPField::Result res)
+{
+    if (res == avtIVPField::OK)
+        out<<"OK";
+    else if (res == avtIVPField::OUTSIDE_SPATIAL)
+        out<<"OUTSIDE_SPATIAL";
+    else if (res == avtIVPField::OUTSIDE_TEMPORAL)
+        out<<"OUTSIDE_TEMPORAL";
+    else if (res == avtIVPField::OUTSIDE_BOTH)
+        out<<"OUTSIDE_BOTH";
+    else if (res == avtIVPField::FAIL)
+        out<<"FAIL"<<endl;
+    return out;
+}
+
 
 #endif

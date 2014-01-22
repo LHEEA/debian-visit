@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -59,7 +59,7 @@
 #include <vtkMantaPolyDataMapper.h>
 #include <vtkObjectFactory.h>
 
-#include <avtGLEWInitializer.h>
+#include <avtOpenGLExtensionManager.h>
 #include <avtCallback.h>
 #include <avtColorTables.h>
 #include <avtViewInfo.h>
@@ -67,8 +67,6 @@
 #include <InvalidColortableException.h>
 #include <LightList.h>
 #include <MoleculeAttributes.h>
-
-#include <avtGLEWInitializer.h>
 
 #include "AtomicProperties.h"
 #include <LineAttributes.h>
@@ -1013,7 +1011,7 @@ avtMantaMoleculeRenderer::Render(vtkPolyData *data,
     //vtkDataSet *input = this->GetInput();
     vtkPolyData* pinput = data;//dynamic_cast<vtkPolyData*>(input);
     if (pinput)
-      mpdm->SetInput(pinput);
+      mpdm->SetInputData(pinput);
     else
       cerr << "couldn't convert input\n";
     if (!VTKRen)

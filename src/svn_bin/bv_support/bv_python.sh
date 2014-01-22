@@ -103,8 +103,8 @@ echo ""
 function bv_python_info
 {
 export PYTHON_FILE_SUFFIX="tgz"
-export PYTHON_VERSION=${PYTHON_VERSION:-"2.6.4"}
-export PYTHON_COMPATIBILITY_VERSION=${PYTHON_COMPATIBILITY_VERSION:-"2.6"}
+export PYTHON_VERSION=${PYTHON_VERSION:-"2.7.5"}
+export PYTHON_COMPATIBILITY_VERSION=${PYTHON_COMPATIBILITY_VERSION:-"2.7"}
 export PYTHON_FILE="Python-$PYTHON_VERSION.$PYTHON_FILE_SUFFIX"
 export PYTHON_BUILD_DIR="Python-$PYTHON_VERSION"
 
@@ -114,7 +114,7 @@ export PIL_BUILD_DIR=${PIL_BUILD_DIR:-"Imaging-1.1.6"}
 
 export PYPARSING_FILE=${PYPARSING_FILE:-"pyparsing-1.5.2.tar.gz"}
 export PYPARSING_BUILD_DIR=${PYPARSING_BUILD_DIR:-"pyparsing-1.5.2"}
-export PYTHON_MD5_CHECKSUM="17dcac33e4f3adb69a57c2607b6de246"
+export PYTHON_MD5_CHECKSUM="2cf641732ac23b18d139be077bd906cd"
 export PYTHON_SHA256_CHECKSUM=""
 }
 
@@ -134,21 +134,23 @@ printf "%-15s %s [%s]\n" "--system-python" "Use System Python" "Used unless --no
 
 function bv_python_host_profile
 {
-echo >> $HOSTCONF
-echo "##" >> $HOSTCONF
-echo "## Python" >> $HOSTCONF
-echo "##" >> $HOSTCONF
+    if [[ "$DO_PYTHON" == "yes" ]] ; then
+        echo >> $HOSTCONF
+        echo "##" >> $HOSTCONF
+        echo "## Python" >> $HOSTCONF
+        echo "##" >> $HOSTCONF
 
-if [[ "$USE_SYSTEM_PYTHON" == "yes" ]]; then
-    echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR $VISIT_PYTHON_DIR)" >> $HOSTCONF
-    #incase the PYTHON_DIR does not find the include and library set it manually...
-    echo "VISIT_OPTION_DEFAULT(PYTHON_INCLUDE_PATH $PYTHON_INCLUDE_PATH)" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(PYTHON_LIBRARY ${PYTHON_LIBRARY})" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(PYTHON_LIBRARY_DIR $PYTHON_LIBRARY_DIR)" >> $HOSTCONF
-    echo "VISIT_OPTION_DEFAULT(PYTHON_VERSION $PYTHON_COMPATIBILITY_VERSION)" >> $HOSTCONF
-else
-    echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR $VISIT_PYTHON_DIR)" >> $HOSTCONF
-fi
+        if [[ "$USE_SYSTEM_PYTHON" == "yes" ]]; then
+            echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR $VISIT_PYTHON_DIR)" >> $HOSTCONF
+            #incase the PYTHON_DIR does not find the include and library set it manually...
+            echo "VISIT_OPTION_DEFAULT(PYTHON_INCLUDE_PATH $PYTHON_INCLUDE_PATH)" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(PYTHON_LIBRARY ${PYTHON_LIBRARY})" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(PYTHON_LIBRARY_DIR $PYTHON_LIBRARY_DIR)" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(PYTHON_VERSION $PYTHON_COMPATIBILITY_VERSION)" >> $HOSTCONF
+        else
+            echo "VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR $VISIT_PYTHON_DIR)" >> $HOSTCONF
+        fi
+    fi
 }
 
 function bv_python_initialize_vars
@@ -370,10 +372,11 @@ diff -c Imaging-1.1.6.orig/setup.py Imaging-1.1.6/setup.py
 --- Imaging-1.1.6/setup.py      Tue Dec 14 13:39:39 2010
 ***************
 *** 196,201 ****
---- 196,204 ----
+--- 196,205 ----
           add_directory(library_dirs, "/usr/local/lib")
           add_directory(include_dirs, "/usr/local/include")
 
++         add_directory(library_dirs, "/usr/lib/x86_64-linux-gnu")
 +         add_directory(library_dirs, "/usr/lib64")
 +         add_directory(include_dirs, "/usr/include")
 +
@@ -416,10 +419,22 @@ function build_pil
             warn "Patch failed, but continuing."
     fi
 
+    # NOTE:
+    # we need to compose both XFLAGS and X_OPT_FLAGS to get the correct
+    # settings from build_visit command line opts
+    # see:https://visitbugs.ornl.gov/issues/1443
+    #
+
+    PYEXT_CFLAGS="${CFLAGS} ${C_OPT_FLAGS}"
+    PYEXT_CXXFLAGS="${CXXFLAGS} ${CXX_OPT_FLAGS}"
+
     PYHOME="${VISITDIR}/python/${PYTHON_VERSION}/${VISITARCH}"
     pushd $PIL_BUILD_DIR > /dev/null
-        info "Building PIL ..."
-        ${PYHOME}/bin/python ./setup.py build 
+        info "Building PIL ...\n" \
+        "CC=${C_COMPILER} CXX=${CXX_COMPILER} CFLAGS=${PYEXT_CFLAGS} CXXFLAGS=${PYEXT_CXXFLAGS}" \
+        "  ${PYHOME}/bin/python ./setup.py build "
+        CC=${C_COMPILER} CXX=${CXX_COMPILER} CFLAGS=${PYEXT_CFLAGS} CXXFLAGS=${PYEXT_CXXFLAGS} \
+            ${PYHOME}/bin/python ./setup.py build 
         info "Installing PIL ..."
         ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
     popd > /dev/null

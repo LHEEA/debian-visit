@@ -21,37 +21,35 @@
 //
 =========================================================================*/
 #include "vtkOpenGLStructuredGridMapper.h"
+#include <avtOpenGLExtensionManager.h>
 
-#include <avtGLEWInitializer.h>
-
+#include <vtkCellArray.h>
+#include <vtkCellData.h>
+#include <vtkCommand.h>
+#include <vtkDataArray.h>
+#include <vtkFloatArray.h>
+#include <vtkImageData.h>
+#include <vtkLookupTable.h>
+#include <vtkMatrix4x4.h>
+#include <vtkObjectFactory.h>
+#include <vtkOpenGLRenderer.h>
+#include <vtkPlane.h>
+#include <vtkPlaneCollection.h>
+#include <vtkPointData.h>
 #include <vtkPoints.h>
-#include "vtkCellArray.h"
-#include "vtkCellData.h"
-#include "vtkCommand.h"
-#include "vtkDataArray.h"
-#include "vtkFloatArray.h"
-#include "vtkImageData.h"
-#include "vtkMatrix4x4.h"
-#include "vtkObjectFactory.h"
-#include "vtkOpenGLRenderer.h"
-#include "vtkPlane.h"
-#include "vtkPlaneCollection.h"
-#include "vtkPointData.h"
-#include "vtkStructuredGrid.h"
-#include "vtkPolygon.h"
-#include "vtkProperty.h"
-#include "vtkTimerLog.h"
-#include "vtkTriangle.h"
-#include "vtkRenderWindow.h"
+#include <vtkPolygon.h>
+#include <vtkProperty.h>
+#include <vtkRenderWindow.h>
+#include <vtkSkewLookupTable.h>
+#include <vtkStructuredGrid.h>
+#include <vtkTimerLog.h>
+#include <vtkTriangle.h>
 
-#include "vtkLookupTable.h"
-#include "vtkSkewLookupTable.h"
 
 static const int dlSize = 8192;
 
 #include <math.h>
 
-vtkCxxRevisionMacro(vtkOpenGLStructuredGridMapper, "$Revision: 1.78 $");
 vtkStandardNewMacro(vtkOpenGLStructuredGridMapper);
 
 vtkOpenGLStructuredGridMapper::vtkOpenGLStructuredGridMapper()
@@ -148,7 +146,8 @@ void vtkOpenGLStructuredGridMapper::Render(vtkRenderer *ren, vtkActor *act)
   else
     {
     this->InvokeEvent(vtkCommand::StartEvent,NULL);
-    input->Update();
+    if (!this->Static)
+      this->GetInputAlgorithm()->Update();
     this->InvokeEvent(vtkCommand::EndEvent,NULL);
 
     numPts = input->GetNumberOfPoints();
@@ -860,11 +859,13 @@ vtkOpenGLStructuredGridMapper::BeginColorTexturing()
     // after texturing. This ensures that the specular highlights look
     // right when we're in texturing mode.
     //
+#ifdef HAVE_LIBGLEW
     if(GLEW_EXT_secondary_color)
     {
         glEnable(GL_COLOR_SUM_EXT);
         glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
     }
+#endif
 }
 
 
@@ -899,8 +900,10 @@ vtkOpenGLStructuredGridMapper::EndColorTexturing()
         glDisable(GL_TEXTURE_1D);
     }
 
+#ifdef HAVE_LIBGLEW
     if(GLEW_EXT_secondary_color)
         glDisable(GL_COLOR_SUM_EXT);
+#endif
 }
 
 

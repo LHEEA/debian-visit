@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -68,6 +68,10 @@ class VisWindowInteractorProxy;
 //    Added an axis orientation, which interchanges the horizontal and
 //    vertical zooming.
 //
+//    Eric Brugger, Mon Nov  5 15:43:16 PST 2012
+//    I added the ability to display the parallel axes either horizontally
+//    or vertically.
+//
 // ****************************************************************************
 
 class VISWINDOW_API NavigateAxisArray : public VisitInteractor
@@ -84,15 +88,16 @@ class VISWINDOW_API NavigateAxisArray : public VisitInteractor
     virtual void        OnMouseWheelForward();
     virtual void        OnMouseWheelBackward();
 
-    enum AxisOrientation
+    enum Orientation
     {
         Horizontal,
         Vertical
     };
-    void                SetAxisOrientation(const AxisOrientation orientation);
+    void                SetAxisOrientation(const Orientation orientation);
+    void                SetDomainOrientation(const Orientation orientation);
 
   private:
-    void                PanCamera(const int x, const int y, bool snap_horiz);
+    void                PanCamera(const int x, const int y);
     void                ZoomCamera(const int x, const int y);
     void                ZoomHorizontal(double f);
     void                ZoomHorizontalFixed(double f);
@@ -103,7 +108,8 @@ class VISWINDOW_API NavigateAxisArray : public VisitInteractor
     bool                shiftKeyDown;
     bool                controlKeyDown;
 
-    AxisOrientation     axisOrientation;
+    Orientation         axisOrientation;
+    Orientation         domainOrientation;
 };
 
 

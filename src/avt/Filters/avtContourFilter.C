@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,12 +107,14 @@ using std::string;
 //    Hank Childs, Sun Mar  6 08:18:53 PST 2005
 //    Removed cd2pd.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed cf variable for thread safety.
+//
 // ****************************************************************************
 
 avtContourFilter::avtContourFilter(const ContourOpAttributes &a)
 {
     atts   = a;
-    cf     = vtkVisItContourFilter::New();
     stillNeedExtents = true;
     shouldCreateLabels = true;
     timeslice_index = 0;
@@ -170,15 +172,13 @@ avtContourFilter::avtContourFilter(const ContourOpAttributes &a)
 //    Hank Childs, Sun Mar  6 08:18:53 PST 2005
 //    Removed cd2pd.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed cf variable for thread safety.
+//
 // ****************************************************************************
 
 avtContourFilter::~avtContourFilter()
 {
-    if (cf != NULL)
-    {
-        cf->Delete();
-        cf = NULL;
-    }
 }
 
 
@@ -386,7 +386,7 @@ avtContourFilter::ModifyContract(avtContract_p in_contract)
     // interface.
     //
     vector<int> list;
-    for (size_t i = 0 ; i < useList.size() ; i++)
+    for (int i = 0 ; i < (int)useList.size() ; i++)
         if (useList[i])
             list.push_back(i);
 
@@ -604,6 +604,9 @@ avtContourFilter::PreExecute(void)
 //    Hank Childs, Mon Oct 10 11:17:27 PDT 2011
 //    Add a connectivity dependence when it comes to caching.
 //
+//    Kathleen Biagas, Fri Jan 25 16:04:46 PST 2013
+//    Call Update on the filter, not the data object.
+//
 // ****************************************************************************
 
 avtDataTree_p 
@@ -645,7 +648,7 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
         new_in_ds->CopyStructure(in_ds);
         new_in_ds->GetCellData()->AddArray(cellVar);
         vtkVisItCellDataToPointData *cd2pd = vtkVisItCellDataToPointData::New();
-        cd2pd->SetInput(new_in_ds);
+        cd2pd->SetInputData(new_in_ds);
         cd2pd->GetExecutive()->SetOutputData(0, toBeContoured);
         cd2pd->Update();
         for (int i = 0 ; i < in_ds->GetPointData()->GetNumberOfArrays() ; i++)
@@ -680,7 +683,12 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
     //
     int nLevels = isoValues.size();
     int total = 4*nLevels+2;
+
+    #ifndef VISIT_THREADS
+    // TODO for now I will if def this out for threading, but I think we need a global
+    // mutex on all update progress or a new way to update the progress bar.
     UpdateProgress(current_node*total + nLevels+1, total*nnodes);
+    #endif // VISIT_THREADS
 
     //bool useScalarTree = (nLevels > 1);
     bool useScalarTree = true; // now use scalar tree in all occasions, since we
@@ -706,13 +714,16 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
              tree->Register(NULL); // to account for later dereference
     }
 
+    #ifndef VISIT_THREADS
     UpdateProgress(current_node*total + 2*nLevels+2, total*nnodes);
+    #endif // VISIT_THREADS
 
     //
     // Do the actual contouring.  Split each isolevel into its own dataset.
     //
     vtkDataSet **out_ds = new vtkDataSet*[isoValues.size()];
-    cf->SetInput(toBeContoured);
+    vtkVisItContourFilter *cf = vtkVisItContourFilter::New();
+    cf->SetInputData(toBeContoured);
     vtkPolyData *output = cf->GetOutput();
     for (size_t i = 0 ; i < isoValues.size() ; i++)
     {
@@ -736,7 +747,7 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
             cf->SetCellList(list2, list.size());
          }
 
-        output->Update();
+        cf->Update();
         if (output->GetNumberOfCells() == 0)
             out_ds[i] = NULL;
         else
@@ -747,7 +758,10 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
             out_ds[i]->GetPointData()->RemoveArray("avtGhostNodes");
         }
         visitTimer->StopTimer(id2, "Calculating isosurface");
+
+        #ifndef VISIT_THREADS
         UpdateProgress(current_node*total + 2*nLevels+2+2*i, total*nnodes);
+        #endif // VISIT_THREADS
     }
 
     //
@@ -756,11 +770,11 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
     avtDataTree_p outDT = NULL;
     if (shouldCreateLabels)
     {   
-        outDT = new avtDataTree(isoValues.size(), out_ds, domain, isoLabels);
+        outDT = new avtDataTree((int)isoValues.size(), out_ds, domain, isoLabels);
     }
     else
     {   
-        outDT = new avtDataTree(isoValues.size(), out_ds, domain, label);
+        outDT = new avtDataTree((int)isoValues.size(), out_ds, domain, label);
     }
 
     //
@@ -778,8 +792,17 @@ avtContourFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
     if (tree != NULL)
         tree->Delete();
 
+    cf->Delete();
+
     visitTimer->StopTimer(tt1, "avtContourFilter::ExecuteData");
+
+    #ifndef VISIT_THREADS
+    // TODO race to inc. This is part of the progress update.
+    // We can do an atomic incr, but I don't want the time hit 
+    // just for the progress update. Maybe a better way to do this.
     current_node++;
+    #endif // VISIT_THREADS
+
     return outDT;
 }
 
@@ -1162,17 +1185,14 @@ avtContourFilter::CreateLabels()
 //    Hank Childs, Fri Mar 11 07:37:05 PST 2005
 //    Fix non-problem size leak introduced with last fix.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed cf variable for thread safety.
+//
 // ****************************************************************************
 
 void
 avtContourFilter::ReleaseData(void)
 {
     avtSIMODataTreeIterator::ReleaseData();
-
-    cf->SetInput(NULL);
-    vtkPolyData *p = vtkPolyData::New();
-    cf->SetOutput(p);
-    p->Delete();
 }
-
 

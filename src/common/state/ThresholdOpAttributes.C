@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -945,7 +945,7 @@ ThresholdOpAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 void
 ThresholdOpAttributes::SupplyMissingDefaultsIfAppropriate()
 {
-    int totalEntryCount = 0;
+    size_t totalEntryCount = 0;
     
     if (listedVarNames.size() > 1) return;
     totalEntryCount += listedVarNames.size();

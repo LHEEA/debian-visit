@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,6 +78,9 @@ public:
 
     virtual bool      WriteConfigFile(const char *filename);
     virtual DataNode *ReadConfigFile(const char *filename);
+
+    virtual bool      WriteConfigFile(std::ostream& out);
+    virtual DataNode *ReadConfigFile(std::istream& in);
 protected:
     void              ImportColorTable(const std::string &ctFileName);
     static void       ImportHelper(void *, const std::string &,

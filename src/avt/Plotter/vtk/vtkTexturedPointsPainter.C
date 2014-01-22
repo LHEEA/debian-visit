@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -36,7 +36,7 @@
 *
 *****************************************************************************/
 
-#include <avtGLEWInitializer.h>  // Make sure GLEW gets included first.
+#include <avtOpenGLExtensionManager.h>  // Make sure GLEW gets included first.
 #include "vtkTexturedPointsPainter.h"
 
 #include <vtkObjectFactory.h>
@@ -263,11 +263,13 @@ vtkTexturedPointsPainter::Texturer::ReleaseGraphicsResources(vtkWindow *win)
 void
 vtkTexturedPointsPainter::Texturer::StartFancyPoints()
 {
+#ifdef HAVE_LIBGLEW
     if(!GLEW_ARB_point_sprite)
     {
         // Point sprites are not supported
         return; 
     }
+#endif
 
     // Create the textures
     if(!this->SphereTexturesDataCreated)
@@ -353,12 +355,13 @@ vtkTexturedPointsPainter::Texturer::StartFancyPoints()
 void
 vtkTexturedPointsPainter::Texturer::EndFancyPoints()
 {
+#ifdef HAVE_LIBGLEW
     if(!GLEW_ARB_point_sprite)
     {
         // Point sprites are not supported
         return; 
     }
-
+#endif
     // Restore the state we had before.
     glPopAttrib();
     glDisable(MY_POINT_SPRITE_ARB);

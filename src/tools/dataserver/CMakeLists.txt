@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -69,10 +69,10 @@ ${VTK_LIBRARY_DIRS}
 )
 
 SET(VTK_EXTRA_LIBS
-${VTK_TIFF_LIBRARIES}
-${VTK_JPEG_LIBRARIES}
-${VTK_PNG_LIBRARIES}
-${VTK_ZLIB_LIBRARIES} 
+vtktiff
+vtkjpeg
+vtkpng
+${VTKZLIB_LIB}
 ${VTK_FREETYPE_LIBRARIES}
 vtkftgl
 )
@@ -83,6 +83,7 @@ ${cli_IOperator}
 ${cli_SOperator}
 ${cli_IPlot}
 ${cli_SPlot}
+avtdatabase_ser
 viewerrpc
 viewerproxy
 enginerpc

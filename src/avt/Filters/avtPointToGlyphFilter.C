@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -474,12 +474,12 @@ avtPointToGlyphFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     int dstype = ds->GetDataObjectType();
     if (dstype == VTK_POLY_DATA)
     {
-        pdrp->SetInput((vtkPolyData *) ds);
+        pdrp->SetInputData((vtkPolyData *) ds);
         ds = pdrp->GetOutput();
     }
     else if (dstype == VTK_UNSTRUCTURED_GRID)
     {
-        ugrp->SetInput((vtkUnstructuredGrid *) ds);
+        ugrp->SetInputData((vtkUnstructuredGrid *) ds);
         ds = ugrp->GetOutput();
     }
 
@@ -490,7 +490,7 @@ avtPointToGlyphFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     {
         // vtkGeometryFilter should work just fine for this.
         vtkGeometryFilter *geom = vtkGeometryFilter::New();
-        geom->SetInput(ds);
+        geom->SetInputData(ds);
         vtkPolyData *output = geom->GetOutput();
         geom->Update();
         ManageMemory(output);
@@ -516,8 +516,8 @@ avtPointToGlyphFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     glyphFilter->SetVectorModeToVectorRotationOff();
     glyphFilter->SetIndexModeToOff();
 
-    glyphFilter->SetSource(glyph);
-    glyphFilter->SetInput(ds);
+    glyphFilter->SetSourceData(glyph);
+    glyphFilter->SetInputData(ds);
     glyphFilter->SetGeneratePointIds(1);
     glyphFilter->Update();
 

@@ -28,6 +28,7 @@ avtCurvePlot.C
 avtCurveFilter.C
 avtCurveRenderer.C
 avtOpenGLCurveRenderer.C
+avtPolarToCartesianFilter.C
 ${COMMON_SOURCES}
 )
 
@@ -37,6 +38,7 @@ avtCurvePlot.C
 avtCurveFilter.C
 avtCurveRenderer.C
 avtOpenGLCurveRenderer.C
+avtPolarToCartesianFilter.C
 ${COMMON_SOURCES}
 )
 
@@ -46,6 +48,11 @@ IF (NOT WIN32)
         COMPILE_FLAGS "-I ${OPENGL_INCLUDE_DIR}"
     )
 ENDIF (NOT WIN32)
+
+IF(VISIT_PYTHON_SCRIPTING)
+    SET(PYINCLUDES ${PYTHON_INCLUDE_PATH} ${VISIT_INCLUDE_DIR}/visitpy/visitpy)
+ENDIF(VISIT_PYTHON_SCRIPTING)
+
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
 ${VISIT_COMMON_INCLUDES}
@@ -80,8 +87,7 @@ ${QT_INCLUDE_DIR}
 ${QT_QTCORE_INCLUDE_DIR}
 ${QT_QTGUI_INCLUDE_DIR}
 ${VTK_INCLUDE_DIRS} 
-${PYTHON_INCLUDE_PATH} 
-${VISIT_INCLUDE_DIR}/visitpy/visitpy 
+${PYINCLUDES}
 ${GLEW_INCLUDE_DIR}
 )
 

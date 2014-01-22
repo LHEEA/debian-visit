@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,7 +107,6 @@
 avtSurfaceFilter::avtSurfaceFilter(const AttributeGroup *a)
 {
     atts = *(SurfaceFilterAttributes*)a;
-    filter       = vtkSurfaceFilter::New();
     stillNeedExtents = true;
     min = -1;
     max = -1;
@@ -140,8 +139,6 @@ avtSurfaceFilter::avtSurfaceFilter(const AttributeGroup *a)
 
 avtSurfaceFilter::~avtSurfaceFilter()
 {
-    filter->Delete();
-    filter = NULL;
 }
 
 
@@ -344,7 +341,7 @@ avtSurfaceFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
                 inDS->GetCellData()->SetScalars(inDS->GetCellData()
                                        ->GetArray(atts.GetVariable().c_str()));
         }
-        cd2pd->SetInput(inDS);
+        cd2pd->SetInputData(inDS);
         cd2pd->Update();
         inScalars = cd2pd->GetOutput()->GetPointData()->GetScalars();
     }
@@ -433,7 +430,8 @@ avtSurfaceFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
     vtkUnstructuredGrid *outUG = vtkUnstructuredGrid::New(); 
 
     // call the vtk filter to create the output dataset.
-    filter->SetInput(inDS);
+    vtkSurfaceFilter *filter = vtkSurfaceFilter::New();
+    filter->SetInputData(inDS);
     filter->SetinScalars(outScalars);
     filter->SetOutput(outUG);
     filter->Update();
@@ -447,6 +445,8 @@ avtSurfaceFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
 
     ManageMemory(outUG);
     outUG->Delete();
+
+    filter->Delete();
 
     return (vtkDataSet*) outUG;
 }
@@ -837,12 +837,6 @@ void
 avtSurfaceFilter::ReleaseData(void)
 {
     avtDataTreeIterator::ReleaseData();
-
-    filter->SetInput(NULL);
-    vtkUnstructuredGrid *u = vtkUnstructuredGrid::New();
-    filter->SetOutput(u);
-    u->Delete();
-    filter->SetinScalars(NULL);
 }
 
 

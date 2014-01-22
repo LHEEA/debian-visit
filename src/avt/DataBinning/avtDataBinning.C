@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -338,7 +338,7 @@ avtDataBinning::OutputDataBinning(const std::string &ddfname)
         char str[1024];
         sprintf(str, "%s.vtk", ddfname.c_str());
         wrtr->SetFileName(str);
-        wrtr->SetInput(g);
+        wrtr->SetInputData(g);
         wrtr->Write();
         wrtr->Delete();
     }

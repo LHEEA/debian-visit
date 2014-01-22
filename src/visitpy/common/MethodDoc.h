@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -225,6 +225,7 @@ extern const char *visit_SetPlotOrderToFirst_doc;
 extern const char *visit_SetPlotOrderToLast_doc; 
 extern const char *visit_SetPlotSILRestriction_doc;
 extern const char *visit_SetPreferredFileFormats_doc;
+extern const char *visit_SetPrecisionType_doc;
 extern const char *visit_SetPrinterAttributes_doc;
 extern const char *visit_SetQueryFloatFormat_doc;
 extern const char *visit_SetQueryOverTimeAttributes_doc;

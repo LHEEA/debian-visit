@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,7 +107,7 @@ avtIsolevelsSelection::DescriptionString(void)
 {
     char str[1024];
     SNPRINTF(str, 1024, "avtIsolevelsSelection:%s", var.c_str());
-    int amt = strlen(str);
+    size_t amt = strlen(str);
     for (size_t i = 0 ; i < isolevels.size() ; i++)
     {
         SNPRINTF(str+amt, 1024-amt, "_%f", isolevels[i]);

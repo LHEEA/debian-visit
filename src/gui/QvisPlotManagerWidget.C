@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1147,6 +1147,9 @@ QvisPlotManagerWidget::UpdatePlotList()
         plotListBox->blockSignals(false);        
     }
 
+    // Tell the plot list whether we're applying operators to all plots.
+    plotListBox->setApplyOperators(globalAtts->GetApplyOperator());
+
     // If there are no variables, clear out the variable menu.
     if(plotList->GetNumPlots() == 0 && varMenu->count() > 0)
         varMenu->clear();
@@ -1294,7 +1297,7 @@ QvisPlotManagerWidget::AddPlotType(const QString &id,
     plotPlugins.push_back(entry);
 
     // Create the variable menu part of the plot
-    CreatePlotMenuItem(plotPlugins.size()-1);
+    CreatePlotMenuItem((int)plotPlugins.size()-1);
 }
 
 // ****************************************************************************
@@ -2547,7 +2550,7 @@ QvisPlotManagerWidget::activateOperatorWindow(QAction *action)
     {
         if(operatorPlugins[i].menuAction == action)
         {
-            emit activateOperatorWindow(i);
+            emit activateOperatorWindow((int)i);
             return;
         }
     } 
@@ -2663,7 +2666,7 @@ QvisPlotManagerWidget::operatorAction(QAction *action)
         {
             if(operatorPlugins[i].action == action)
             {
-                emit addOperator(i);
+                emit addOperator((int)i);
                 return;
             }
         }
@@ -2985,6 +2988,10 @@ QvisPlotManagerWidget::applyWindowChanged(int val)
 // Programmer:  Jeremy Meredith
 // Creation:    February 19, 2010
 //
+// Modifications:
+//   Brad Whitlock, Thu Mar 14 16:21:18 PDT 2013
+//   Set applyOperators in the plot list box.
+//
 // ****************************************************************************
 void
 QvisPlotManagerWidget::applyOperatorToggled(bool val)
@@ -2992,6 +2999,8 @@ QvisPlotManagerWidget::applyOperatorToggled(bool val)
     globalAtts->SetApplyOperator(val);
     SetUpdate(false);
     globalAtts->Notify();
+
+    plotListBox->setApplyOperators(val);
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,13 +63,14 @@
 //    Kathleen Bonnell, Tue Aug 30 15:11:01 PDT 2005
 //    Added keepNodeZone.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed the reduce and vertex variables from the class. They are now 
+//    created in the exectue method. This was done for threading VisIt.
+//
 // ****************************************************************************
 
 avtTensorFilter::avtTensorFilter(bool us, int red)
 {
-    reduce = vtkTensorReduceFilter::New();
-    vertex = vtkVertexFilter::New();
-
     if (us)
     {
         SetStride(red);
@@ -79,14 +80,6 @@ avtTensorFilter::avtTensorFilter(bool us, int red)
         SetNTensors(red);
     }
 
-    if (useStride)
-    {
-        reduce->SetStride(stride);
-    }
-    else
-    {
-        reduce->SetNumberOfElements(nTensors);
-    }
     keepNodeZone = false;
 }
 
@@ -102,18 +95,14 @@ avtTensorFilter::avtTensorFilter(bool us, int red)
 //    Hank Childs, Thu Aug 30 17:30:48 PDT 2001
 //    Added vertex filter.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed the reduce and vertex variables from the class. They are now 
+//    created in the exectue method. This was done for threading VisIt.
+//
 // ****************************************************************************
 
 avtTensorFilter::~avtTensorFilter()
 {
-    if (reduce != NULL)
-    {
-        reduce->Delete();
-    }
-    if (vertex != NULL)
-    {
-        vertex->Delete();
-    }
 }
 
 
@@ -126,6 +115,11 @@ avtTensorFilter::~avtTensorFilter()
 //  Programmer: Hank Childs
 //  Creation:   March 23, 2001
 //
+//  Modifications:
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed the reduce and vertex variables from the class. They are now 
+//    created in the exectue method. This was done for threading VisIt.
+//
 // ****************************************************************************
 
 void
@@ -134,7 +128,6 @@ avtTensorFilter::SetStride(int s)
     useStride = true;
     stride    = s;
     nTensors  = -1;
-    reduce->SetStride(stride);
 }
 
 
@@ -147,6 +140,11 @@ avtTensorFilter::SetStride(int s)
 //  Programmer: Hank Childs
 //  Creation:   March 23, 2001
 //
+//  Modifications:
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed the reduce and vertex variables from the class. They are now 
+//    created in the exectue method. This was done for threading VisIt.
+//
 // ****************************************************************************
 
 void
@@ -155,7 +153,6 @@ avtTensorFilter::SetNTensors(int n)
     useStride = false;
     stride    = -1;
     nTensors  = n;
-    reduce->SetNumberOfElements(nTensors);
 }
 
 
@@ -231,12 +228,27 @@ avtTensorFilter::Equivalent(bool us, int red)
 //    Hank Childs, Wed Sep 11 08:53:50 PDT 2002
 //    Fixed memory leak.
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed the reduce and vertex variables from the class. They are now 
+//    created in the exectue method. This was done for threading VisIt.
+//
 // ****************************************************************************
 
 vtkDataSet *
 avtTensorFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
 {
-    vtkPolyData *outPD = vtkPolyData::New();
+
+    vtkTensorReduceFilter *reduce = vtkTensorReduceFilter::New();
+    vtkVertexFilter *vertex = vtkVertexFilter::New();
+
+    if (useStride)
+    {
+        reduce->SetStride(stride);
+    }
+    else
+    {
+        reduce->SetNumberOfElements(nTensors);
+    }
 
     if (inDS->GetPointData()->GetTensors() != NULL)
     {
@@ -247,11 +259,14 @@ avtTensorFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
         vertex->VertexAtPointsOff();
     }
 
-    vertex->SetInput(inDS);
-    reduce->SetInput(vertex->GetOutput());
-    reduce->SetOutput(outPD);
-    outPD->Delete();
-    outPD->Update();
+    vertex->SetInputData(inDS);
+    reduce->SetInputConnection(vertex->GetOutputPort());
+    reduce->Update();
+    vtkPolyData *outPD = reduce->GetOutput();
+    outPD->Register(NULL);
+
+    reduce->Delete();
+    vertex->Delete();
 
     return outPD;
 }
@@ -277,6 +292,10 @@ avtTensorFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
 //    Kathleen Bonnell, Tue Aug 30 15:11:01 PDT 2005
 //    Added keepNodeZone.
 //
+//    Kathleen Biagas, Thu Mar 14 12:58:39 PDT 2013
+//    Allow normals calculation.  The TensorGlyph filter now does a good job
+//    copying, and also reversing inside-out normals. But they must be present.
+//
 // ****************************************************************************
 
 void
@@ -284,7 +303,6 @@ avtTensorFilter::UpdateDataObjectInfo(void)
 {
     GetOutput()->GetInfo().GetValidity().InvalidateZones();
     GetOutput()->GetInfo().GetAttributes().SetTopologicalDimension(0);
-    GetOutput()->GetInfo().GetValidity().SetNormalsAreInappropriate(true);
     GetOutput()->GetInfo().GetAttributes().SetKeepNodeZoneArrays(keepNodeZone);
 }
 
@@ -307,21 +325,16 @@ avtTensorFilter::UpdateDataObjectInfo(void)
 //    Kathleen Bonnell, Wed May 18 15:07:05 PDT 2005 
 //    Fix memory leak. 
 //
+//    David Camp, Thu May 23 12:52:53 PDT 2013
+//    Removed the reduce and vertex variables from the class. They are now 
+//    created in the exectue method. This was done for threading VisIt.
+//
 // ****************************************************************************
 
 void
 avtTensorFilter::ReleaseData(void)
 {
     avtDataTreeIterator::ReleaseData();
-
-    reduce->SetInput(NULL);
-    vtkPolyData *p = vtkPolyData::New();
-    reduce->SetOutput(p);
-    p->Delete();
-    vertex->SetInput(NULL);
-    p = vtkPolyData::New();
-    vertex->SetOutput(p);
-    p->Delete();
 }
 
 

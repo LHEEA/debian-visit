@@ -57,6 +57,22 @@
 #    Matthew Wheeler, Fri Aug 24 12:30:00 BST 2012
 #    Added case for userid "wheeler".
 #
+#    Satheesh Maheswaran, Tue Mar  5 13:44:53 GMT 2013
+#    Added case for userid "maheswar".
+#    Corrected a copy/paste error
+#
+#    Paul Selby, Thu May 16 12:15:04 BST 2013
+#    Added case for user "selby"
+#
+#    Kevin Bensema, Wed Jul 17 17:30 PDT 2013
+#    Added case for user "kbensema"
+#
+#    Brad Whitlock, Mon Aug 12 12:01:32 PDT 2013
+#    Changed me from LLNL to Intelligent Light.
+#
+#    Eric Brugger, Mon Oct 21 11:25:21 PDT 2013
+#    Added case for "camc" for Cameron Christensen.
+#
 # *****************************************************************************
 
 
@@ -77,9 +93,9 @@ case $1 in
     "miller86")
         emaddr=miller86@llnl.gov
         ;;
-    # Brad Whitlock, Lawrence Livermore National Laboratory
+    # Brad Whitlock, Intelligent Light
     "whitlocb")
-        emaddr=whitlock2@llnl.gov
+        emaddr=bjw@ilight.com
         ;;
     # Cyrus Harrison, Lawrence Livermore National Laboratory
     "cyrush")
@@ -162,8 +178,20 @@ case $1 in
         emaddr=Matthew.Wheeler@awe.co.uk
         ;;
     # Satheesh Maheswaran, AWE UK
-    "wheeler")
+    "maheswar")
         emaddr=Satheesh.Maheswaran@awe.co.uk
+        ;;
+    # Paul Selby, AWE UK
+    "selby")
+        emaddr=paul.selby@awe.co.uk
+        ;;
+    # Kevin Bensema, UC Davis
+    "kbensema")
+        emaddr=kbensema@ucdavis.edu
+        ;;
+    # Cameron Christensen
+    "camc")
+        emaddr=cam@sci.utah.edu
         ;;
     *)
         emaddr=visit-core-support@elist.ornl.gov

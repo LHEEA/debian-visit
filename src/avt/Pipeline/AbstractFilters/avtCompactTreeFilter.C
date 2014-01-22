@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -325,7 +325,7 @@ avtCompactTreeFilter::Execute(void)
             if (createCleanPolyData)
             {
                 vtkCleanPolyData *cpd = vtkCleanPolyData::New();
-                cpd->SetInput((vtkPolyData *) ds);
+                cpd->SetInputData((vtkPolyData *) ds);
                 cpd->SetToleranceIsAbsolute(1);
                 cpd->SetAbsoluteTolerance(tolerance);
                 cpd->Update();
@@ -334,7 +334,7 @@ avtCompactTreeFilter::Execute(void)
             }
             else
             {
-                ds->Update();
+                pmap->polyFilter->Update();
                 outTree = new avtDataTree(ds, -1);
             }
             ds->Delete();

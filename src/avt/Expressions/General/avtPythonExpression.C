@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -306,7 +306,7 @@ avtPythonExpression::ProcessArguments(ArgsExpr *args,
 
     // get the argument list and # of arguments
     std::vector<ArgExpr*> *arguments = args->GetArgs();
-    int nargs = arguments->size();
+    size_t nargs = arguments->size();
 
     // check for call with improper # of arguments
     if (nargs < 2)
@@ -351,7 +351,7 @@ avtPythonExpression::ProcessArguments(ArgsExpr *args,
                      "from python filter.");
 
     // process the remaining arguments
-    for(int i=0;i< nargs-1;i++)
+    for(size_t i=0;i< nargs-1;i++)
     {
         ExprParseTreeNode *node =  ((*arguments)[i])->GetExpr();
         std::string node_type = node->GetTypeName();

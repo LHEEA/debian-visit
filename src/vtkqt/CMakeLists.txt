@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -35,36 +35,20 @@
 # DAMAGE.
 #
 # Modifications:
+#    Kathleen Biagas, Tue Feb 5 15:15:27 PST 2013
+#    Removed GUISupport, we use VTK's version now.
 #
 #****************************************************************************/
 
 SET(VTKQT_SOURCES
 vtkQtRenderWindow.C
 vtkQtImagePrinter.C
-GUISupport/QVTKInteractor.cxx
-GUISupport/QVTKInteractorAdapter.cxx
-GUISupport/QVTKPaintEngine.cxx
-GUISupport/QVTKWidget.cxx
-GUISupport/QVTKWidget2.cxx
-GUISupport/vtkEventQtSlotConnect.cxx
-GUISupport/vtkQtConnection.cxx
 )
-
-# List the files that we'll run moc on
-SET(VTKQT_MOC_SOURCES
-GUISupport/QVTKInteractorAdapter.h
-GUISupport/QVTKInteractorInternal.h
-GUISupport/QVTKWidget.h
-GUISupport/QVTKWidget2.h
-GUISupport/vtkQtConnection.h
-)
-QT_WRAP_CPP(VTKQT VTKQT_SOURCES ${VTKQT_MOC_SOURCES} )
 
 INCLUDE_DIRECTORIES(
 ${VISIT_BINARY_DIR}/include
 ${VISIT_SOURCE_DIR}/include
 ${VISIT_SOURCE_DIR}/vtkqt
-${VISIT_SOURCE_DIR}/vtkqt/GUISupport
 ${VISIT_SOURCE_DIR}/common/utility
 ${VTK_INCLUDE_DIRS}
 ${QT_INCLUDE_DIR}
@@ -79,7 +63,14 @@ LINK_DIRECTORIES(${QT_LIBRARY_DIR} ${VTK_LIBRARY_DIRS})
 ADD_LIBRARY(vtkqt ${VTKQT_SOURCES})
 
 # Specify the libraries to link against on Windows & Mac
-TARGET_LINK_LIBRARIES(vtkqt vtkCommon vtkFiltering vtkIO vtkRendering ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
+IF(HAVE_LIB_R)
+    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
+ELSE(HAVE_LIB_R)
+    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
+ENDIF(HAVE_LIB_R)
+# Add vtk definitions
+ADD_TARGET_DEFINITIONS(vtkqt "${VTK_DEFINITIONS}")
+
 
 VISIT_INSTALL_TARGETS(vtkqt)
 

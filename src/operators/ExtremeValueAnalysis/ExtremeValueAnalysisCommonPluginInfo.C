@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -139,6 +139,8 @@ ExtremeValueAnalysisCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMet
         if (e.GetType() == Expression::ScalarMeshVar)
         {
             {
+                if (e.GetFromOperator())
+                    continue; // weird ordering behavior otherwise
                 Expression e2;
                 sprintf(name, "operators/ExtremeValueAnalysis/%s", e.GetName().c_str());
                 e2.SetName(name);

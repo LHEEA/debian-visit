@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -124,7 +124,7 @@ avtMagnitudeExpression::~avtMagnitudeExpression()
 // ****************************************************************************
 
 vtkDataArray *
-avtMagnitudeExpression::DeriveVariable(vtkDataSet *in_ds)
+avtMagnitudeExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
     //
     // The base class will set the variable of interest to be the 

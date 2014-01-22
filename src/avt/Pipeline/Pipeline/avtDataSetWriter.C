@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -219,7 +219,7 @@ avtDataSetWriter::WriteDataTree(avtDataTree_p tree, avtDataObjectString &str)
 
         if (label.size() > 0)
         {
-            str.Append((char *) label.c_str(), label.size(), 
+            str.Append((char *) label.c_str(), (int)label.size(), 
                   avtDataObjectString::DATA_OBJECT_STRING_SHOULD_MAKE_COPY);
         }
 

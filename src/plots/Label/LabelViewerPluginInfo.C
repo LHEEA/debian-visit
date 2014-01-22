@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -207,7 +207,7 @@ LabelViewerPluginInfo::AllocAvtPlot()
 
 void
 LabelViewerPluginInfo::InitializePlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     *(LabelAttributes*)atts = *defaultAtts;
     PrivateSetPlotAtts(atts, plot);
@@ -236,7 +236,7 @@ LabelViewerPluginInfo::InitializePlotAtts(AttributeSubject *atts,
 
 void
 LabelViewerPluginInfo::ReInitializePlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     PrivateSetPlotAtts(atts, plot);
 }
@@ -263,7 +263,7 @@ LabelViewerPluginInfo::ReInitializePlotAtts(AttributeSubject *atts,
 
 void
 LabelViewerPluginInfo::ResetPlotAtts(AttributeSubject *atts,
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 
 {
     ReInitializePlotAtts(atts, plot);
@@ -362,7 +362,7 @@ LabelViewerPluginInfo::XPMIconData() const
 #include <ViewerPlot.h>
 void
 LabelViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts, 
-    ViewerPlot *plot)
+    const ViewerPlot *plot)
 {
     LabelAttributes *labelAtts = (LabelAttributes *)atts;
 

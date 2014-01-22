@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define CYLINDERATTRIBUTES_NMETH 8
+#define CYLINDERATTRIBUTES_NMETH 10
 void           PyCylinderAttributes_StartUp(CylinderAttributes *subj, void *data);
 void           PyCylinderAttributes_CloseDown();
 PyMethodDef *  PyCylinderAttributes_GetMethodTable(int *nMethods);

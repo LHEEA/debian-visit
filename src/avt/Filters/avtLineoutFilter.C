@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,7 @@
 #include <vtkPointData.h>
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkUnsignedIntArray.h>
 #include <vtkVisItUtility.h>
 
@@ -422,7 +423,7 @@ avtLineoutFilter::CreateRGrid(vtkDataSet *ds, double *pt1, double *pt2,
     int sType = scalars->GetDataType();
     int dType = VTK_FLOAT;
     if(ptsType == VTK_DOUBLE || sType == VTK_DOUBLE)
-        dType == VTK_DOUBLE;
+        dType = VTK_DOUBLE;
     vtkRectilinearGrid *rgrid = vtkVisItUtility::Create1DRGrid(0, dType);
     vtkDataArray *outXC = rgrid->GetXCoordinates();
     vtkDataArray *outVal = outXC->NewInstance(); 
@@ -534,12 +535,16 @@ avtLineoutFilter::CreateRGrid(vtkDataSet *ds, double *pt1, double *pt2,
 //    Kathleen Bonnell, Mon Sep 11 16:47:08 PDT 2006 
 //    Removed calculation of cell centers.
 //
-//   Hank Childs, Thu Jan 24 09:44:45 PST 2008
-//   Make use of new data members.
+//    Hank Childs, Thu Jan 24 09:44:45 PST 2008
+//    Make use of new data members.
 //
 //    Kathleen Bonnell, Thu Jun 11 08:29:51 PDT 2009
 //    Calculate the min side-length of a cell, to be used as a tolerance when
 //    determining if PointsEqual.
+//
+//    Brad Whitlock, Tue Mar 26 10:11:39 PDT 2013
+//    Make sure we have original cells. If we don't, back up to another lineout
+//    method instead of failing.
 //
 // ****************************************************************************
 
@@ -718,14 +723,19 @@ avtLineoutFilter::NoSampling(vtkDataSet *in_ds, int domain)
         cells->InsertNextId(isectedCells[i]);
     }
 
-    if (!useOriginalCells)
-    {
-        rv = CreateRGrid(in_ds, point1, point2, pts, cells);
-    }
-    else 
+    // If we want original cells, be sure that we have them since it's 
+    // possible that filters before lineout might not be capable of preserving
+    // the original cells.
+    if (useOriginalCells &&
+        in_ds->GetCellData()->GetArray("avtOriginalCellNumbers") != NULL)
     {
         rv = CreateRGridFromOrigCells(in_ds, point1, point2, pts, cells);
     }
+    else
+    {
+        rv = CreateRGrid(in_ds, point1, point2, pts, cells);
+    }
+
     if (rv->GetNumberOfCells() == 0 ||
         rv->GetNumberOfPoints() == 0)
     {
@@ -792,24 +802,29 @@ avtLineoutFilter::NoSampling(vtkDataSet *in_ds, int domain)
 //    the data set remove ghost cells filter doesn't know what it's real
 //    output is until it updates.
 //
+//    Kathleen Biagas, Fri Jan 25 16:04:46 PST 2013
+//    Call Update on the filter, not the data object.
+//
 // ****************************************************************************
 
 vtkDataSet *
 avtLineoutFilter::Sampling(vtkDataSet *in_ds, int domain)
 {
     vtkDataSetRemoveGhostCells *ghosts = vtkDataSetRemoveGhostCells::New();
-    ghosts->SetInput(in_ds);
+    ghosts->SetInputData(in_ds);
+    // FIX_ME_VTK6.0, ksb, is this update necessary?
     ghosts->Update();
 
     vtkLineoutFilter *filter = vtkLineoutFilter::New();
 
-    filter->SetInput(ghosts->GetOutput());
+    filter->SetInputConnection(ghosts->GetOutputPort());
     filter->SetPoint1(point1);
     filter->SetPoint2(point2);
     filter->SetNumberOfSamplePoints(numberOfSamplePoints);
-    filter->GetOutput()->SetUpdateGhostLevel(0);
+    // FIX_ME_VTK6.0, ESB, is this correct?
+    vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(filter->GetInformation(), 0);
+    filter->Update();
     vtkPolyData *outPolys = filter->GetOutput();
-    outPolys->Update();
 
     vtkDataSet *rv = outPolys;
     if (outPolys->GetNumberOfCells() == 0 ||
@@ -956,7 +971,7 @@ avtLineoutFilter::CreateRGridFromOrigCells(vtkDataSet *ds, double *pt1,
     int sType = scalars->GetDataType();
     int dType = VTK_FLOAT;
     if(ptsType == VTK_DOUBLE || sType == VTK_DOUBLE)
-        dType == VTK_DOUBLE;
+        dType = VTK_DOUBLE;
     vtkRectilinearGrid *rgrid = vtkVisItUtility::Create1DRGrid(0, dType);
 
     vtkDataArray *outXC = rgrid->GetXCoordinates();

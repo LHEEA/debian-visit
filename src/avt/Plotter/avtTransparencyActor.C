@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -140,19 +140,19 @@ avtTransparencyActor::avtTransparencyActor() :
     myMapper->SetScalarModeToUsePointFieldData();
 
     axisSort = vtkAxisDepthSort::New();
-    axisSort->SetInput(appender->GetOutput());
+    axisSort->SetInputConnection(appender->GetOutputPort());
 
     perfectSort = vtkDepthSortPolyData::New();
     perfectSort->SetDepthSortModeToBoundsCenter();
 
     if (PAR_Size() > 1)
     {
-        parallelFilter->SetInput(appender->GetOutput());
-        perfectSort->SetInput(parallelFilter->GetOutput());
+        parallelFilter->SetInputConnection(appender->GetOutputPort());
+        perfectSort->SetInputConnection(parallelFilter->GetOutputPort());
     }
     else
     {
-        perfectSort->SetInput(appender->GetOutput());
+        perfectSort->SetInputConnection(appender->GetOutputPort());
     }
 
     usePerfectSort = true;
@@ -646,7 +646,8 @@ avtTransparencyActor::PrepareForRender(vtkCamera *cam)
     if (PAR_Size() > 1 || usePerfectSort)
     {
         perfectSort->SetCamera(cam);
-        myMapper->SetInput(perfectSort->GetOutput());
+        perfectSort->Update();
+        myMapper->SetInputData(perfectSort->GetOutput());
         vtkMatrix4x4 *mat = cam->GetViewTransformMatrix();
         lastCamera->DeepCopy(mat);
     }
@@ -684,22 +685,22 @@ avtTransparencyActor::PrepareForRender(vtkCamera *cam)
             switch (biggest)
             {
               case -3:
-                myMapper->SetInput(axisSort->GetMinusZOutput());
+                myMapper->SetInputData(axisSort->GetMinusZOutput());
                 break;
               case -2:
-                myMapper->SetInput(axisSort->GetMinusYOutput());
+                myMapper->SetInputData(axisSort->GetMinusYOutput());
                 break;
               case -1:
-                myMapper->SetInput(axisSort->GetMinusXOutput());
+                myMapper->SetInputData(axisSort->GetMinusXOutput());
                 break;
               case 1:
-                myMapper->SetInput(axisSort->GetPlusXOutput());
+                myMapper->SetInputData(axisSort->GetPlusXOutput());
                 break;
               case 2:
-                myMapper->SetInput(axisSort->GetPlusYOutput());
+                myMapper->SetInputData(axisSort->GetPlusYOutput());
                 break;
               case 3:
-                myMapper->SetInput(axisSort->GetPlusZOutput());
+                myMapper->SetInputData(axisSort->GetPlusZOutput());
                 break;
             }
         }
@@ -834,7 +835,7 @@ avtTransparencyActor::SetUpActor(void)
                 if (preparedDataset[i][j] != NULL)
                 {
                     addedInput = true;
-                    appender->AddInput(preparedDataset[i][j]);
+                    appender->AddInputData(preparedDataset[i][j]);
                     repActor = actors[i][j];
                 }
             }
@@ -848,7 +849,7 @@ avtTransparencyActor::SetUpActor(void)
     {
         // use empty input? 
         vtkPolyData *pd = vtkPolyData::New();
-        appender->AddInput(pd);
+        appender->AddInputData(pd);
         pd->Delete();
     }
 
@@ -1063,7 +1064,7 @@ avtTransparencyActor::PrepareDataset(size_t input, size_t subinput)
     vtkPolyData *pd = NULL;
 
     // break upstream vtk pipeline
-    in_ds->SetSource(NULL);
+    //in_ds->SetSource(NULL);
     if (in_ds->GetDataObjectType() == VTK_POLY_DATA)
     {
         pd = (vtkPolyData *) in_ds;
@@ -1071,7 +1072,7 @@ avtTransparencyActor::PrepareDataset(size_t input, size_t subinput)
     else if (in_ds->GetDataObjectType() == VTK_STRUCTURED_GRID)
     {
         gf = vtkGeometryFilter::New();
-        gf->SetInput(in_ds);
+        gf->SetInputData(in_ds);
         ghost_filter = vtkDataSetRemoveGhostCells::New();
         ghost_filter->SetInputConnection(gf->GetOutputPort());
         ghost_filter->Update();
@@ -1080,7 +1081,7 @@ avtTransparencyActor::PrepareDataset(size_t input, size_t subinput)
     else if (in_ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
     {
         gf = vtkGeometryFilter::New();
-        gf->SetInput(in_ds);
+        gf->SetInputData(in_ds);
         normals = vtkVisItPolyDataNormals::New();
         if (mapper->GetScalarVisibility() != 0 &&
             in_ds->GetPointData()->GetScalars() == NULL &&
@@ -1113,11 +1114,11 @@ avtTransparencyActor::PrepareDataset(size_t input, size_t subinput)
     else
     {
         gf = vtkGeometryFilter::New();
-        gf->SetInput(in_ds);
+        gf->SetInputData(in_ds);
         gf->Update();
         pd = gf->GetOutput();
     }
-    mapper->SetInput(pd);
+    mapper->SetInputData(pd);
 
     //
     // Create the output dataset that we will be creating an RGBA field for.

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -390,10 +390,10 @@ avtReplicateFilter::ExecuteDataTree(vtkDataSet *in_ds, int dom, string str)
             vtkAppendPolyData *append = vtkAppendPolyData::New();
             for (i=0; i<nrep; i++)
             {
-                append->AddInput((vtkPolyData*)replications[i]);
+                append->AddInputData((vtkPolyData*)replications[i]);
             }
+            append->Update();
             vtkPolyData *output = append->GetOutput();
-            output->Update();
             // If we're merging into a single data set, we can also
             // replicate periodically the unit cell boundary atoms
             if (atts.GetReplicateUnitCellAtoms() ||

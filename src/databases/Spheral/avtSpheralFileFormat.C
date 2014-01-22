@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -513,7 +513,7 @@ avtSpheralFileFormat::ParseField(char *line, int nwords,
         }
         if (fieldIndex < 0)
         {
-            fieldIndex = fields.size();
+            fieldIndex = (int)fields.size();
             fields.push_back(fieldName);
             fieldType.push_back(AVT_UNKNOWN_TYPE);
             fieldDim1.push_back(-1);
@@ -753,7 +753,7 @@ avtSpheralFileFormat::GetMesh(int dom, const char *name)
             if (validNodeLists[i] && cache[dom].meshes[i] != NULL)
             {
                 one_dataset = cache[dom].meshes[i];
-                appender->AddInput(one_dataset);
+                appender->AddInputData(one_dataset);
                 nInputs++;
             }
         }
@@ -766,8 +766,8 @@ avtSpheralFileFormat::GetMesh(int dom, const char *name)
             }
             else
             {
+                appender->Update();
                 rv = appender->GetOutput();
-                rv->Update();
             }
             rv->Register(NULL);
         }
@@ -1025,7 +1025,7 @@ avtSpheralFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     md->Add(mesh);
 
     avtMaterialMetaData *mmd = new avtMaterialMetaData("Materials",
-                                    "Node List", nodeLists.size(), nodeLists);
+                                    "Node List", (int)nodeLists.size(), nodeLists);
     md->Add(mmd);
 
     for (int i = 0 ; i < fields.size() ; i++)

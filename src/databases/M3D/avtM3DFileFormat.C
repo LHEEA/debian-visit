@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -130,7 +130,7 @@ avtM3DFileFormat::~avtM3DFileFormat()
 int
 avtM3DFileFormat::GetNTimesteps(void)
 {
-    return m_timeSteps.size();
+    return (int)m_timeSteps.size();
 }
 
 

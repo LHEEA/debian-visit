@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define CARTOGRAPHICPROJECTIONATTRIBUTES_NMETH 4
+#define CARTOGRAPHICPROJECTIONATTRIBUTES_NMETH 6
 void           PyCartographicProjectionAttributes_StartUp(CartographicProjectionAttributes *subj, void *data);
 void           PyCartographicProjectionAttributes_CloseDown();
 PyMethodDef *  PyCartographicProjectionAttributes_GetMethodTable(int *nMethods);

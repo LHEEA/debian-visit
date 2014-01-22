@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,7 +46,9 @@
 
 #include <vtkCellData.h>
 #include <vtkFloatArray.h>
+#include <vtkInformation.h>
 #include <vtkRectilinearGrid.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 #include <vtkUnsignedCharArray.h>
 #include <vtkUnstructuredGrid.h>
 
@@ -541,7 +543,7 @@ avtFVCOM_MTMDFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int t
     for(int i = 0; i < md->GetNumMeshes(); ++i)
     {
         avtMeshMetaData *mmd = const_cast<avtMeshMetaData*>(md->GetMesh(i));
-        mmd->numBlocks = domainFiles.size();
+        mmd->numBlocks = (int)domainFiles.size();
     }
 
 
@@ -1473,7 +1475,8 @@ avtFVCOM_MTMDFileFormat::GetMesh(int timestate, int domain, const char *meshname
         }
     
         retval->GetCellData()->AddArray(ghostCells);
-        retval->SetUpdateGhostLevel(0);
+        retval->GetInformation()->Set(
+            vtkStreamingDemandDrivenPipeline::UPDATE_NUMBER_OF_GHOST_LEVELS(), 0);
         ghostCells->Delete();
         debug4 << mName << "Found Ghost Zones" << endl;
 

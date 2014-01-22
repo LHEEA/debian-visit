@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -123,6 +123,8 @@
 #include <PlotPluginManager.h>
 #include <PlotPluginInfo.h>
 #include <StackTimer.h>
+#include <FileFunctions.h> // for ReadAndProcessDirectory
+#include <Utility.h>       // for WildcardStringMatch
 
 #include <vtkImageData.h>
 
@@ -138,6 +140,11 @@
 #include <map>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#include <direct.h>  // for _getcwd, _chdir
+#else
+#include <unistd.h>
+#endif
 
 // Programmer: Brad Whitlock, Wed Jan 18 11:38:42 PST 2012
 //
@@ -168,6 +175,7 @@ static void BroadcastImage(avtImage_p &, bool, int);
 static bool IsBlankImage(avtImage_p img);
 static std::vector<int> BuildBlankImageVector(avtImage_p img);
 #endif
+static void FileMatchesPatternCB(void *, const std::string &, bool, bool, long);
 
 //
 // Static data members of the NetworkManager class.
@@ -283,20 +291,15 @@ NetworkManager::NetworkManager(void) : virtualDatabases()
 //    Added the call to DeleteInstance of the avtColorTables. 
 //    Help debug memory leaks.
 //
+//    Brad Whitlock, Thu Oct  4 11:45:14 PDT 2012
+//    Change how networks are deleted.
+//
 // ****************************************************************************
 
 NetworkManager::~NetworkManager(void)
 {
-    for (size_t i = 0; i < networkCache.size(); i++)
-        if (networkCache[i] != NULL)
-            delete networkCache[i];
-
-    std::map<int, EngineVisWinInfo>::iterator it;
-    for (it = viswinMap.begin(); it != viswinMap.end(); it++)
-        delete it->second.viswin;
-
-    for (size_t d = 0 ; d < dataBinnings.size() ; d++)
-        delete dataBinnings[d];
+    // Clear out networks, etc
+    ClearAllNetworks();
 
     delete databasePlugins;
     delete operatorPlugins;
@@ -492,7 +495,7 @@ NetworkManager::ClearNetworksWithDatabase(const std::string &db)
     // Clear out the networks before the databases.  This is because if we
     // delete the databases first, the networks will have dangling pointers.
     //
-    for (size_t i = 0; i < networkCache.size(); i++)
+    for (int i = 0; i < (int)networkCache.size(); i++)
     {
         if (networkCache[i] != NULL)
         {
@@ -594,6 +597,9 @@ NetworkManager::ClearNetworksWithDatabase(const std::string &db)
 //    Brad Whitlock, Tue Jun 24 15:45:43 PDT 2008
 //    Pass the database plugin manager to the factory.
 //
+//    Kathleen Biagas, Thu June 27 10:38:54 MST 2013
+//    If passed a virtual Database, expand it to the actual files.
+//
 // ****************************************************************************
 
 NetnodeDB *
@@ -668,13 +674,81 @@ NetworkManager::GetDBFromCache(const std::string &filename, int time,
         }
         else
         {
-            db = avtDatabaseFactory::FileList(
-                GetDatabasePluginManager(),
-                &filename_c,
-                1,
-                time,
-                plugins, 
-                format);
+            if (filename.find("*") != std::string::npos)
+            {
+                debug3 << "  " << filename
+                       << " is virtual need to expand it." << endl;
+                char tmpcwd[1024];
+#if defined(_WIN32)
+                _getcwd(tmpcwd, 1023);
+#else
+                getcwd(tmpcwd, 1023);
+#endif
+                tmpcwd[1023] = '\0';
+
+                std::string oldPath(tmpcwd);
+                char slash = '/';
+                size_t pathIndex = filename.rfind(slash);
+                if (pathIndex == std::string::npos)
+                {
+                    char slash = '\\';
+                    pathIndex = filename.rfind(slash);
+                }
+                std::string path(filename.substr(0, pathIndex));
+                size_t dbIndex = filename.rfind(" database");
+                std::string pattern(filename.substr(pathIndex+1, dbIndex - pathIndex - 1));
+                if (pathIndex != std::string::npos)
+                {
+#if defined(_WIN32)
+                    _chdir(path.c_str());
+#else
+                    chdir(path.c_str());
+#endif
+                }
+                // look for files that match pattern
+                std::vector< std::string > fileNames;
+                void *cb_data[2];
+                cb_data[0] = (void *)&fileNames;
+                cb_data[1] =  (void *)&pattern;
+                ReadAndProcessDirectory(path, FileMatchesPatternCB, (void*) cb_data, false);
+                char **names = new char *[fileNames.size()];
+                for (size_t i = 0; i < fileNames.size(); ++i)
+                {
+                    char *charName = new char[fileNames[i].size() +1];
+                    strcpy(charName, fileNames[i].c_str());
+                    names[i] = charName;
+                }
+                if (pathIndex != std::string::npos)
+                {
+#if defined(_WIN32)
+                    _chdir(oldPath.c_str());
+#else
+                    chdir(oldPath.c_str());
+#endif
+                }
+            
+                db = avtDatabaseFactory::FileList(
+                    GetDatabasePluginManager(),
+                    names,
+                    (int)fileNames.size(),
+                    time,
+                    plugins,
+                    format);
+
+                for (size_t i = 0; i < fileNames.size(); ++i)
+                    delete [] names[i];
+                delete [] names; 
+            }
+            else
+            {
+                db = avtDatabaseFactory::FileList(
+                    GetDatabasePluginManager(),
+                    &filename_c,
+                    1,
+                    time,
+                    plugins, 
+                    format);
+            }
         }
 
         db->SetFullDBName(filename);
@@ -747,6 +821,71 @@ NetworkManager::GetDBFromCache(const std::string &filename, int time,
         RETHROW;
     }
     ENDTRY
+}
+
+// ****************************************************************************
+// Method: NetworkManager::StartNetwork
+//
+// Purpose: 
+//   Simple StartNetwork routine, passing the most common defaults to the
+//   more complex version of the routine.
+//
+// Arguments:
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Nov 10 16:34:18 PST 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+NetworkManager::StartNetwork(const std::string &format,
+    const std::string &filename,
+    const std::string &var,
+    int time)
+{
+    // Arguments were we can use the defaults.
+    std::string selName;
+    MaterialAttributes matopts;
+    MeshManagementAttributes meshopts;
+    bool treatAllDBsAsTimeVarying = false;
+    bool fileMayHaveUnloadedPlugin = false;
+    bool ignoreExtents = false;
+    int windowID = 0;
+
+    // Make empty strings behave as though no format was specified.
+    const char *defaultFormat = 0;
+    if(format.size() > 0)
+        defaultFormat = format.c_str();
+
+    // This sucks.
+    if (viswinMap.find(windowID) == viswinMap.end())
+        NewVisWindow(windowID);
+
+    // Construct the silr for the variable.
+    NetnodeDB *netDB = GetDBFromCache(filename, time, defaultFormat,
+                                      treatAllDBsAsTimeVarying, 
+                                      fileMayHaveUnloadedPlugin,
+                                      ignoreExtents);
+    if(netDB != NULL)
+    {
+        std::string leaf = ParsingExprList::GetRealVariable(var);
+        avtSILRestriction_p silr = new avtSILRestriction(netDB->GetDB()->
+            GetSIL(time, treatAllDBsAsTimeVarying));
+        std::string mesh = netDB->GetDB()->GetMetaData(time)->MeshForVar(var);
+        silr->SetTopSet(mesh.c_str());
+        CompactSILRestrictionAttributes *silrAtts = silr->MakeCompactAttributes();
+
+        StartNetwork(format, filename, var, time, *silrAtts, matopts, meshopts,
+                     treatAllDBsAsTimeVarying, ignoreExtents, selName, windowID);
+
+        delete silrAtts;
+    }
 }
 
 // ****************************************************************************
@@ -1201,10 +1340,10 @@ NetworkManager::DefineDB(const std::string &dbName, const std::string &dbPath,
             // factory so we can create a database based on a virtual
             // file.
             names = new const char *[filesWithPath.size()];
-            for(int i = 0; i < filesWithPath.size(); ++i)
+            for(size_t i = 0; i < filesWithPath.size(); ++i)
                 names[i] = filesWithPath[i].c_str();
             db = avtDatabaseFactory::FileList(GetDatabasePluginManager(),
-                  names, filesWithPath.size(), time, plugins, defaultFormat);
+                  names, (int)filesWithPath.size(), time, plugins, defaultFormat);
             delete [] names;
             names = 0;
 
@@ -2577,8 +2716,11 @@ NetworkManager::Render(bool checkThreshold, intVector plotIds, bool getZBuffer,
 //   file.
 //
 // Arguments:
-//   filename : The name of the file to save.
-//   format   : The file format to use for saving the image.
+//   ids         : The ids of the networks we want to save.
+//   filename    : The name of the file to save.
+//   imageWidth  : The image width
+//   imageHeight : The image height
+//   format      : The file format to use for saving the image.
 //
 // Returns:    True on success; false on failure.
 //
@@ -2594,15 +2736,26 @@ NetworkManager::Render(bool checkThreshold, intVector plotIds, bool getZBuffer,
 //    Hank Childs, Thu Aug 26 13:47:30 PDT 2010
 //    Change extents names.
 //
+//    Brad Whitlock, Fri Sep 28 14:47:23 PDT 2012
+//    Add the ids of the networks we want to save.
+//
+//    Brad Whitlock, Wed Oct  3 11:46:36 PDT 2012
+//    Check for valid network ids. Also copy the color tables into the new
+//    window attributes so we don't lose our color tables.
+//
 // ****************************************************************************
 
 bool
-NetworkManager::SaveWindow(const std::string &filename, int imageWidth, int imageHeight,
+NetworkManager::SaveWindow(const intVector &ids,
+    const std::string &filename, int imageWidth, int imageHeight,
     SaveWindowAttributes::FileFormat format)
 {
     const char *mName = "NetworkManager::SaveWindow: ";
     bool retval = false;
-    debug1 << mName << "arguments("
+    debug1 << mName << "arguments(ids={";
+    for(size_t i = 0; i < ids.size(); ++i)
+        debug1 << ids[i] << ", ";
+    debug1 << "}, " 
            << filename << ", "
            << imageWidth << ", "
            << imageHeight << ", "
@@ -2614,7 +2767,18 @@ NetworkManager::SaveWindow(const std::string &filename, int imageWidth, int imag
         std::map<int, EngineVisWinInfo>::iterator it = viswinMap.begin();
         if(it != viswinMap.end())
         {
-            intVector networkIds = it->second.plotsCurrentlyInWindow;
+#if 1
+            intVector networkIds(ids);
+#else
+            // Check the network ids for validity. See that they are in
+            // [0, networkCache.size()-1].
+            intVector networkIds;
+            for(size_t i = 0; i < ids.size(); ++i)
+            {
+                if(ids[i] >= 0 && ids[i] < int(networkCache.size()-1))
+                    networkIds.push_back(ids[i]);
+            }
+#endif
             bool getZBuffer = false;
             int annotMode = 2; // all annotations
             int windowID = it->first;
@@ -2625,15 +2789,12 @@ NetworkManager::SaveWindow(const std::string &filename, int imageWidth, int imag
             // to the networkIds.
             double extents[6];
             bool extentsInit = false;
-            if(networkIds.size() == 0)
+            if(networkIds.size() > 0)
             {
                 if(networkCache.size() > 0)
                 {
-                    DataNetwork *net = networkCache[networkCache.size()-1];
+                    DataNetwork *net = networkCache[networkIds[0]];
                     int id = net->GetNetID();
-                    networkIds.push_back(id);
-                    debug1 << mName << "networkIds vector was empty so add network "
-                           << id << endl;
 
                     // We need to update the view so we can see what we have. This is
                     // not quite the method I wanted to use to get the data attributes
@@ -2656,6 +2817,7 @@ NetworkManager::SaveWindow(const std::string &filename, int imageWidth, int imag
             // Set the new image size into the window attributes.
             if(imageWidth > 0 && imageHeight > 0)
             {
+                // Get the current window attributes.
                 WindowAttributes windowAtts(it->second.windowAttributes);
                 int newSize[2];
                 newSize[0] = imageWidth;
@@ -2663,6 +2825,12 @@ NetworkManager::SaveWindow(const std::string &filename, int imageWidth, int imag
                 windowAtts.SetSize(newSize);
                 if(!extentsInit)
                     it->second.viswin->GetBounds(extents);
+
+                // Make sure that the new window attributes preserve the current
+                // color tables.
+                windowAtts.SetColorTables(*(avtColorTables::Instance()->GetColorTables()));
+
+                // Set the new window attributes.
                 SetWindowAttributes(windowAtts,
                                     it->second.extentTypeString,
                                     extents,
@@ -3923,7 +4091,7 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
             // Work off of the source file instead of the plot.
             source = networkCache[id]->GetNetDB()->GetFilename();
             debug1 << mName << "Do not use the plot's intermediate data object "
-                               "for selection. Use its database source: " << source << endl;
+                   "for selection. Use its database source: " << source << endl;
             // Do not allow use of the plot's output.
             id = -1;
         }
@@ -5901,7 +6069,7 @@ NetworkManager::RenderSetup(intVector& plotIds, bool getZBuffer,
         for (size_t i = 0; i < plotIds.size(); i++)
         {
             if (this->r_mgmt.cellCounts[i] == 0)
-                networksWithNoData.push_back(i);
+                networksWithNoData.push_back((int)i);
         }
         // issue warning messages for plots with no data
         if (networksWithNoData.size() > 0)
@@ -6767,4 +6935,37 @@ std::string
 NetworkManager::GetQueryParameters(const std::string &qName)
 {
     return avtQueryFactory::Instance()->GetDefaultInputParams(qName);
+}
+
+// ****************************************************************************
+//  Method: FileMatchesPatternCB
+//
+//  Purpose:
+//    This function is a callback to the method ReadAndProcessDirectory,
+//    located in Utility.h.  It is called for each file in a give directory.
+//    Once it receives a file, it feeds that file to NetworkManager which then
+//    determines if the filename matches the requested pattern.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   Jun 26, 2013
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+static void
+FileMatchesPatternCB(void *cbdata, const std::string &filename, bool isDir, bool canAccess, long size)
+{
+    if (!isDir)
+    {
+        void **arr = (void **)cbdata;
+        std::vector< std::string > *fl = (std::vector< std::string > *)arr[0];
+        std::string *pattern = (std::string*)arr[1];
+        std::string name(filename);
+        size_t index  = filename.rfind(VISIT_SLASH_CHAR);
+        if(index != std::string::npos)
+            name = name.substr(index+1);
+        if (WildcardStringMatch(*pattern, name))
+           fl->push_back(filename);
+    }
 }

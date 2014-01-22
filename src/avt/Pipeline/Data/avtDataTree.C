@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -573,7 +573,13 @@ avtDataTree::~avtDataTree()
 avtDataTree&
 avtDataTree::operator=(const avtDataTree &rhs)
 {
-    if (this != &rhs)
+    return( this->operator=(&rhs) );
+}
+
+avtDataTree&
+avtDataTree::operator=(const avtDataTree *rhs)
+{
+    if (this != rhs)
     {
         if (dataRep != NULL) 
         {
@@ -591,16 +597,16 @@ avtDataTree::operator=(const avtDataTree &rhs)
             children = NULL;
         }
 
-        nChildren = rhs.nChildren;
+        nChildren = rhs->nChildren;
         if (nChildren > 0)
         {
             children = new avtDataTree_p [nChildren];
             for (int i = 0; i < nChildren; i++)
-               children[i] = rhs.children[i];
+               children[i] = rhs->children[i];
         } 
         else
         {
-            dataRep = new avtDataRepresentation(*(rhs.dataRep)); 
+            dataRep = new avtDataRepresentation(*(rhs->dataRep)); 
         } 
     }
     return *this;
@@ -1616,22 +1622,21 @@ avtDataTree::GetDatasetAsString()
     vtkAppendFilter* vaf = vtkAppendFilter::New();
 
     for(int i = 0; i < nLeaves; ++i)
-        vaf->AddInput(ds[i]);
+        vaf->AddInputData(ds[i]);
 
     vtkGeometryFilter* vu = vtkGeometryFilter::New();
 
-    vu->AddInput(vaf->GetOutput());
+    vu->AddInputData(vaf->GetOutput());
     vtkDataSet* dataset = dynamic_cast<vtkDataSet*>(vu->GetOutput());
 
     vtkDataSetWriter* writer = vtkDataSetWriter::New();
 
     writer->SetFileTypeToASCII();
     writer->WriteToOutputStringOn();
-    writer->SetInput(dataset);
+    writer->SetInputData(dataset);
     writer->Write();
 
-    std::string res = writer->GetOutputString();
-
+    std::string res(writer->GetOutputString(),writer->GetOutputStringLength());
     delete [] ds;
     vaf->Delete();
     vu->Delete();

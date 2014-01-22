@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -111,7 +111,7 @@ struct ResampledMat
     }
 
   public:
-    // number of bytes per element  (i.e. nmats / 8)
+    // number of bytes per element  (i.e. ceil(nmats / 8))
     int               nBPE;
 
     // array of length nBPE * nCells

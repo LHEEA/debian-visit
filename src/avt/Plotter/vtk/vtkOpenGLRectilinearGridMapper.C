@@ -20,7 +20,7 @@
 //    The gcc-4.x compiler no longer just warns about automatic type conversion.
 //
 =========================================================================*/
-#include <avtGLEWInitializer.h>
+#include <avtOpenGLExtensionManager.h>
 #include "vtkOpenGLRectilinearGridMapper.h"
 
 #include <vtkPoints.h>
@@ -49,7 +49,6 @@
 
 static const int dlSize = 8192;
 
-vtkCxxRevisionMacro(vtkOpenGLRectilinearGridMapper, "$Revision: 1.78 $");
 vtkStandardNewMacro(vtkOpenGLRectilinearGridMapper);
 
 vtkOpenGLRectilinearGridMapper::vtkOpenGLRectilinearGridMapper()
@@ -146,7 +145,8 @@ void vtkOpenGLRectilinearGridMapper::Render(vtkRenderer *ren, vtkActor *act)
   else
     {
     this->InvokeEvent(vtkCommand::StartEvent,NULL);
-    input->Update();
+    if (!this->Static)
+      this->GetInputAlgorithm()->Update();
     this->InvokeEvent(vtkCommand::EndEvent,NULL);
 
     numPts = input->GetNumberOfPoints();
@@ -1000,11 +1000,13 @@ vtkOpenGLRectilinearGridMapper::BeginColorTexturing()
     // after texturing. This ensures that the specular highlights look
     // right when we're in texturing mode.
     //
+#ifdef HAVE_LIBGLEW
     if(GLEW_EXT_secondary_color)
     {
         glEnable(GL_COLOR_SUM_EXT);
         glLightModeli(GL_LIGHT_MODEL_COLOR_CONTROL, GL_SEPARATE_SPECULAR_COLOR);
     }
+#endif
 }
 
 
@@ -1038,11 +1040,12 @@ vtkOpenGLRectilinearGridMapper::EndColorTexturing()
     {
         glDisable(GL_TEXTURE_1D);
     }
-
+#ifdef HAVE_LIBGLEW
     if(GLEW_EXT_secondary_color)
     {
         glDisable(GL_COLOR_SUM_EXT);
     }
+#endif
 }
 
 

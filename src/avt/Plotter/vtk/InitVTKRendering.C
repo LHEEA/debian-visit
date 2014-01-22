@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,7 +47,8 @@
 #include <vtkVersion.h>
 #if !defined(_WIN32)
 #include <vtkGraphicsFactory.h>
-#include <vtkImagingFactory.h>
+//FIX_ME_VTK6.0
+//#include <vtkImagingFactory.h>
 #endif
 
 
@@ -188,47 +189,5 @@ InitVTKRendering::Initialize(void)
       vtkObjectFactory::RegisterFactory(mfactory);
       mfactory->Delete();
     }
-#endif
-}
-
-
-// ****************************************************************************
-//  Method: InitVTKRendering::Force/Unforce Mesa
-//
-//  Purpose:
-//      Forces all VTK rendering objects to be instantiated as Mesa object.
-//
-//  Programmer: Hank Childs
-//  Creation:   January 28, 2002
-//
-//  Modifications:
-//    Kathleen Bonnell, Wed Feb  5 09:09:08 PST 2003
-//    Use vtkGraphicsFactory and vtkImagingFactory static variables to
-//    handle Mesa objects.
-//
-//    Brad Whitlock, Wed Jun 10 11:59:54 PDT 2009
-//    Force mangled mesa to be defined before telling the factories to use
-//    mesa classes.
-//
-// ****************************************************************************
-
-void
-InitVTKRendering::ForceMesa(void)
-{
-#if !defined(_WIN32) && (defined(VTK_USE_MANGLED_MESA) || \
-                         defined(VTK_OPENGL_HAS_OSMESA))
-    vtkGraphicsFactory::SetUseMesaClasses(1);
-    vtkGraphicsFactory::SetOffScreenOnlyMode(1);
-    vtkImagingFactory::SetUseMesaClasses(1);
-#endif
-}
-
-void
-InitVTKRendering::UnforceMesa(void)
-{
-#if !defined(_WIN32) && defined(VTK_USE_MANGLED_MESA)
-    vtkGraphicsFactory::SetUseMesaClasses(0);
-    vtkGraphicsFactory::SetOffScreenOnlyMode(0);
-    vtkImagingFactory::SetUseMesaClasses(0);
 #endif
 }

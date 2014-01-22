@@ -24,8 +24,6 @@
 
 #include "vtkOpenGLStructuredGridMapper.h"
 
-vtkCxxRevisionMacro(vtkStructuredGridMapper, "$Revision: 1.38 $");
-
 //----------------------------------------------------------------------------
 // Needed when we don't use the vtkStandardNewMacro.
 vtkInstantiatorNewMacro(vtkStructuredGridMapper);
@@ -45,17 +43,9 @@ vtkStructuredGridMapper::vtkStructuredGridMapper()
 }
 
 //----------------------------------------------------------------------------
-void vtkStructuredGridMapper::SetInput(vtkStructuredGrid *input)
+void vtkStructuredGridMapper::SetInputData(vtkStructuredGrid *input)
 {
-  if(input)
-    {
-    this->SetInputConnection(0, input->GetProducerPort());
-    }
-  else
-    {
-    // Setting a NULL input removes the connection.
-    this->SetInputConnection(0, 0);
-    }
+    this->SetInputDataInternal(0, input);
 }
 
 //----------------------------------------------------------------------------
@@ -72,7 +62,7 @@ void vtkStructuredGridMapper::ShallowCopy(vtkAbstractMapper *mapper)
   vtkStructuredGridMapper *m = vtkStructuredGridMapper::SafeDownCast(mapper);
   if ( m != NULL )
     {
-    this->SetInput(m->GetInput());
+    this->SetInputConnection(m->GetInputConnection(0, 0));
     }
 
   // Now do superclass

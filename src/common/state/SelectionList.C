@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -760,7 +760,7 @@ SelectionList::RemoveSelections(int index)
 int
 SelectionList::GetNumSelections() const
 {
-    return selections.size();
+    return (int)selections.size();
 }
 
 // ****************************************************************************
@@ -911,7 +911,7 @@ SelectionList::RemoveSelectionSummary(int index)
 int
 SelectionList::GetNumSelectionSummarys() const
 {
-    return selectionSummary.size();
+    return (int)selectionSummary.size();
 }
 
 // ****************************************************************************

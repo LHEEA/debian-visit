@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,8 +40,10 @@
 #define __vtkRectilinearLinesNoDataFilter_h
 #include <visit_vtk_exports.h>
 
-#include "vtkRectilinearGridToPolyDataFilter.h"
+#include "vtkPolyDataAlgorithm.h"
+
 class     vtkIdTypeArray;
+
 #include <vector>
 
 // ****************************************************************************
@@ -61,10 +63,10 @@ class     vtkIdTypeArray;
 // ****************************************************************************
 
 class VISIT_VTK_API vtkRectilinearLinesNoDataFilter :
-    public vtkRectilinearGridToPolyDataFilter
+  public vtkPolyDataAlgorithm
 {
 public:
-  vtkTypeMacro(vtkRectilinearLinesNoDataFilter,vtkRectilinearGridToPolyDataFilter);
+  vtkTypeMacro(vtkRectilinearLinesNoDataFilter,vtkPolyDataAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
@@ -75,7 +77,10 @@ protected:
   vtkRectilinearLinesNoDataFilter();
   ~vtkRectilinearLinesNoDataFilter() {};
 
-  void Execute();
+  virtual int RequestData(vtkInformation *,
+                          vtkInformationVector **,
+                          vtkInformationVector *);
+  virtual int FillInputPortInformation(int port, vtkInformation *info);
 
 private:
   vtkRectilinearLinesNoDataFilter(const vtkRectilinearLinesNoDataFilter&);
@@ -83,5 +88,3 @@ private:
 };
 
 #endif
-
-

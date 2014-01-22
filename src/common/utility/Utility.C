@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -167,7 +167,7 @@ LongestCommonSuffixLength(const char * const *list, int listN)
     int   min_length = 1000;
     for (i = 0 ; i < listN ; i++)
     {
-        lengths[i] = strlen(list[i]);
+        lengths[i] = (int)strlen(list[i]);
         if (lengths[i] < min_length)
         {
             min_length = lengths[i];

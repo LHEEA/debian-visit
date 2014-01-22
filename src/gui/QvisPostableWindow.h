@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,8 +45,10 @@
 class DataNode;
 class QvisNotepadArea;
 class QPushButton;
+class QToolButton;
 class QVBoxLayout;
-class QVBoxLayout;
+class QTextEdit;
+class QvisHelpWindow;
 
 // ****************************************************************************
 // Class: QvisPostableWindow
@@ -121,6 +123,7 @@ public slots:
     virtual void hide();
     virtual void post(bool avoid_scroll=false);
     virtual void unpost();
+    virtual void help();
 protected:
     bool               isCreated;
     bool               isPosted;
@@ -130,6 +133,7 @@ protected:
     QVBoxLayout        *topLayout;
     QPushButton        *postButton;
     QPushButton        *dismissButton;
+    QPushButton        *helpButton;
     QvisNotepadArea    *notepad;
 
     static bool         postWhenShown;

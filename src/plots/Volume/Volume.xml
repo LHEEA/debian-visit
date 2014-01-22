@@ -88,6 +88,7 @@
         RayCasting
         RayCastingIntegration
         SLIVR
+    RayCastingSLIVR
         Tuvok
       </Enum>
       <Enum name="GradientType">
@@ -106,6 +107,7 @@
       <Enum name="SamplingType">
         KernelBased
         Rasterization
+        Trilinear
       </Enum>
       <Enum name="OpacityModes">
         FreeformMode
@@ -219,6 +221,12 @@
       </Field>
       <Field name="lowGradientLightingClampValue" label="lowGradientLightingClampFlag" type="double">
         1.000000
+      </Field>
+    <Field name="materialProperties" label="materialProperties" type="doubleArray" length="4">
+        0.4
+        0.75
+        0.0
+        15
       </Field>
       <Function name="ChangesRequireRecalculation" user="true" member="true">
       </Function>

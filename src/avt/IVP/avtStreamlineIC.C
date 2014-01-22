@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -204,15 +204,12 @@ avtStreamlineIC::CheckForTermination(avtIVPStep& step, avtIVPField *field)
     if( !shouldTerminate && numSteps >= maxSteps )
     {
         terminatedBecauseOfMaxSteps = true;
-        speedAtTermination = step.GetV(step.GetT1()).length();
         shouldTerminate = true;
+        speedAtTermination = step.GetV(step.GetT1()).length();
     }
 
     // Update other termination criteria.
     numSteps += 1;
-
-    // Done by state recorder, which may need to record state
-    //distance += step.GetLength();
 
     return shouldTerminate;
 }

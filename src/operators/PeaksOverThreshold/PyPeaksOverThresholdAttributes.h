@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define PEAKSOVERTHRESHOLDATTRIBUTES_NMETH 42
+#define PEAKSOVERTHRESHOLDATTRIBUTES_NMETH 62
 void           PyPeaksOverThresholdAttributes_StartUp(PeaksOverThresholdAttributes *subj, void *data);
 void           PyPeaksOverThresholdAttributes_CloseDown();
 PyMethodDef *  PyPeaksOverThresholdAttributes_GetMethodTable(int *nMethods);

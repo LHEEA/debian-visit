@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,13 +45,15 @@
 #include <vtkBox.h>
 #include <vtkCell.h>
 #include <vtkCellData.h>
-#include <vtkDataSetToUnstructuredGridFilter.h>
 #include <vtkExtractRectilinearGrid.h>
 #include <vtkIdList.h>
+#include <vtkInformation.h>
+#include <vtkInformationVector.h>
 #include <vtkObjectFactory.h>
 #include <vtkPointData.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkUnstructuredGridAlgorithm.h>
 
 #include <avtExtents.h>
 #include <avtIntervalTree.h>
@@ -66,10 +68,10 @@
 
 // Define the VTK filter here.
 
-class vtkBoxFilter : public vtkDataSetToUnstructuredGridFilter
+class vtkBoxFilter : public vtkUnstructuredGridAlgorithm
 {
 public:
-  vtkTypeMacro(vtkBoxFilter,vtkDataSetToUnstructuredGridFilter);
+  vtkTypeMacro(vtkBoxFilter,vtkUnstructuredGridAlgorithm);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   static vtkBoxFilter *New();
@@ -93,6 +95,10 @@ public:
   vtkGetMacro(AllOfCell, int);
   vtkBooleanMacro(AllOfCell, int);
 
+  vtkSetMacro(Inverse, bool)
+  vtkGetMacro(Inverse, bool)
+  vtkBooleanMacro(Inverse, bool)
+
 protected:
   vtkBoxFilter();
   ~vtkBoxFilter();
@@ -100,21 +106,16 @@ protected:
   void operator=(const vtkBoxFilter&) {};
 
   // Usual data generation method
-  void Execute();
+  virtual int RequestData(vtkInformation *,
+                          vtkInformationVector **,
+                          vtkInformationVector *);
+  virtual int FillInputPortInformation(int port, vtkInformation *info);
 
   float MinX, MaxX, MinY, MaxY, MinZ, MaxZ;
   int   AllOfCell;
+  bool Inverse;
 };
 
-
-void
-vtkBoxFilter::PrintSelf(ostream &os, vtkIndent indent)
-{
-  vtkDataSetToUnstructuredGridFilter::PrintSelf(os,indent);
-  os << indent << "Box: (" << MinX << ", " << MaxX << "), (" << MinY << ", "
-     << MaxY << "), (" << MinZ << ", " << MaxZ << ")" << endl;
-  os << indent << "Must have all of cell = " << AllOfCell << endl;
-}
 
 vtkBoxFilter *vtkBoxFilter::New()
 {
@@ -141,20 +142,39 @@ vtkBoxFilter::~vtkBoxFilter()
 }
 
 // ****************************************************************************
-// Modifications:
-//   Akira Haddox, Fri Aug  8 13:48:22 PDT 2003
-//   Rewrote algorithm so that 'SomeOfCell' selection would be accurate.
+//  Method: vtkBoxFilter::RequestData
+//
+//  Modifications:
+//    Akira Haddox, Fri Aug  8 13:48:22 PDT 2003
+//    Rewrote algorithm so that 'SomeOfCell' selection would be accurate.
+//
 // ****************************************************************************
 
-void
-vtkBoxFilter::Execute(void)
+int
+vtkBoxFilter::RequestData(
+    vtkInformation *vtkNotUsed(request),
+    vtkInformationVector **inputVector,
+    vtkInformationVector *outputVector)
 {
+    vtkDebugMacro(<<"Executing vtkBoxFilter");
+
+    // get the info objects
+    vtkInformation *inInfo = inputVector[0]->GetInformationObject(0);
+    vtkInformation *outInfo = outputVector->GetInformationObject(0);
+
+    //
+    // Initialize some frequently used values.
+    //
+    vtkDataSet *input = vtkDataSet::SafeDownCast(
+        inInfo->Get(vtkDataObject::DATA_OBJECT()));
+    vtkUnstructuredGrid *output = vtkUnstructuredGrid::SafeDownCast(
+        outInfo->Get(vtkDataObject::DATA_OBJECT()));
+
     int  i, j;
 
     //
     // Set up some automatic variables with convenient info about the input.
     //
-    vtkDataSet *input = GetInput();
     int nCells = input->GetNumberOfCells();
     int nPts   = input->GetNumberOfPoints();
     vtkPointData *inputPD = input->GetPointData();
@@ -179,7 +199,6 @@ vtkBoxFilter::Execute(void)
                                 4, 5,   4, 6,
                                 5, 7,
                                 6, 7 };
-                                
     
     if (AllOfCell)
     { 
@@ -248,7 +267,6 @@ vtkBoxFilter::Execute(void)
             }
         } 
     }
-
   
     //
     // Set up some the VTK vars that will (eventually) be copied over
@@ -256,7 +274,6 @@ vtkBoxFilter::Execute(void)
     //
     vtkPoints *pts = vtkVisItUtility::NewPoints(input);
     pts->Allocate(nPts/4,nPts);
-    vtkUnstructuredGrid *output = GetOutput();
     output->Allocate(nCells);
     vtkPointData *outputPD = output->GetPointData();
     vtkCellData  *outputCD = output->GetCellData();
@@ -384,12 +401,11 @@ vtkBoxFilter::Execute(void)
                         
                         double t;
                         if (vtkBox::IntersectBox(bounds, pt1, ray, pt2, t)
-                                && t < 1)
+                            && t < 1)
                         {
                             meetsCriteria = true;
                             break;
                         }
-                        
                     }
                 }
 
@@ -427,7 +443,7 @@ vtkBoxFilter::Execute(void)
            }
         }
 
-        if (meetsCriteria)
+        if ((!GetInverse() && meetsCriteria) || (GetInverse() && !meetsCriteria))
         {
             //
             // We must re-map the point ids from the input mesh to the
@@ -475,8 +491,35 @@ vtkBoxFilter::Execute(void)
     output->SetPoints(pts);
     pts->Delete();
     output->Squeeze(); // Squeeze dataset will squeeze points, vars too.
+
+    return 1;
 }
 
+// ****************************************************************************
+//  Method: vtkBoxFilter::FillInputPortInformation
+//
+// ****************************************************************************
+
+int
+vtkBoxFilter::FillInputPortInformation(int, vtkInformation *info)
+{
+    info->Set(vtkAlgorithm::INPUT_REQUIRED_DATA_TYPE(), "vtkDataSet");
+    return 1;
+}
+
+// ****************************************************************************
+//  Method: vtkBoxFilter::PrintSelf
+//
+// ****************************************************************************
+
+void
+vtkBoxFilter::PrintSelf(ostream &os, vtkIndent indent)
+{
+  this->Superclass::PrintSelf(os,indent);
+  os << indent << "Box: (" << MinX << ", " << MaxX << "), (" << MinY << ", "
+     << MaxY << "), (" << MinZ << ", " << MaxZ << ")" << endl;
+  os << indent << "Must have all of cell = " << AllOfCell << endl;
+}
 
 // ****************************************************************************
 //  Method: avtBoxFilter constructor
@@ -485,7 +528,6 @@ vtkBoxFilter::Execute(void)
 //  Creation:   Mon Nov 12 16:57:31 PST 2001
 //
 //  Modifications:
-//
 //    Mark C. Miller, Tue Sep 28 19:57:42 PDT 2004
 //    Added selection id
 //
@@ -495,7 +537,6 @@ avtBoxFilter::avtBoxFilter()
 {
     selID = -1;
 }
-
 
 // ****************************************************************************
 //  Method: avtBoxFilter destructor
@@ -511,7 +552,6 @@ avtBoxFilter::~avtBoxFilter()
 {
 }
 
-
 // ****************************************************************************
 //  Method:  avtBoxFilter::Create
 //
@@ -525,7 +565,6 @@ avtBoxFilter::Create()
 {
     return new avtBoxFilter();
 }
-
 
 // ****************************************************************************
 //  Method:      avtBoxFilter::SetAtts
@@ -547,7 +586,6 @@ avtBoxFilter::SetAtts(const AttributeGroup *a)
     atts = *(const BoxAttributes*)a;
 }
 
-
 // ****************************************************************************
 //  Method: avtBoxFilter::Equivalent
 //
@@ -566,7 +604,6 @@ avtBoxFilter::Equivalent(const AttributeGroup *a)
     return (atts == *(BoxAttributes*)a);
 }
 
-
 // ****************************************************************************
 //  Method: avtBoxFilter::ExecuteData
 //
@@ -584,7 +621,6 @@ avtBoxFilter::Equivalent(const AttributeGroup *a)
 //  Creation:   Mon Nov 12 16:57:31 PST 2001
 //
 //  Modifications:
-//
 //    Hank Childs, Tue Sep 10 16:38:01 PDT 2002
 //    Better memory management.
 //
@@ -593,6 +629,9 @@ avtBoxFilter::Equivalent(const AttributeGroup *a)
 //
 //    Hank Childs, Sun Apr 24 11:11:46 PDT 2005
 //    Add special support for rectilinear grids.
+//
+//   Dave Pugmire, Fri Aug 30 15:57:33 EDT 2013
+//   Add an inverse option for box clip.
 //
 // ****************************************************************************
 
@@ -611,7 +650,7 @@ avtBoxFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     }
 
     vtkDataSet *outDS = NULL;
-    if (in_ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
+    if (!atts.GetInverse() && in_ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
     {
         int dims[3] = {0, 0, 0};
         ((vtkRectilinearGrid*)in_ds)->GetDimensions(dims);
@@ -643,7 +682,6 @@ avtBoxFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     return rv;
 }
 
-
 // ****************************************************************************
 //  Method: avtBoxFilter::GeneralExecute
 //
@@ -664,7 +702,8 @@ vtkUnstructuredGrid *
 avtBoxFilter::GeneralExecute(vtkDataSet *in_ds)
 {
     vtkBoxFilter *bf = vtkBoxFilter::New();
-    bf->SetInput(in_ds);
+    bf->SetInverse(atts.GetInverse());
+    bf->SetInputData(in_ds);
 
     //
     // Make the filter appropriate for our attributes.
@@ -683,19 +722,17 @@ avtBoxFilter::GeneralExecute(vtkDataSet *in_ds)
     bf->SetMaxY(atts.GetMaxy());
     bf->SetMinZ(atts.GetMinz());
     bf->SetMaxZ(atts.GetMaxz());
+    bf->Update();
 
     //
     // Make this a dataset we can return even after we have freed memory.
     //
     vtkUnstructuredGrid *newDS = bf->GetOutput();
-    newDS->Update();
     newDS->Register(NULL);
-    //newDS->SetSource(NULL);
     bf->Delete();
     return newDS;
 
 }
-
 
 // ****************************************************************************
 //  Method: avtBoxFilter::RectilinearExecute
@@ -808,18 +845,16 @@ avtBoxFilter::RectilinearExecute(vtkRectilinearGrid *in_ds)
     vtkExtractRectilinearGrid *extract = vtkExtractRectilinearGrid::New();
     int voi[6] = {firstCellX, lastCellX, firstCellY, lastCellY,
                   firstCellZ, lastCellZ };
-    extract->SetInput(in_ds);
+    extract->SetInputData(in_ds);
     extract->SetVOI(voi);
     extract->Update();
 
     vtkRectilinearGrid *rv = extract->GetOutput();
     rv->Register(NULL);
-    //rv->SetSource(NULL);
     extract->Delete();
 
     return rv;
 }
-
 
 // ****************************************************************************
 //  Method: avtBoxFilter::UpdateDataObjectInfo
@@ -875,7 +910,6 @@ avtBoxFilter::UpdateDataObjectInfo(void)
 //  Creation:   September 28, 2004 
 //
 //  Modifications:
-//
 //    Hank Childs, Fri Aug 12 13:40:39 PDT 2005
 //    Add support for interval trees.
 //
@@ -1002,4 +1036,3 @@ avtBoxFilter::CurveExecute(vtkRectilinearGrid *in_ds)
     curve->Register(NULL);
     return curve;
 }
-

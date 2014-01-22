@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,6 +55,7 @@ class     avtCurveLegend;
 class     avtLabeledCurveMapper;
 class     avtUserDefinedMapper;
 class     avtWarpFilter;
+class     avtPolarToCartesianFilter;
 class     vtkProperty;
 
 
@@ -85,6 +86,9 @@ class     vtkProperty;
 //    
 //    Kathleen Bonnell, Tue Mar  3 13:37:13 PST 2009
 //    Removed CanDo2DViewScaling (moved into Viewer PluginInfo)
+//
+//    Kathleen Biagas, Wed Sep 11 17:14:35 PDT 2013
+//    Added PolarFilter.
 //
 // ****************************************************************************
 
@@ -117,6 +121,7 @@ class avtCurvePlot : public avtLineDataPlot
 
     avtCurveFilter                 *CurveFilter;
     avtWarpFilter                  *WarpFilter;
+    avtPolarToCartesianFilter      *PolarFilter;
 
     virtual avtMapper          *GetMapper(void);
     virtual avtDataObject_p     ApplyOperators(avtDataObject_p);

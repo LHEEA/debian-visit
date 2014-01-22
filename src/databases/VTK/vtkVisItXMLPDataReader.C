@@ -49,7 +49,7 @@ const char* vtkVisItXMLPDataReader::GetDataSetName()
   else if (strncmp(this->Extension, "pvtr", 4) == 0)
     return "PRectilinearGrid";
   else if (strncmp(this->Extension, "pvti", 4) == 0)
-    return "PImage";
+    return "PImageData";
   else if (strncmp(this->Extension, "pvtp", 4) == 0)
     return "PPolyData";
   else
@@ -114,6 +114,12 @@ char* vtkVisItXMLPDataReader::GetCellArrayName(int piece)
 char* vtkVisItXMLPDataReader::GetPieceFileName(int piece)
 {
   return this->PieceFileNames[piece];
+}
+
+//----------------------------------------------------------------------------
+int* vtkVisItXMLPDataReader::GetExtent(int piece)
+{
+  return this->Extents[piece];
 }
 
 //----------------------------------------------------------------------------
@@ -224,6 +230,11 @@ void vtkVisItXMLPDataReader::SetupPieces(int numPieces)
     {
     this->PieceFileNames[i] = 0;
     }
+  this->Extents = new int*[this->NumberOfPieces];
+  for(i=0;i < this->NumberOfPieces;++i)
+    {
+    this->Extents[i] = 0;
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -237,6 +248,13 @@ void vtkVisItXMLPDataReader::DestroyPieces()
     }
   delete [] this->PieceFileNames;
   this->PieceFileNames = 0;
+  for(i=0;i < this->NumberOfPieces;++i)
+    {
+    if(this->Extents[i])
+      delete [] this->Extents[i];
+    }
+  delete [] this->Extents;
+  this->Extents = 0;
 }
 
 //----------------------------------------------------------------------------
@@ -252,6 +270,15 @@ int vtkVisItXMLPDataReader::ReadPiece(vtkXMLDataElement* ePiece, int index)
   // The file name is relative to the summary file.  Convert it to
   // something we can use.
   this->PieceFileNames[index] = this->CreatePieceFileName(fileName);
+
+  const char* extent = ePiece->GetAttribute("Extent");
+  if (extent)
+    {
+    this->Extents[index] = new int[6];
+    int *ext = this->Extents[index];
+    sscanf(extent, "%d %d %d %d %d %d",
+           &(ext[0]), &(ext[1]), &(ext[2]), &(ext[3]), &(ext[4]), &(ext[5]));
+    }
   
   return 1;
 }

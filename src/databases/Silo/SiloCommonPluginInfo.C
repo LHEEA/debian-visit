@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -36,18 +36,11 @@
 *
 *****************************************************************************/
 
-#include <string>
-
 #include <SiloPluginInfo.h>
 #include <avtSiloFileFormat.h>
 #include <avtSTMDFileFormatInterface.h>
 #include <avtGenericDatabase.h>
 #include <avtSiloOptions.h>
-#include <DBOptionsAttributes.h>
-#include <DebugStream.h>
-
-using namespace SiloDBOptions;
-using std::string;
 
 // ****************************************************************************
 //  Method:  SiloCommonPluginInfo::GetDatabaseType
@@ -128,7 +121,6 @@ SiloCommonPluginInfo::GetWriteOptions() const
 {
     return GetSiloWriteOptions();
 }
-
 // ****************************************************************************
 //  Method: SiloCommonPluginInfo::SetReadOptions
 //
@@ -141,6 +133,13 @@ SiloCommonPluginInfo::GetWriteOptions() const
 //    Mark C. Miller, Wed Jul 21 16:11:52 PDT 2010
 //    Resurrected after getting clobbered in r8950.
 // ****************************************************************************
+#include <string>
+#include <DBOptionsAttributes.h>
+#include <DebugStream.h>
+
+using namespace SiloDBOptions;
+using std::string;
+
 void
 SiloCommonPluginInfo::SetReadOptions(DBOptionsAttributes *opts)
 {
@@ -216,3 +215,4 @@ SiloCommonPluginInfo::SetReadOptions(DBOptionsAttributes *opts)
 
     readOptions = opts;
 }
+

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -520,7 +520,7 @@ DDCMDHeader::Read(const std::string &filename, int maxlen, char *header)
     if (!file)
         return -1;
 
-    int headerlength = 0;
+    size_t headerlength = 0;
     fgets(header, maxlen - headerlength, file);
     headerlength = strlen(header);
     char *h = header + headerlength;
@@ -536,12 +536,12 @@ DDCMDHeader::Read(const std::string &filename, int maxlen, char *header)
     //
     // Convert any newline characters to spaces.
     //
-    int i;
+    size_t i;
     for (i = 0; i < headerlength; i++)
         if (header[i] == '\n' ) header[i] = ' ';
     header[i] = '\0';
 
-    return headerlength;
+    return (int)headerlength;
 }
 
 // ****************************************************************************
@@ -2748,7 +2748,7 @@ avtDDCMDFileFormat::avtDDCMDFileFormat(const char *filename)
     b = str;
     while (b != NULL && lbuf < 1023)
     {
-        lbuf = strlen(buf);
+        lbuf = (int)strlen(buf);
         b = fgets(buf + lbuf, maxlen - lbuf, file);
     }
     if (lbuf >= 1023)

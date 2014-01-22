@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -234,7 +234,7 @@ avtShiftCenteringFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
         //  create the point data from cell data.
         //
         vtkCellDataToPointData *cd2pd = vtkCellDataToPointData::New();
-        cd2pd->SetInput(dsToShift);
+        cd2pd->SetInputData(dsToShift);
         cd2pd->GetExecutive()->SetOutputData(0, outDS);
         cd2pd->Update();
         cd2pd->Delete();
@@ -348,7 +348,7 @@ avtShiftCenteringFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
         //
         vtkPointDataToCellData *pd2cd = vtkPointDataToCellData::New();
      
-        pd2cd->SetInput(dsToShift);
+        pd2cd->SetInputData(dsToShift);
         pd2cd->GetExecutive()->SetOutputData(0, outDS);
         pd2cd->Update();
         pd2cd->Delete();

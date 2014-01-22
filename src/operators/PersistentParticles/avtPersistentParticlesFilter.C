@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -746,7 +746,7 @@ avtPersistentParticlesFilter::Finalize(void)
 
       //Merge the data but do not connect the traces of particles
       if( ! atts.GetConnectParticles() ){
-          avtDataTree_p newTree = new avtDataTree(trees.size(), &(trees[0]));
+          avtDataTree_p newTree = new avtDataTree((int)trees.size(), &(trees[0]));
           SetOutputDataTree(newTree);
           trees.clear();
       }

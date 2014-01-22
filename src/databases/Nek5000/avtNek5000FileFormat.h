@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -133,6 +133,12 @@ class KeyCompare {
 //    Hank Childs, Sun Oct 28 17:56:17 PDT 2012
 //    Add attributes for reading all times, cycles.
 //
+//    Hank Childs, Fri Jan  4 14:33:11 PST 2013
+//    Add support for time periodicity.
+//
+//    Hank Childs, Mon Mar  4 18:35:27 PST 2013
+//    Add support for duplicating data.
+//
 // ****************************************************************************
 
 class avtNek5000FileFormat : public avtMTMDFileFormat
@@ -178,6 +184,9 @@ class avtNek5000FileFormat : public avtMTMDFileFormat
     int                  iNumOutputDirs;  //used in parallel format
     bool                 bParFormat;
 
+    int                  numberOfTimePeriods;
+    double               gapBetweenTimePeriods;
+
     // This info is embedded in, or derived from, the file header
     bool                 bSwapEndian;
     int                  iNumBlocks;
@@ -202,6 +211,7 @@ class avtNek5000FileFormat : public avtMTMDFileFormat
     int                  timestepToUseForMesh;
 
     bool                 readOptionToGetAllTimes;
+    bool                 duplicateData;
 
     // Cached data describing how to read data out of the file.
     FILE *fdMesh, *fdVar;

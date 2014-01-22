@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -591,14 +591,10 @@ vtkImageData *
 avtImageRepresentation::NewImage(int width, int height)
 {
     vtkImageData *image = vtkImageData::New();
-    image->SetWholeExtent(0, width-1, 0, height-1, 0, 0);
-    image->SetUpdateExtent(0, width-1, 0, height-1, 0, 0);
     image->SetExtent(0, width-1, 0, height-1, 0, 0);
     image->SetSpacing(1., 1., 1.);
     image->SetOrigin(0., 0., 0.);
-    image->SetNumberOfScalarComponents(3);
-    image->SetScalarType(VTK_UNSIGNED_CHAR);
-    image->AllocateScalars();
+    image->AllocateScalars(VTK_UNSIGNED_CHAR, 3);
 
     return image;
 }
@@ -694,7 +690,7 @@ CreateStringFromVTKInput(vtkImageData *img, unsigned char *&str, int &len)
     vtkStructuredPointsWriter *writer = vtkStructuredPointsWriter::New();
     writer->SetFileTypeToBinary();
     writer->WriteToOutputStringOn();
-    writer->SetInput(tmp);
+    writer->SetInputData(tmp);
     writer->SetFileTypeToBinary();
     writer->Write();
 
@@ -737,6 +733,9 @@ CreateStringFromVTKInput(vtkImageData *img, unsigned char *&str, int &len)
 //     Removed call to SetSource(NULL) as it now removes information necessary
 //     for the dataset.
 //
+//    Kathleen Biagas, Fri Jan 25 16:40:41 PST 2013
+//    Call update on reader, not data object.
+//
 // ****************************************************************************
 
 void avtImageRepresentation::GetImageFromString(unsigned char *str,
@@ -765,9 +764,9 @@ void avtImageRepresentation::GetImageFromString(unsigned char *str,
     charArray->SetArray((char *) str, strLength, iOwnIt);
     reader->SetReadFromInputString(1);
     reader->SetInputArray(charArray);
+    reader->Update();
     img = reader->GetOutput();
-    img->Update();
-    img->SetScalarType(VTK_UNSIGNED_CHAR);
+    img->SetScalarType(VTK_UNSIGNED_CHAR, img->GetInformation());
     img->Register(NULL);
     //  calling SetSource sets' PipelineInformation to NULL, and then
     //  vtkImageData no longer knows its scalar data type, and who knows

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,6 +56,7 @@
 #include <QvisColorButton.h>
 #include <QvisLineStyleWidget.h>
 #include <QvisLineWidthWidget.h>
+#include <QvisOpacitySlider.h>
 #include <QNarrowLineEdit.h>
 #include <stdio.h>
 #include <string>
@@ -153,36 +154,217 @@ QvisCurvePlotWindow::~QvisCurvePlotWindow()
 //   Modified layout of geometry group.  Symbols/Points can now be drawn
 //   same time as lines. Added pointStride for Static symbols.
 //
+//   Brad Whitlock, Fri Jul  5 17:18:48 PDT 2013
+//   Added fill color.
+//
+//   Kathleen Biagas, Wed Sep 11 17:18:21 PDT 2013
+//   Moved bulk of code to new methods that fill in tabs.
+//
 // ****************************************************************************
 
 void
 QvisCurvePlotWindow::CreateWindowContents()
 {
-    //
-    // Create the geometry
-    //
-    QGroupBox * geometryGroup = new QGroupBox(central);
-    geometryGroup->setTitle(tr("Line/Point Geometry"));
-    topLayout->addWidget(geometryGroup);
+    QTabWidget *propertyTabs = new QTabWidget(central);
+    topLayout->addWidget(propertyTabs);
 
-    QGridLayout *geometryLayout = new QGridLayout(geometryGroup);
-    geometryLayout->setMargin(5);
-    geometryLayout->setSpacing(10);
+    // ----------------------------------------------------------------------
+    // Data tab
+    // ----------------------------------------------------------------------
+    QWidget *dataTab = new QWidget(central);
+    propertyTabs->addTab(dataTab, tr("Data"));
+    CreateDataTab(dataTab);
+
+    // ----------------------------------------------------------------------
+    // Geometry tab
+    // ----------------------------------------------------------------------
+    QWidget *geometryTab = new QWidget(central);
+    propertyTabs->addTab(geometryTab, tr("Geometry"));
+    CreateGeometryTab(geometryTab);
+
+    // ----------------------------------------------------------------------
+    // Extras tab
+    // ----------------------------------------------------------------------
+    QWidget *extrasTab = new QWidget(central);
+    propertyTabs->addTab(extrasTab, tr("Extras"));
+    CreateExtrasTab(extrasTab);
+}
+
+
+// ****************************************************************************
+// Method: QvisCurvePlotWindow::CreateDataTab
+//
+// Purpose: 
+//   Populates the data tab.
+//
+// Programmer: Dave Pugmire
+// Creation:   Tue Dec 29 14:37:53 EST 2009
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisCurvePlotWindow::CreateDataTab(QWidget *pageData)
+{
+    QGridLayout *topLayout = new QGridLayout(pageData);
+    topLayout->setMargin(5);
+    topLayout->setSpacing(10);
+
+    //
+    // Create the color
+    //
+    QGroupBox * colorGroup = new QGroupBox(central);
+    colorGroup->setTitle(tr("Color"));
+    topLayout->addWidget(colorGroup);
+
+    QGridLayout *colorLayout = new QGridLayout(colorGroup);
+    colorLayout->setMargin(5);
+    colorLayout->setSpacing(10);
  
+    // Create the radio buttons for curve color source
+    colorLayout->addWidget(new QLabel(tr("Curve color"), central), 0, 0);
+
+    curveColorButtons = new QButtonGroup(central);
+
+    QRadioButton *rb = new QRadioButton(tr("Cycle"), central);
+    rb->setChecked(true);
+    curveColorButtons->addButton(rb, 0);
+    colorLayout->addWidget(rb, 0, 1);
+    rb = new QRadioButton(tr("Custom"), central);
+    curveColorButtons->addButton(rb, 1);
+    colorLayout->addWidget(rb, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
+
+    // Each time a radio button is clicked, call the scale clicked slot.
+    connect(curveColorButtons, SIGNAL(buttonClicked(int)),
+            this, SLOT(curveColorClicked(int)));
+
+    // Create the curve color button.
+    curveColor = new QvisColorButton(central);
+    connect(curveColor, SIGNAL(selectedColor(const QColor &)),
+            this, SLOT(curveColorChanged(const QColor &)));
+    colorLayout->addWidget(curveColor, 0, 3);
+
+    //
+    // Fill color widgets
+    //
+    QGroupBox *fillGroup = new QGroupBox(central);
+    fillGroup->setTitle(tr("Fill"));
+    colorLayout->addWidget(fillGroup, 1, 0, 1, 4);
+
+    QGridLayout *fillLayout = new QGridLayout(fillGroup);
+    fillLayout->setMargin(5);
+    fillLayout->setSpacing(10);
+
+    fillLayout->addWidget(new QLabel(tr("Fill mode"), central), 0, 0);
+
+    fillMode = new QComboBox(central);
+    fillMode->addItem(tr("No Fill"));
+    fillMode->addItem(tr("Solid"));
+    fillMode->addItem(tr("Horizontal Gradient"));
+    fillMode->addItem(tr("Vertical Gradient"));
+    connect(fillMode, SIGNAL(activated(int)),
+            this, SLOT(fillModeChanged(int))); 
+    fillLayout->addWidget(fillMode, 0, 1, 1, 2);
+
+    fillLabel1 = new QLabel(tr("Color 1"), central);
+    fillLayout->addWidget(fillLabel1, 1, 0);
+
+    fillColor1 = new QvisColorButton(central);
+    connect(fillColor1, SIGNAL(selectedColor(const QColor &)),
+            this, SLOT(fillColor1Changed(const QColor &)));
+    fillLayout->addWidget(fillColor1, 1, 1);
+
+    fillOpacity1 = new QvisOpacitySlider(0, 255, 25, 255, central);
+    fillOpacity1->setTickInterval(64);
+    fillOpacity1->setGradientColor(QColor(255, 0, 0));
+    connect(fillOpacity1, SIGNAL(valueChanged(int, const void*)),
+            this, SLOT(fillColor1OpacityChanged(int, const void*)));
+    fillLayout->addWidget(fillOpacity1, 1, 2);
+
+    fillLabel2 = new QLabel(tr("Color 2"), central);
+    fillLayout->addWidget(fillLabel2, 2, 0);
+
+    fillColor2 = new QvisColorButton(central);
+    connect(fillColor2, SIGNAL(selectedColor(const QColor &)),
+            this, SLOT(fillColor2Changed(const QColor &)));
+    fillLayout->addWidget(fillColor2, 2, 1);
+
+    fillOpacity2 = new QvisOpacitySlider(0, 255, 25, 255, central);
+    fillOpacity2->setTickInterval(64);
+    fillOpacity2->setGradientColor(QColor(255, 40, 40));
+    connect(fillOpacity2, SIGNAL(valueChanged(int, const void*)),
+            this, SLOT(fillColor2OpacityChanged(int, const void*)));
+    fillLayout->addWidget(fillOpacity2, 2, 2);
+
+    //
+    // Create the misc stuff
+    //
+    QGroupBox * miscGroup = new QGroupBox(central);
+    miscGroup->setTitle(tr("Misc"));
+    topLayout->addWidget(miscGroup);
+
+    QGridLayout *miscLayout = new QGridLayout(miscGroup);
+    miscLayout->setMargin(5);
+    miscLayout->setSpacing(10);
+ 
+    // Create the legend toggle
+    legendToggle = new QCheckBox(tr("Legend"), central);
+    connect(legendToggle, SIGNAL(toggled(bool)),
+            this, SLOT(legendToggled(bool)));
+    miscLayout->addWidget(legendToggle, 0, 0);
+
+    // Create the labels toggle
+    labelsToggle = new QCheckBox(tr("Labels"), central);
+    connect(labelsToggle, SIGNAL(toggled(bool)),
+            this, SLOT(labelsToggled(bool)));
+    miscLayout->addWidget(labelsToggle, 0, 1);
+}
+
+
+// ****************************************************************************
+// Method: QvisCurvePlotWindow::CreateGeometryTab
+//
+// Purpose: 
+//   Creates the widgets for the geometry options tab.
+//
+// Programmer: Kathleen Biagas 
+// Creation:   September 11, 2013
+//
+// ****************************************************************************
+
+void
+QvisCurvePlotWindow::CreateGeometryTab(QWidget *pageGeometry)
+{
+    QGridLayout *topLayout = new QGridLayout(pageGeometry);
+    topLayout->setMargin(5);
+    topLayout->setSpacing(10);
 
     int ROW = 0;
+
     //
     // Create line related controls.
     //
+    QGroupBox * lineGroup = new QGroupBox(central);
+    lineGroup->setTitle(tr("Line"));
+    topLayout->addWidget(lineGroup);
+
+    QGridLayout *lineLayout = new QGridLayout(lineGroup);
+    lineLayout->setMargin(5);
+    lineLayout->setSpacing(10);
+
+    ROW = 0;
+
+
     showLines = new QCheckBox(tr("Show lines"), central);
     connect(showLines, SIGNAL(toggled(bool)),
             this, SLOT(showLinesChanged(bool)));
 
-    geometryLayout->addWidget(showLines, ROW, 0, 1, 2);
+    lineLayout->addWidget(showLines, ROW, 0, 1, 2);
 
     ++ROW;
 
-    geometryLayout->addWidget(new QLabel("     ", central), ROW, 0, 1, 1);
+    lineLayout->addWidget(new QLabel("     ", central), ROW, 0, 1, 1);
 
     lineStyle = new QvisLineStyleWidget(0, central);
     lineStyleLabel = new QLabel(tr("Line style"), central);
@@ -191,32 +373,44 @@ QvisCurvePlotWindow::CreateWindowContents()
     connect(lineStyle, SIGNAL(lineStyleChanged(int)),
             this, SLOT(lineStyleChanged(int)));
 
-    geometryLayout->addWidget(lineStyleLabel, ROW, 1, 1, 1);
-    geometryLayout->addWidget(lineStyle, ROW, 2, 1, 1);
+    lineLayout->addWidget(lineStyleLabel, ROW, 1, 1, 1);
+    lineLayout->addWidget(lineStyle, ROW, 2, 1, 1);
 
     lineWidth = new QvisLineWidthWidget(0, central);
     lineWidthLabel = new QLabel(tr("Line width"), central);
     lineWidthLabel->setBuddy(lineWidth);
 
-    geometryLayout->addWidget(lineWidthLabel, ROW, 3, 1, 1);
-    geometryLayout->addWidget(lineWidth, ROW, 4, 1, 1);
+    lineLayout->addWidget(lineWidthLabel, ROW, 3, 1, 1);
+    lineLayout->addWidget(lineWidth, ROW, 4, 1, 1);
 
     connect(lineWidth, SIGNAL(lineWidthChanged(int)),
             this, SLOT(lineWidthChanged(int)));
 
     ++ROW;
 
+
     // 
     // Create point related controls.
     //
+
+    QGroupBox * pointGroup = new QGroupBox(central);
+    pointGroup->setTitle(tr("Point"));
+    topLayout->addWidget(pointGroup);
+
+    QGridLayout *pointLayout = new QGridLayout(pointGroup);
+    pointLayout->setMargin(5);
+    pointLayout->setSpacing(10);
+
+    ROW = 0;
 
     showPoints = new QCheckBox(tr("Show points"), central);
     connect(showPoints, SIGNAL(toggled(bool)),
             this, SLOT(showPointsChanged(bool)));
 
-    geometryLayout->addWidget(showPoints, ROW, 0, 1, 2);
+    pointLayout->addWidget(showPoints, ROW, 0, 1, 2);
 
     ++ROW;
+
 
     //
     // Create symbol-related controls
@@ -259,9 +453,9 @@ QvisCurvePlotWindow::CreateWindowContents()
     symbolTypeLabel = new QLabel(tr("Symbol"), central);
     symbolTypeLabel->setBuddy(symbolType);
 
-    geometryLayout->addWidget(new QLabel("    ", central), ROW, 0, 1 ,1);
-    geometryLayout->addWidget(symbolTypeLabel, ROW, 1, 1, 1);
-    geometryLayout->addWidget(symbolType, ROW, 2, 1, 1);
+    pointLayout->addWidget(new QLabel("    ", central), ROW, 0, 1 ,1);
+    pointLayout->addWidget(symbolTypeLabel, ROW, 1, 1, 1);
+    pointLayout->addWidget(symbolType, ROW, 2, 1, 1);
 
 
     // Create the point size line edit
@@ -272,20 +466,20 @@ QvisCurvePlotWindow::CreateWindowContents()
     connect(pointSize, SIGNAL(returnPressed()),
             this, SLOT(processPointSizeText())); 
 
-    geometryLayout->addWidget(pointSizeLabel, ROW, 3, 1, 1);
-    geometryLayout->addWidget(pointSize, ROW, 4, 1, 1);
+    pointLayout->addWidget(pointSizeLabel, ROW, 3, 1, 1);
+    pointLayout->addWidget(pointSize, ROW, 4, 1, 1);
 
     ++ROW;
 
-    fillModeGroup = new QButtonGroup(geometryGroup);
+    fillModeGroup = new QButtonGroup(pointGroup);
 
     connect(fillModeGroup, SIGNAL(buttonClicked(int)),
-            this, SLOT(fillModeChanged(int)));
+            this, SLOT(symbolFillModeChanged(int)));
 
-    staticButton = new QRadioButton(tr("Static"), geometryGroup);
+    staticButton = new QRadioButton(tr("Static"), pointGroup);
     staticButton->setChecked(true);
     fillModeGroup->addButton(staticButton, 0);
-    geometryLayout->addWidget(staticButton, ROW, 1, 1, 2);
+    pointLayout->addWidget(staticButton, ROW, 1, 1, 2);
 
     // Create the point stride 
     pointStride = new QSpinBox(central);
@@ -297,15 +491,15 @@ QvisCurvePlotWindow::CreateWindowContents()
     connect(pointStride, SIGNAL(valueChanged(int)),
             this, SLOT(pointStrideChanged(int))); 
 
-    geometryLayout->addWidget(pointStrideLabel, ROW, 3, 1, 1);
-    geometryLayout->addWidget(pointStride, ROW, 4, 1, 1);
+    pointLayout->addWidget(pointStrideLabel, ROW, 3, 1, 1);
+    pointLayout->addWidget(pointStride, ROW, 4, 1, 1);
 
     ++ROW;
 
-    dynamicButton = new QRadioButton(tr("Dynamic"), geometryGroup);
+    dynamicButton = new QRadioButton(tr("Dynamic"), pointGroup);
     fillModeGroup->addButton(dynamicButton, 1);
 
-    geometryLayout->addWidget(dynamicButton, ROW, 1, 1, 2);
+    pointLayout->addWidget(dynamicButton, ROW, 1, 1, 2);
 
     // Create the point density spin box
     symbolDensity = new QSpinBox(central);
@@ -317,42 +511,28 @@ QvisCurvePlotWindow::CreateWindowContents()
     connect(symbolDensity, SIGNAL(valueChanged(int)),
             this, SLOT(symbolDensityChanged(int)));
 
-    geometryLayout->addWidget(symbolDensityLabel, ROW, 3, 1, 1);
-    geometryLayout->addWidget(symbolDensity, ROW, 4, 1, 1);
+    pointLayout->addWidget(symbolDensityLabel, ROW, 3, 1, 1);
+    pointLayout->addWidget(symbolDensity, ROW, 4, 1, 1);
+}
 
-    //
-    // Create the color
-    //
-    QGroupBox * colorGroup = new QGroupBox(central);
-    colorGroup->setTitle(tr("Color"));
-    topLayout->addWidget(colorGroup);
 
-    QGridLayout *colorLayout = new QGridLayout(colorGroup);
-    colorLayout->setMargin(5);
-    colorLayout->setSpacing(10);
- 
-    // Create the radio buttons for curve color source
-    colorLayout->addWidget(new QLabel(tr("Curve color"), central), 0, 0);
+// ****************************************************************************
+// Method: QvisCurvePlotWindow::CreateExtrasTab
+//
+// Purpose: 
+//   Creates the widgets for the cue options tab.
+//
+// Programmer: Kathleen Biagas 
+// Creation:   September 11, 2013
+//
+// ****************************************************************************
 
-    curveColorButtons = new QButtonGroup(central);
-
-    QRadioButton *rb = new QRadioButton(tr("Cycle"), central);
-    rb->setChecked(true);
-    curveColorButtons->addButton(rb, 0);
-    colorLayout->addWidget(rb, 0, 1);
-    rb = new QRadioButton(tr("Custom"), central);
-    curveColorButtons->addButton(rb, 1);
-    colorLayout->addWidget(rb, 0, 2, Qt::AlignRight | Qt::AlignVCenter);
-
-    // Each time a radio button is clicked, call the scale clicked slot.
-    connect(curveColorButtons, SIGNAL(buttonClicked(int)),
-            this, SLOT(curveColorClicked(int)));
-
-    // Create the curve color button.
-    curveColor = new QvisColorButton(central);
-    connect(curveColor, SIGNAL(selectedColor(const QColor &)),
-            this, SLOT(curveColorChanged(const QColor &)));
-    colorLayout->addWidget(curveColor, 0, 3);
+void
+QvisCurvePlotWindow::CreateExtrasTab(QWidget *pageExtras)
+{
+    QGridLayout *topLayout = new QGridLayout(pageExtras);
+    topLayout->setMargin(5);
+    topLayout->setSpacing(10);
 
     //
     // Create the time cue stuff
@@ -414,27 +594,65 @@ QvisCurvePlotWindow::CreateWindowContents()
     timeCueLayout->addWidget(timeForTimeCue, 3,1);
 
     //
-    // Create the misc stuff
+    // Create the coordinate system controls
     //
-    QGroupBox * miscGroup = new QGroupBox(central);
-    miscGroup->setTitle(tr("Misc"));
-    topLayout->addWidget(miscGroup);
+    QGroupBox *coordSystemGroup = new QGroupBox(central);
+    coordSystemGroup->setTitle(tr("Coordinate System"));
+    topLayout->addWidget(coordSystemGroup);
 
-    QGridLayout *miscLayout = new QGridLayout(miscGroup);
-    miscLayout->setMargin(5);
-    miscLayout->setSpacing(10);
+    QGridLayout *coordSystemLayout = new QGridLayout(coordSystemGroup);
+    coordSystemLayout->setMargin(5);
+    coordSystemLayout->setSpacing(10);
+
+
+    polarToggle = new QCheckBox(tr("Polar to Cartesian"), central);
+    connect(polarToggle, SIGNAL(toggled(bool)),
+            this, SLOT(polarToggled(bool)));
+    coordSystemLayout->addWidget(polarToggle, 0, 0, 1, 2);
+
+    //coordSystemLayout->addWidget(new QLabel("     ", central), 1, 0, 1, 1);
+
+    polarOrder = new QComboBox(central);
+    polarOrder->addItem(tr("R_Theta"));
+    polarOrder->addItem(tr("Theta_R"));
+    polarOrderLabel = new QLabel(tr("Order"), central);
+    polarOrderLabel->setBuddy(polarOrder);
+    polarOrderLabel->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+    connect(polarOrder, SIGNAL(activated(int)),
+            this, SLOT(polarOrderChanged(int))); 
+
+    coordSystemLayout->addWidget(polarOrderLabel, 1, 0, 1, 1);
+    coordSystemLayout->addWidget(polarOrder, 1, 1, 1, 1);
+
+
+    // Create the angle-unit widget
+    angleUnits = new QComboBox(central);
+    angleUnits->addItem(tr("Radians"));
+    angleUnits->addItem(tr("Degrees"));
+    angleUnitsLabel = new QLabel(tr("Units"), central);
+    angleUnitsLabel->setBuddy(angleUnits);
+    angleUnitsLabel->setAlignment(Qt::AlignRight|Qt::AlignVCenter);
+    connect(angleUnits, SIGNAL(activated(int)),
+            this, SLOT(angleUnitsChanged(int))); 
+
+    coordSystemLayout->addWidget(angleUnitsLabel, 1, 2, 1, 1);
+    coordSystemLayout->addWidget(angleUnits, 1, 3, 1, 1);
+
+    //
+    // Create the blank stuff to fill in gaps.
+    //
+//     QGroupBox * blankGroup = new QGroupBox(central);
+// //    blankGroup->setTitle(tr("Blank"));
+//     topLayout->addWidget(blankGroup);
+
+//     QGridLayout *blankLayout = new QGridLayout(blankGroup);
+//     blankLayout->setMargin(5);
+//     blankLayout->setSpacing(10);
  
-    // Create the legend toggle
-    legendToggle = new QCheckBox(tr("Legend"), central);
-    connect(legendToggle, SIGNAL(toggled(bool)),
-            this, SLOT(legendToggled(bool)));
-    miscLayout->addWidget(legendToggle, 0, 0);
-
-    // Create the labels toggle
-    labelsToggle = new QCheckBox(tr("Labels"), central);
-    connect(labelsToggle, SIGNAL(toggled(bool)),
-            this, SLOT(labelsToggled(bool)));
-    miscLayout->addWidget(labelsToggle, 0, 1);
+//     blankLayout->addWidget(new QLabel(tr(""), central), 0,0);
+//     blankLayout->addWidget(new QLabel(tr(""), central), 1,0);
+//     blankLayout->addWidget(new QLabel(tr(""), central), 2,0);
+//     blankLayout->addWidget(new QLabel(tr(""), central), 3,0);
 }
 
 
@@ -473,6 +691,12 @@ QvisCurvePlotWindow::CreateWindowContents()
 //
 //   Kathleen Bonnell, Wed Aug 11 09:34:41 PDT 2010
 //   Added pointStride, PointFillMode.  Updated widget 'enabled' dependencies.
+//
+//   Brad Whitlock, Fri Jul  5 17:19:40 PDT 2013
+//   Add fill color.
+//
+//   Kathleen Biagas, Wed Sep 11 17:22:43 PDT 2013
+//   Added polarToggle and degreesToggle.
 //
 // ****************************************************************************
 
@@ -676,6 +900,72 @@ QvisCurvePlotWindow::UpdateWindow(bool doAll)
             break;
           case CurveAttributes::ID_timeForTimeCue:
             timeForTimeCue->setText(DoubleToQString(atts->GetTimeForTimeCue()));
+            break;
+          case CurveAttributes::ID_fillMode:
+            { // new scope
+            bool enabled = atts->GetFillMode() != CurveAttributes::NoFill;
+            fillLabel1->setEnabled(enabled);
+            fillColor1->setEnabled(enabled);
+            fillOpacity1->setEnabled(enabled);
+
+            enabled = atts->GetFillMode() == CurveAttributes::HorizontalGradient ||
+                      atts->GetFillMode() == CurveAttributes::VerticalGradient;
+            fillLabel2->setEnabled(enabled);
+            fillColor2->setEnabled(enabled);
+            fillOpacity2->setEnabled(enabled);
+
+            fillMode->blockSignals(true);
+            fillMode->setCurrentIndex((int)atts->GetFillMode());
+            fillMode->blockSignals(false);
+            }
+            break;
+          case CurveAttributes::ID_fillColor1:
+            { // new scope
+                QColor c = QColor(atts->GetFillColor1().Red(),
+                                  atts->GetFillColor1().Green(),
+                                  atts->GetFillColor1().Blue());
+                fillColor1->blockSignals(true);
+                fillColor1->setButtonColor(c);
+                fillColor1->blockSignals(false);
+
+                fillOpacity1->blockSignals(true);
+                fillOpacity1->setValue(atts->GetFillColor1().Alpha());
+                fillOpacity1->setGradientColor(c);
+                fillOpacity1->blockSignals(false);
+            }
+          case CurveAttributes::ID_fillColor2:
+            { // new scope
+                QColor c = QColor(atts->GetFillColor2().Red(),
+                                  atts->GetFillColor2().Green(),
+                                  atts->GetFillColor2().Blue());
+                fillColor2->blockSignals(true);
+                fillColor2->setButtonColor(c);
+                fillColor2->blockSignals(false);
+
+                fillOpacity2->blockSignals(true);
+                fillOpacity2->setValue(atts->GetFillColor2().Alpha());
+                fillOpacity2->setGradientColor(c);
+                fillOpacity2->blockSignals(false);
+            }
+            break;
+          case CurveAttributes::ID_polarToCartesian:
+            polarToggle->blockSignals(true);
+            polarToggle->setChecked(atts->GetPolarToCartesian());
+            polarOrder->setEnabled(atts->GetPolarToCartesian());
+            polarOrderLabel->setEnabled(atts->GetPolarToCartesian());
+            angleUnits->setEnabled(atts->GetPolarToCartesian());
+            angleUnitsLabel->setEnabled(atts->GetPolarToCartesian());
+            polarToggle->blockSignals(false);
+            break;
+          case CurveAttributes::ID_polarCoordinateOrder:
+            polarOrder->blockSignals(true);
+            polarOrder->setCurrentIndex((int)atts->GetPolarCoordinateOrder());
+            polarOrder->blockSignals(false);
+            break;
+          case CurveAttributes::ID_angleUnits:
+            angleUnits->blockSignals(true);
+            angleUnits->setCurrentIndex((int)atts->GetAngleUnits());
+            angleUnits->blockSignals(false);
             break;
         }
     }
@@ -968,7 +1258,7 @@ QvisCurvePlotWindow::symbolDensityChanged(int val)
 
 
 void
-QvisCurvePlotWindow::fillModeChanged(int val)
+QvisCurvePlotWindow::symbolFillModeChanged(int val)
 {
     switch(val)
     {
@@ -1055,4 +1345,81 @@ QvisCurvePlotWindow::timeForTimeCueProcessText()
     Apply();
 }
 
+void
+QvisCurvePlotWindow::fillModeChanged(int val)
+{
+    if(val == 0)
+        atts->SetFillMode(CurveAttributes::NoFill);
+    else if(val == 1)
+        atts->SetFillMode(CurveAttributes::Solid);
+    else if(val == 2)
+        atts->SetFillMode(CurveAttributes::HorizontalGradient);
+    else if(val == 3)
+        atts->SetFillMode(CurveAttributes::VerticalGradient);
+    Apply();
+}
 
+void
+QvisCurvePlotWindow::fillColor1Changed(const QColor &color)
+{
+    int a = atts->GetFillColor1().Alpha();
+    ColorAttribute c(color.red(), color.green(), color.blue(), a);
+    atts->SetFillColor1(c);
+    Apply();
+}
+
+void
+QvisCurvePlotWindow::fillColor1OpacityChanged(int opacity, const void*)
+{
+    ColorAttribute c(atts->GetFillColor1());
+    c.SetAlpha(opacity);
+    atts->SetFillColor1(c);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisCurvePlotWindow::fillColor2Changed(const QColor &color)
+{
+    int a = atts->GetFillColor2().Alpha();
+    ColorAttribute c(color.red(), color.green(), color.blue(), a);
+    atts->SetFillColor2(c);
+    Apply();
+}
+
+void
+QvisCurvePlotWindow::fillColor2OpacityChanged(int opacity, const void*)
+{
+    ColorAttribute c(atts->GetFillColor2());
+    c.SetAlpha(opacity);
+    atts->SetFillColor2(c);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisCurvePlotWindow::polarToggled(bool val)
+{
+    atts->SetPolarToCartesian(val);
+    Apply();
+}
+
+void
+QvisCurvePlotWindow::polarOrderChanged(int val)
+{
+    if(val == 0)
+        atts->SetPolarCoordinateOrder(CurveAttributes::R_Theta);
+    else if(val == 1)
+        atts->SetPolarCoordinateOrder(CurveAttributes::Theta_R);
+    Apply();
+}
+
+void
+QvisCurvePlotWindow::angleUnitsChanged(int val)
+{
+    if(val == 0)
+        atts->SetAngleUnits(CurveAttributes::Radians);
+    else if(val == 1)
+        atts->SetAngleUnits(CurveAttributes::Degrees);
+    Apply();
+}

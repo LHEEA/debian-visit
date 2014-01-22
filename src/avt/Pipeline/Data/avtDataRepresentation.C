@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -546,7 +546,7 @@ avtDataRepresentation::GetDataString(int &length, DataSetType &dst, bool compres
             datasetType = dst;
              
             vtkDataSetWriter *writer = vtkDataSetWriter::New();
-            writer->SetInput(asVTK);
+            writer->SetInputData(asVTK);
             writer->SetWriteToOutputString(1);
             writer->SetFileTypeToBinary();
             writer->Write();
@@ -617,6 +617,9 @@ avtDataRepresentation::GetDataString(int &length, DataSetType &dst, bool compres
 //    Kathleen Bonnell, Wed May 17 14:51:16 PDT 2006
 //    Removed call to SetSource(NULL) as it now removes information necessary
 //    to the dataset.
+//
+//    Kathleen Biagas, Mon Jan 28 10:29:06 PST 2013
+//    Call Update on the reader, not the dataset.
 //
 // ****************************************************************************
 
@@ -718,11 +721,10 @@ avtDataRepresentation::GetDataVTK(void)
             }
             else
             {
-                asVTK->Update();
+                reader->Update();
             }
 
             asVTK->Register(NULL);
-            //asVTK->SetSource(NULL);
             reader->Delete();
             charArray->Delete();
             originalString = NULL;
@@ -1129,7 +1131,7 @@ avtDataRepresentation::DebugDump(avtWebpage *webpage, const char *prefix)
         string vtk_fpath = dump_dir + vtk_fname;
 
         vtkDataSetWriter *wrtr = vtkDataSetWriter::New();
-        wrtr->SetInput(newDS);
+        wrtr->SetInputData(newDS);
         wrtr->SetFileName(vtk_fpath.c_str());
         wrtr->Write();
         wrtr->Delete();

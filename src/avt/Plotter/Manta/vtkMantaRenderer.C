@@ -99,9 +99,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <Model/Materials/Lambertian.h>
 
 
-#include <vtkstd/string>
-
-
 #include <sys/time.h>
 #include <sstream>
 #include <string>
@@ -115,7 +112,6 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //#include <IceTGL.h>
 //#include <IceTDevGLImage.h>
 
-vtkCxxRevisionMacro(vtkMantaRenderer, "$Revision: 1.18 $");
 vtkStandardNewMacro(vtkMantaRenderer);
 
 typedef float BUFFERT;

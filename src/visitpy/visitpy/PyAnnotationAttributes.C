@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1048,7 +1048,7 @@ AnnotationAttributes_GetAxesArray(PyObject *self, PyObject *args)
 
 
 
-static struct PyMethodDef AnnotationAttributes_methods[] = {
+PyMethodDef PyAnnotationAttributes_methods[ANNOTATIONATTRIBUTES_NMETH] = {
     {"Notify", AnnotationAttributes_Notify, METH_VARARGS},
     {"SetAxes2D", AnnotationAttributes_SetAxes2D, METH_VARARGS},
     {"GetAxes2D", AnnotationAttributes_GetAxes2D, METH_VARARGS},
@@ -1118,7 +1118,7 @@ AnnotationAttributes_compare(PyObject *v, PyObject *w)
 }
 
 PyObject *
-AnnotationAttributes_getattr(PyObject *self, char *name)
+PyAnnotationAttributes_getattr(PyObject *self, char *name)
 {
     if(strcmp(name, "axes2D") == 0)
         return AnnotationAttributes_GetAxes2D(self, NULL);
@@ -1194,17 +1194,11 @@ AnnotationAttributes_getattr(PyObject *self, char *name)
     if(strcmp(name, "axesArray") == 0)
         return AnnotationAttributes_GetAxesArray(self, NULL);
 
-    // Try and handle legacy AnnotationAttributes
-    extern PyObject *AnnotationAttributes_Legacy_getattr(PyObject *, const char *);
-    PyObject *retval = NULL;
-    retval = AnnotationAttributes_Legacy_getattr(self, name);
-    if(retval != NULL)
-        return retval;
-    return Py_FindMethod(AnnotationAttributes_methods, self, name);
+    return Py_FindMethod(PyAnnotationAttributes_methods, self, name);
 }
 
-static int
-AnnotationAttributes_setattr(PyObject *self, char *name, PyObject *args)
+int
+PyAnnotationAttributes_setattr(PyObject *self, char *name, PyObject *args)
 {
     // Create a tuple to contain the arguments since all of the Set
     // functions expect a tuple.
@@ -1256,15 +1250,12 @@ AnnotationAttributes_setattr(PyObject *self, char *name, PyObject *args)
     else if(strcmp(name, "axesArray") == 0)
         obj = AnnotationAttributes_SetAxesArray(self, tuple);
 
-    if(obj == NULL)
-    {
-        extern PyObject *AnnotationAttributes_Legacy_setattr(PyObject *, const char *, PyObject *);
-        obj = AnnotationAttributes_Legacy_setattr(self, name, tuple);
-    }
     if(obj != NULL)
         Py_DECREF(obj);
 
     Py_DECREF(tuple);
+    if( obj == NULL)
+        PyErr_Format(PyExc_RuntimeError, "Unable to set unknown attribute: '%s'", name);
     return (obj != NULL) ? 0 : -1;
 }
 
@@ -1310,8 +1301,8 @@ static PyTypeObject AnnotationAttributesType =
     //
     (destructor)AnnotationAttributes_dealloc,  // tp_dealloc
     (printfunc)AnnotationAttributes_print,     // tp_print
-    (getattrfunc)AnnotationAttributes_getattr, // tp_getattr
-    (setattrfunc)AnnotationAttributes_setattr, // tp_setattr
+    (getattrfunc)PyAnnotationAttributes_getattr, // tp_getattr
+    (setattrfunc)PyAnnotationAttributes_setattr, // tp_setattr
     (cmpfunc)AnnotationAttributes_compare,     // tp_compare
     (reprfunc)0,                         // tp_repr
     //

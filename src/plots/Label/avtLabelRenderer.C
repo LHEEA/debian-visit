@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -256,10 +256,9 @@ avtLabelRenderer::Render(vtkDataSet *ds)
         if (ds->GetDataObjectType() != VTK_POLY_DATA) 
         {
             vtkGeometryFilter *gf = vtkGeometryFilter::New();
-            gf->SetInput(ds);
-            input = vtkPolyData::New();
-            gf->SetOutput(input);
+            gf->SetInputData(ds);
             gf->Update();
+            input = gf->GetOutput();
             gf->Delete();
         }
         else 

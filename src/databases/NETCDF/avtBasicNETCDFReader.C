@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -368,7 +368,7 @@ avtBasicNETCDFReader::PopulateDatabaseMetaData(int timeState, avtDatabaseMetaDat
                         {
                             int d;
                             if(vardims[dim] != timedim)
-                                d = dimSizes[vardims[dim]];
+                                d = (int)dimSizes[vardims[dim]];
                             else
                                 d = TIME_DIMENSION;
                             vDims.push_back(d);
@@ -412,7 +412,7 @@ avtBasicNETCDFReader::PopulateDatabaseMetaData(int timeState, avtDatabaseMetaDat
                     if(vardims[dim] != timedim)
                     {
                         vDims.push_back(vardims[dim]);
-                        d = dimSizes[vardims[dim]];
+                        d = (int)dimSizes[vardims[dim]];
                         elems *= d;
                     }
                     else

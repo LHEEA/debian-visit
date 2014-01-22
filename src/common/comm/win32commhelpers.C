@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,7 +50,7 @@ CopyHostentString(char **dest, char *src, const char *name, const char *mName)
     }
     else
     {
-        int len = strlen(src)+1;
+        size_t len = strlen(src)+1;
         *dest = (char*)malloc(len);
         memset(*dest, 0, len);
         strcpy(*dest, src);

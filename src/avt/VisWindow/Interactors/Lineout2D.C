@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -94,7 +94,7 @@ Lineout2D::Lineout2D(VisWindowInteractorProxy &vw) : VisitInteractor(vw)
     lines->Delete();
  
     rubberBandMapper = proxy.CreateRubberbandMapper();
-    rubberBandMapper->SetInput(rubberBand);
+    rubberBandMapper->SetInputData(rubberBand);
  
     rubberBandActor  = vtkActor2D::New();
     rubberBandActor->SetMapper(rubberBandMapper);

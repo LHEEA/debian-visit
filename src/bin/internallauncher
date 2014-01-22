@@ -1,4 +1,8 @@
-import os, math, socket, stat, time 
+import os
+import math
+import socket
+import stat
+import time
 
 ###############################################################################
 # Class: JobSubmitter
@@ -233,10 +237,10 @@ class JobSubmitter_poe(JobSubmitter):
         super(JobSubmitter_poe, self).__init__(launcher)
 
     def Executable(self):
-        return self.VisItExecutable()
+        return ["poe"]
 
     def CreateCommand(self, args, debugger):
-        parcmd = self.Executable() + args
+        parcmd = self.Executable() + self.VisItExecutable() + args
         if self.parallel.launchargs != None:
             parcmd = parcmd + self.parallel.launchargs
         if self.parallel.np != None:
@@ -244,7 +248,8 @@ class JobSubmitter_poe(JobSubmitter):
         if self.parallel.nn != None:
             parcmd = parcmd + ["-nodes", self.parallel.nn]
         if self.parallel.partition != None:
-            parcmd = debugger.CreateCommand(parcmd + ["-rmpool", self.parallel.partition])
+            parcmd = parcmd + ["-rmpool", self.parallel.partition]
+        parcmd = debugger.CreateCommand(parcmd)
         return parcmd
 
 ###############################################################################
@@ -466,6 +471,9 @@ class JobSubmitter_salloc(JobSubmitter):
 #   Satheesh Maheswaran, Tue Jan 15 14:47:54 GMT 2013
 #   I added job name option to Slurm scheduler and mpirun launcher argument support 
 #
+#   Paul Selby, Thu May 16 12:06:30 BST 2013
+#   Use launchargs if supplied
+#
 ###############################################################################
 
 class JobSubmitter_sbatch(JobSubmitter):
@@ -491,6 +499,8 @@ class JobSubmitter_sbatch(JobSubmitter):
 
     def CreateCommand(self, args, debugger):
         parcmd = self.Executable()
+        if self.parallel.launchargs != None:
+           parcmd = parcmd + self.parallel.launchargs
         if self.parallel.partition != None:
            parcmd = parcmd + ["--partition=%s" % self.parallel.partition]
         if self.parallel.bank != None:
@@ -1029,6 +1039,43 @@ class TotalviewDebugger(Debugger):
     def CreateCommand(self, args):
         return self.Executable() + [args[0], "-a", "-dograb"] + self.DebuggerArguments() + args[1:]
 
+
+###############################################################################
+# Class: DDTDebugger
+#
+# Purpose:    Launch a VisIt component under ddt.
+#
+# Programmer: Cyrus Harrison
+# Date:       Fri May 10 10:05:07 PDT 2013
+#
+# Modifications:
+#
+###############################################################################
+
+class DDTDebugger(Debugger):
+    def __init__(self, launcher):
+        super(DDTDebugger, self).__init__(launcher)
+    def Executable(self):
+        return ["ddt"]
+    def CreateCommand(self, args):
+        ddt_args =self.DebuggerArguments()
+        if "-offline" in ddt_args:
+            # if a specific html log file wasn't passed, provide a sensible name
+            # to capture ddt output
+            ddt_log   = "ddt_%s_log.html" % os.path.split(args[0])[1]
+            off_index = ddt_args.index("-offline")
+            if off_index == len(ddt_args) -1: 
+                #last arg is -offline
+                ddt_args.append(ddt_log)
+            elif not ddt_args[off_index+1].endswith(".html"):
+                # -offline isn't followed by a html file name
+                ddt_args.insert(off_index+1,ddt_log)
+        else:
+            ddt_args.insert(0,"-start")
+        ddt_cmd = self.Executable() + ddt_args + args
+        return ddt_cmd
+
+
 ###############################################################################
 # Class: ValgrindDebugger
 #
@@ -1090,6 +1137,34 @@ class StraceDebugger(Debugger):
         return launcherargs + strace + visitargs
 
 ###############################################################################
+# Class: ApitraceDebugger
+#
+# Purpose:    Launch a VisIt component under apitrace.
+#
+# Programmer: Kathleen Biagas
+# Date:       Mon Apr  8 14:19:36 PDT 2013
+#
+# Modifications:
+#
+###############################################################################
+
+class ApitraceDebugger(Debugger):
+    def __init__(self, launcher):
+        super(ApitraceDebugger, self).__init__(launcher)
+
+    def Executable(self):
+        return ["apitrace"]
+
+    def CreateCommand(self, args):
+        apitrace = self.Executable()
+        if len(self.debug.debuggerArgs) > 1:
+            apitrace = apitrace + self.DebuggerArguments()
+        else:
+            apitrace = apitrace + ["trace", "--api", "gl"]
+        launcherargs, visitargs = self.SeparateArguments(args)
+        return launcherargs + apitrace + visitargs
+
+###############################################################################
 # Class: DebugMallocDebugger
 #
 # Purpose:    Launch a VisIt component with malloc debugging on Mac.
@@ -1124,6 +1199,10 @@ class DebugMallocDebugger(Debugger):
 #   Brad Whitlock, Thu Dec  6 10:47:27 PST 2012
 #   I fixed the non -noloopback case for launching of parallel engines on
 #   linux clusters.
+#
+#   Cyrus Harrison, Tue Oct 22 11:35:37 PDT 2013
+#   Capture if -hw-accel is passed here so we can use it when we determine
+#   if we should enable mesa for the engine.
 #
 ###############################################################################
 
@@ -1160,7 +1239,8 @@ class GeneralArguments(object):
         self.quiet = 0
         self.setupenv = 0
         self.nowin = 0
-
+        self.threads = 0
+        self.hw_accel = False
     def ParseArguments(self, i, args):
         if i >= len(args):
             return 0
@@ -1232,8 +1312,16 @@ class GeneralArguments(object):
             self.quiet = 1
         elif args[i] == "-setupenv":
             self.setupenv = 1
+        elif args[i] == "-threads":
+            # Number of threads. Some launchers want to know this number, ie depth.
+            self.threads = args[i+1]
+            self.arguments = self.arguments + [args[i]]
+            n = 2
         else:
             self.arguments = self.arguments + [args[i]]
+        # snoop this without affecting any other parsing
+        if not self.hw_accel and "-hw-accel" in args:
+            self.hw_accel = True
         return n
 
     def ProduceArguments(self, parallel):
@@ -1783,6 +1871,7 @@ class MainLauncher(object):
             print "\nUSAGE: visit [options]\n"
             print helpnote
             print filecontents(usagefile)
+            print helpnote
 
     ############################################################################
     # Method: ParseArguments
@@ -1825,6 +1914,9 @@ class MainLauncher(object):
     # Date: Fri May 25 10:48:41 PDT 2012
     #
     # Modifications:
+    #   Eric Brugger, Wed Jun 26 14:49:49 PDT 2013
+    #   I corrected a bug that incorrectly identified the machine architecture
+    #   on some Mac systems.
     #
     ############################################################################
 
@@ -1856,11 +1948,12 @@ class MainLauncher(object):
                     arch = arch + "-" + compiler
             supportedarches.append(arch)
         elif self.os == "darwin":
-            all_uname = string.split(self.uname("-a"))
-            version = [int(x) for x in string.split(all_uname[2], ".")]
+            mach = self.uname("-m")
+            release = self.uname("-r")
+            version = [int(x) for x in string.split(release, ".")]
             self.osver = version[0]
             if version[0] >= 11:
-                if all_uname[-1] == "x86_64":
+                if mach == "x86_64":
                     supportedarches.append("darwin-x86_64")
                     supportedarches.append("darwin-i386")
                 else:
@@ -2096,6 +2189,16 @@ class MainLauncher(object):
     #   Brad Whitlock, Tue Nov 27 10:13:42 PST 2012
     #   Set PYTHONHOME if we're running the cli.
     #
+    #   Brad Whitlock, Wed Apr  3 10:15:00 PDT 2013
+    #   Removed /usr/local/lib from the LD_LIBRARY_PATH since it was an old fix
+    #   for Suns that caused problems on Linux.
+    #
+    #   Kathleen Biagas, Mon Jul 15 11:31:27 PDT 2013
+    #   Unset QT_PLUGIN_PATH.
+    #
+    #   Cyrus Harrison, Tue Oct 22 11:35:37 PDT 2013
+    #   Don't use mesa if  hw-accel is requested for the engine.
+    #
     ############################################################################
 
     def SetupEnvironment(self):
@@ -2105,7 +2208,7 @@ class MainLauncher(object):
         for k in keys:
             if GETENV("%s_VISITORIG" % k) == "":
                 SETENV("%s_VISITORIG" % k, GETENV(k))
-    
+
         for k in keys:
             if GETENV("%s_VISITORIG" % k) == "":
                 SETENV(k, self.visitlibdir)
@@ -2114,13 +2217,8 @@ class MainLauncher(object):
 
         # Set R_HOME in case R has been installed it will be in this location..
         visitrdir = os.path.join(self.visitlibdir, "r_support", "R")
-        SETENV("R_HOME", visitrdir)
-
-        # Add /usr/local/lib to the shared library path.  This was added for the
-        # c++ library on some sun systems, but it may have broader applicability.
-        # Note that we can assume that LD_LIBRARY_PATH is not empty, since it was
-        # set to $visitlibdir above.
-        SETENV("LD_LIBRARY_PATH", self.joinpaths([GETENV("LD_LIBRARY_PATH"), "/usr/local/lib"]))
+        if os.path.exists(visitrdir):
+            SETENV("R_HOME", visitrdir)
 
         # Get the private plugin directory.
         visitprivateplugins = self.PrivatePlugins()
@@ -2140,8 +2238,10 @@ class MainLauncher(object):
             SETENV("VISITPLUGINDIR", self.visitplugins)
         else:
             if GETENV("VISITPLUGINDIRORIG") == "":
-                SETENV("VISITPLUGINDIR", GETENV("VISITPLUGINDIR"))
-            SETENV("VISITPLUGINDIR", self.joinpaths([GETENV("VISITPLUGINDIRORIG"), visitprivateplugins,self.visitplugins]))
+                SETENV("VISITPLUGINDIRORIG", GETENV("VISITPLUGINDIR"))
+            vpdo = self.splitpaths(GETENV("VISITPLUGINDIRORIG"))
+            vpd = self.joinpaths(vpdo + [visitprivateplugins, self.visitplugins])
+            SETENV("VISITPLUGINDIR", vpd)
 
         # If we are using a public version, or if any main plugin directory is
         # not writeable, then we should default to a private plugin installation.
@@ -2170,6 +2270,9 @@ class MainLauncher(object):
         if self.generalArgs.exe_name == "cli":
             SETENV("PYTHONHOME", visitlibdir_python)
 
+        # Unset QT_PLUGIN_PATH
+        UNSETENV("QT_PLUGIN_PATH")
+
         # Turn off trapping of floating point exceptions.
         SETENV("TRAP_FPE", "")
 
@@ -2183,8 +2286,29 @@ class MainLauncher(object):
         # can be useful for wall-type displays with a separate console, e.g.
         # the console on :0 and the DMX server on :2, you could run
         # env DISPLAY=:0 visit -viewerdisplay :2
+        #
+        #
         if self.generalArgs.exe_name == "viewer" and self.generalArgs.viewerdisplay != None:
             SETENV("DISPLAY", self.generalArgs.viewerdisplay)
+        #
+        # OSMesa GL Settings
+        #
+        osmesa_gl_dir = os.path.join(self.visitlibdir,"osmesa")
+        osmesa_gl_lib = os.path.join(osmesa_gl_dir,"libGL.so")
+        #
+        # if we have osmesa, use it for the engine & viewer -nowin
+        #
+        if os.path.isfile(osmesa_gl_lib):
+            #
+            # if we are using OSMesa in the viewer or engine we need to set VISIT_MESA_LIB
+            # and adjust the LD_LIBRARY_PATH so VTK can pick up OSMesa instead of standard GL
+            #
+            if ((self.generalArgs.exe_name == "viewer" and self.generalArgs.nowin == 1) or
+                 (self.generalArgs.exe_name.startswith("engine") and not self.generalArgs.hw_accel)):
+                SETENV("LD_LIBRARY_PATH", self.joinpaths([GETENV("LD_LIBRARY_PATH"),
+                                                         osmesa_gl_dir]))
+                SETENV("VISIT_MESA_LIB",osmesa_gl_lib)
+
 
     ############################################################################
     # Method: PrintEnvironment
@@ -2366,10 +2490,21 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
     # Date: Thu May 31 10:19:44 PDT 2012
     #
     # Modifications:
+    #   Kathleen Biagas, Mon Apr  8 14:19:36 PDT 2013
+    #   Added apitrace.
+    #
+    #   Cyrus Harrison, Fri May 10 15:55:49 PDT 2013
+    #   Added ddt.
     #
     ############################################################################
     def Debuggers(self):
-        return ["gdb", "totalview", "valgrind", "strace", "debug-malloc"]
+        return ["gdb",
+                "totalview",
+                "valgrind",
+                "strace",
+                "apitrace",
+                "debug-malloc",
+                "ddt"]
 
     ############################################################################
     # Method: DebuggerFactory
@@ -2383,6 +2518,8 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
     # Date: Thu May 31 10:19:44 PDT 2012
     #
     # Modifications:
+    #   Kathleen Biagas, Mon Apr  8 14:19:36 PDT 2013
+    #   Added apitrace.
     #
     ############################################################################
 
@@ -2395,8 +2532,12 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
             return ValgrindDebugger(self)
         elif debugger == "strace":
             return StraceDebugger(self)
+        elif debugger == "apitrace":
+            return ApitraceDebugger(self)
         elif debugger == "debug-malloc":
             return DebugMallocDebugger(self)
+        elif debugger == "ddt":
+            return DDTDebugger(self)
         # Return a debugger that does not do anything.
         return Debugger(self)
 
@@ -2730,7 +2871,7 @@ def internallauncher(launcher, visitdir, visitprogram, visitver, visitpluginver,
         exit("This hardware platform is not supported by VisIt.", 1)
     # Print the architectures and exit.
     if launcher.generalArgs.arch:
-        self.message(string.join(supportedarches, " "))
+        print string.join(supportedarches, " ")
         return 0
 
     launcher.ConsistencyCheck()
@@ -2740,10 +2881,10 @@ def internallauncher(launcher, visitdir, visitprogram, visitver, visitpluginver,
     launcher.SetupEnvironment()
     launcher.MakeUserDirectories(visitpluginver, supportedarches)
 
-    if "-help" in visitargs:
+    if "-help" in visitargs or "--help" in visitargs:
         launcher.PrintUsage(0)
         return 0
-    elif "-fullhelp" in visitargs:
+    elif "-fullhelp" in visitargs or "--fullhelp" in visitargs:
         launcher.PrintUsage(1)
         return 0
 

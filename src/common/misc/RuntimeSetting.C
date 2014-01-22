@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -190,7 +190,7 @@ find_setting(const char *key, std::string &retval)
     {
         if(strncmp(s::settings[i].key, key, len) == 0)
         {
-            retval = compile_time_default(i);
+            retval = compile_time_default((int)i);
             break;
         }
     }

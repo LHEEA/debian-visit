@@ -20,7 +20,6 @@
 #include <vtkPointData.h>
 #include <vtk_tiff.h>
 
-vtkCxxRevisionMacro(vtkVisItTIFFWriter, "$Revision: 1.30 $");
 vtkStandardNewMacro(vtkVisItTIFFWriter);
 
 //----------------------------------------------------------------------------
@@ -38,17 +37,17 @@ public:
   static tsize_t TIFFRead(thandle_t, tdata_t, tsize_t) { return 0; }
 
   // Write data
-  static tsize_t TIFFWrite(thandle_t fd, tdata_t buf, tsize_t size) 
+  static tsize_t TIFFWrite(thandle_t fd, tdata_t buf, tsize_t size)
     {
     ofstream *out = reinterpret_cast<ofstream *>(fd);
     out->write(static_cast<char *>(buf), size);
     return out->fail() ? static_cast<tsize_t>(0) : size;
     }
 
-  static toff_t TIFFSeek(thandle_t fd, toff_t off, int whence) 
+  static toff_t TIFFSeek(thandle_t fd, toff_t off, int whence)
     {
     ofstream *out = reinterpret_cast<ofstream *>(fd);
-    switch (whence) 
+    switch (whence)
       {
       case SEEK_SET:
         out->seekp(off, ios::beg);
@@ -68,7 +67,7 @@ public:
   // File will be closed by the superclass
   static int TIFFClose(thandle_t) { return 1; }
 
-  static toff_t TIFFSize(thandle_t fd) 
+  static toff_t TIFFSize(thandle_t fd)
     {
     ofstream *out = reinterpret_cast<ofstream *>(fd);
     out->seekp(0, ios::end);
@@ -80,7 +79,7 @@ public:
 };
 
 //----------------------------------------------------------------------------
-void vtkVisItTIFFWriter::WriteFileHeader(ofstream *file, vtkImageData *data)
+void vtkVisItTIFFWriter::WriteFileHeader(ofstream *file, vtkImageData *data, int wExt[6])
 {
   int dims[3];
   int width, height;
@@ -90,46 +89,48 @@ void vtkVisItTIFFWriter::WriteFileHeader(ofstream *file, vtkImageData *data)
   double resolution = -1;
   uint32 rowsperstrip = (uint32) -1;
 
-  int min0, min1, max0, max1, min2, max2;
-
+  int min0 = wExt[0],
+      max0 = wExt[1],
+      min1 = wExt[2],
+      max1 = wExt[3];
 
   int bps;
   switch (stype)
     {
-  case VTK_CHAR:
-  case VTK_SIGNED_CHAR:
-  case VTK_UNSIGNED_CHAR:
-    bps = 8;
-    break;
-  case VTK_SHORT:
-  case VTK_UNSIGNED_SHORT:
-    bps = 16;
-    break;
-  case VTK_FLOAT:
-    bps = 32;
-    break;
-  default:
-    vtkErrorMacro(<< "Unsupported data type: " << data->GetScalarTypeAsString());
-    this->SetErrorCode(vtkErrorCode::FileFormatError);
-    return;
+    case VTK_CHAR:
+    case VTK_SIGNED_CHAR:
+    case VTK_UNSIGNED_CHAR:
+      bps = 8;
+      break;
+    case VTK_SHORT:
+    case VTK_UNSIGNED_SHORT:
+      bps = 16;
+      break;
+    case VTK_FLOAT:
+      bps = 32;
+      break;
+    default:
+      vtkErrorMacro(<< "Unsupported data type: " << data->GetScalarTypeAsString());
+      this->SetErrorCode(vtkErrorCode::FileFormatError);
+      return;
     }
 
   int predictor = 0;
 
   // Find the length of the rows to write.
-  data->GetWholeExtent(min0, max0, min1, max1, min2, max2);
   width = (max0 - min0 + 1);
   height = (max1 - min1 + 1);
 
   TIFF* tif = TIFFClientOpen(this->GetFileName(), "w",
     (thandle_t) file,
-    reinterpret_cast<TIFFReadWriteProc>(vtkVisItTIFFWriterIO::TIFFRead), 
+    reinterpret_cast<TIFFReadWriteProc>(vtkVisItTIFFWriterIO::TIFFRead),
     reinterpret_cast<TIFFReadWriteProc>(vtkVisItTIFFWriterIO::TIFFWrite),
     reinterpret_cast<TIFFSeekProc>(vtkVisItTIFFWriterIO::TIFFSeek),
-    reinterpret_cast<TIFFCloseProc>(vtkVisItTIFFWriterIO::TIFFClose), 
+    reinterpret_cast<TIFFCloseProc>(vtkVisItTIFFWriterIO::TIFFClose),
     reinterpret_cast<TIFFSizeProc>(vtkVisItTIFFWriterIO::TIFFSize),
-    reinterpret_cast<TIFFMapFileProc>(vtkVisItTIFFWriterIO::TIFFMapFile), 
-    reinterpret_cast<TIFFUnmapFileProc>(vtkVisItTIFFWriterIO::TIFFUnmapFile));
+    reinterpret_cast<TIFFMapFileProc>(vtkVisItTIFFWriterIO::TIFFMapFile),
+    reinterpret_cast<TIFFUnmapFileProc>(vtkVisItTIFFWriterIO::TIFFUnmapFile)
+    );
 
   if ( !tif )
     {
@@ -147,7 +148,7 @@ void vtkVisItTIFFWriter::WriteFileHeader(ofstream *file, vtkImageData *data)
   TIFFSetField(tif, TIFFTAG_BITSPERSAMPLE, bps); // Fix for stype
   TIFFSetField(tif, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 
-  if (stype == VTK_FLOAT)
+  if(stype == VTK_FLOAT)
     {
     TIFFSetField(tif, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_IEEEFP);
     }
@@ -172,15 +173,15 @@ void vtkVisItTIFFWriter::WriteFileHeader(ofstream *file, vtkImageData *data)
   int compression = COMPRESSION_PACKBITS;
   switch ( this->Compression )
     {
-  case vtkVisItTIFFWriter::PackBits: compression = COMPRESSION_PACKBITS; break;
-  case vtkVisItTIFFWriter::JPEG:     compression = COMPRESSION_JPEG; break;
-  case vtkVisItTIFFWriter::Deflate:  compression = COMPRESSION_DEFLATE; break;
-  case vtkVisItTIFFWriter::LZW:      compression = COMPRESSION_LZW; break;
-  default: compression = COMPRESSION_NONE;
+    case vtkVisItTIFFWriter::PackBits: compression = COMPRESSION_PACKBITS; break;
+    case vtkVisItTIFFWriter::JPEG:     compression = COMPRESSION_JPEG; break;
+    case vtkVisItTIFFWriter::Deflate:  compression = COMPRESSION_DEFLATE; break;
+    case vtkVisItTIFFWriter::LZW:      compression = COMPRESSION_LZW; break;
+    default: compression = COMPRESSION_NONE;
     }
   //compression = COMPRESSION_JPEG;
   TIFFSetField(tif, TIFFTAG_COMPRESSION, compression); // Fix for compression
-  uint16 photometric = 
+  uint16 photometric =
       (stype == VTK_FLOAT ? PHOTOMETRIC_MINISBLACK : PHOTOMETRIC_RGB);
   if ( compression == COMPRESSION_JPEG )
     {
@@ -203,7 +204,7 @@ void vtkVisItTIFFWriter::WriteFileHeader(ofstream *file, vtkImageData *data)
   TIFFSetField(tif, TIFFTAG_PHOTOMETRIC, photometric); // Fix for scomponents
   TIFFSetField(tif, TIFFTAG_ROWSPERSTRIP,
     TIFFDefaultStripSize(tif, rowsperstrip));
-  if (resolution > 0) 
+  if (resolution > 0)
     {
     TIFFSetField(tif, TIFFTAG_XRESOLUTION, resolution);
     TIFFSetField(tif, TIFFTAG_YRESOLUTION, resolution);
@@ -214,7 +215,7 @@ void vtkVisItTIFFWriter::WriteFileHeader(ofstream *file, vtkImageData *data)
 
 //----------------------------------------------------------------------------
 void vtkVisItTIFFWriter::WriteFile(ofstream *, vtkImageData *data,
-  int extent[6])
+  int extent[6], int wExt[6])
 {
   int idx1, idx2;
   void *ptr;
@@ -229,18 +230,19 @@ void vtkVisItTIFFWriter::WriteFile(ofstream *, vtkImageData *data,
   TIFF* tif = reinterpret_cast<TIFF*>(this->TIFFPtr);
   if ( !tif )
     {
-    vtkErrorMacro("Problem writting trailer.");
+    vtkErrorMacro("Problem writing trailer.");
     this->SetErrorCode(vtkErrorCode::FileFormatError);
     return;
     }
 
   // take into consideration the scalar type
-  if (data->GetScalarType() != VTK_UNSIGNED_CHAR
+  if( data->GetScalarType() != VTK_UNSIGNED_CHAR
    && data->GetScalarType() != VTK_UNSIGNED_SHORT
-   && data->GetScalarType() != VTK_FLOAT)
+   && data->GetScalarType() != VTK_FLOAT
+   )
     {
     vtkErrorMacro("TIFFWriter only accepts unsigned char/short or float scalars!");
-    return; 
+    return;
     }
 
   int row = 0;
@@ -271,6 +273,7 @@ void vtkVisItTIFFWriter::WriteFileTrailer(ofstream *, vtkImageData *)
   TIFFClose(tif);
   this->TIFFPtr = 0;
 }
+
 //----------------------------------------------------------------------------
 void vtkVisItTIFFWriter::PrintSelf(ostream& os, vtkIndent indent)
 {

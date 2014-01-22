@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -506,7 +506,6 @@ AnnotationObjectList::SetFromNode(DataNode *parentNode)
     if(searchNode == 0)
         return;
 
-    DataNode *node;
     DataNode **children;
 
     // Clear all the AnnotationObjects if we got any.
@@ -674,7 +673,7 @@ AnnotationObjectList::RemoveAnnotation(int index)
 int
 AnnotationObjectList::GetNumAnnotations() const
 {
-    return annotation.size();
+    return (int)annotation.size();
 }
 
 // ****************************************************************************

@@ -23,6 +23,7 @@ SET(LIBE_SOURCES
 WavefrontOBJEnginePluginInfo.C
 ${COMMON_SOURCES}
 avtWavefrontOBJFileFormat.C
+avtWavefrontOBJWriter.C
 vtkVisItOBJReader.C
 )
 

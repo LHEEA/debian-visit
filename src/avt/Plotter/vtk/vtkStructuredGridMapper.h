@@ -32,12 +32,12 @@ class PLOTTER_API vtkStructuredGridMapper : public vtkMapper
 {
 public:
   static vtkStructuredGridMapper *New();
-  vtkTypeRevisionMacro(vtkStructuredGridMapper,vtkMapper);
+  vtkTypeMacro(vtkStructuredGridMapper,vtkMapper);
   void PrintSelf(ostream& os, vtkIndent indent);
 
   // Description:
   // Specify the input data to map.
-  void SetInput(vtkStructuredGrid *in);
+  void SetInputData(vtkStructuredGrid *in);
   vtkStructuredGrid *GetInput();
   
   // Description:

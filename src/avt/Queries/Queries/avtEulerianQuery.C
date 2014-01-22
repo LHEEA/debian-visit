@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -170,6 +170,9 @@ avtEulerianQuery::VerifyInput()
 //    Remove call to SetSource(NULL) as it now removes information necessary
 //    for the dataset. 
 //
+//    Kathleen Biagas, Fri Jan 25 16:35:54 PST 2013
+//    Call Update on filter, not data object.
+//
 // ****************************************************************************
 
 void 
@@ -179,10 +182,11 @@ avtEulerianQuery::Execute(vtkDataSet *in_ds, const int dom)
     nds->ShallowCopy(in_ds);
     //nds->SetSource(NULL);
 
-    gFilter->SetInput(nds);
+    gFilter->SetInputData(nds);
     vtkDataSetRemoveGhostCells *ghost_remover =
                                              vtkDataSetRemoveGhostCells::New();
-    ghost_remover->SetInput(gFilter->GetOutput());
+    ghost_remover->SetInputConnection(gFilter->GetOutputPort());
+    ghost_remover->Update();
     vtkDataSet *out = ghost_remover->GetOutput();
     if (out->GetDataObjectType() != VTK_POLY_DATA)
     {
@@ -191,7 +195,6 @@ avtEulerianQuery::Execute(vtkDataSet *in_ds, const int dom)
     }
 
     vtkPolyData *pds = (vtkPolyData *) out;
-    pds->Update();
 
     // I believe this isn't good enough. I believe the facelist filter
     // simply passes points through, and only modifies the cell structure.
@@ -282,7 +285,7 @@ avtEulerianQuery::Execute(vtkDataSet *in_ds, const int dom)
             ++numUsedPoints;
 
     // Now for the magic: Euler-Descartes formula
-    Eulerian = numUsedPoints - edges.size() + nCells;
+    Eulerian = numUsedPoints - (int)edges.size() + nCells;
 
     domToEulerMap.insert(DomainToEulerMap::value_type(dom, Eulerian));
     ghost_remover->Delete();

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -430,6 +430,9 @@ avtStreamlinePlot::EnhanceSpecification(avtContract_p in_contract)
 //   Dave Pugmire, Thu Mar 15 11:23:18 EDT 2012
 //   Add named selections as a seed source.
 //
+//   Hank Childs, Mon Mar  4 15:18:25 PST 2013
+//   Reflect readability change in PICS for CMFE type.
+//
 // ****************************************************************************
 
 void
@@ -443,8 +446,6 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     //
     // Set the filter's attributes based on the plot attributes.
     //
-    streamlineFilter->SetVelocitySource(atts.GetVelocitySource());
-
     switch (atts.GetSourceType())
     {
       case StreamlineAttributes::SpecifiedPoint:
@@ -498,16 +499,25 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
         break;
     }
 
-    streamlineFilter->SetPathlines(atts.GetPathlines(), atts.GetPathlinesOverrideStartingTimeFlag(), atts.GetPathlinesOverrideStartingTime(), atts.GetPathlinesCMFE());
+    int CMFEType = (atts.GetPathlinesCMFE() == StreamlineAttributes::CONN_CMFE
+                    ? PICS_CONN_CMFE : PICS_POS_CMFE);
+
+    streamlineFilter->SetPathlines(atts.GetPathlines(),
+                                   atts.GetPathlinesOverrideStartingTimeFlag(),
+                                   atts.GetPathlinesOverrideStartingTime(),
+                                   CMFEType);
+
+    streamlineFilter->SetIntegrationDirection(atts.GetIntegrationDirection());
 
     streamlineFilter->SetFieldType(atts.GetFieldType());
     streamlineFilter->SetFieldConstant(atts.GetFieldConstant());
+    streamlineFilter->SetVelocitySource(atts.GetVelocitySource());
 
     streamlineFilter->SetIntegrationType(atts.GetIntegrationType());
-    streamlineFilter->SetStreamlineAlgorithm(atts.GetStreamlineAlgorithmType(), 
-                                             atts.GetMaxStreamlineProcessCount(),
-                                             atts.GetMaxDomainCacheSize(),
-                                             atts.GetWorkGroupSize());
+    streamlineFilter->SetParallelizationAlgorithm(atts.GetParallelizationAlgorithmType(), 
+                                                  atts.GetMaxProcessCount(),
+                                                  atts.GetMaxDomainCacheSize(),
+                                                  atts.GetWorkGroupSize());
     if (atts.GetIntegrationType() == StreamlineAttributes::DormandPrince)
     {
         // For DoPri, the max time step is sent in to the PICS filter as the max step length.
@@ -535,8 +545,6 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     streamlineFilter->IssueWarningForMaxStepsTermination(atts.GetIssueTerminationWarnings());
     streamlineFilter->IssueWarningForStiffness(atts.GetIssueStiffnessWarnings());
     streamlineFilter->IssueWarningForCriticalPoints(atts.GetIssueCriticalPointsWarnings(), atts.GetCriticalPointThreshold());
-
-    streamlineFilter->SetIntegrationDirection(atts.GetStreamlineDirection());
 
     streamlineFilter->SetColoringMethod(int(atts.GetColoringMethod()),
                                         atts.GetColoringVariable());
@@ -761,5 +769,3 @@ avtStreamlinePlot::ReleaseData(void)
     if(removeGhostZonesFilter != NULL)
         removeGhostZonesFilter->ReleaseData();
 }
-
-
