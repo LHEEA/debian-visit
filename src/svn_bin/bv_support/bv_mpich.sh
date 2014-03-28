@@ -25,13 +25,13 @@ function bv_mpich_depends_on
 
 function bv_mpich_info
 {
-export MPICH_VERSION=${MPICH_VERSION:-"3.0.1"}
+export MPICH_VERSION=${MPICH_VERSION:-"3.0.4"}
 export MPICH_FILE=${MPICH_FILE:-"mpich-${MPICH_VERSION}.tar.gz"}
 export MPICH_COMPATIBILITY_VERSION=${MPICH_COMPATIBILITY_VERSION:-"3.0.0"}
 export MPICH_BUILD_DIR=${MPICH_BUILD_DIR:-"mpich-${MPICH_VERSION}"}
-export MPICH_URL=${MPICH_URL:-http://www.mpich.org/static/tarballs/3.0.1}
-export MPICH_MD5_CHECKSUM="4f0402544dd73cb6d2b3a6d9c1eb3bf5"
-export MPICH_SHA256_CHECKSUM="8e93e4426bbf10fcde7d2422d78032010f73dd3bb59ab39a17c25d95223e87d8"
+export MPICH_URL=${MPICH_URL:-http://www.mpich.org/static/tarballs/3.0.4}
+export MPICH_MD5_CHECKSUM="9c5d5d4fe1e17dd12153f40bc5b6dbc0"
+export MPICH_SHA256_CHECKSUM="cf638c85660300af48b6f776e5ecd35b5378d5905ec5d34c3da7a27da0acf0b3"
 }
 
 function bv_mpich_print
@@ -124,8 +124,26 @@ function build_mpich
         mpich_opts="${mpich_opts} --enable-two-level-namespace"
     fi
 
-    issue_command env CXX="$CXX_COMPILER" CC="$C_COMPILER" CFLAGS="" CXXFLAGS=""\
-                      ./configure ${mpich_opts} --prefix="$VISITDIR/mpich/$MPICH_VERSION/$VISITARCH"
+    #
+    # mpich will fail to build if we disable common blocks '-fno-common'
+    # Screen the flags vars to make sure we don't use this option for mpich
+    #
+
+    MPICH_CFLAGS=`echo $CFLAGS | sed -e 's/-fno-common//g'`
+    MPICH_C_OPT_FLAGS=`echo $C_OPT_FLAGS | sed -e 's/-fno-common//g'`
+    MPICH_CXXFLAGS=`echo $CXXFLAGS | sed -e 's/-fno-common//g'`
+    MPICH_CXX_OPT_FLAGS=`echo $CXX_OPT_FLAGS | sed -e 's/-fno-common//g'`
+
+    info "HERE $MPICH_CFLAGS"
+    info "HERE $MPICH_CXXFLAGS"
+    
+
+    issue_command env CXX="$CXX_COMPILER" \
+                      CC="$C_COMPILER" \
+                      CFLAGS="$MPICH_CFLAGS $MPICH_C_OPT_FLAGS" \
+                      CXXFLAGS="$MPICH_CXXFLAGS $MPICH_CXX_OPT_FLAGS"\
+                      ./configure ${mpich_opts} \
+                      --prefix="$VISITDIR/mpich/$MPICH_VERSION/$VISITARCH"
 
     if [[ $? != 0 ]] ; then
        warn "MPICH configure failed.  Giving up"

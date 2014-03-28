@@ -35,6 +35,11 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Biagas, Thu Jan 23 15:21:59 MST 2014
+#   Allow for newer versions (no 'lib' in name).
+#
+#   Kathleen Biagas, Tue Mar 11 10:44:54 MST 2014
+#   Change how newer versions are handled.
 #
 #****************************************************************************/
 
@@ -43,6 +48,10 @@
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-  SET_UP_THIRD_PARTY(JPEG lib/${VISIT_MSVC_VERSION} include libjpeg)
+  if (JPEG_LIBNAME_PREFIX_LIB) 
+      SET_UP_THIRD_PARTY(JPEG lib/${VISIT_MSVC_VERSION} include libjpeg)
+  else() 
+      SET_UP_THIRD_PARTY(JPEG lib/${VISIT_MSVC_VERSION} include jpeg)
+  endif()
 ENDIF (WIN32)
 

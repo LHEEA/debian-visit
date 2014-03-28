@@ -367,6 +367,10 @@
 #    Kathleen Biagas, Tue Nov 26 10:14:29 PST 2013
 #    Only add osxfixup dir if on APPLE.
 #
+#    Eric Brugger, Fri Feb 28 15:18:49 PST 2014
+#    I added -DMPI_NO_CPPBIND to the VISIT_PARALLEL_CFLAGS and
+#    VISIT_PARALLEL_CXXFLAGS.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
@@ -720,7 +724,6 @@ VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include 
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
 VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
 VISIT_3RDPARTY_VAR(UINTAH_DIR   "Path containing the Uintah library's include and lib")
-VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include and lib")
 VISIT_3RDPARTY_VAR(GFORTRAN_DIR  "Path containing the GFortran library's include and lib")
 
 #-----------------------------------------------------------------------------
@@ -1344,9 +1347,9 @@ ENDFUNCTION(DETECT_MPI_SETTINGS)
 
 IF(VISIT_PARALLEL)
     IF(WIN32)
-        SET(VPFLAGS "PARALLEL MPICH_IGNORE_CXX_SEEK OMPI_SKIP_MPICXX")
+        SET(VPFLAGS "PARALLEL MPICH_IGNORE_CXX_SEEK OMPI_SKIP_MPICXX MPICH_SKIP_MPICXX MPI_NO_CPPBIND")
     ELSE(WIN32)
-        SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX")
+        SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX -DMPICH_SKIP_MPICXX -DMPI_NO_CPPBIND")
     ENDIF(WIN32)
     IF(VISIT_MPI_COMPILER)
         MESSAGE(STATUS "Setting up MPI using compiler wrapper")
@@ -2035,15 +2038,20 @@ IF(NOT WIN32)
 ELSE(NOT WIN32)
     SET(CMAKE_C_COMPILER_VERSION_MESSAGE " ${CMAKE_GENERATOR}")
     IF(MSVC)
-        INCLUDE(CMakeDetermineVSServicePack)
-        DetermineVSServicePack(my_service_pack)
-        IF(my_service_pack)
-            SET(CMAKE_C_COMPILER_VERSION_MESSAGE "${CMAKE_C_COMPILER_VERSION_MESSAGE} (${my_service_pack})")
-        ENDIF(my_service_pack)
-        SET(CMAKE_CXX_COMPILER_VERSION_MESSAGE " Visual C/C++ version number: ${MSVC_VERSION}")
+        IF(CMAKE_VERSION VERSION_LESS "2.8.10")
+            INCLUDE(CMakeDetermineVSServicePack)
+            DetermineVSServicePack(my_service_pack)
+            IF(my_service_pack)
+                SET(CMAKE_C_COMPILER_VERSION_MESSAGE "${CMAKE_C_COMPILER_VERSION_MESSAGE} (${my_service_pack})")
+            ENDIF(my_service_pack)
+        ENDIF()
+        IF(CMAKE_CXX_COMPILER_VERSION)
+            SET(CMAKE_CXX_COMPILER_VERSION_MESSAGE " Visual C/C++ version number: ${CMAKE_CXX_COMPILER_VERSION}")
+        ELSE()
+            SET(CMAKE_CXX_COMPILER_VERSION_MESSAGE " Visual C/C++ version number: ${MSVC_VERSION}")
+        ENDIF()
         FILE(WRITE ${VISIT_BINARY_DIR}/CMake/VisItGenerator.cmake
-            "SET(CMAKE_GENERATOR \"${CMAKE_GENERATOR}\" CACHE INTERNAL \"\" FORCE)"
-        )
+            "SET(CMAKE_GENERATOR \"${CMAKE_GENERATOR}\" CACHE INTERNAL \"\" FORCE)")
         INSTALL(FILES ${VISIT_BINARY_DIR}/CMake/VisItGenerator.cmake
                 DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}
                 PERMISSIONS OWNER_READ OWNER_WRITE
@@ -2500,16 +2508,20 @@ ELSE (NOT WIN32)
         #
         FILE(TO_NATIVE_PATH ${VISIT_SOURCE_DIR} VSD_NATIVE)
         FILE(TO_NATIVE_PATH ${CMAKE_INSTALL_PREFIX} CIP_NATIVE)
+        FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_BINARY_DIR} CBD_NATIVE)
         ADD_CUSTOM_COMMAND(OUTPUT visit${VISIT_VERSION}.exe
             COMMAND ${MAKENSIS}
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE}
                     /DINSTALL_PREFIX=${CIP_NATIVE}
+                    /DBIN_DIR=${CBD_NATIVE}
+                    /DCL_64=${CMAKE_CL_64}
                     ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
             COMMAND ${MAKENSIS}
                     /DVisItVersion=${VISIT_VERSION}
                     /DCOMPILER=${VISIT_MSVC_VERSION}
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE}
                     /DINSTALL_PREFIX=${CIP_NATIVE}
+                    /DBIN_DIR=${CBD_NATIVE}
                     /DCL_64=${CMAKE_CL_64}
                     ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
             DEPENDS ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
@@ -2536,6 +2548,9 @@ ELSE (NOT WIN32)
         )
         ADD_CUSTOM_TARGET(_SRC_PACKAGE ALL DEPENDS visitdev${VISIT_VERSION}.exe)
         SET_TARGET_PROPERTIES(_SRC_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)
+        UNSET(VSD_NATIVE)
+        UNSET(CIP_NATIVE)
+        UNSET(CBD_NATIVE)
       ELSE(${MAKENSIS_FOUND})
         MESSAGE(FATAL_ERROR "NSIS installer package requested, but 'makensis' could not be found.")
       ENDIF(${MAKENSIS_FOUND})

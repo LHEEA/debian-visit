@@ -66,6 +66,9 @@
 #    Brad Whitlock, Wed Sep 12 17:16:29 PDT 2012
 #    I added the bin expression.
 #
+#    Matthew Wheeler, Mon 20 May 12:00:00 GMT 2013
+#    Added avtMinCornerArea and avtMinSinCorner.C
+#
 #****************************************************************************/
 
 SET(ABSTRACT_SOURCES
@@ -144,6 +147,7 @@ General/avtDegreeExpression.C
 General/avtDistanceToBestFitLineExpression.C
 General/avtDivergenceExpression.C
 General/avtDominantMaterialExpression.C
+General/avtEdgeNormalExpression.C
 General/avtExpressionComponentMacro.C
 General/avtFindExternalExpression.C
 General/avtGeodesicVectorQuantizeExpression.C
@@ -288,6 +292,8 @@ MeshQuality/avtVMetricTaper.C
 MeshQuality/avtVMetricVolume.C
 MeshQuality/avtVMetricWarpage.C
 MeshQuality/avtVerdictExpression.C
+MeshQuality/avtMinCornerArea.C
+MeshQuality/avtMinSinCorner.C
 )
 
 SET(TIMEITERATORS_SOURCES

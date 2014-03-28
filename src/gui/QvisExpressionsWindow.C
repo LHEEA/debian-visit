@@ -187,6 +187,9 @@
 //    Eric Brugger, Tue Dec 18 16:54:37 PST 2012
 //    Added procid.
 //
+//    Matthew Wheeler, Mon May 20 12:00:00 GMT 2013
+//    Added min_corner_area and min_sin_corner
+//
 // ****************************************************************************
 
 struct ExprNameList
@@ -210,6 +213,9 @@ const char *expr_meshquality[] = {
     "maximum_angle",
     "min_edge_length",
     "min_side_volume",
+    "min_corner_area",
+    "min_sin_corner",
+    "min_sin_corner_cw",
     "minimum_angle",
     "neighbor",
     "node_degree",
@@ -386,6 +392,9 @@ const char *expr_misc[] = {
     "surface_normal",
     "   point_surface_normal",
     "   cell_surface_normal",
+    "edge_normal",
+    "   point_edge_normal",
+    "   cell_edge_normal",
     "time",
     "timestep",
     "zonal_constant",

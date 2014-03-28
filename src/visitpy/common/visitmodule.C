@@ -15869,12 +15869,6 @@ visit_exec_client_method(void *data)
             VisItUnlockPythonInterpreter(myThreadState);
 
         PyGILState_STATE state = PyGILState_Ensure();
-        if(PyOS_ReadlineFunctionPointer || _PyOS_ReadlineTState)
-        {
-            PyOS_Readline(0,0,0);
-            PyOS_ReadlineFunctionPointer = NULL;
-            PyThreadState_Delete(_PyOS_ReadlineTState);
-        }
         PyRun_SimpleString("import sys; sys.exit(0)");
         PyGILState_Release(state);
     }
@@ -18551,7 +18545,6 @@ static void *
 visit_eventloop(void *)
 #endif
 {
-    bool viewerQuit = false;
     // This is the event loop for the messaging thread. If it needs to read
     // input from the viewer, it does so and executes the Notify method of
     // all subjects that changed.
@@ -18583,7 +18576,6 @@ visit_eventloop(void *)
                 // Indicate that there is no viewer.
                 //
                 noViewer = true;
-                viewerQuit = true;
 
 #ifndef POLLING_SYNCHRONIZE
                 SYNC_WAKE_MAIN_THREAD();
@@ -18598,20 +18590,6 @@ visit_eventloop(void *)
     }
 
     viewerBlockingRead = false;
-
-    /// HKTODO: should the python client quit if the viewer is killed?
-    if(viewerQuit)
-    {
-        PyGILState_STATE state = PyGILState_Ensure();
-        if(PyOS_ReadlineFunctionPointer || _PyOS_ReadlineTState)
-        {
-            PyOS_Readline(0,0,0);
-            PyOS_ReadlineFunctionPointer = NULL;
-            PyThreadState_Delete(_PyOS_ReadlineTState);
-        }
-        PyRun_SimpleString("import sys; sys.exit(0)");
-        PyGILState_Release(state);
-    }
 
     return NULL;
 }
@@ -18671,8 +18649,23 @@ Synchronize()
 
     // Return if the thread initialization failed.
     // or if viewer is embedded
-    if(!moduleUseThreads || viewerEmbedded)
+    if(!moduleUseThreads) {
         return 0;
+    }
+
+    if(viewerEmbedded) {
+        SyncAttributes *syncAtts = GetViewerState()->GetSyncAttributes();
+        syncAtts->SetSyncTag(syncCount);
+        syncAtts->Notify();
+        syncAtts->SetSyncTag(-1);
+
+        /// should only run once?
+        while(syncCount != syncAtts->GetSyncTag()) {
+            PyRun_SimpleString("visit.__VisIt_PySide_Idle_Hook__()");
+        }
+        syncCount++;
+        return 0;
+    }
 
     //
     // If the 2nd thread is not running, don't enter this method or we'll
