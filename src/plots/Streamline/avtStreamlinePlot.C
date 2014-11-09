@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -505,6 +505,7 @@ avtStreamlinePlot::SetAtts(const AttributeGroup *a)
     streamlineFilter->SetPathlines(atts.GetPathlines(),
                                    atts.GetPathlinesOverrideStartingTimeFlag(),
                                    atts.GetPathlinesOverrideStartingTime(),
+                                   atts.GetPathlinesPeriod(),
                                    CMFEType);
 
     streamlineFilter->SetIntegrationDirection(atts.GetIntegrationDirection());

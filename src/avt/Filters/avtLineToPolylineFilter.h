@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,6 +58,8 @@
 //  Creation:   Thu Aug 27 11:50:35 PDT 2009
 //
 //  Modifications:
+//    Eric Brugger, Mon Jul 21 13:51:03 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -72,7 +74,7 @@ class AVTFILTERS_API avtLineToPolylineFilter : virtual public avtDataTreeIterato
                                  { return "Grouping lines into polylines"; };
 
   protected:
-    virtual vtkDataSet      *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     virtual void             UpdateDataObjectInfo(void);
 };
 

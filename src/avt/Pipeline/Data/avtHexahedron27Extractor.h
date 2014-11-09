@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -80,7 +80,7 @@ class PIPELINE_API avtHexahedron27Extractor : public avtHexahedronExtractor
     {
         avtHex27Constant = 0,
         avtHex27Linear,
-        avtHex27Quadratic,
+        avtHex27Quadratic
     };
 
   

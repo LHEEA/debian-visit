@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -496,7 +496,7 @@ QvisStripChartTabWidget::getEnableLogScale()
 bool 
 QvisStripChartTabWidget::addDataPoint(const QString &name, double x, double y)
 {
-    bool outOfBounds = TRUE;
+    bool outOfBounds = true;
     int ST_Index = nameToIndex(name);
     if (ST_Index >= 0 )
        outOfBounds = stripCharts[ST_Index]->addDataPoint(x,y);

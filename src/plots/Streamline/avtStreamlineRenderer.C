@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -261,7 +261,7 @@ avtStreamlineRenderer::SetAtts(const AttributeGroup *a)
 // ****************************************************************************
 
 void
-avtStreamlineRenderer::GlobalSetAmbientCoefficient(float coeff)
+avtStreamlineRenderer::GlobalSetAmbientCoefficient(double coeff)
 {
     ambient_coeff = coeff;
 }
@@ -331,9 +331,6 @@ avtStreamlineRenderer::SetSpecularProperties(bool flag, double coeff,
     spec_coeff = flag ? coeff : 0;
     spec_power = power;
 
-    int r = color.Red();
-    int g = color.Green();
-    int b = color.Blue();
     spec_r = float(color.Red())/255.;
     spec_g = float(color.Green())/255.;
     spec_b = float(color.Blue())/255.;

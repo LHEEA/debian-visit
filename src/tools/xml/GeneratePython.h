@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1874,7 +1874,7 @@ class AttsGeneratorAtt : public virtual Att , public virtual PythonGeneratorFiel
             c << "                            {" << Endl;
             c << "                                PyObject *item = PyTuple_GET_ITEM(pyobj, i);" << Endl;
             c << "                                if(PyTuple_Check(item) &&" << Endl;
-            c << "                                   PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4)" << Endl;
+            c << "                                   (PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4))" << Endl;
             c << "                                {" << Endl;
             c << "                                    C[i*4] = 0;" << Endl;
             c << "                                    C[i*4+1] = 0;" << Endl;
@@ -1918,7 +1918,7 @@ class AttsGeneratorAtt : public virtual Att , public virtual PythonGeneratorFiel
             c << "                            {" << Endl;
             c << "                                PyObject *item = PyList_GET_ITEM(pyobj, i);" << Endl;
             c << "                                if(PyTuple_Check(item) &&" << Endl;
-            c << "                                   PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4)" << Endl;
+            c << "                                   (PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4))" << Endl;
             c << "                                {" << Endl;
             c << "                                    C[i*4] = 0;" << Endl;
             c << "                                    C[i*4+1] = 0;" << Endl;
@@ -2137,7 +2137,7 @@ class AttsGeneratorAttVector : public virtual AttVector , public virtual PythonG
         c << "    int index;" << Endl;
         c << "    if(!PyArg_ParseTuple(args, \"i\", &index))" << Endl;
         c << "        return NULL;" << Endl;
-        c << "    if(index < 0 || index >= obj->data->Get" << Name << "().size())" << Endl;
+        c << "    if(index < 0 || (size_t)index >= obj->data->Get" << Name << "().size())" << Endl;
         c << "    {" << Endl;
         c << "        char msg[200];" << Endl;
         c << "        if(obj->data->Get" << Name << "().size() == 0)" << Endl;
@@ -2449,6 +2449,18 @@ class AttsGeneratorMapNode : public virtual MapNode , public virtual PythonGener
     virtual bool HasSetAttr()
     {
         return false;
+    }
+    virtual void WriteSetMethodBody(QTextStream &c, const QString &className)
+    {
+        // squelch a warning, then call base class method, as this isn't implemented yet
+        c << "    (void) obj;" << endl;
+        PythonGeneratorField::WriteSetMethodBody(c, className);
+    }
+    virtual void WriteGetMethodBody(QTextStream &c, const QString &className)
+    {
+        // squelch a warning, then call base class method, as this isn't implemented yet
+        c << "    (void) obj;" << endl;
+        PythonGeneratorField::WriteGetMethodBody(c, className);
     }
 };
 
@@ -2778,6 +2790,10 @@ class PythonFieldFactory
 //    Mark C. Miller, Mon Feb 24 12:17:15 PST 2014
 //    Added logic to clear python error after attempting and failing to
 //    _setattr in a custom base.
+//
+//    Kathleen Biagas, Tue Feb 25 15:54:54 PST 2014
+//    We only need to use visitpy_api if the api needs exporting already.
+//
 // ----------------------------------------------------------------------------
 #include <GeneratorBase.h>
 
@@ -2785,13 +2801,11 @@ class PythonGeneratorAttribute : public GeneratorBase
 {
   public:
     std::vector<PythonGeneratorField*> fields;
-    bool visitpy_api;
   public:
     PythonGeneratorAttribute(const QString &n, const QString &p, const QString &f,
                            const QString &e, const QString &ei, const QString &bc)
         : GeneratorBase(n,p,f,e,ei, GENERATOR_NAME, bc), fields()
     {
-        visitpy_api = true;
     }
 
     virtual ~PythonGeneratorAttribute()
@@ -2801,7 +2815,6 @@ class PythonGeneratorAttribute : public GeneratorBase
         fields.clear();
     }
 
-    void DisableVISITPY() { visitpy_api = false; }
 
     void PrintFunction(QTextStream &out, const QString &f)
     {
@@ -2810,7 +2823,7 @@ class PythonGeneratorAttribute : public GeneratorBase
                 out << functions[i]->def;
     }
 
-    void Print(QTextStream &out)
+    void Print(QTextStream &out) const
     {
         out << "    Attribute: " << name << " (" << purpose << ")" << Endl;
         size_t i;
@@ -2830,7 +2843,9 @@ class PythonGeneratorAttribute : public GeneratorBase
         if (custombase)
             h << "#include <Py"<<baseClass<<".h>" << Endl;
         QString api(""); 
-        if(visitpy_api)
+        // only need visitpy_api if we are exporting the api in the first place
+        // (eg anyplace other than plugins, which don't define an export api).
+        if(!exportAPI.isEmpty())
         {
              h << "#include <visitpy_exports.h>" << Endl;
              api = "VISITPY_API ";
@@ -3165,8 +3180,9 @@ class PythonGeneratorAttribute : public GeneratorBase
         c << "std::string" << Endl;
         c << mName << "(const "<<name<<" *atts, const char *prefix)" << Endl;
         c << "{" << Endl;
-        c << "    std::string str; " << Endl;
-        c << "    char tmpStr[1000]; " << Endl;
+        c << "    std::string str;" << Endl;
+        if (!fields.empty())
+            c << "    char tmpStr[1000];" << Endl;
         c << Endl;
         if (custombase)
         {
@@ -3369,7 +3385,6 @@ class PythonGeneratorAttribute : public GeneratorBase
             c << "static void" << Endl;
             c << CallLogRoutine << "(Subject *subj, void *data)" << Endl;
             c << "{" << Endl;
-            c << "    "<<name<<" *atts = ("<<name<<" *)subj;" << Endl;
             if(HasCode(CallLogRoutine, 0))
                 PrintCode(c, CallLogRoutine, 0);
             c << "    typedef void (*logCallback)(const std::string &);" << Endl;
@@ -3627,12 +3642,11 @@ class PythonGeneratorPlugin : public PluginBase
     {
     }
 
-    void Print(QTextStream &out)
+    void Print(QTextStream &out) const
     {
         out << "Plugin: "<<name<<" (\""<<label<<"\", type="<<type<<") -- version "<<version<< Endl;
         if (atts)
         {
-            atts->DisableVISITPY();
             atts->Print(out);
         }
     }
@@ -3641,7 +3655,6 @@ class PythonGeneratorPlugin : public PluginBase
     {
         if (atts)
         {
-            atts->DisableVISITPY();
             atts->WriteHeader(h);
         }
     }

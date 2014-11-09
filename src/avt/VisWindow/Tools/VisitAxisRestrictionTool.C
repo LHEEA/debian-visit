@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -147,8 +147,6 @@ VisitAxisRestrictionTool::Enable()
 void
 VisitAxisRestrictionTool::Disable()
 {
-    bool val = IsEnabled();
-
     VisitInteractiveTool::Disable();
 
     // Remove the actors from the canvas if the tool was enabled.
@@ -220,7 +218,7 @@ VisitAxisRestrictionTool::SetForegroundColor(double r, double g, double b)
     color[0] = r;
     color[1] = g;
     color[2] = b;
-    for(int i = 0; i < posTextActors.size(); ++i)
+    for(size_t i = 0; i < posTextActors.size(); ++i)
         posTextActors[i]->GetTextProperty()->SetColor(color);
 }
 
@@ -290,7 +288,7 @@ void
 VisitAxisRestrictionTool::CreateTextActors()
 {
     posTextActors.resize(origHotPoints.size());
-    for(int i = 0; i < posTextActors.size(); ++i)
+    for(size_t i = 0; i < posTextActors.size(); ++i)
     {
         posTextActors[i] = vtkTextActor::New();
         posTextActors[i]->SetTextScaleMode(vtkTextActor::TEXT_SCALE_MODE_NONE);
@@ -315,7 +313,7 @@ void
 VisitAxisRestrictionTool::DeleteTextActors()
 {
     RemoveText();
-    for(int i = 0; i < posTextActors.size(); ++i)
+    for(size_t i = 0; i < posTextActors.size(); ++i)
     {
         if (posTextActors[i] != NULL)
         {
@@ -346,7 +344,7 @@ VisitAxisRestrictionTool::AddText()
         return;
 
 #ifndef NO_ANNOTATIONS
-    for(int i = 0; i < posTextActors.size(); ++i)
+    for(size_t i = 0; i < posTextActors.size(); ++i)
     {
         proxy.GetForeground()->AddActor2D(posTextActors[i]);
     }
@@ -375,7 +373,7 @@ VisitAxisRestrictionTool::RemoveText()
         return;
 
 #ifndef NO_ANNOTATIONS
-    for(int i = 0; i < posTextActors.size(); ++i)
+    for(size_t i = 0; i < posTextActors.size(); ++i)
     {
         proxy.GetForeground()->RemoveActor2D(posTextActors[i]);
     }
@@ -400,7 +398,7 @@ VisitAxisRestrictionTool::RemoveText()
 void
 VisitAxisRestrictionTool::UpdateText()
 {
-    for (int i=0; i<posTextActors.size(); i++)
+    for (size_t i=0; i<posTextActors.size(); i++)
     {
         int axis = int(i/2);
         char str[100];
@@ -539,7 +537,7 @@ VisitAxisRestrictionTool::FinalActorSetup()
 void
 VisitAxisRestrictionTool::DoClampAndTransformations()
 {
-    for (int i=0; i<hotPoints.size(); i++)
+    for (size_t i=0; i<hotPoints.size(); i++)
     {
         if (origHotPoints[i].pt.y < 0)
             origHotPoints[i].pt.y = 0;
@@ -785,7 +783,7 @@ VisitAxisRestrictionTool::UpdatePlotList(std::vector<avtActor_p> &list)
         e->CopyTo(extents);
         for (int k=0; k<dim; k++)
         {
-            if (bins.size() > k)
+            if (bins.size() > (size_t)k)
                 axesXPos[k] = (bins[k]+bins[k+1])/2;
             else
                 axesXPos[k] = k;
@@ -808,9 +806,6 @@ VisitAxisRestrictionTool::UpdatePlotList(std::vector<avtActor_p> &list)
                 int axis = atts.GetUseForAxis(var);
                 if (axis == -1)
                     continue;
-
-                avtExtents *ext = atts.GetThisProcsOriginalDataExtents(var);
-                // note: we already checked above that ext exists
 
                 double extents[2];
                 atts.GetThisProcsOriginalDataExtents(var)->CopyTo(extents);

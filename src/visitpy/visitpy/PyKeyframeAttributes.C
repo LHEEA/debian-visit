@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewKeyframeAttributes(int);
 std::string
 PyKeyframeAttributes_ToString(const KeyframeAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetEnabled())
         SNPRINTF(tmpStr, 1000, "%senabled = 1\n", prefix);
@@ -396,7 +396,6 @@ PyKeyframeAttributes_GetLogString()
 static void
 PyKeyframeAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    KeyframeAttributes *atts = (KeyframeAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

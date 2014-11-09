@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -562,7 +562,7 @@ bool ViewerProxy::ConnectToExistingViewer(const std::string& host, const int& po
 
     char** inputArgv = new char* [inputArgc+1];
 
-    for(int i = 0; i < args.size(); ++i)
+    for(size_t i = 0; i < args.size(); ++i)
     {
         inputArgv[i] = new char [args[i].length()+1];
         strcpy(inputArgv[i],args[i].c_str());

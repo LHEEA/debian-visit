@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -750,7 +750,7 @@ ViewerPlotList::ResizeTimeSliders(const stringVector &sliders, bool clearCache)
     bool tsSizeChanged = false;
     DatabaseCorrelationList *cL = ViewerFileServer::Instance()->
         GetDatabaseCorrelationList();
-    for(int slider = 0; slider < sliders.size(); ++slider)
+    for(size_t slider = 0; slider < sliders.size(); ++slider)
     {
         const std::string &tsName = sliders[slider];
         DatabaseCorrelation *correlation = cL->FindCorrelation(tsName);
@@ -775,7 +775,7 @@ ViewerPlotList::ResizeTimeSliders(const stringVector &sliders, bool clearCache)
         // Determine if the plot's source has anything to do with the
         // time sliders that are changing.
         bool relatedSource = false;
-        for(int slider = 0; slider < sliders.size(); ++slider)
+        for(size_t slider = 0; slider < sliders.size(); ++slider)
         {
              const std::string &tsName = sliders[slider];
              DatabaseCorrelation *correlation = cL->FindCorrelation(tsName);
@@ -1117,9 +1117,8 @@ ViewerPlotList::SetTimeSliderState(int state)
                 // sliders, after having set the time for the correlated time
                 // slider, they have the right states.
                 //
-                int i;
                 const stringVector &correlationDBs = correlation->GetDatabaseNames();
-                for(i = 0; i < correlationDBs.size(); ++i)
+                for(size_t i = 0; i < correlationDBs.size(); ++i)
                 {
                     StringIntMap::iterator ts = timeSliders.find(correlationDBs[i]);
                     if(ts != timeSliders.end())
@@ -1712,7 +1711,7 @@ ViewerPlotList::AskForCorrelationPermission(const stringVector &dbs) const
                     cL->GetDefaultCorrelationMethod()));
 
         QString fileStr;
-        for(int i = 0; i < dbs.size(); ++i)
+        for(size_t i = 0; i < dbs.size(); ++i)
             fileStr += (QString(dbs[i].c_str()) + QString("\n"));
         text += fileStr;
 
@@ -1789,7 +1788,7 @@ ViewerPlotList::AllowAutomaticCorrelation(const stringVector &dbs) const
         cL->GetWhenToCorrelate();
     bool needPermission = GetViewerProperties()->GetNowin() ? false :
         cL->GetNeedPermission();
-    bool allowCorrelation;
+    bool allowCorrelation = false;
 
     if(when == DatabaseCorrelationList::CorrelateAlways)
     {
@@ -1811,7 +1810,7 @@ ViewerPlotList::AllowAutomaticCorrelation(const stringVector &dbs) const
         // correlation unless we need permission.
         bool sameLength = true;
         int len = -1;
-        for(int i = 0; i < dbs.size() && sameLength; ++i)
+        for(size_t i = 0; i < dbs.size() && sameLength; ++i)
         {
             DatabaseCorrelation *c = cL->FindCorrelation(dbs[i]);
             if(c)
@@ -1878,16 +1877,15 @@ ViewerPlotList::GetMostSuitableCorrelation(const std::string &source,
     //
     // Add all of the plot databases that have more than one time step to dbs.
     //
-    int i;
     stringVector dbs1, dbs;
     dbs1.push_back(source);
-    for(i = 0; i < nPlots; ++i)
+    for(int i = 0; i < nPlots; ++i)
     {
         std::string pSource(plots[i].plot->GetSource());
         if(std::find(dbs1.begin(), dbs1.end(), pSource) == dbs1.end())
             dbs1.push_back(pSource);
     }
-    for(i = 0; i < dbs1.size(); ++i)
+    for(size_t i = 0; i < dbs1.size(); ++i)
     {
         if(cL->FindCorrelation(dbs1[i]) != 0)
             dbs.push_back(dbs1[i]);
@@ -1917,16 +1915,16 @@ ViewerPlotList::GetMostSuitableCorrelation(const std::string &source,
         debug3 << mName << "Need to "
                   "find a suitable correlation for:" << endl;
         StringIntMap scores;
-        for(i = 0; i < dbs.size(); ++i)
+        for(size_t i = 0; i < dbs.size(); ++i)
         {
             scores[dbs[i]] = 0;
             debug3 << "\t" << dbs[i].c_str() << endl;
         }
 
-        for(i = 0; i < cL->GetNumCorrelations(); ++i)
+        for(int i = 0; i < cL->GetNumCorrelations(); ++i)
         {
             const DatabaseCorrelation &c = cL->GetCorrelations(i);
-            for(int j = 0; j < dbs.size(); ++j)
+            for(size_t j = 0; j < dbs.size(); ++j)
             {
                 if(c.UsesDatabase(dbs[j]))
                     ++scores[c.GetName()];
@@ -1947,7 +1945,7 @@ ViewerPlotList::GetMostSuitableCorrelation(const std::string &source,
         // added to the selected correlation if they are not already in it.
         std::string correlationName;
         int score = 0;
-        for(int desiredScore = dbs.size(); desiredScore > 1 && score == 0;
+        for(int desiredScore = (int)dbs.size(); desiredScore > 1 && score == 0;
             --desiredScore)
         {
             for(StringIntMap::const_iterator pos = scores.begin();
@@ -2036,7 +2034,7 @@ ViewerPlotList::GetMostSuitableCorrelation(const std::string &source,
         }
         else
         {
-            if(score == dbs.size())
+            if(score == (int)dbs.size())
             {
                 debug3 << mName << "Found a correlation that contains all "
                        << "plot databases. Using " << correlationName.c_str()
@@ -2072,7 +2070,7 @@ ViewerPlotList::GetMostSuitableCorrelation(const std::string &source,
                 //
                 bool alteredCorrelation = false;
                 correlation = cL->FindCorrelation(correlationName);
-                for(i = 0; i < dbs.size(); ++i)
+                for(size_t i = 0; i < dbs.size(); ++i)
                 {
                     if(!correlation->UsesDatabase(dbs[i]))
                     {
@@ -2563,7 +2561,7 @@ ViewerPlotList::GetNumVisiblePlots() const
 int
 ViewerPlotList::AddPlot(int type, const std::string &var, bool replacePlots,
     bool applyOperators, bool inheritSILRestriction, bool applySelection, 
-    DataNode *attributesNode)
+    DataNode *attributesNode, int embeddedPlotId)
 {
     if (databaseName.size() < 1)
     {
@@ -2584,6 +2582,8 @@ ViewerPlotList::AddPlot(int type, const std::string &var, bool replacePlots,
         {
             Error(tr("VisIt could not create the desired plot."));
             hadError = true;
+        } else {
+            newPlot->SetEmbeddedPlotId(embeddedPlotId);
         }
     }
     CATCH2(VisItException, e)
@@ -4438,10 +4438,9 @@ ViewerPlotList::SetPlotAtts(const int plotType)
     // that matches, we will set that one, otherwise we will set a
     // warning.
     //
-    int i;
     intVector matchingPlots;
     intVector selectedPlots;
-    for (i = 0; i < nPlots; i++)
+    for (int i = 0; i < nPlots; i++)
     {
         if (plots[i].plot->GetType() == plotType)
         {
@@ -4458,7 +4457,7 @@ ViewerPlotList::SetPlotAtts(const int plotType)
     //
     if (selectedPlots.size() > 0)
     {
-        for (i = 0; i < selectedPlots.size(); i++)
+        for (size_t i = 0; i < selectedPlots.size(); i++)
         {
             plots[selectedPlots[i]].plot->SetPlotAttsFromClient();
         }
@@ -5331,7 +5330,7 @@ InitializeSILRestrictionFromDatabase(avtSILRestriction_p tmpSilr, int topSet,
     int *idx = new int[defaultSILRestrictionFromDatabase.size()];
 
     // Initialize to '-1' so that we can spot errors
-    for (int i=0; i<defaultSILRestrictionFromDatabase.size(); ++i)
+    for (size_t i=0; i<defaultSILRestrictionFromDatabase.size(); ++i)
     {
         idx[i] = -1;
     }
@@ -5339,7 +5338,7 @@ InitializeSILRestrictionFromDatabase(avtSILRestriction_p tmpSilr, int topSet,
     // Find indices for SIL sets
     const std::vector<int> &mapsOut =
         tmpSilr->GetSILSet(topSet)->GetRealMapsOut();
-    for (int i = 0 ; i < mapsOut.size() ; i++)
+    for (size_t i = 0 ; i < mapsOut.size() ; i++)
     {
         avtSILCollection_p coll = tmpSilr->GetSILCollection(mapsOut[i]);
         int nsets = coll->GetNumberOfSubsets();
@@ -5567,7 +5566,7 @@ ViewerPlotList::GetDefaultSILRestriction(const std::string &host,
         //
         // Look through the SIL's whole sets for a name that matches meshName.
         //
-        for (int i = 0; i < wholes.size(); ++i)
+        for (size_t i = 0; i < wholes.size(); ++i)
         {
             avtSILSet_p current = sil->GetSILSet(wholes[i]);
             if (meshName == current->GetName())
@@ -5692,7 +5691,7 @@ ViewerPlotList::ClearDefaultSILRestrictions(const std::string &host,
     // delete it.
     //
     const std::vector<int> &wholes = sil->GetWholes();
-    for (int i = 0; i < wholes.size(); ++i)
+    for (size_t i = 0; i < wholes.size(); ++i)
     {
         std::string key(SILRestrictionKey(host, database, wholes[i]));
         SILRestrictionMap::iterator pos = SILRestrictions.find(key);
@@ -5783,8 +5782,7 @@ ViewerPlotList::SetActivePlots(const intVector &activePlots,
     // First make all the plots inactive and then make the listed plots
     // active.
     //
-    int i;
-    for (i = 0; i < nPlots; i++)
+    for (int i = 0; i < nPlots; i++)
     {
         plots[i].active = false;
     }
@@ -5792,7 +5790,7 @@ ViewerPlotList::SetActivePlots(const intVector &activePlots,
     //
     // Make the selected plots be active.
     //
-    for (i = 0; i < activePlots.size(); i++)
+    for (size_t i = 0; i < activePlots.size(); i++)
     {
         if (activePlots[i] < nPlots)
         {
@@ -5807,10 +5805,10 @@ ViewerPlotList::SetActivePlots(const intVector &activePlots,
     // Set the active operators and the expanded flag for each plot.
     //
     if(moreThanPlotsValid &&
-       activeOperators.size() == nPlots &&
-       expandedPlots.size() == nPlots)
+       activeOperators.size() == (size_t)nPlots &&
+       expandedPlots.size() == (size_t)nPlots)
     {
-        for(i = 0; i < activeOperators.size(); ++i)
+        for(size_t i = 0; i < activeOperators.size(); ++i)
         {
             plots[i].plot->SetActiveOperatorIndex(activeOperators[i]);
             plots[i].plot->SetExpanded(expandedPlots[i] > 0);
@@ -5893,9 +5891,9 @@ ViewerPlotList::SetPlotSILRestriction(bool applyToAll)
     //
     // Find the list of selected plots and the index of the first selected plot.
     //
-    int i, firstSelected = -1;
+    int firstSelected = -1;
     std::vector<int> activePlots;
-    for (i = 0; i < nPlots; ++i)
+    for (int i = 0; i < nPlots; ++i)
     {
         if (plots[i].active)
         {
@@ -5930,7 +5928,7 @@ ViewerPlotList::SetPlotSILRestriction(bool applyToAll)
     // database as the first selected plot.
     //
     bool needsUpdate = false;
-    for (i = 0; i < activePlots.size(); ++i)
+    for (size_t i = 0; i < activePlots.size(); ++i)
     {
         ViewerPlot *plot0 = plots[activePlots[firstSelected]].plot;
         ViewerPlot *ploti = plots[activePlots[i]].plot;
@@ -6677,7 +6675,7 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
     // Create a different order for the plots, putting ones that create named 
     // selections first if we're updating automatically.
     //
-    int nOrder(2 * somePlots.size());
+    size_t nOrder(2 * somePlots.size());
     int *order = new int[nOrder];
     for(size_t i = 0; i < nOrder; ++i)
         order[i] = -1;
@@ -6722,7 +6720,7 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
             //
             // Create any missing plots.
             //
-            for (int idx = 0; idx < nOrder; idx++)
+            for (size_t idx = 0; idx < nOrder; idx++)
             {
                 int i = order[idx];
                 if(i == -1)
@@ -6779,7 +6777,7 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
 
                     // Record whether we've just generated a plot that defines a
                     // named selection.
-                    if(!plots[i].plot->GetErrorFlag() && idx < nPlots)
+                    if(!plots[i].plot->GetErrorFlag() && idx < (size_t)nPlots)
                         originatingPlots.push_back(i);
                 }
             }
@@ -6815,7 +6813,7 @@ ViewerPlotList::UpdatePlots(const intVector &somePlots, bool animating)
 
         // If we had any originating plots that were generated, update other
         // plots that depend on them.
-        for(int p = 0; p < originatingPlots.size(); ++p)
+        for(size_t p = 0; p < originatingPlots.size(); ++p)
         {
             const SelectionList *sList = ViewerWindowManager::GetSelectionList();
             for(int j = 0; j < sList->GetNumSelections(); ++j)
@@ -8145,7 +8143,6 @@ ViewerPlotList::UpdateExpressionList(bool considerPlots, bool update)
             continue;
 
         ViewerPlot *plot = plots[i].plot;
-        const string &mesh = plot->GetMeshName();
         for (int j = 0 ; j < plot->GetNOperators() ; j++)
         {
             ViewerOperator *oper = plot->GetOperator(j);
@@ -8629,8 +8626,7 @@ ViewerPlotList::GetMeshVarNameForActivePlots(const std::string &host,
     ViewerPlot *activePlot = GetPlot(activePlotIDs[0]);
     std::string activeVarName = activePlot->GetVariableName();
     std::string tmpMeshName = md->MeshForVar(activeVarName);
-    int i;
-    for (i = 1; i < activePlotIDs.size(); i++)
+    for (size_t i = 1; i < activePlotIDs.size(); i++)
     {
         activePlot = GetPlot(activePlotIDs[i]);
         activeVarName = activePlot->GetVariableName();
@@ -9375,7 +9371,6 @@ ViewerPlotList::SetFromNode(DataNode *parentNode,
     // Try and recreate the plots
     //
     bool sendUpdateFrame = false;
-    bool createdPlots = false;
     intVector plotSelected;
     for(int i = 0; i < expectedPlots; ++i)
     {
@@ -9548,7 +9543,6 @@ ViewerPlotList::SetFromNode(DataNode *parentNode,
                     }
 
                     createdPlot = true;
-                    createdPlots = true;
                 }
             }
         }
@@ -10034,7 +10028,13 @@ ViewerPlotList::PermitsLogViewScaling(WINDOW_MODE wm)
 // Creation:   Fri Oct 28 09:54:23 PDT 2011
 //
 // Modifications:
+//    Eric Brugger, Thu Jan  2 15:19:29 PST 2014
+//    I added support for 3d multi resolution data selections.
 //   
+//    Eric Brugger, Wed Jan  8 17:06:16 PST 2014
+//    I added a ViewArea to the multi resolution data selection since the
+//    view extents were insufficient in 3d.
+//
 // ****************************************************************************
 
 bool
@@ -10045,9 +10045,9 @@ ViewerPlotList::ShouldRefineData(double smallestCellSize) const
         return false;
     }
 
-    int nDims;
+    int nDims = 0;
     double ext[6];
-    double cellSize;
+    double cellSize = 0.;
     for (int i = 0; i < nPlots; ++i)
     {
         ViewerPlot *plot = plots[i].plot;
@@ -10062,19 +10062,31 @@ ViewerPlotList::ShouldRefineData(double smallestCellSize) const
         cellSize = atts.GetMultiresCellSize();
     }
 
-    double fustrum[6];
+    double viewArea;
+    double extents[6];
+    double matrix[16];
     if (window->GetWindowMode() == WINMODE_2D)
     {
-        const avtView2D &view2D = window->GetView2D();
-        fustrum[0] = view2D.window[0];
-        fustrum[1] = view2D.window[1];
-        fustrum[2] = view2D.window[2];
-        fustrum[3] = view2D.window[3];
+        avtView2D view2D = window->GetView2D();
+        int width, height;
+        window->GetSize(width, height);
+        double viewport[4];
+        view2D.GetActualViewport(viewport, width, height);
+        double ratioWindow = double(width) / double(height);
+        double ratioViewport = (viewport[1] - viewport[0]) /
+                               (viewport[3] - viewport[2]);
+        double ratio = ratioWindow * ratioViewport;
+        view2D.GetCompositeProjectionTransformMatrix(matrix, ratio);
+        view2D.CalculateExtentsAndArea(extents, viewArea, matrix);
     }
     else if (window->GetWindowMode() == WINMODE_3D)
     {
         const avtView3D &view3D = window->GetView3D();
-        return false;
+        int width, height;
+        window->GetSize(width, height);
+        double ratio = double(width) / double(height);
+        view3D.GetCompositeProjectionTransformMatrix(matrix, ratio);
+        view3D.CalculateExtentsAndArea(extents, viewArea, matrix);
     }
     else
     {
@@ -10082,20 +10094,17 @@ ViewerPlotList::ShouldRefineData(double smallestCellSize) const
     }
 
     bool refineData = false;
-    double frustumDx = 0.;
     for (int i = 0; i < nDims; i++)
     {
-        frustumDx += ((fustrum[i*2+1]-fustrum[i*2])*
-                      (fustrum[i*2+1]-fustrum[i*2]));
-        if (fustrum[i*2] < ext[i*2] ||
-            fustrum[i*2+1] > ext[i*2+1])
+        if (extents[i*2] < ext[i*2] ||
+            extents[i*2+1] > ext[i*2+1])
         {
             refineData = true;
         }
     }
-    frustumDx = sqrt(frustumDx);
-    double ratio = cellSize / frustumDx;
     
+    double viewSize = sqrt(viewArea);
+    double ratio = cellSize / viewSize;
     if (ratio > smallestCellSize)
         refineData = true;
 

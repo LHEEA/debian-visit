@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -360,7 +360,7 @@ avtAUXFileFileFormat::ReadFile()
     }
 
     fileBuf = new char[fileSize];
-    if (fread((void *)fileBuf, 1, fileSize, fd) != fileSize)
+    if (fread((void *)fileBuf, 1, fileSize, fd) != (size_t)fileSize)
     {
         fclose(fd);
         delete [] fileBuf;

@@ -76,11 +76,11 @@ function bv_hdf4_host_profile
         >> $HOSTCONF
         if [[ "$DO_SZIP" == "yes" ]] ; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg-${VTK_SHORT_VERSION} TYPE STRING)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/szip/$SZIP_VERSION/\${VISITARCH}/lib sz \${VISITHOME}/${VTK_INSTALL_DIR}/\${VTK_VERSION}/\${VISITARCH}/lib vtkjpeg-\${VTK_MAJOR_VERSION}.\${VTK_MINOR_VERSION} TYPE STRING)" \
             >> $HOSTCONF
           else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH}/lib vtkjpeg-${VTK_SHORT_VERSION} TYPE STRING)" \
+            "VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP \${VISITHOME}/${VTK_INSTALL_DIR}/\${VTK_VERSION}/\${VISITARCH}/lib vtkjpeg-\${VTK_MAJOR_VERSION}.\${VTK_MINOR_VERSION} TYPE STRING)" \
             >> $HOSTCONF
         fi
     fi
@@ -1073,13 +1073,13 @@ diff -c a/configure hdf-4.2.5/configure
 
   done
 
-!     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for vtk_jpeg_start_decompress in -lvtkjpeg-6.0" >&5
-! $as_echo_n "checking for vtk_jpeg_start_decompress in -lvtkjpeg-6.0... " >&6; }
+!     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for vtk_jpeg_start_decompress in -lvtkjpeg-${VTK_SHORT_VERSION}" >&5
+! $as_echo_n "checking for vtk_jpeg_start_decompress in -lvtkjpeg-${VTK_SHORT_VERSION}... " >&6; }
 ! if test "${ac_cv_lib_jpeg_vtk_jpeg_start_decompress+set}" = set; then :
     $as_echo_n "(cached) " >&6
   else
     ac_check_lib_save_LIBS=$LIBS
-! LIBS="-lvtkjpeg-6.0  $LIBS"
+! LIBS="-lvtkjpeg-${VTK_SHORT_VERSION}  $LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
   /* end confdefs.h.  */
 
@@ -1155,7 +1155,7 @@ diff -c a/configure hdf-4.2.5/configure
   #define HAVE_LIBJPEG 1
   _ACEOF
 
-!   LIBS="-lvtkjpeg-6.0 $LIBS"
+!   LIBS="-lvtkjpeg-${VTK_SHORT_VERSION} $LIBS"
 
   else
     unset HAVE_JPEG
@@ -1178,13 +1178,13 @@ diff -c a/configure hdf-4.2.5/configure
         LDFLAGS="$LDFLAGS -L$jpeg_lib"
       fi
 
-!     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for vtk_jpeg_start_decompress in -lvtkjpeg-6.0" >&5
-! $as_echo_n "checking for vtk_jpeg_start_decompress in -lvtkjpeg-6.0... " >&6; }
+!     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for vtk_jpeg_start_decompress in -lvtkjpeg-${VTK_SHORT_VERSION}" >&5
+! $as_echo_n "checking for vtk_jpeg_start_decompress in -lvtkjpeg-${VTK_SHORT_VERSION}... " >&6; }
 ! if test "${ac_cv_lib_jpeg_vtk_jpeg_start_decompress+set}" = set; then :
     $as_echo_n "(cached) " >&6
   else
     ac_check_lib_save_LIBS=$LIBS
-! LIBS="-lvtkjpeg-6.0  $LIBS"
+! LIBS="-lvtkjpeg-${VTK_SHORT_VERSION}  $LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
   /* end confdefs.h.  */
 
@@ -1260,7 +1260,7 @@ diff -c a/configure hdf-4.2.5/configure
   #define HAVE_LIBJPEG 1
   _ACEOF
 
-!   LIBS="-lvtkjpeg-6.0 $LIBS"
+!   LIBS="-lvtkjpeg-${VTK_SHORT_VERSION} $LIBS"
 
   else
     unset HAVE_JPEG

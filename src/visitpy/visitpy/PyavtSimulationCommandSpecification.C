@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewavtSimulationCommandSpecification(int);
 std::string
 PyavtSimulationCommandSpecification_ToString(const avtSimulationCommandSpecification *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sname = \"%s\"\n", prefix, atts->GetName().c_str());
     str += tmpStr;
@@ -504,6 +504,8 @@ PyavtSimulationCommandSpecification_setattr(PyObject *self, char *name, PyObject
         Py_DECREF(obj);
 
     Py_DECREF(tuple);
+    if( obj == NULL)
+        PyErr_Format(PyExc_RuntimeError, "Unable to set unknown attribute: '%s'", name);
     return (obj != NULL) ? 0 : -1;
 }
 
@@ -657,7 +659,6 @@ PyavtSimulationCommandSpecification_GetLogString()
 static void
 PyavtSimulationCommandSpecification_CallLogRoutine(Subject *subj, void *data)
 {
-    avtSimulationCommandSpecification *atts = (avtSimulationCommandSpecification *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewExternalSurfaceAttributes(int);
 std::string
 PyExternalSurfaceAttributes_ToString(const ExternalSurfaceAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetRemoveGhosts())
         SNPRINTF(tmpStr, 1000, "%sremoveGhosts = 1\n", prefix);
@@ -364,7 +364,6 @@ PyExternalSurfaceAttributes_GetLogString()
 static void
 PyExternalSurfaceAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ExternalSurfaceAttributes *atts = (ExternalSurfaceAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

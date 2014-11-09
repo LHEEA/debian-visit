@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,10 +39,10 @@
 #include <cstdio>
 #include <string>
 
-#include <QtGui/QApplication>
-#include <QtGui/QLabel>
-#include <QtGui/QGridLayout>
-#include <QtGui/QSlider>
+#include <QApplication>
+#include <QLabel>
+#include <QGridLayout>
+#include <QSlider>
 
 #include "QvisMultiresControlWindow.h"
 #include <DebugStream.h>

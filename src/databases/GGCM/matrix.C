@@ -8,7 +8,7 @@
 #include <math.h>
 
 /* these should be fixed to have more graceful error handling. */
-__deprecated float ***matrixAllocate(int l, int m, int n)
+ggcm__deprecated float ***matrixAllocate(int l, int m, int n)
 {
     int i, j;
     float ***A;
@@ -16,19 +16,20 @@ __deprecated float ***matrixAllocate(int l, int m, int n)
     A = (float ***)malloc(l * sizeof(float **));
     if(A == NULL) {
         fprintf(stderr, "fMatrixAllocate3D:  memory unavailable\n");
-        abort();
+        return NULL; ///TODO: this was abrt() replace with proper failure
     }
     for(i = 0; i < l; i++) {
         A[i] = (float **)malloc(m * sizeof(float *));
         if(A[i] == NULL) {
             fprintf(stderr, "fMatrixAllocate3D:  memory unavailable\n");
-            abort();
+            return NULL; ///TODO: this was abrt() replace with proper failure
         }
         for(j = 0; j < m; j++) {
             A[i][j] = (float *)malloc(n * sizeof(float));
             if(A[i][j] == NULL) {
                 fprintf(stderr, "fMatrixAllocate3D:  memory unavailable\n");
-                abort();
+                return NULL; ///TODO: this was abrt() replace with proper failure
+                
             }
         }
     }
@@ -36,7 +37,7 @@ __deprecated float ***matrixAllocate(int l, int m, int n)
     return A;
 }
 
-__deprecated void matrixFree(float ***A, int l, int m, int n)
+ggcm__deprecated void matrixFree(float ***A, int l, int m, int n)
 {
     int i, j;
 
@@ -64,9 +65,9 @@ float ***m_alloc(unsigned int x, unsigned int y, unsigned int z)
 
     M = (float***)(meta + 3);
 
-    for(i=0; i < x; ++i) {
+    for(i=0; i < (int)x; ++i) {
         M[i] = (float**) malloc(y * sizeof(float*));
-        for(j=0; j < y; ++j) {
+        for(j=0; j < (int)y; ++j) {
             M[i][j] = (float*) malloc(z * sizeof(float));
         }
     }
@@ -90,8 +91,8 @@ void m_free(float ***M)
     x = meta[0];
     y = meta[1];
 
-    for(i=0; i < x; ++i) {
-        for(j=0; j < y; ++j) {
+    for(i=0; i < (int)x; ++i) {
+        for(j=0; j < (int)y; ++j) {
             free(M[i][j]);
         }
         free(M[i]);

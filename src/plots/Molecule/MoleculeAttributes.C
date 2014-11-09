@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -330,7 +330,7 @@ const AttributeGroup::private_tmfs_t MoleculeAttributes::TmfsStruct = {MOLECULEA
 
 MoleculeAttributes::MoleculeAttributes() : 
     AttributeSubject(MoleculeAttributes::TypeMapFormatString),
-    bondSingleColor(128, 128, 128), radiusVariable("Default"), 
+    bondSingleColor(128, 128, 128), radiusVariable("default"), 
     elementColorTable("cpk_jmol"), residueTypeColorTable("amino_shapely"), 
     residueSequenceColorTable("Default"), continuousColorTable("Default")
 {
@@ -354,7 +354,7 @@ MoleculeAttributes::MoleculeAttributes() :
 
 MoleculeAttributes::MoleculeAttributes(private_tmfs_t tmfs) : 
     AttributeSubject(tmfs.tmfs),
-    bondSingleColor(128, 128, 128), radiusVariable("Default"), 
+    bondSingleColor(128, 128, 128), radiusVariable("default"), 
     elementColorTable("cpk_jmol"), residueTypeColorTable("amino_shapely"), 
     residueSequenceColorTable("Default"), continuousColorTable("Default")
 {

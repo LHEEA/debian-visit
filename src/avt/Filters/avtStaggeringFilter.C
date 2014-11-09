@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,25 +89,29 @@ avtStaggeringFilter::~avtStaggeringFilter()
 //      offsets.  If no offsets, or offsets are zero, returns input dataset.
 //
 //  Arguments:
-//      inDS      The input dataset.
-//      <unused>  The domain number.
-//      <unused>  The label.
+//      inDR      The input data representation.
 //
-//  Returns:      The input dataset adjusted for node offsets
+//  Returns:      The input data representation adjusted for node offsets
 //
 //  Programmer:   Marc Durant
 //  Creation:     April 24, 2012
 //
 //  Modifications:
+//    Eric Brugger, Tue Jul 22 08:56:41 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
-vtkDataSet *
-avtStaggeringFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
+avtDataRepresentation *
+avtStaggeringFilter::ExecuteData(avtDataRepresentation *inDR)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *inDS = inDR->GetDataVTK();
   
   if (!inDS) {
-    return inDS;
+    return inDR;
   }
   
   vtkDataSet* outDS = NULL;
@@ -120,14 +124,14 @@ avtStaggeringFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
   
   if (!velData) {
     debug5 <<"avtStaggeringFilter::ExecuteData() - Unable to find scalar data on mesh, returning input dataset." <<std::endl;
-    return inDS;
+    return inDR;
   }
     
   vtkInformation* info = velData->GetInformation();
       
   if (!info->Has(avtVariableCache::OFFSET_3())) {
     debug5 <<"avtStaggeringFilter::ExecuteData() - scalars have NO offset information, returning input dataset." <<std::endl;
-    return inDS;
+    return inDR;
   }
       
   //Extract the offset information from the dataset
@@ -144,7 +148,6 @@ avtStaggeringFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
     case VTK_STRUCTURED_GRID:
     {
       vtkStructuredGrid* grid = vtkStructuredGrid::SafeDownCast(inDS);
-      int* dimensions = grid->GetDimensions();
       
       vtkStructuredGrid* newGrid = vtkStructuredGrid::New();
       newGrid->ShallowCopy(grid);
@@ -203,7 +206,6 @@ avtStaggeringFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
       }
           
       outDS = newGrid;
-      ManageMemory(outDS);            
     }
     break;
           
@@ -220,10 +222,15 @@ avtStaggeringFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
   }  //end switch(dstype)
       
   if (outDS) {
-    return outDS;
+    avtDataRepresentation *outDR = new avtDataRepresentation(outDS,
+        inDR->GetDomain(), inDR->GetLabel());
+
+    outDS->Delete();
+
+    return outDR;
   }
     
-  return inDS;
+  return inDR;
 }  
 
 // ****************************************************************************

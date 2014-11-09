@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -240,7 +240,7 @@ AddOperatorAction::Execute(int)
 
         if( applyToAllWindows )
         {
-          for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+          for( int i=0; i< windowMgr->GetNumWindows(); ++i )
           {
             windowMgr->GetWindow(i)->GetPlotList()->
               AddOperator(type, applyOperatorToAllPlots, fromDefault);
@@ -389,7 +389,7 @@ PromoteOperatorAction::Execute()
 
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i< windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           PromoteOperator(args.GetOperatorType(), applyOperatorToAllPlots);
@@ -465,7 +465,7 @@ DemoteOperatorAction::Execute()
 
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i< windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           DemoteOperator(args.GetOperatorType(), applyOperatorToAllPlots);
@@ -541,7 +541,7 @@ RemoveOperatorAction::Execute()
 
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i< windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           RemoveOperator(args.GetOperatorType(), applyOperatorToAllPlots);
@@ -619,7 +619,7 @@ RemoveLastOperatorAction::Execute()
 
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i<windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           RemoveLastOperator(applyOperatorToAllPlots);
@@ -721,7 +721,7 @@ RemoveAllOperatorsAction::Execute()
 
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i<windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           RemoveAllOperators(applyOperatorToAllPlots);
@@ -828,7 +828,7 @@ SetOperatorOptionsAction::Execute()
     
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i<windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           SetPlotOperatorAtts(oper, windowMgr->GetWindow(i)==window,
@@ -841,6 +841,100 @@ SetOperatorOptionsAction::Execute()
         SetPlotOperatorAtts(oper, true,
                             applyToAllWindows, applyOperatorToAllPlots);
     }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+///
+///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+// Method: AddEmbeddedPlotAction::AddEmbeddedPlotAction
+//
+// Purpose: 
+//   Constructor for the AddEmbeddedPlotAction class.
+//
+// Arguments:
+//   win : The window that owns the action.
+//
+// Programmer: Marc Durant
+// Creation:   June 19, 2011
+//
+// Modifications:
+//   Brad Whitlock, Mon Aug 18 11:20:32 PDT 2014
+//   Do not make a menu for this action.
+//
+// ****************************************************************************
+
+AddEmbeddedPlotAction::AddEmbeddedPlotAction(ViewerWindow *win) : ViewerAction(win)
+{
+    SetAllText(tr("Add Plot With Id"));
+    DisableVisual();
+}
+
+// ****************************************************************************
+// Method: AddEmbeddedPlotAction::~AddEmbeddedPlotAction
+//
+// Purpose: 
+//   Destructor for the AddEmbeddedPlotAction class.
+//
+// Programmer: Marc Durant
+// Creation:   June 19, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+AddEmbeddedPlotAction::~AddEmbeddedPlotAction()
+{
+}
+
+// ****************************************************************************
+// Method: AddEmbeddedPlotAction::Enabled
+//
+// Purpose: 
+//   This method lets callers know if the action's menu should be enabled.
+//
+// Programmer: Marc Durant
+// Creation:   June 19, 2011
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+bool
+AddEmbeddedPlotAction::Enabled() const
+{
+  return false;
+}
+
+// ****************************************************************************
+// Method: AddEmbeddedPlotAction::Execute
+//
+// Purpose: 
+//   This method is called when the AddEmbeddedPlotAction must be executed.
+//
+// Programmer: Marc Durant
+// Creation:   June 19, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+AddEmbeddedPlotAction::Execute()
+{
+  bool replacePlots = windowMgr->GetClientAtts()->GetReplacePlots();
+  bool applyOperator = windowMgr->GetClientAtts()->GetApplyOperator();
+  bool applySelection = windowMgr->GetClientAtts()->GetApplySelection();
+  bool inheritSILRestriction = windowMgr->GetClientAtts()->
+  GetNewPlotsInheritSILRestriction();
+  
+  //
+  // Try and create the plot.
+  //
+  window->GetPlotList()->AddPlot(args.GetPlotType(),
+                                 args.GetVariable().c_str(), replacePlots, applyOperator,
+                                 inheritSILRestriction, applySelection, NULL, args.GetEmbeddedPlotId());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -952,7 +1046,7 @@ AddPlotAction::AddPlotAction(ViewerWindow *win) : ViewerMultipleAction(win),
 
 AddPlotAction::~AddPlotAction()
 {
-    for(int i = 0; i < pluginEntries.size(); ++i)
+    for(size_t i = 0; i < pluginEntries.size(); ++i)
         delete pluginEntries[i].varMenu;
 }
 
@@ -1049,7 +1143,7 @@ AddPlotAction::Update()
                 // Update the variable menus for the actions.
                 //
                 bool menuEnabled = false;
-                for(int i = 0; i < pluginEntries.size(); ++i)
+                for(int i = 0; i < (int)pluginEntries.size(); ++i)
                 {
                     DeletePlotMenu(i);
                     CreatePlotMenu(i);
@@ -1236,7 +1330,7 @@ AddPlotAction::ConstructMenu(QMenu *menu)
     // Create a new menu and add all of the actions to it.
     actionMenu = new QMenu("Add plot", menu);
 
-    for(int i = 0; i < pluginEntries.size(); ++i)
+    for(int i = 0; i < (int)pluginEntries.size(); ++i)
     {
         // Create the menu for the plot.
         CreatePlotMenu(i);
@@ -1307,7 +1401,7 @@ AddPlotAction::RemoveFromMenu(QMenu *menu)
 void
 AddPlotAction::ConstructToolbar(QToolBar *toolbar)
 {
-    for(int i = 0; i < children.size(); ++i)
+    for(size_t i = 0; i < children.size(); ++i)
         toolbar->addAction(children[i]);
 }
 
@@ -1464,7 +1558,7 @@ DrawPlotsAction::Execute()
     
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i<windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           RealizePlots(args.GetBoolFlag());
@@ -1755,7 +1849,7 @@ SetActivePlotsAction::Execute()
     
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i<windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           SetActivePlots(activePlots,
@@ -1924,7 +2018,7 @@ SetPlotSILRestrictionAction::Execute()
     
     if( applyToAllWindows )
     {
-      for( unsigned int i=0; i<windowMgr->GetNumWindows(); ++i )
+      for( int i=0; i<windowMgr->GetNumWindows(); ++i )
       {
         windowMgr->GetWindow(i)->GetPlotList()->
           SetPlotSILRestriction(applySelectionToAllPlots);

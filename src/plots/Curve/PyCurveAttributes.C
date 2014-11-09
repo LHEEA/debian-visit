@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,8 +78,8 @@ static PyObject *NewCurveAttributes(int);
 std::string
 PyCurveAttributes_ToString(const CurveAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetShowLines())
         SNPRINTF(tmpStr, 1000, "%sshowLines = 1\n", prefix);
@@ -1781,7 +1781,6 @@ PyCurveAttributes_GetLogString()
 static void
 PyCurveAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    CurveAttributes *atts = (CurveAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

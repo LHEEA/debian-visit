@@ -310,6 +310,9 @@ int vtkVisItTubeFilter::RequestData(
 //   Jeremy Meredith, Wed May 26 14:52:29 EDT 2010
 //   Allow cell scalars for tube radius.
 //
+//   Jeremy Meredith, Thu Jan 23 13:21:34 EST 2014
+//   Fix dead code that read past the end of an array.
+//
 int vtkVisItTubeFilter::GeneratePoints(vtkIdType offset, vtkIdType inCellId,
                                        vtkIdType npts, vtkIdType *pts,
                                        vtkPoints *inPts, vtkPoints *newPts, 
@@ -324,7 +327,7 @@ int vtkVisItTubeFilter::GeneratePoints(vtkIdType offset, vtkIdType inCellId,
     int i, k;
     double p[3];
     double pNext[3];
-    double sNext[3];
+    double sNext[3] = {0., 0., 0};
     double sPrev[3];
     double startCapNorm[3], endCapNorm[3];
     double n[3];
@@ -428,15 +431,6 @@ int vtkVisItTubeFilter::GeneratePoints(vtkIdType offset, vtkIdType inCellId,
         vtkMath::Normalize(nP);
 
         // Compute a scale factor based on scalars or vectors
-        double value = 0;
-        if (inScalars)
-        {
-            if (cellScalars)
-                value = inScalars->GetComponent(offset,0);
-            else
-                value = inScalars->GetComponent(offset,0);
-        }
-
         if ( inScalars && this->VaryRadius == VTK_VARY_RADIUS_BY_SCALAR )
         {
             double value = (cellScalars ?

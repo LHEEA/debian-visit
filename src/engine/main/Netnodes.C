@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -251,7 +251,7 @@ NetnodeFilter::ReleaseData(void)
     filter->ReleaseData();
 
     // Release the data for my inputs.
-    for (int i = 0; i < inputNodes.size(); i++)
+    for (size_t i = 0; i < inputNodes.size(); i++)
         inputNodes[i]->ReleaseData();
 }
 

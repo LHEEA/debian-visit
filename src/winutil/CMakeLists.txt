@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -38,11 +38,15 @@
 #   Kathleen Bonnell, Mon Jan 17 17:42:15 MST 2011
 #   Add QvisColorTableWidget.
 #
+#   Kathleen Biagas, Fri Aug 8 08:52:46 PDT 2014
+#   Added QvisNoDefaultColorTableButton.
+#
 #****************************************************************************/
 
 SET(WINUTIL_SOURCES
 Appearance.C
 QvisColorTableButton.C
+QvisNoDefaultColorTableButton.C
 QvisColorTableWidget.C
 QvisVariableButton.C
 QvisVariableButtonHelper.C
@@ -55,6 +59,7 @@ WindowMetrics.C
 # List the files that we'll run moc on
 SET(WINUTIL_MOC_SOURCES
 QvisColorTableButton.h
+QvisNoDefaultColorTableButton.h
 QvisColorTableWidget.h
 QvisVariableButton.h
 QvisVariableButtonHelper.h

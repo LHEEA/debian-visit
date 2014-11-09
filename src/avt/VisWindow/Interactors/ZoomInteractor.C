@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -499,6 +499,7 @@ ZoomInteractor::ForceCoordsToViewport(int &x, int &y)
 //
 // ****************************************************************************
 
+#if !defined(__APPLE__) && !defined(__WIN32__)
 static inline void
 GetSegment(int a, int l, int n, int &outl, int &newl)
 {
@@ -521,7 +522,7 @@ GetSegment(int a, int l, int n, int &outl, int &newl)
         outl += offset;
     }
 }
-
+#endif
 
 // ****************************************************************************
 //  Method: ZoomInteractor::UpdateRubberBand

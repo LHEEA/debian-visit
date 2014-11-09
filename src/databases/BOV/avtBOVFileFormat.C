@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,8 +79,12 @@
 #include <sstream>
 #include <vector>
 
+#include <cstring>
+#include <cerrno>
+
 #ifdef _WIN32
 #define FSEEK _fseeki64
+#define strcasecmp stricmp
 #else
 #define FSEEK fseek
 #endif
@@ -277,6 +281,24 @@ avtBOVFileFormat::ActivateTimestep(void)
 //    Hank Childs, Fri Nov 19 09:55:22 PST 2010
 //    Add a base_index so index select will work.
 //
+//    Gunther H. Weber, Tue May 13 18:12:54 PDT 2014
+//    Fix domain decomposition for bricklets of node centered data.
+//    Conceptually, in 1D the BOV reader would split the data set 1-2-3-4
+//    into two chunks 1-2 and 3-4, with the nodes for 2 and 3 inhabiting the
+//    same location. The result are discontinuities in the data set. To be
+//    consistent for nodal data, values need to be replicated, i.e., the
+//    data set 1-2-3 needs to be split into two chunks 1-2 and 2-3 with the
+//    2s coinciding. This commit changes the decomposition scheme appropriately.
+//
+//    Gunther H. Weber, Wed May 14 14:17:44 PDT 2014
+//    Use doubles instead of floats (to use the same type as dimensions,
+//    full_size, etc. Add missing origin for {x,y,z}_stop expressions
+//    causing regression test failure.
+//
+//    Gunther H. Weber, Thu Jul 17 12:57:42 PDT 2014
+//    Only adjust bounds if dividing bricks (if there are multiple brick files,
+//    they already contain appropriate duplicate values)
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -312,15 +334,23 @@ avtBOVFileFormat::GetMesh(int dom, const char *meshname)
     //
     // Establish what the range is of this dataset.
     //
-    float x_step = dimensions[0] / (nx);
-    float y_step = dimensions[1] / (ny);
-    float z_step = dimensions[2] / (nz);
-    float x_start = origin[0] + x_step*x_off;
-    float x_stop  = origin[0] + x_step*(x_off+1);
-    float y_start = origin[1] + y_step*y_off;
-    float y_stop  = origin[1] + y_step*(y_off+1);
-    float z_start = origin[2] + z_step*z_off;
-    float z_stop  = origin[2] + z_step*(z_off+1);
+    double x_step = dimensions[0] / (nx);
+    double y_step = dimensions[1] / (ny);
+    double z_step = dimensions[2] / (nz);
+
+    if (divideBrick && nodalCentering)
+    {
+        x_step = bricklet_size[0] * (dimensions[0] / (full_size[0] - 1));
+        y_step = bricklet_size[1] * (dimensions[1] / (full_size[1] - 1));
+        z_step = bricklet_size[2] * (dimensions[2] / (full_size[2] - 1));
+    }
+
+    double x_start = origin[0] + x_step*x_off;
+    double x_stop  = origin[0] + std::min(dimensions[0], x_step*(x_off+1));
+    double y_start = origin[1] + y_step*y_off;
+    double y_stop  = origin[1] + std::min(dimensions[1], y_step*(y_off+1));
+    double z_start = origin[2] + z_step*z_off;
+    double z_stop  = origin[2] + std::min(dimensions[2], z_step*(z_off+1));
 
     //
     // Create the VTK construct.  Note that the mesh is being created to fit
@@ -342,8 +372,11 @@ avtBOVFileFormat::GetMesh(int dom, const char *meshname)
         if (x_off >= nx-1)
             dx -= 1;
     }
-    if (! nodalCentering) 
+    if (! nodalCentering)
         dx += 1;
+    else if (divideBrick && (x_off < nx - 1))
+        dx += 1;
+
     x->SetNumberOfTuples(dx);
 
     // Don't fill in gaps
@@ -364,7 +397,9 @@ avtBOVFileFormat::GetMesh(int dom, const char *meshname)
         if (y_off >= ny-1)
             dy -= 1;
     }
-    if (! nodalCentering) 
+    if (! nodalCentering)
+        dy += 1;
+    else if (divideBrick && (y_off < ny - 1))
         dy += 1;
 
     // Don't fill in gaps
@@ -393,9 +428,11 @@ avtBOVFileFormat::GetMesh(int dom, const char *meshname)
             if (z_off >= nz-1)
                 dz -= 1;
         }
-        if (! nodalCentering) 
+        if (! nodalCentering)
             dz += 1;
- 
+        else if (divideBrick && (z_off < nz - 1))
+            dz += 1;
+
         // Don't fill in gaps
         if (!fillSpace)
             z_stop -= (z_step / dz);
@@ -406,7 +443,11 @@ avtBOVFileFormat::GetMesh(int dom, const char *meshname)
         z->SetTuple1(dz-1, z_stop);
     }
 
-    int dims[3] = { dx, dy, dz };
+    int dims[3] = {
+        static_cast<int>(dx),
+        static_cast<int>(dy),
+        static_cast<int>(dz)
+        };
     rv->SetDimensions(dims);
     rv->SetXCoordinates(x);
     rv->SetYCoordinates(y);
@@ -427,8 +468,6 @@ avtBOVFileFormat::GetMesh(int dom, const char *meshname)
     return rv;
 }
 
-#define BRICKLET_READ
-#ifdef BRICKLET_READ
 // ****************************************************************************
 // Method: ReadBricklet
 //
@@ -494,8 +533,13 @@ ReadBricklet(FILE *fp, T *dest, const long long *full_size,
          for(long long y = start[1]; y < end[1]; ++y)
          {
              // Read in a line of data in x.
-             fread((void *)ptr, sizeof(T), nxelem, fp);
-             ptr += nxelem;
+             size_t nread = fread((void *)ptr, sizeof(T), nxelem, fp);
+             if (nread != static_cast<size_t>(nxelem))
+             {
+                 int eno = errno;
+                 debug1 << "read failed " << strerror(eno) << endl;
+             }
+             ptr += nread;
 
              // Seek to the next line
              if(y < end[1]-1)
@@ -517,7 +561,6 @@ ReadBricklet(FILE *fp, T *dest, const long long *full_size,
          }
     }
 }
-#endif
 
 //
 // Endian conversion routines.
@@ -870,6 +913,16 @@ avtBOVFileFormat::ReadWholeAndExtractBrick(void *dest, bool gzipped,
 //    Kathleen Biagas, Fri Jul 27 13:54:27 MST 2012
 //    Use FSEEK macro to get correct fseek version on Windows that will accept
 //    large offsets.
+//
+//    Gunther H. Weber, Tue May 13 18:12:54 PDT 2014
+//    Fix domain decomposition for bricklets of node centered data.
+//    Conceptually, in 1D the BOV reader would split the data set 1-2-3-4
+//    into two chunks 1-2 and 3-4, with the nodes for 2 and 3 inhabiting the
+//    same location. The result are discontinuities in the data set. To be
+//    consistent for nodal data, values need to be replicated, i.e., the
+//    data set 1-2-3 needs to be split into two chunks 1-2 and 2-3 with the
+//    2s coinciding. This commit changes the decomposition scheme appropriately.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -927,7 +980,7 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
     // Determine the unit_size, which is the size of the data in the file,
     // and allocate the return VTK object.
     //
-    long long unit_size;
+    long long unit_size = 0;
     vtkDataArray *rv = 0;
     if(dataFormat == ByteData)
     {
@@ -997,17 +1050,20 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
         debug4 << mName << "Dividing whole brick" << endl;
 
         // Allocate enough memory for 1 bricklet.
-        unsigned long long nvals = bricklet_size[0] * 
-                             bricklet_size[1] *
-                             bricklet_size[2];
+        unsigned long long nvals = (nodalCentering && x_off < nx - 1 ? bricklet_size[0] + 1 : bricklet_size[0]) * 
+                             (nodalCentering && y_off < ny - 1 ? bricklet_size[1] + 1 : bricklet_size[1]) *
+                             (nodalCentering && full_size[2] != 1 && z_off < nz - 1 ? bricklet_size[2] + 1 : bricklet_size[2]);
         rv->SetNumberOfTuples(nvals);
 
         long long x_start = x_off * bricklet_size[0];
         long long y_start = y_off * bricklet_size[1];
         long long z_start = z_off * bricklet_size[2];
         long long x_stop = x_start + bricklet_size[0];
+        if (nodalCentering && x_off < nx - 1) x_stop += 1;
         long long y_stop = y_start + bricklet_size[1];
+        if (nodalCentering && y_off < ny - 1) y_stop += 1;
         long long z_stop = z_start + bricklet_size[2];
+        if (nodalCentering && full_size[2] != 1 && z_off < nz - 1) z_stop += 1;
 
         debug4 << mName << "byteOffset: " << byteOffset << endl;
         debug4 << mName << "Full size: " << full_size[0] << ", "
@@ -1018,7 +1074,6 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
                << y_stop << ", " << z_stop << endl;
         debug4 << mName << "Number of tuples in bricklet: " << nvals << endl;
 
-#ifdef BRICKLET_READ
         if(!gzipped)
         {
             debug4 << mName << "Reading bricklet directly from file" << endl;
@@ -1067,7 +1122,6 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
             }
         }
         else
-#endif
         {
             debug4 << mName << "Reading whole brick to obtain bricklet" << endl;
             //
@@ -1171,7 +1225,7 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
             {
                 debug4 << mName << "Reversing endian for shorts" << endl;
                 short *buff = (short *) rv->GetVoidPointer(0);
-                for (long long i = 0 ; i < ntotal ; i++)
+                for (unsigned long long i = 0 ; i < ntotal ; i++)
                 {
                     int tmp;
                     int16_Reverse_Endian(buff[i], (unsigned char *) &tmp);
@@ -1182,7 +1236,7 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
             {
                 debug4 << mName << "Reversing endian for ints" << endl;
                 int *buff = (int *) rv->GetVoidPointer(0);
-                for (long long i = 0 ; i < ntotal ; i++)
+                for (unsigned long long i = 0 ; i < ntotal ; i++)
                 {
                     int tmp;
                     int32_Reverse_Endian(buff[i], (unsigned char *) &tmp);
@@ -1193,7 +1247,7 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
             {
                 debug4 << mName << "Reversing endian for floats" << endl;
                 float *buff = (float *) rv->GetVoidPointer(0);
-                for (long long i = 0 ; i < ntotal ; i++)
+                for (unsigned long long i = 0 ; i < ntotal ; i++)
                 {
                     float tmp;
                     float32_Reverse_Endian(buff[i], (unsigned char *) &tmp);
@@ -1204,7 +1258,7 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
             {
                 debug4 << mName << "Reversing endian for doubles" << endl;
                 double *buff = (double *) rv->GetVoidPointer(0);
-                for (long long i = 0 ; i < ntotal ; i++)
+                for (unsigned long long i = 0 ; i < ntotal ; i++)
                 {
                     double tmp;
                     double64_Reverse_Endian(buff[i], (unsigned char *) &tmp);
@@ -1548,7 +1602,6 @@ avtBOVFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             {
                 long long nx = full_size[0] / bricklet_size[0];
                 long long ny = full_size[1] / bricklet_size[1];
-                long long nz = full_size[2] / bricklet_size[2];
                 long long z_off = i / (nx*ny);
                 long long y_off = (i % (nx*ny)) / nx;
                 long long x_off = i % nx;
@@ -1573,40 +1626,6 @@ avtBOVFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                                        avtStructuredDomainBoundaries::Destruct);
             cache->CacheVoidRef("any_mesh",
                            AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1, vr);
-
-/*
-            avtIsenburgSGG *rdb = new avtIsenburgSGG;
-            rdb->SetNumberOfDomains(nbricks);
-            for (int i = 0 ; i < nbricks ; i++)
-            {
-                int sz[3] = { bricklet_size[0], bricklet_size[1], bricklet_size[2] };
-                int ori[3];
-                int nei[6];
-                int nx = full_size[0] / bricklet_size[0];
-                int ny = full_size[1] / bricklet_size[1];
-                int nz = full_size[2] / bricklet_size[2];
-                int z_off = i / (nx*ny);
-                int y_off = (i % (nx*ny)) / nx;
-                int x_off = i % nx;
-    
-                ori[0] = x_off * (bricklet_size[0]);
-                ori[1] = y_off * (bricklet_size[1]);
-                ori[2] = z_off * (bricklet_size[2]);
-                nei[0] = (x_off == 0 ? -1 : i-1);
-                nei[1] = (x_off == (nx-1) ? -1 : i+1);
-                nei[2] = (y_off == 0 ? -1 : i-nx);
-                nei[3] = (y_off == (ny-1) ? -1 : i+nx);
-                nei[4] = (z_off == 0 ? -1 : i-nx*ny);
-                nei[5] = (z_off == (nz-1) ? -1 : i+nx*ny);
-                rdb->SetInfoForDomain(i, ori, sz, nei);
-            }
-            rdb->FinalizeDomainInformation();
-
-            void_ref_ptr vr = void_ref_ptr(rdb,
-                                       avtStreamingGhostGenerator::Destruct);
-            cache->CacheVoidRef("any_mesh",
-                           AUXILIARY_DATA_STREAMING_GHOST_GENERATION, -1, -1, vr);
- */
         }
 
         GetMemorySize(size, rss);
@@ -1688,6 +1707,8 @@ avtBOVFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //    Brad Whitlock, Fri Apr 12 15:33:46 PDT 2013
 //    Fix cast on big endian machines.
 //
+//    Mark C. Miller, Wed Jun 18 10:01:52 PDT 2014
+//    Replace some cases of strcmp/strstr with case-insensitive equivs.
 // ****************************************************************************
 
 template <class T>
@@ -1781,11 +1802,7 @@ avtBOVFileFormat::ReadTOC(void)
             }
 
             char *currPos = header + 1;
-            bool readDescr = false;
-            bool readShape = false;
-            bool readFortranOrder = false;
             bool fortranOrder = false;
-
             while (*currPos)
             {
                 if (*currPos == ' ') ++currPos; // Skip one space if there
@@ -1894,7 +1911,6 @@ avtBOVFileFormat::ReadTOC(void)
                         }
                         ++currPos;
                     }
-                    readDescr = true;
                 }
                 else if (strcmp(key, "fortran_order") == 0)
                 {
@@ -1926,7 +1942,6 @@ avtBOVFileFormat::ReadTOC(void)
                         }
                         ++currPos;
                     }
-                    readFortranOrder = true;
                 }
                 else if (strcmp(key, "shape") == 0)
                 {
@@ -1995,7 +2010,6 @@ avtBOVFileFormat::ReadTOC(void)
                         }
                         ++currPos;
                     }
-                    readShape = true;
                 }
                 else
                 {
@@ -2055,7 +2069,6 @@ avtBOVFileFormat::ReadTOC(void)
                 else if (strcmp(line, "DATA_FILE:") == 0)
                 {
                     line += strlen("DATA_FILE:") + 1;
-                    int len = strlen(line);
                     file_pattern = line;
                 }
                 else if (strcmp(line, "DATA_SIZE:") == 0)
@@ -2106,13 +2119,12 @@ avtBOVFileFormat::ReadTOC(void)
                 else if (strcmp(line, "VARIABLE:") == 0)
                 {
                     line += strlen("VARIABLE:") + 1;
-                    int len = strlen(line);
                     varname = line;
                 }
                 else if (strcmp(line, "HAS_BOUNDARY:") == 0)
                 {
                     line += strlen("HAS_BOUNDARY:") + 1;
-                    if (strcmp(line, "true") == 0)
+                    if (strcasecmp(line, "true") == 0)
                     {
                         hasBoundaries = true;
                     }
@@ -2197,7 +2209,7 @@ avtBOVFileFormat::ReadTOC(void)
                 else if (strcmp(line, "CENTERING:") == 0)
                 {
                     line += strlen("CENTERING:") + 1;
-                    if (strstr(line, "zon") != NULL)
+                    if (strstr(line, "zon") != NULL || strstr(line, "ZON") != NULL)
                         nodalCentering = false;
                 }
                 else if (strcmp(line, "BYTE_OFFSET:") == 0)
@@ -2209,7 +2221,7 @@ avtBOVFileFormat::ReadTOC(void)
                 else if (strcmp(line, "DIVIDE_BRICK:") == 0)
                 {
                     line += strlen("DIVIDE_BRICK:") + 1;
-                    divideBrick = (strcmp(line, "true") == 0);
+                    divideBrick = (strcasecmp(line, "true") == 0);
                 }
             }
         }

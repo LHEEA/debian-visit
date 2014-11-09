@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -184,7 +184,7 @@ QvisSetupHostProfilesAndConfigWindow::readNetworkList()
     while(std::getline(is, line))
     {
         // Find two deliminiting ":"
-        int splitPos = line.find(':');
+        size_t splitPos = line.find(':');
         if (splitPos == std::string::npos)
         {
             std::cerr << "Igonoring invalid line: " << line << std::endl;
@@ -220,7 +220,7 @@ QvisSetupHostProfilesAndConfigWindow::readDefaultConfigList()
     while(std::getline(is, line))
     {
         // Find two deliminiting ":"
-        int splitPos = line.find(':');
+        size_t splitPos = line.find(':');
         if (splitPos == std::string::npos)
         {
             std::cerr << "Igonoring invalid line: " << line << std::endl;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2298,7 +2298,7 @@ VisitPlaneTool::DoTransformations()
 {
     avtMatrix M = TMtx * RMtx * SMtx;
 
-    for (int i=0; i<hotPoints.size(); i++)
+    for (size_t i=0; i<hotPoints.size(); i++)
         hotPoints[i].pt = M * origHotPoints[i].pt;
 
 

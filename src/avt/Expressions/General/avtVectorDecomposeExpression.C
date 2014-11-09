@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -312,7 +312,9 @@ avtVectorDecomposeExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomai
             rv->SetNumberOfTuples(ntuples);
             for (vtkIdType i = 0 ; i < ntuples ; i++)
             {
-                double val1, val2, val3;
+                double val1 = 0;
+                double val2 = 0;
+                double val3 = 0;
                 switch (which_comp)
                 {
                     case 0:

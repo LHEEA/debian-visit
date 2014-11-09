@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,6 +89,13 @@ public:
     // Property selection methods
     virtual void SelectAll();
 
+
+    // Keyframing methods
+    virtual std::string               GetFieldName(int index) const;
+    virtual AttributeGroup::FieldType GetFieldType(int index) const;
+    virtual std::string               GetFieldTypeName(int index) const;
+    virtual bool                      FieldsEqual(int index, const AttributeGroup *rhs) const;
+
     // User-defined methods
     avtMeshMetaData(const int *, const double *, std::string, int, int, int, int, int, int, avtMeshType);
     avtMeshMetaData(std::string, int, int, int, int, int, int, avtMeshType);
@@ -154,6 +161,7 @@ public:
         ID_hideFromGUI,
         ID_LODs,
         ID_presentGhostZoneTypes,
+        ID_zonesWereSplit,
         ID__LAST
     };
 
@@ -209,12 +217,13 @@ public:
     bool                 hideFromGUI;
     int                  LODs;
     int                  presentGhostZoneTypes;
+    bool                 zonesWereSplit;
 
 private:
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define AVTMESHMETADATA_TMFS "ssbiiiibIbiissssssbDDiisss*aiisss*i*i*bibbbbibFFbDibbii"
+#define AVTMESHMETADATA_TMFS "ssbiiiibIbiissssssbDDiisss*aiisss*i*i*bibbbbibFFbDibbiib"
 
 #endif

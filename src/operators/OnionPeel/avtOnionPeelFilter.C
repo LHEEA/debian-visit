@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -207,10 +207,9 @@ avtOnionPeelFilter::Equivalent(const AttributeGroup *a)
 //      Sends the specified input and output through the OnionPeel filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output unstructured grid.
+//  Returns:       The output data representation.
 //
 //  Programmer: Kathleen Bonnell 
 //  Creation:   October 09, 2000
@@ -287,11 +286,22 @@ avtOnionPeelFilter::Equivalent(const AttributeGroup *a)
 //    seed cell was specified as a global cell number and material interface
 //    reconstruction was applied.
 //
+//    Eric Brugger, Thu Jul 31 11:43:08 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
+//    Kathleen Biagas, Tue Sep  9 13:56:00 PDT 2014
+//    Only remove ghost cells if VisIt created them (eg didn't come from db).
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtOnionPeelFilter::ExecuteData(vtkDataSet *in_ds, int DOM, std::string)
+avtDataRepresentation *
+avtOnionPeelFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     if (successfullyExecuted)
     {
         return NULL;
@@ -346,7 +356,7 @@ avtOnionPeelFilter::ExecuteData(vtkDataSet *in_ds, int DOM, std::string)
                 // Verify that the logical index is valid for this domain
                 // If not, set encounteredBadSeed to true, return NULL.
                 //
-                for (int i = 0; i < id.size(); i++)
+                for (size_t i = 0; i < id.size(); i++)
                 {
                     if (id[i] < minIJK[i] || id[i] > maxIJK[i])
                     {
@@ -368,10 +378,13 @@ avtOnionPeelFilter::ExecuteData(vtkDataSet *in_ds, int DOM, std::string)
     vtkDataSetRemoveGhostCells *removeGhostCells = NULL;
     if (in_ds->GetCellData()->GetArray("avtGhostZones"))
     {
-        removeGhostCells = vtkDataSetRemoveGhostCells::New();
-        removeGhostCells->SetInputData(ds);
-        removeGhostCells->Update();
-        ds = removeGhostCells->GetOutput();
+        if(GetInput()->GetInfo().GetAttributes().GetContainsGhostZones() == AVT_CREATED_GHOSTS)
+        {
+            removeGhostCells = vtkDataSetRemoveGhostCells::New();
+            removeGhostCells->SetInputData(ds);
+            removeGhostCells->Update();
+            ds = removeGhostCells->GetOutput();
+        }
     }
 
     avtDataAttributes &da = GetInput()->GetInfo().GetAttributes();
@@ -453,6 +466,8 @@ avtOnionPeelFilter::ExecuteData(vtkDataSet *in_ds, int DOM, std::string)
 
     vtkDataSet *outds = NULL;
 
+    bool reconstruct = !GetInput()->GetInfo().GetValidity().GetZonesPreserved()
+                       && atts.GetHonorOriginalMesh();
     if (opf)
     {
         opf->SetInputData(ds);
@@ -460,8 +475,7 @@ avtOnionPeelFilter::ExecuteData(vtkDataSet *in_ds, int DOM, std::string)
         opf->SetAdjacencyType(atts.GetAdjacencyType());
         opf->SetSeedIdIsForCell((int)
             (atts.GetSeedType() == OnionPeelAttributes::SeedCell));
-        opf->SetReconstructOriginalCells((int)
-            !GetInput()->GetInfo().GetValidity().GetZonesPreserved());
+        opf->SetReconstructOriginalCells(reconstruct ? 1 : 0);
         opf->Update();
         outds = opf->GetOutput();
     }
@@ -472,8 +486,7 @@ avtOnionPeelFilter::ExecuteData(vtkDataSet *in_ds, int DOM, std::string)
         poly_opf->SetAdjacencyType(atts.GetAdjacencyType());
         poly_opf->SetSeedIdIsForCell((int)
             (atts.GetSeedType() == OnionPeelAttributes::SeedCell));
-        poly_opf->SetReconstructOriginalCells((int)
-            !GetInput()->GetInfo().GetValidity().GetZonesPreserved());
+        poly_opf->SetReconstructOriginalCells(reconstruct ? 1 : 0);
         poly_opf->Update();
         outds = poly_opf->GetOutput();
     }
@@ -483,7 +496,11 @@ avtOnionPeelFilter::ExecuteData(vtkDataSet *in_ds, int DOM, std::string)
         removeGhostCells->Delete(); 
     }
     successfullyExecuted |= (!encounteredBadSeed && !encounteredGhostSeed);
-    return outds;
+
+    avtDataRepresentation *out_dr = new avtDataRepresentation(outds,
+        in_dr->GetDomain(), in_dr->GetLabel());
+
+    return out_dr;
 }
 
 // ****************************************************************************
@@ -559,12 +576,19 @@ avtOnionPeelFilter::BadSeed(int seed, int numIds, bool ghost)
 //  Programmer: Hank Childs
 //  Creation:   June 6, 2001
 //
+//  Modifications:
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 
 void
 avtOnionPeelFilter::UpdateDataObjectInfo(void)
 {
     GetOutput()->GetInfo().GetValidity().InvalidateZones();
+
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("OnionPeel");
 }
 
 
@@ -689,14 +713,13 @@ avtOnionPeelFilter::ModifyContract(avtContract_p spec)
         // So see which species are on.
         std::vector<int>  species;
         std::vector<bool> setState;
-        unsigned int i;
 
         int topset = silr->GetTopSet();
         avtSILSet_p pTopset = silr->GetSILSet(topset);
         const std::vector<int> &mapsOut = pTopset->GetRealMapsOut();
 
         avtSILCollection_p speciesColl = NULL;
-        for (i = 0 ; i < mapsOut.size() ; i++)
+        for (size_t i = 0 ; i < mapsOut.size() ; i++)
         {
             avtSILCollection_p coll = silr->GetSILCollection(mapsOut[i]);
             if (coll->GetRole() == SIL_SPECIES)
@@ -706,7 +729,7 @@ avtOnionPeelFilter::ModifyContract(avtContract_p spec)
         }
         if (*speciesColl != NULL)
         {
-            for (i = 0 ; i < speciesColl->GetNumberOfSubsets() ; i++)
+            for (int i = 0 ; i < speciesColl->GetNumberOfSubsets() ; i++)
                 setState.push_back(trav.UsesData(speciesColl->GetSubset(i)));
         }
         // End logic for seeing which species is on.
@@ -715,7 +738,7 @@ avtOnionPeelFilter::ModifyContract(avtContract_p spec)
         silr->TurnOnSet(setID);
 
         // Turn sets back on if species are on.
-        for (i = 0 ; i < species.size() ; i++)
+        for (size_t i = 0 ; i < species.size() ; i++)
             if (setState[i])
                 silr->TurnOnSet(species[i]);
 

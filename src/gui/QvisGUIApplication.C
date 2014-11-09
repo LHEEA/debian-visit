@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,7 +57,7 @@
 #include <QStyle>
 #include <QTranslator>
 
-#if defined(Q_WS_MACX)
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
 // On MacOS X, we manage the printer options window instead of letting
 // Qt do it when we use the Mac or Aqua style.
 #include <Carbon/Carbon.h>
@@ -392,7 +392,7 @@ LongFileName(const std::string &shortName)
 //   X server.
 //
 // ****************************************************************************
-
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
 static void
 GUI_LogQtMessages(QtMsgType type, const char *msg)
 {
@@ -429,6 +429,44 @@ GUI_LogQtMessages(QtMsgType type, const char *msg)
         break;
     }
 }
+#else
+static void
+GUI_LogQtMessages(QtMsgType type, const QMessageLogContext &context, const QString &msg)
+{
+    const int n_strs_to_suppress = 1;
+    const char *strs_to_suppress[] =
+       { "Invalid XLFD" };
+    bool shouldPrint = true;
+    for (int i = 0 ; i < n_strs_to_suppress ; i++)
+    {
+        if (strstr(msg.toStdString().c_str(), strs_to_suppress[i]) != NULL)
+        {
+            shouldPrint = false;
+            break;
+        }
+    }
+
+    if (shouldPrint)
+        cerr << msg.toStdString() << endl;
+
+    switch(type)
+    {
+    case QtDebugMsg:
+        debug1 << "Qt: Debug: " << msg.toStdString() << endl;
+        break;
+    case QtWarningMsg:
+        debug1 << "Qt: Warning: " << msg.toStdString() << endl;
+        break;
+    case QtCriticalMsg:
+        debug1 << "Qt: Critical: " << msg.toStdString() << endl;
+        break;
+    case QtFatalMsg:
+        debug1 << "Qt: Fatal: " << msg.toStdString() << endl;
+        abort(); // HOOKS_IGNORE
+        break;
+    }
+}
+#endif
 
 // ****************************************************************************
 // Method: QvisGUIApplication::QvisGUIApplication
@@ -763,7 +801,11 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
     qt_argv[argc+4] = NULL;
 
     debug1 << "QvisApplication::QvisApplication: -font " << qt_argv[argc+1] << endl;
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     qInstallMsgHandler(GUI_LogQtMessages);
+#else
+    qInstallMessageHandler(GUI_LogQtMessages);
+#endif
 
     if(QApplication::instance()) //if application instance already exists..
     {
@@ -979,7 +1021,6 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
 
 QvisGUIApplication::~QvisGUIApplication()
 {
-    int i;
 #if !defined(_WIN32) && !defined(__APPLE__)
     // Delete the windows.
     for(WindowBaseMap::iterator pos = otherWindows.begin();
@@ -987,12 +1028,12 @@ QvisGUIApplication::~QvisGUIApplication()
     {
         delete pos->second;
     }
-    for(i = 0; i < plotWindows.size(); ++i)
+    for(size_t i = 0; i < plotWindows.size(); ++i)
     {
         if(plotWindows[i] != 0)
             delete plotWindows[i];
     }
-    for(i = 0; i < operatorWindows.size(); ++i)
+    for(size_t i = 0; i < operatorWindows.size(); ++i)
     {
         if(operatorWindows[i] != 0)
             delete operatorWindows[i];
@@ -1038,7 +1079,7 @@ QvisGUIApplication::~QvisGUIApplication()
         delete mainApp;
 
     // Delete the args for QT
-    for (i = 0 ; i < qt_argc ; i++)
+    for (size_t i = 0 ; i < (size_t)qt_argc ; i++)
     {
         if (qt_argv[i])
             free(qt_argv[i]);
@@ -1660,7 +1701,7 @@ QvisGUIApplication::FinalInitialization()
         visitTimer->StopTimer(timeid, "stage 3");
         break;
     case 4:
-#ifndef Q_WS_MACX
+#if !(defined(Q_WS_MACX) || defined(Q_OS_MAC))
         // If we're not on MacOS X, hide the splashscreen now.
         if(splash)
             splash->hide();
@@ -1732,7 +1773,7 @@ QvisGUIApplication::FinalInitialization()
         visitTimer->StopTimer(timeid, "stage 9");
         break;
     case 10:
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
         // On MacOS X, we hide the splashscreen last thing so we are very
         // near 100% likely to get the GUI's menu in the main Mac menu.
         if(splash)
@@ -1757,7 +1798,7 @@ QvisGUIApplication::FinalInitialization()
             if(code == CONFIGSTATE_FIRSTTIME)
             {
                 QTimer::singleShot(1000, this, SLOT(displayReleaseNotesIfAvailable()));
-#if defined(Q_WS_MACX)
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
                 QTimer::singleShot(1001, this, SLOT(setupHostProfilesAndConfig()));
 #endif
             }
@@ -2425,10 +2466,10 @@ QvisGUIApplication::ProcessArguments(int &argc, char **argv)
             }
             std::string style(argv[i + 1]);
             if(
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
                style == "macintosh" ||
 #endif
-#ifdef Q_WS_WIN
+#if defined(Q_WS_WIN) || defined(Q_OS_WIN)
                style == "windowsxp" ||
                style == "windowsvista" ||
 #endif
@@ -2725,7 +2766,7 @@ QvisGUIApplication::MoveAndResizeMainWindow(int orientation)
     mainWin->setMinimumHeight(h);
 #endif
 // GUI need to be offset 20 pixels from the MenuBar, only on i386?
-#if defined(Q_WS_MACX)
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
     if (y == 0) {
        y = 20;
        if (orientation < 2) h = h - y;
@@ -3394,6 +3435,9 @@ QvisGUIApplication::SetupWindows()
 //   Kathleen Biagas, Fri Aug 26 17:08:00 PDT 2011
 //   Connect PickWindow to PlotList.
 //
+//   Kathleen Biagas, Wed Apr 23 14:45:49 MST 2014
+//   Add PlotList to connected subjects for Export DB window.
+//
 // ****************************************************************************
 
 QvisWindowBase *
@@ -3608,7 +3652,8 @@ QvisGUIApplication::WindowFactory(int i)
          QvisExportDBWindow *expWin = new QvisExportDBWindow(windowNames[i],
                                      tr("Export Database"), mainWin->GetNotepad());
          expWin->ConnectSubjects(GetViewerState()->GetExportDBAttributes(),
-                                 GetViewerState()->GetDBPluginInfoAttributes());
+                                 GetViewerState()->GetDBPluginInfoAttributes(),
+                                 GetViewerState()->GetPlotList());
          win = expWin;
         }
         break;
@@ -4382,11 +4427,10 @@ QvisGUIApplication::WriteConfigFile(const char *filename)
 void
 QvisGUIApplication::WritePluginWindowConfigs(DataNode *parentNode)
 {
-    int i;
 
     // Iterate through each plot window and have it add its window information
     // to the config file data.
-    for(i = 0; i < plotWindows.size(); ++i)
+    for(size_t i = 0; i < plotWindows.size(); ++i)
     {
         if(plotWindows[i] != 0)
             plotWindows[i]->CreateNode(parentNode);
@@ -4394,7 +4438,7 @@ QvisGUIApplication::WritePluginWindowConfigs(DataNode *parentNode)
 
     // Iterate through each operator window and have it add its window
     // information to the config file data.
-    for(i = 0; i < operatorWindows.size(); ++i)
+    for(size_t i = 0; i < operatorWindows.size(); ++i)
     {
         if(operatorWindows[i] != 0)
             operatorWindows[i]->CreateNode(parentNode);
@@ -5813,7 +5857,7 @@ QvisGUIApplication::GetVirtualDatabaseDefinitions(
 
     // Add the definitions for all virtual files to the map.
     defs.clear();
-    for(int i = 0; i < files.size(); ++i)
+    for(size_t i = 0; i < files.size(); ++i)
     {
         if(files[i].IsVirtual())
         {
@@ -5877,8 +5921,8 @@ QvisGUIApplication::RefreshFileList()
     //
     std::map<QualifiedFilename, bool> paths;
     const QualifiedFilenameVector &appliedFiles = fileServer->GetAppliedFileList();
-    int i;
-    for(i = 0; i < appliedFiles.size(); ++i)
+
+    for(size_t i = 0; i < appliedFiles.size(); ++i)
     {
         QualifiedFilename temp(appliedFiles[i]);
         temp.filename = "a";
@@ -5902,7 +5946,7 @@ QvisGUIApplication::RefreshFileList()
 
             // Filter the new list of files add them to the refreshed list.
             QualifiedFilenameVector newFiles(fileServer->GetFilteredFileList());
-            for(i = 0; i < newFiles.size(); ++i)
+            for(size_t i = 0; i < newFiles.size(); ++i)
             {
                 // Only add the file if it's not already in the list.
                 if(std::find(refreshedFiles.begin(), refreshedFiles.end(),
@@ -5939,7 +5983,7 @@ QvisGUIApplication::RefreshFileList()
     // If the open file is in the list of new files and it is a virtual db,
     // then reopen it so we pick up new time states.
     //
-    for(i = 0; i < refreshedFiles.size(); ++i)
+    for(size_t i = 0; i < refreshedFiles.size(); ++i)
     {
         if(refreshedFiles[i].IsVirtual())
         {
@@ -6122,7 +6166,7 @@ QvisGUIApplication::LoadFile(QualifiedFilename &f, bool addDefaultPlots)
 
                             // See if the file that we want to open is in the virtual
                             // file definition.                       
-                            for(int state = 0; state < def.size(); ++state)
+                            for(size_t state = 0; state < def.size(); ++state)
                             {
                                 if(f.filename == def[state])
                                 {
@@ -6421,7 +6465,7 @@ QvisGUIApplication::SaveSettings()
 void
 QvisGUIApplication::ActivatePlotWindow(int index)
 {
-    if(index >= 0 && index < plotWindows.size())
+    if(index >= 0 && (size_t)index < plotWindows.size())
     {
         EnsurePlotWindowIsCreated(index);
         plotWindows[index]->show();
@@ -6448,7 +6492,7 @@ QvisGUIApplication::ActivatePlotWindow(int index)
 void
 QvisGUIApplication::ActivateOperatorWindow(int index)
 {
-    if(index >= 0 && index < operatorWindows.size())
+    if(index >= 0 && (size_t)index < operatorWindows.size())
     {
         EnsureOperatorWindowIsCreated(index);
         operatorWindows[index]->show();
@@ -6508,7 +6552,7 @@ QvisGUIApplication::IconifyWindows(bool isSpontaneous)
         mainWin->showMinimized();
 
 #if !defined(_WIN32)
-    int index;
+    size_t index;
 
     // Iconify all of the regular windows.
     for(WindowBaseMap::iterator pos = otherWindows.begin();
@@ -6569,7 +6613,7 @@ QvisGUIApplication::DeIconifyWindows()
     mainWin->showNormal();
 
 #if !defined(_WIN32)
-    int index;
+    size_t index;
 
     // deIconify all of the regular windows.
     for(WindowBaseMap::iterator pos = otherWindows.begin();
@@ -6672,7 +6716,7 @@ QvisGUIApplication::SplashScreenProgress(const QString &msg, int prog)
 {
     if(splash)
     {
-#if defined(Q_WS_MACX)
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
         splash->activateWindow();
 #endif
         splash->Progress(msg, prog);
@@ -6753,8 +6797,8 @@ void
 QvisGUIApplication::PrintWindow()
 {
     PrinterAttributes *p = GetViewerState()->GetPrinterAttributes();
-
-#if defined(Q_WS_MACX) && !defined(VISIT_MAC_NO_CARBON)
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#if (defined(Q_WS_MACX) || defined(Q_OS_MAC)) && !defined(VISIT_MAC_NO_CARBON)
     //
     // If we're on MacOS X and the Mac application style is being used, manage
     // the printer setup ourselves since the QPrinter object does not return
@@ -6957,8 +7001,9 @@ QvisGUIApplication::PrintWindow()
             //
             GetViewerMethods()->PrintWindow();
         }
-#if defined(Q_WS_MACX) && !defined(VISIT_MAC_NO_CARBON)
+#if (defined(Q_WS_MACX) || defined(Q_OS_MAC)) && !defined(VISIT_MAC_NO_CARBON)
     }
+#endif
 #endif
 }
 
@@ -7609,7 +7654,7 @@ QvisGUIApplication::SendInterface()
     debug5 << "GUI info: " << info->GetClientName().c_str()
            << endl;
     debug5 << "methods:" << endl;
-    for(int j = 0; j < info->GetMethodNames().size(); ++j)
+    for(size_t j = 0; j < info->GetMethodNames().size(); ++j)
     {
         debug5 << "\t" << info->GetMethod(j).c_str() << "("
                << info->GetMethodPrototype(j).c_str() << ")" << endl;
@@ -7649,7 +7694,7 @@ void
 QvisGUIApplication::HandleClientMethod()
 {
     ClientMethod *method = GetViewerState()->GetClientMethod();
-    int index;
+    size_t index;
 
     if(method->GetMethodName() == "_QueryClientInformation")
     {
@@ -7887,7 +7932,7 @@ std::string
 QuoteSpaces(const std::string &s)
 {
     bool nospaces = true;
-    for(int i = 0; i < s.size() && nospaces; ++i)
+    for(size_t i = 0; i < s.size() && nospaces; ++i)
         nospaces &= (s[i] != ' ');
 
     std::string retval(s);
@@ -7939,9 +7984,9 @@ GetMovieCommandLine(const MovieAttributes *movieAtts, stringVector &args)
     // iterate over the formats
     args.push_back("-format");
     const stringVector &fmt = movieAtts->GetFileFormats();
-    int i;
+
     std::string F;
-    for(i = 0; i < fmt.size(); ++i)
+    for(size_t i = 0; i < fmt.size(); ++i)
     {
         F += fmt[i];
         if(i < (fmt.size() - 1))
@@ -7955,7 +8000,7 @@ GetMovieCommandLine(const MovieAttributes *movieAtts, stringVector &args)
     const intVector &h = movieAtts->GetHeights();
     std::string G;
     char tmp[100];
-    for(i = 0; i < w.size(); ++i)
+    for(size_t i = 0; i < w.size(); ++i)
     {
         SNPRINTF(tmp, 100, "%dx%d", w[i], h[i]);
         G += tmp;
@@ -7968,7 +8013,7 @@ GetMovieCommandLine(const MovieAttributes *movieAtts, stringVector &args)
     const intVector &s = movieAtts->GetStereoFlags();
     bool anyStereos = false;
     std::string S;
-    for(i = 0; i < s.size(); ++i)
+    for(size_t i = 0; i < s.size(); ++i)
     {
         if(s[i] == 0)
             S += "off";
@@ -8059,7 +8104,7 @@ UpdateCurrentWindowSizes(MovieAttributes *movieAtts, int currentWidth,
     intVector heights(movieAtts->GetHeights());
     const unsignedCharVector &useCurrentSize = movieAtts->GetUseCurrentSize();
     const doubleVector &scales = movieAtts->GetScales();
-    for(int i = 0; i < widths.size(); ++i)
+    for(size_t i = 0; i < widths.size(); ++i)
     {
         if(useCurrentSize[i] == 1)
         {
@@ -8147,7 +8192,7 @@ void
 QvisGUIApplication::UpdateSessionDir( const std::string &sessionFileName )
 {
     size_t idx = sessionFileName.rfind("/");
-    if (idx < 0)
+    if (idx == std::string::npos)
         idx = sessionFileName.rfind("\\");
     if ( idx > 0 )
         sessionDir = sessionFileName.substr( 0, idx+1 );
@@ -8248,7 +8293,7 @@ QvisGUIApplication::SaveMovie()
     const GlobalAttributes *globalAtts = GetViewerState()->GetGlobalAttributes();
     const intVector &winids = globalAtts->GetWindows();
     int winid = globalAtts->GetActiveWindow() + 1;
-    for(int i = 0; i < winids.size(); ++i)
+    for(size_t i = 0; i < winids.size(); ++i)
     {
         if(winids[i] == winid)
         {
@@ -8374,7 +8419,7 @@ QvisGUIApplication::SaveMovieMain()
             const intVector &widths  = movieAtts->GetWidths();
             const intVector &heights = movieAtts->GetHeights();
             const intVector &stereos = movieAtts->GetStereoFlags();
-            for(int i = 0; i < formats.size(); ++i)
+            for(size_t i = 0; i < formats.size(); ++i)
             {
                 const char *stereoNames[] = {"off", "leftright", 
                     "redblue", "redgreen"};
@@ -8495,7 +8540,7 @@ QvisGUIApplication::SaveMovieMain()
                 args.push_back(movieAtts->GetEmailAddress());
             }
 
-            for(int m = 0; m < movieArguments.size(); ++m)
+            for(size_t m = 0; m < movieArguments.size(); ++m)
                 args.push_back(movieArguments[m]);
 
             if (movieAtts->GetGenerationMethod() == MovieAttributes::NowNewInstance)
@@ -8507,7 +8552,7 @@ QvisGUIApplication::SaveMovieMain()
                 QString program(args[0].c_str());
                 QProcess *movieMaker = new QProcess(this);
                 QStringList sargs;
-                for(int i = 1; i < args.size(); ++i)
+                for(size_t i = 1; i < args.size(); ++i)
                     sargs.append(args[i].c_str());
                 
                 movieMaker->start(program,sargs);
@@ -8531,7 +8576,7 @@ QvisGUIApplication::SaveMovieMain()
             if(!errFlag)
             {
                 // Finish creating the message.
-                for(int i = 0; i < args.size(); ++i)
+                for(size_t i = 0; i < args.size(); ++i)
                 {
                     msg += args[i].c_str();
                     msg += " ";

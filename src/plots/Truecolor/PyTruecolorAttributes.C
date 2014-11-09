@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewTruecolorAttributes(int);
 std::string
 PyTruecolorAttributes_ToString(const TruecolorAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sopacity = %g\n", prefix, atts->GetOpacity());
     str += tmpStr;
@@ -361,7 +361,6 @@ PyTruecolorAttributes_GetLogString()
 static void
 PyTruecolorAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    TruecolorAttributes *atts = (TruecolorAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

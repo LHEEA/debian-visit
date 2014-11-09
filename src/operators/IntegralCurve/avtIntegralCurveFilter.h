@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -125,8 +125,8 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
                                         long ID);
 
     void SetTermination(int maxSteps, 
-    bool doDistance, double maxDistance, 
-    bool doTime, double maxTime);
+                        bool doDistance, double maxDistance, 
+                        bool doTime, double maxTime);
 
     void SetVelocitySource(const double *v);
 
@@ -153,6 +153,7 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     
     void SetDisplayGeometry(int d);
     void SetDataValue(int, const std::string &var="");
+    void SetCropValue(int);
     void SetCorrelationDistanceTol(double angTol,
                                    double minDist, bool doBBox)
     {
@@ -162,11 +163,7 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     }
 
     void SetVelocitiesForLighting(bool v) { storeVelocitiesForLighting = v; };
-    void SetOpacityVariable(const std::string &var);
-    void SetScaleTubeRadiusVariable(const std::string &var);
 
-    void SetReferenceTypeForDisplay(int d) 
-     { referenceTypeForDisplay = d; };
     void IssueWarningForMaxStepsTermination(bool v) 
                  { issueWarningForMaxStepsTermination = v; };
     void IssueWarningForStiffness(bool v) 
@@ -198,9 +195,6 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     static std::string scaleRadiusArrayName;
 
     void SetCoordinateSystem(int c) {coordinateSystem = c;}
-    void SetPhiScaling(bool flag, double pf) { phiScalingFlag = flag;
-                                               phiScaling = pf; }
-
 
     void GenerateSeedPointsFromPoint(std::vector<avtVector> &pts);
     void GenerateSeedPointsFromLine(std::vector<avtVector> &pts);
@@ -211,7 +205,7 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     void GenerateSeedPointsFromPointList(std::vector<avtVector> &pts);
     void GenerateSeedPointsFromSelection(std::vector<avtVector> &pts);
 
-    unsigned char GenerateAttributeFields() const;
+    unsigned int GenerateAttributeFields() const;
 
     virtual std::vector<avtVector> GetInitialLocations(void);
     virtual std::vector<avtVector> GetInitialVelocities(void);
@@ -233,10 +227,14 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     int    sourceType;   
     int    displayGeometry;
     int    dataValue;
-    int    referenceTypeForDisplay;
-    std::string dataVariable, opacityVariable, scaleTubeRadiusVariable;
+    int    cropValue;
+
+    std::string dataVariable;
+    int    tubeVariableIndex;
     double correlationDistanceAngTol, correlationDistanceMinDist;
     bool correlationDistanceDoBBox;
+
+    std::vector< std::string > secondaryVariables;
 
     int      maxSteps;
     bool     doDistance;
@@ -266,8 +264,6 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     avtVector seedVelocity;
 
     int    coordinateSystem;
-    bool   phiScalingFlag;
-    double phiScaling;
 
     std::string  SeedInfoString() const;
 };

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,7 +84,7 @@ typedef enum
     dbfFieldGeneral,
     dbfFieldShortInt,
     dbfFieldInt,
-    dbfFieldDouble,
+    dbfFieldDouble
 } dbfFieldType_t;
 
 typedef struct

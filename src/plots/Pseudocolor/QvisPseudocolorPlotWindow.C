@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,6 +57,8 @@
 #include <QvisLineStyleWidget.h>
 #include <QvisLineWidthWidget.h>
 #include <QvisVariableButton.h>
+
+#include "QvisCollapsibleFrame.h"
 
 // ****************************************************************************
 // Method: QvisPseudocolorPlotWindow::QvisPseudocolorPlotWindow
@@ -190,22 +192,48 @@ QvisPseudocolorPlotWindow::~QvisPseudocolorPlotWindow()
 void
 QvisPseudocolorPlotWindow::CreateWindowContents()
 { 
-    QTabWidget *propertyTabs = new QTabWidget(central);
-    topLayout->addWidget(propertyTabs);
+    propertyLayout = new QvisCollapsibleLayout(central);
+    propertyLayout->setParent( this );
+    topLayout->addWidget(propertyLayout);
 
-    // ----------------------------------------------------------------------
-    // Data tab
-    // ----------------------------------------------------------------------
+    // // ----------------------------------------------------------------------
+    // // Data tab
+    // // ----------------------------------------------------------------------
     QWidget *dataTab = new QWidget(central);
-    propertyTabs->addTab(dataTab, tr("Data"));
     CreateDataTab(dataTab);
 
-    // ----------------------------------------------------------------------
-    // Geometry tab
-    // ----------------------------------------------------------------------
+    QvisCollapsibleFrame* dataFrame =
+      propertyLayout->addFrame( tr("Data"), dataTab);
+
+    dataFrame->setShow();
+
+    // // ----------------------------------------------------------------------
+    // // Geometry tab
+    // // ----------------------------------------------------------------------
     QWidget *geometryTab = new QWidget(central);
-    propertyTabs->addTab(geometryTab, tr("Geometry"));
     CreateGeometryTab(geometryTab);
+
+    QvisCollapsibleFrame* geometryFrame =
+      propertyLayout->addFrame( tr("Geometry"), geometryTab);
+
+    geometryFrame->setHide();
+
+    // QTabWidget *propertyTabs = new QTabWidget(central);
+    // topLayout->addWidget(propertyTabs);
+
+    // // ----------------------------------------------------------------------
+    // // Data tab
+    // // ----------------------------------------------------------------------
+    // QWidget *dataTab = new QWidget(central);
+    // propertyTabs->addTab(dataTab, tr("Data"));
+    // CreateDataTab(dataTab);
+
+    // // ----------------------------------------------------------------------
+    // // Geometry tab
+    // // ----------------------------------------------------------------------
+    // QWidget *geometryTab = new QWidget(central);
+    // propertyTabs->addTab(geometryTab, tr("Geometry"));
+    // CreateGeometryTab(geometryTab);
 
     // ----------------------------------------------------------------------
     // Extras tab
@@ -375,15 +403,14 @@ QvisPseudocolorPlotWindow::CreateDataTab(QWidget *pageData)
     opacityType->addItem(tr("Fully opaque"),0);
     opacityType->addItem(tr("Constant"),2);
     opacityType->addItem(tr("Ramp"),3);
-    // ARS - New addition
-//    opacityType->addItem(tr("Variable range"),4);
+    opacityType->addItem(tr("Variable range"),4);
     connect(opacityType, SIGNAL(activated(int)),
             this, SLOT(opacityTypeChanged(int)));
     colorLayout->addWidget(new QLabel(tr("Opacity"), central), gRow,0);
     colorLayout->addWidget(opacityType, gRow, 1);
 
     opacityVarLabel = new QLabel(tr("Variable"), central);
-    opacityVar = new QvisVariableButton(false, true, true,
+    opacityVar = new QvisVariableButton(true, true, true,
                                         QvisVariableButton::Scalars, central);
     colorLayout->addWidget(opacityVarLabel,gRow,2, Qt::AlignRight);
     colorLayout->addWidget(opacityVar,gRow,3);
@@ -521,8 +548,7 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     // Create the lineSyle widget.
 
     // Line
-    // ARS - New addition
-//    lineLayout->addWidget(new QLabel(tr("Line type"), central), 0, 0, Qt::AlignRight);
+    lineLayout->addWidget(new QLabel(tr("Line type"), central), 0, 0, Qt::AlignRight);
 
     lineType = new QComboBox(central);
     lineType->addItem(tr("Lines"), 0);
@@ -531,8 +557,6 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     connect(lineType, SIGNAL(activated(int)), this, SLOT(lineTypeChanged(int)));
     lineLayout->addWidget(lineType, 0, 1);
 
-    // ARS - New addition
-    lineType->hide();
 
     // Line style / width
     lineStyleLabel = new QLabel(tr("Line style"), central);
@@ -585,7 +609,7 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     
     tubeRadiusVaryVariableLabel = new QLabel(tr("Variable"), central);
     lineLayout->addWidget(tubeRadiusVaryVariableLabel, 2, 1, Qt::AlignRight);
-    tubeRadiusVaryVariable = new QvisVariableButton(false, true, true,
+    tubeRadiusVaryVariable = new QvisVariableButton(true, true, true,
                                                     QvisVariableButton::Scalars, central);
     connect(tubeRadiusVaryVariable, SIGNAL(activated(const QString &)),
             this, SLOT(tubeRadiusVaryVariableChanged(const QString&)));
@@ -614,13 +638,13 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
 
 
     // Splitter
-//    QFrame *splitter = new QFrame(central);
-//    splitter->setFrameStyle(QFrame::HLine + QFrame::Raised);
-//    lineLayout->addWidget(splitter, 3, 0, 1, 5);
+    QFrame *splitter = new QFrame(central);
+    splitter->setFrameStyle(QFrame::HLine + QFrame::Raised);
+    lineLayout->addWidget(splitter, 3, 0, 1, 5);
 
 
-    // ARS - New addition
-//    lineLayout->addWidget(new QLabel(tr("Show end points"), central), 4, 0);
+
+    lineLayout->addWidget(new QLabel(tr("Show end points"), central), 4, 0);
 
     endPointType = new QComboBox(central);
     endPointType->addItem(tr("None"), 0);
@@ -630,8 +654,6 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     connect(endPointType, SIGNAL(activated(int)), this, SLOT(endPointTypeChanged(int)));
     lineLayout->addWidget(endPointType, 4, 1);
 
-    // ARS - New addition
-    endPointType->hide();
 
     endPointStyleLabel = new QLabel(tr("Style"), central);
     lineLayout->addWidget(endPointStyleLabel, 5, 0, Qt::AlignRight);
@@ -702,8 +724,7 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
 
 
     // Create the rendering style options
-    // ARS - New addition
-//    renderingLayout->addWidget(new QLabel(tr("Draw objects as"), central), 0,0);
+    renderingLayout->addWidget(new QLabel(tr("Draw objects as"), central), 0,0);
 
     // Create the rendering buttons
     renderSurfaces = new QCheckBox(tr("Surfaces"), central);
@@ -720,11 +741,6 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     renderingLayout->addWidget( renderPoints, 0,3);
     connect(renderPoints, SIGNAL(toggled(bool)),
             this, SLOT(renderPointsChanged(bool)));
-
-    // ARS - New addition
-    renderSurfaces->hide();
-    renderWireframe->hide();
-    renderPoints->hide();
 
     // Create the smoothing options
     renderingLayout->addWidget(new QLabel(tr("Smoothing"), central), 1,0);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -93,15 +93,9 @@
 #include <icons/plot_add.xpm>
 #include <icons/plot_del.xpm>
 #include <icons/plot_var.xpm>
-#include <icons/plot_atts.xpm>
 #include <icons/plot_hide.xpm>
 #include <icons/plot_draw.xpm>
 #include <icons/oper_add4.xpm>
-#include <icons/db_replace.xpm>
-#include <icons/db_overlay.xpm>
-#include <icons/db_open2.xpm>
-#include <icons/db_close2.xpm>
-#include <icons/db_reopen.xpm>
 
 #include <DebugStream.h>
 //#define DEBUG_PRINT
@@ -240,9 +234,11 @@ using std::vector;
 // ****************************************************************************
 
 QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent)
-: QGroupBox(tr("Plots"),parent), GUIBase(), SimpleObserver(), menuPopulator(),
-  varMenuPopulator(), plotPlugins(), operatorPlugins(),
-  plotListBox(0), operatorMenu(0), varMenu(0)
+: QGroupBox(tr("Plots"),parent), GUIBase(), SimpleObserver(),
+  plotListBox(0), varMenu(0), operatorMenu(0),
+  menuPopulator(), varMenuPopulator(),
+  plotPlugins(), operatorPlugins()
+
 {
     plotList = 0;
     globalAtts = 0;
@@ -272,12 +268,12 @@ QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent)
     // to set the proper popup menu behaivor. 
 
     // add plot menu action
-    plotAddMenuAction = plotActionsToolbar->addAction(QIcon(plot_add_xpm),tr("Add"));
+    plotAddMenuAction = plotActionsToolbar->addAction(QIcon(QPixmap(plot_add_xpm)),tr("Add"));
     QToolButton *add_button = (QToolButton*) plotActionsToolbar->widgetForAction(plotAddMenuAction);
     add_button->setPopupMode(QToolButton::InstantPopup);
 
     // add operators menu action
-    operMenuAction = plotActionsToolbar->addAction(QIcon(oper_add4_xpm),tr("Operators"));
+    operMenuAction = plotActionsToolbar->addAction(QIcon(QPixmap(oper_add4_xpm)),tr("Operators"));
     QToolButton *oper_button = (QToolButton*) plotActionsToolbar->widgetForAction(operMenuAction);
     oper_button->setPopupMode(QToolButton::InstantPopup);
 
@@ -285,19 +281,19 @@ QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent)
     plotActionsToolbar->addSeparator();
 
     // add delete action
-    plotDeleteAction = plotActionsToolbar->addAction(QIcon(plot_del_xpm),tr("Delete"),
+    plotDeleteAction = plotActionsToolbar->addAction(QIcon(QPixmap(plot_del_xpm)),tr("Delete"),
                                                      this,SLOT(deletePlots()));
 
     // add hide/show action
-    plotHideShowAction = plotActionsToolbar->addAction(QIcon(plot_hide_xpm),tr("Hide/Show"),
+    plotHideShowAction = plotActionsToolbar->addAction(QIcon(QPixmap(plot_hide_xpm)),tr("Hide/Show"),
                                                        this, SLOT(hidePlots()));
 
     // add draw action
-    plotDrawAction = plotActionsToolbar->addAction(QIcon(plot_draw_xpm),tr("Draw"),
+    plotDrawAction = plotActionsToolbar->addAction(QIcon(QPixmap(plot_draw_xpm)),tr("Draw"),
                                                    this, SLOT(drawPlots()));
 
     // add change variable menu action
-    varMenuAction = plotActionsToolbar->addAction(QIcon(plot_var_xpm),tr("Variables"));
+    varMenuAction = plotActionsToolbar->addAction(QIcon(QPixmap(plot_var_xpm)),tr("Variables"));
     QToolButton *var_button = (QToolButton*) plotActionsToolbar->widgetForAction(varMenuAction);
     var_button->setPopupMode(QToolButton::InstantPopup);
 
@@ -444,7 +440,7 @@ QvisPlotManagerWidget::QvisPlotManagerWidget(QMenuBar *menuBar,QWidget *parent)
 
 QvisPlotManagerWidget::~QvisPlotManagerWidget()
 {
-    for (int i = 0 ; i < plotPlugins.size() ; i++)
+    for (size_t i = 0 ; i < plotPlugins.size() ; i++)
         DestroyPlotMenuItem(i);
 
     if(plotList)
@@ -1802,14 +1798,14 @@ QvisPlotManagerWidget::UpdatePlotVariableMenu()
         // we can recreate the menu,
 #ifdef DELETE_MENU_TO_FREE_POPUPS
         plotMenu->clear();
-        for(int i = 0; i < plotPlugins.size(); ++i)
+        for(size_t i = 0; i < plotPlugins.size(); ++i)
             DestroyPlotMenuItem(i);
 #endif
 
         // Recreate the plot menu and update the menus so they have the right 
         // variables.
         this->maxVarCount = 0;
-        for(int i = 0; i < plotPlugins.size(); ++i)
+        for(size_t i = 0; i < plotPlugins.size(); ++i)
         {
 #ifdef DELETE_MENU_TO_FREE_POPUPS
             CreatePlotMenuItem(i);
@@ -1909,13 +1905,12 @@ QvisPlotManagerWidget::UpdatePlotAndOperatorMenuEnabledState()
         // Look through the menus for the available plots to see how many
         // are enabled. If any are enabled, then consider that we may want
         // to enable the plot menu.
-        int i;
         bool somePlotMenusEnabled = false;
-        for(i = 0; i < plotPlugins.size(); ++i)
+        for(size_t i = 0; i < plotPlugins.size(); ++i)
             somePlotMenusEnabled |= (plotPlugins[i].varMenu->count() > 0);
 
         bool someOperatorMenusEnabled = false;
-        for(i = 0; i < operatorPlugins.size(); ++i)
+        for(size_t i = 0; i < operatorPlugins.size(); ++i)
             someOperatorMenusEnabled |= operatorPlugins[i].action->isEnabled();
 
         bool haveAvailablePlots = plotAttsMenu->actions().count() > 0;
@@ -2054,7 +2049,7 @@ QvisPlotManagerWidget::UpdateVariableMenu()
             bool changeVarLists = PopulateVariableLists(varMenuPopulator,
                 current.GetDatabaseName());
             int plotVarFlags = plotPlugins[current.GetPlotType()].varTypes;
-            for(int j = 0; j < current.GetOperators().size(); ++j)
+            for(size_t j = 0; j < current.GetOperators().size(); ++j)
             {
                 int opid = current.GetOperators()[j];
                 plotVarFlags &= operatorPlugins[opid].varMask;
@@ -2378,7 +2373,7 @@ QvisPlotManagerWidget::setActivePlots()
     intVector existingPlotSelection,     newPlotSelection;
     intVector existingOperatorSelection, newOperatorSelection;
     intVector existingExpandedPlots,     newExpandedPlots;
-    int firstSelectedFile = 0;
+
     bool found = false;
  
     //
@@ -2394,7 +2389,6 @@ QvisPlotManagerWidget::setActivePlots()
             if(!found)
             {
                 found = true;
-                firstSelectedFile = i;
             }
         }
 
@@ -2919,7 +2913,7 @@ QvisPlotManagerWidget::setActivePlot()
 {
     int i;
     intVector existingPlotSelection,     newPlotSelection;
-    int firstSelectedFile = 0;
+
     bool found = false;
 
     //
@@ -2935,7 +2929,6 @@ QvisPlotManagerWidget::setActivePlot()
             if(!found)
             {
                 found = true;
-                firstSelectedFile = i;
             }
         }
 

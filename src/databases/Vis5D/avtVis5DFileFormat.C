@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -150,6 +150,7 @@ avtVis5DFileFormat::GetCycles(std::vector<int> &cycles)
         {
             int yyddd  = v5dYYDDDtoDays(v5dfile->DateStamp[i]);
             int hhmmss = v5dHHMMSStoSeconds(v5dfile->TimeStamp[i]);
+            (void) hhmmss;
             debug4 << ", " << yyddd;
             cycles.push_back(yyddd);
         }

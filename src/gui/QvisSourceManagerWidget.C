@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -77,16 +77,6 @@
 #include <stdlib.h>
 #include <snprintf.h>
 
-#include <icons/removelastoperator.xpm>
-#include <icons/removealloperators.xpm>
-
-#include <icons/plot_add.xpm>
-#include <icons/plot_del.xpm>
-#include <icons/plot_var.xpm>
-#include <icons/plot_atts.xpm>
-#include <icons/plot_hide.xpm>
-#include <icons/plot_draw.xpm>
-#include <icons/oper_add3.xpm>
 #include <icons/db_replace.xpm>
 #include <icons/db_overlay.xpm>
 #include <icons/db_open2.xpm>
@@ -137,18 +127,18 @@ QvisSourceManagerWidget::QvisSourceManagerWidget(QWidget *parent)
     topLayout->setMargin(5);
     dbActionsToolbar = new QToolBar(this);
     dbActionsToolbar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    dbOpenAction    = dbActionsToolbar->addAction(QIcon(db_open2_xpm),tr("Open"),
+    dbOpenAction    = dbActionsToolbar->addAction(QIcon(QPixmap(db_open2_xpm)),tr("Open"),
                                                   this, SIGNAL(activateFileOpenWindow()));
 
-    dbReopenAction  = dbActionsToolbar->addAction(QIcon(db_close2_xpm),tr("Close"),
+    dbReopenAction  = dbActionsToolbar->addAction(QIcon(QPixmap(db_close2_xpm)),tr("Close"),
                                                   this, SLOT(closeCurrentSource()));
 
-    dbCloseAction   = dbActionsToolbar->addAction(QIcon(db_reopen_xpm),tr("Reopen"),
+    dbCloseAction   = dbActionsToolbar->addAction(QIcon(QPixmap(db_reopen_xpm)),tr("Reopen"),
                                                   this, SLOT(reOpenCurrentSource()));
     dbActionsToolbar->addSeparator();
-    dbReplaceAction = dbActionsToolbar->addAction(QIcon(db_replace_xpm),tr("Replace"),
+    dbReplaceAction = dbActionsToolbar->addAction(QIcon(QPixmap(db_replace_xpm)),tr("Replace"),
                                                   this, SLOT(replaceWithCurrentSource()));
-    dbOverlayAction = dbActionsToolbar->addAction(QIcon(db_overlay_xpm),tr("Overlay"),
+    dbOverlayAction = dbActionsToolbar->addAction(QIcon(QPixmap(db_overlay_xpm)),tr("Overlay"),
                                                   this, SLOT(overlayWithCurrentSource()));
 
     sourceLabel = new QLabel(tr("Active source"), this);
@@ -267,7 +257,8 @@ QvisSourceManagerWidget::UpdateSourceList(bool updateActiveSourceOnly)
     const std::string &activeSource = windowInfo->GetActiveSource();
 
     // See if the active source is in the list.
-    int i, sourceIndex = -1;
+    int sourceIndex = -1;
+    size_t i = 0;
     for(i = 0; i < sources.size(); ++i)
     {
         if(activeSource == sources[i])
@@ -343,7 +334,7 @@ QvisSourceManagerWidget::UpdateDatabaseIconEnabledStates()
 {
     const stringVector &sources = globalAtts->GetSources();
     int index = sourceComboBox->currentIndex();
-    if (index < 0 || index >= sources.size())
+    if (index < 0 || (size_t)index >= sources.size())
     {
         // If no files are open, we can't do anything with the open file
         // (note that dbOpen remains enabled, though).
@@ -464,7 +455,7 @@ void
 QvisSourceManagerWidget::sourceChanged(int index)
 {
     const stringVector &sources = globalAtts->GetSources();
-    if(index >= 0 && index < sources.size())
+    if(index >= 0 && (size_t)index < sources.size())
     {
         //
         // Make the file that we reopened be the new open file. Since we're
@@ -501,7 +492,7 @@ QvisSourceManagerWidget::reOpenCurrentSource()
 {
     int index = sourceComboBox->currentIndex();
     const stringVector &sources = globalAtts->GetSources();
-    if(index >= 0 && index < sources.size())
+    if(index >= 0 && (size_t)index < sources.size())
     {
         //
         // Make the file that we reopened be the new open file. Since we're
@@ -543,7 +534,7 @@ QvisSourceManagerWidget::closeCurrentSource()
 {
     int index = sourceComboBox->currentIndex();
     const stringVector &sources = globalAtts->GetSources();
-    if(index >= 0 && index < sources.size())
+    if(index >= 0 && (size_t)index < sources.size())
     {
         //
         // Clear out the metadata and SIL for the file.
@@ -580,7 +571,7 @@ QvisSourceManagerWidget::replaceWithCurrentSource()
 {
     int index = sourceComboBox->currentIndex();
     const stringVector &sources = globalAtts->GetSources();
-    if(index >= 0 && index < sources.size())
+    if(index >= 0 && (size_t)index < sources.size())
     {
         //
         // Make the file that we reopened be the new open file. Since we're
@@ -618,7 +609,7 @@ QvisSourceManagerWidget::overlayWithCurrentSource()
 {
     int index = sourceComboBox->currentIndex();
     const stringVector &sources = globalAtts->GetSources();
-    if(index >= 0 && index < sources.size())
+    if(index >= 0 && (size_t)index < sources.size())
     {
         //
         // Make the file that we reopened be the new open file. Since we're

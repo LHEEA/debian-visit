@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -147,11 +147,9 @@ avtProjectFilter::Equivalent(const AttributeGroup *a)
 //      Sends the specified input and output through the Project filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Jeremy Meredith
 //  Creation:   September  3, 2004
@@ -166,11 +164,19 @@ avtProjectFilter::Equivalent(const AttributeGroup *a)
 //    Kathleen Biagas, Wed Aug  8 17:31:54 PDT 2012
 //    Use templatized ProjectVectors.
 //
+//    Eric Brugger, Thu Jul 31 14:44:16 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtProjectFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
+avtDataRepresentation *
+avtProjectFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     int  datatype = in_ds->GetDataObjectType();
     vtkPointSet *out_ds = NULL;
     switch (datatype)
@@ -226,8 +232,12 @@ avtProjectFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
         arr->Delete();
     }
 
+    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
+        in_dr->GetDomain(), in_dr->GetLabel());
 
-    return out_ds;
+    out_ds->Delete();
+
+    return out_dr;
 }
 
 
@@ -413,6 +423,9 @@ avtProjectFilter::ProjectPoint(double &x,double &y,double &z)
 //    Kathleen Biagas, Wed Aug  8 15:37:10 PDT 2012
 //    Preserve coordinate data type.
 //
+//    Eric Brugger, Thu Jul 31 14:44:16 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 vtkPointSet *
 avtProjectFilter::ProjectRectilinearGrid(vtkRectilinearGrid *in_ds)
@@ -455,14 +468,6 @@ avtProjectFilter::ProjectRectilinearGrid(vtkRectilinearGrid *in_ds)
     out->GetCellData()->ShallowCopy(in_ds->GetCellData());
     out->GetPointData()->ShallowCopy(in_ds->GetPointData());
 
-    //
-    // We want to reduce the reference count of this dataset so it doesn't get
-    // leaked.  But where to store it?  Fortunately, our base class handles
-    // this for us.
-    //
-    ManageMemory(out);
-    out->Delete();
-
     return out;
 }
 
@@ -488,6 +493,9 @@ avtProjectFilter::ProjectRectilinearGrid(vtkRectilinearGrid *in_ds)
 //
 //    Kathleen Biagas, Wed Aug  8 17:33:35 PDT 2012
 //    Preserve coordinate type.
+//
+//    Eric Brugger, Thu Jul 31 14:44:16 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -550,8 +558,6 @@ avtProjectFilter::ProjectPointSet(vtkPointSet *in_ds)
         }
     }
 
-    ManageMemory(out_ds);
-    out_ds->Delete();
     return out_ds;
 }
 
@@ -694,7 +700,12 @@ avtProjectFilter::ProjectVectors(vtkDataSet *old_ds,
 //    Kathleen Biagas, Thu Aug 16 14:56:29 MST 2012
 //    Indicate points were transformed by this operator.
 //
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
+
 void
 avtProjectFilter::UpdateDataObjectInfo(void)
 {
@@ -746,6 +757,7 @@ avtProjectFilter::UpdateDataObjectInfo(void)
     GetOutput()->GetInfo().GetValidity().SetPointsWereTransformed(true);
     outAtts.SetCanUseInvTransform(false);
     outAtts.SetCanUseTransform(false);
+    outAtts.AddFilterMetaData("Project");
 }
 
 // ****************************************************************************

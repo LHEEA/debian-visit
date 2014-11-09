@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -336,7 +336,7 @@ vtkVisItPolyDataNormals2D::ExecuteCell(vtkPolyData *input, vtkPolyData *output)
         int nVerts = *connPtrL++;
         vtkIdType *cell = connPtrL;
 
-        double v0[3], v1[3], v2[3];
+        double v0[3], v1[3];
         double normal[3] = {0, 0, 1};
         if (nVerts == 2)
         {

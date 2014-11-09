@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -218,7 +218,7 @@ QvisSessionSourceChangerDialog::SplitPrompt(const QString &s) const
                 r += " ";
             r += QString(words[i].c_str());
             len += words[i].size();
-            if(len >= MAX_PROMPT_LENGTH)
+            if(len >= (size_t)MAX_PROMPT_LENGTH)
             {
                 r += "\n";
                 len = 0;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewScatterAttributes(int);
 std::string
 PyScatterAttributes_ToString(const ScatterAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%svar1 = \"%s\"\n", prefix, atts->GetVar1().c_str());
     str += tmpStr;
@@ -1967,7 +1967,7 @@ PyScatterAttributes_setattr(PyObject *self, char *name, PyObject *args)
     // try to handle old attributes
     if(strcmp(name, "foregroundFlag") == 0)
     {
-        PyObject *new_args;
+        PyObject *new_args = NULL;
 
         // from the tuple get the foreground value
         int ival;
@@ -1985,8 +1985,12 @@ PyScatterAttributes_setattr(PyObject *self, char *name, PyObject *args)
             new_args = Py_BuildValue("(i)", 0);
         }
 
-        obj = ScatterAttributes_SetColorType(self, new_args);
-        Py_DECREF(new_args);
+        if (new_args)
+        {
+            obj = ScatterAttributes_SetColorType(self, new_args);
+     
+            Py_DECREF(new_args);
+        }
     }
 
     // If the user changes one of the roles and one of the roles is
@@ -2181,7 +2185,6 @@ PyScatterAttributes_GetLogString()
 static void
 PyScatterAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ScatterAttributes *atts = (ScatterAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

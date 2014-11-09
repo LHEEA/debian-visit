@@ -61,6 +61,7 @@ from optparse import OptionParser
 
 from visit_test_common import *
 from visit_test_reports import *
+from visit_test_ctest import *
 
 # ----------------------------------------------------------------------------
 #  Method: visit_root
@@ -135,6 +136,26 @@ def parse_test_specific_vargs(test_file):
 #
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 30 2012
+#
+#  Modifications:
+#    Brad Whitlock, Thu Nov  7 14:00:28 PST 2013
+#    Pass width and height to test.
+#
+#    Kathleen Biagas, Thu Feb  6 14:08:00 PST 2014
+#    Pass 'ctest' to test.
+#
+#    Kathleen Biagas, Fri May 16 15:23:13 PDT 2014
+#    Set up sim_dir based off executable location.
+#
+#    Burlen Loring, Mon May 26 15:36:26 PDT 2014
+#    Addedd command line option to use threshold based image diff
+#
+#    Eric Brugger, Fri Aug 15 10:04:27 PDT 2014
+#    I added the ability to specify the parallel launch method.
+#
+#    Kathleen Biagas, Thu Sep 4 16:45:39 MST 2014
+#    Use exe path only for sim_dir on Windows.
+#
 # ----------------------------------------------------------------------------
 def launch_visit_test(args):
     """
@@ -204,16 +225,27 @@ def launch_visit_test(args):
     tparams["skip_file"]      = None
     tparams["interactive"]    = opts["interactive"]
     tparams["use_pil"]        = opts["use_pil"]
+    tparams["threshold_diff"] = opts["threshold_diff"]
+    tparams["threshold_error"]= opts["threshold_error"]
     tparams["pixdiff"]        = opts["pixdiff"]
     tparams["avgdiff"]        = opts["avgdiff"]
     tparams["numdiff"]        = opts["numdiff"]
-    tparams["width"]          = opts["width"]
-    tparams["height"]         = opts["height"]
     tparams["top_dir"]        = top_dir
     tparams["data_dir"]       = opts["data_dir"]
     tparams["baseline_dir"]   = opts["baseline_dir"]
     tparams["tests_dir"]      = opts["tests_dir"]
     tparams["visit_bin"]      = opts["executable"]
+    tparams["width"]          = opts["width"]
+    tparams["height"]         = opts["height"]
+    tparams["ctest"]          = opts["ctest"]
+    tparams["parallel_launch"]= opts["parallel_launch"]
+
+    exe_dir, exe_file = os.path.split(tparams["visit_bin"])
+    if sys.platform.startswith("win"):
+        tparams["sim_dir"] = os.path.abspath(exe_dir)
+    else:
+        tparams["sim_dir"] = os.path.abspath(os.path.join(exe_dir, ".."))
+
     if not opts["no_skip"]:
         tparams["skip_file"]  = opts["skip_file"]
     skip  =  check_skip(opts["skip_list"],modes,test_cat,test_file)
@@ -248,7 +280,6 @@ def launch_visit_test(args):
         sexe_res = sexe(rcmd,
                         suppress_output=(not (opts["verbose"] or opts["less_verbose"])),
                         echo=opts["verbose"],
-                        file_stdin=os.path.abspath(test), # pass the test file as stdin
                         timeout=opts["limit"] * 1.1) # proc kill swtich at 110% of the selected timeout
         json_res_file = pjoin(opts["result_dir"],"json","%s_%s.json" %(test_cat,test_base))
         if os.path.isfile(json_res_file):
@@ -353,6 +384,11 @@ def log_test_result(result_dir,result):
 #
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 8 2013
+#
+#  Modifications:
+#    Eric Brugger, Fri Aug 15 10:04:27 PDT 2014
+#    I added the ability to specify the parallel launch method.
+#
 # ----------------------------------------------------------------------------
 def default_suite_options():
     data_dir_def    = abs_path(visit_root(),"data")
@@ -363,6 +399,8 @@ def default_suite_options():
     nprocs_def      = multiprocessing.cpu_count()
     opts_full_defs = {
                       "use_pil":True,
+                      "threshold_diff":False,
+                      "threshold_error":{},
                       "data_dir":     data_dir_def,
                       "baseline_dir": base_dir_def,
                       "tests_dir":    tests_dir_def,
@@ -392,7 +430,9 @@ def default_suite_options():
                       "retry":False,
                       "index":None,
                       "timeout":3600,
-                      "nprocs":nprocs_def}
+                      "nprocs":nprocs_def,
+                      "ctest":False,
+                      "parallel_launch":"mpirun"}
     return opts_full_defs
 
 def finalize_options(opts):
@@ -416,6 +456,11 @@ def finalize_options(opts):
 #
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 30 2012
+#
+#  Modifications:
+#    Eric Brugger, Fri Aug 15 10:04:27 PDT 2014
+#    I added the ability to specify the parallel launch method.
+#
 # ----------------------------------------------------------------------------
 def parse_args():
     """
@@ -577,11 +622,50 @@ def parse_args():
                       type=int,
                       default=defs["nprocs"],
                       help="number of tests to launch simultaneously [default =%d]" % defs["nprocs"])
+    parser.add_option("--ctest",
+                      default=defs["ctest"],
+                      action="store_true",
+                      help="generate ctest compatible output")
+    parser.add_option("--threshold-diff",
+                      default=defs["threshold_diff"],
+                      dest="threshold_diff",
+                      action="store_true",
+                      help="use threshold based image diff")
+    parser.add_option("--threshold-error",
+                      default=defs["threshold_error"],
+                      dest="threshold_error",
+                      type=str,
+                      action='callback',
+                      callback=ParseThresholdOverride,
+                      help="Per case overide of the max allowable error for threshold based image diff")
+    parser.add_option("--parallel-launch",
+                      default=defs["parallel_launch"],
+                      help="specify the parallel launch method. "
+                           "Options are mpirun and srun.")
+
     # parse args
     opts, tests = parser.parse_args()
     # note: we want a dict b/c the values could be passed without using optparse
     opts = vars(opts)
     return opts, tests
+
+# ----------------------------------------------------------------------------
+#  Method: ParseThresholdOverride
+#
+#  Programmer: Burlen Loring
+#  Date:       Tue May 27 11:11:22 PDT 2014
+# ----------------------------------------------------------------------------
+def ParseThresholdOverride(option, opt, value, parser):
+    """
+    Convert threshold overrides encodeed in a string like
+    --threshold-error=a:b,c:d to a dictionary. Parse
+    errors are intentionally fatal.
+    """
+    d={}
+    for pair in value.split(','):
+        k,v = pair.split(':')
+        d[k] = float(v)
+    setattr(parser.values, option.dest, d)
 
 # ----------------------------------------------------------------------------
 #  Method: find_test_cases
@@ -666,6 +750,10 @@ def prepare_result_dirs(res_dir=None):
 #
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 30 2012
+#
+#  Modifications:
+#    Kathleen Biagas, Mon Jan 27 13:02:45 MST 2014
+#    Change 'make test' to 'make testdata'.
 # ----------------------------------------------------------------------------
 def prepare_data_dir(data_dir):
     """
@@ -769,6 +857,11 @@ def launch_tests(opts,tests):
 #
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 30 2012
+#
+#  Modifications:
+#   Kathleen Biagas, Thu Feb  6 14:08:00 PST 2014
+#   Only do ctest logging if ctest is enabled.
+#
 # ----------------------------------------------------------------------------
 def main(opts,tests):
     """
@@ -786,8 +879,8 @@ def main(opts,tests):
         ridx  = pjoin(opts["result_dir"],"results.json")
         tests = load_test_cases_from_index(opts["tests_dir"],ridx,True)
     elif len(tests) == 0:
-        tests = find_test_cases(opts["tests_dir"],opts["classes"])
-    tests = [ abs_path(t) for t in tests]
+        tests = find_test_cases(opts["tests_dir"],opts["classes"]) 
+    tests = [ abs_path(pjoin(opts["tests_dir"], "..",t)) for t in tests]
     prepare_result_dirs(opts["result_dir"])
     ststamp = timestamp(sep=":")
     stime   = time.time()
@@ -804,6 +897,9 @@ def main(opts,tests):
     json_index.finalize(etstamp,rtime)
     nskip   = len([ r.skip()  for r in results if r.skip() == True])
     Log("[Test suite run complete @ %s (wall time = %s)]" % (etstamp,rtime))
+    if opts['ctest']:
+        Log(ctestReportWallTime(etime-stime))
+        Log(ctestReportCPUTime(etime-stime))
     if nskip > 0:
         Log("-- %d files due to skip list." % nskip)
     if not error:
@@ -816,6 +912,11 @@ def main(opts,tests):
             Log("!! Test suite run finished with %d errors." % nerrors)
     if opts["cleanup"]:
         cleanup(opts["result_dir"],opts["cleanup_delay"])
+    if opts['ctest']:
+        if not error:
+            sys.exit(0)
+        else:
+            sys.exit(1)
     return pjoin(opts["result_dir"],"results.json")
 
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -326,7 +326,7 @@ QvisFileSelectionWindow::CreateWindowContents()
     // the intermediateFile list.
     intermediateFileList = fileServer->GetAppliedFileList();
     
-#if defined(Q_WS_MACX) && QT_VERSION >= 0x040800
+#if (defined(Q_WS_MACX) || defined(Q_OS_MAC)) && QT_VERSION >= 0x040800
     // On Mac with Qt 4.8, we run into problems with the window not
     // coming back fully after calling setEnabled(true) on the window.
     // As a workaround, we disable the central widget instead of the
@@ -490,8 +490,6 @@ QvisFileSelectionWindow::UpdateSelectedFileList()
     QualifiedFilenameVector::const_iterator pos;
     bool needsHost = false;
     bool needsPath = false;
-    int i;
-
     //
     // Search through the list of selected files and see if we'll need to
     // display host or path information.
@@ -500,7 +498,7 @@ QvisFileSelectionWindow::UpdateSelectedFileList()
     {
         std::string host = intermediateFileList[0].host;
         std::string path = intermediateFileList[0].path;
-        for(i = 1; i < intermediateFileList.size(); ++i)
+        for(size_t i = 1; i < intermediateFileList.size(); ++i)
         {
             bool differentHost = (intermediateFileList[i].host != host);
             bool differentPath = (intermediateFileList[i].path != path);
@@ -614,8 +612,6 @@ QvisFileSelectionWindow::setEnabled(bool val)
 void
 QvisFileSelectionWindow::okClicked()
 {
-    int i;
-
     // Hide the remove path window.
     recentPathsRemovalWindow->hide();
 
@@ -627,7 +623,7 @@ QvisFileSelectionWindow::okClicked()
 
     // build vector of assciated time states
     std::vector<int> timeStates;
-    for (i = 0; i < intermediateFileList.size(); ++i)
+    for (size_t i = 0; i < intermediateFileList.size(); ++i)
         timeStates.push_back(GetStateForSource(intermediateFileList[i]));
 
     // Store the intermediate file list into the file server's 

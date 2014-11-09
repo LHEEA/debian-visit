@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,7 @@
 
 #include <QButtonGroup>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
@@ -140,6 +141,9 @@ QvisOnionPeelWindow::~QvisOnionPeelWindow()
 //   Brad Whitlock, Fri Jul 18 08:54:13 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Biagas, Tue Jul 22 19:32:57 MST 2014
+//   Added honorOriginalMesh comboBox.
+//
 // ****************************************************************************
 
 void
@@ -223,6 +227,16 @@ QvisOnionPeelWindow::CreateWindowContents()
     connect(requestedLayer, SIGNAL(valueChanged(int)), 
             this, SLOT(requestedLayerChanged(int)));
     mainLayout->addWidget(requestedLayer, 5, 1, 1, 3);
+
+    //
+    // honorOriginalMesh
+    //
+    honorOriginalMesh = new QComboBox(central);
+    honorOriginalMesh->addItem(tr("Honor actual mesh"));
+    honorOriginalMesh->addItem(tr("Honor original mesh"));
+    connect(honorOriginalMesh, SIGNAL(activated(int)),
+            this, SLOT(honorOriginalMeshChanged(int)));
+    mainLayout->addWidget(honorOriginalMesh, 6, 0 );
 }
 
 
@@ -254,20 +268,21 @@ QvisOnionPeelWindow::CreateWindowContents()
 //   Brad Whitlock, Fri Jul 18 09:03:53 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Biagas, Tue Jul 22 19:32:57 MST 2014
+//   Added honorOriginalMesh.
+//
 // ****************************************************************************
 
 void
 QvisOnionPeelWindow::UpdateWindow(bool doAll)
 {
     QString temp;
-    int i, j;
     intVector ivec;
-
 
     // Loop through all the attributes and do something for
     // each of them that changed. This function is only responsible
     // for displaying the state values and setting widget sensitivity.
-    for(i = 0; i < atts->NumAttributes(); ++i)
+    for(int i = 0; i < atts->NumAttributes(); ++i)
     {
         if(!doAll)
         {
@@ -303,7 +318,7 @@ QvisOnionPeelWindow::UpdateWindow(bool doAll)
             ivec = atts->GetIndex(); 
             char buff[80];
             temp = "";
-            for (j = 0; j < ivec.size(); j++) 
+            for (size_t j = 0; j < ivec.size(); j++) 
             {
                 sprintf(buff, "%d ", ivec[j]);
                 temp += buff;
@@ -323,6 +338,12 @@ QvisOnionPeelWindow::UpdateWindow(bool doAll)
             seedType->button(atts->GetSeedType())->setChecked(true);
             seedType->blockSignals(false);
             break;
+        case OnionPeelAttributes::ID_honorOriginalMesh:
+            honorOriginalMesh->blockSignals(true);
+            honorOriginalMesh->setCurrentIndex(atts->GetHonorOriginalMesh()? 1 : 0);
+            honorOriginalMesh->blockSignals(false);
+            break;
+
         }
     } // end for
 }
@@ -527,6 +548,19 @@ QvisOnionPeelWindow::useGlobalIdToggled(bool val)
     {
         atts->SetUseGlobalId(val);
         silSet->setEnabled(!val);
+        if (AutoUpdate())
+            QTimer::singleShot(100, this, SLOT(delayedApply()));
+        else
+            Apply();
+    }
+}
+
+void
+QvisOnionPeelWindow::honorOriginalMeshChanged(int val)
+{
+    if(val != (int) atts->GetHonorOriginalMesh())
+    {
+        atts->SetHonorOriginalMesh((bool)val);
         if (AutoUpdate())
             QTimer::singleShot(100, this, SLOT(delayedApply()));
         else

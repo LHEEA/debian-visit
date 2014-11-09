@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -465,10 +465,13 @@ class VIEWER_API ViewerPlot : public ViewerBase
     double *GetSpatialExtents(avtExtentType = AVT_UNKNOWN_EXTENT_TYPE) const;
     void SetSpatialExtentsType(avtExtentType);
     bool UpdateColorTable(const char *ctName);
+
     bool SetBackgroundColor(const double *);
     bool SetForegroundColor(const double *);
     bool GetErrorFlag() const;
     void SetErrorFlag(bool val);
+    int GetEmbeddedPlotId() const;
+    void SetEmbeddedPlotId(int id);
     int  GetNetworkID() const;
     void SetNetworkID(int id);
     PlotQueryInfo* GetPlotQueryInfo();
@@ -546,6 +549,7 @@ class VIEWER_API ViewerPlot : public ViewerBase
     bool                    alternateDisplayAllowsClientUpdates;
 
     int                     networkID;
+    int                     embeddedPlotId;
     EngineKey               engineKey;
     std::string             hostName;
     std::string             databaseName;

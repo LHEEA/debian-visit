@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -59,7 +59,7 @@
 
 avtMultipleInputExpressionFilter::~avtMultipleInputExpressionFilter()
 {
-    for (int i = 0 ; i < varnames.size() ; i++)
+    for (size_t i = 0 ; i < varnames.size() ; i++)
     {
         //
         // We should use the C-style de-allocation, since this string was
@@ -128,7 +128,7 @@ avtMultipleInputExpressionFilter::IsPointVariable(void)
     avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
     bool hasNodal = false;
     bool hasZonal = false;
-    for (int i = 0 ; i < varnames.size() ; i++)
+    for (size_t i = 0 ; i < varnames.size() ; i++)
     {
         if (!atts.ValidVariable(varnames[i]))
             return avtExpressionFilter::IsPointVariable();

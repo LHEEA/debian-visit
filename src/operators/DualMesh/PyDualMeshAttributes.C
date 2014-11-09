@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewDualMeshAttributes(int);
 std::string
 PyDualMeshAttributes_ToString(const DualMeshAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *mode_names = "Auto, NodesToZones, ZonesToNodes";
     switch (atts->GetMode())
@@ -359,7 +359,6 @@ PyDualMeshAttributes_GetLogString()
 static void
 PyDualMeshAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    DualMeshAttributes *atts = (DualMeshAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

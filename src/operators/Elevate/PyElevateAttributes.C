@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewElevateAttributes(int);
 std::string
 PyElevateAttributes_ToString(const ElevateAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetUseXYLimits())
         SNPRINTF(tmpStr, 1000, "%suseXYLimits = 1\n", prefix);
@@ -686,7 +686,6 @@ PyElevateAttributes_GetLogString()
 static void
 PyElevateAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ElevateAttributes *atts = (ElevateAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

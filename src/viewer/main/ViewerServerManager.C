@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -341,14 +341,13 @@ ViewerServerManager::AddArguments(RemoteProxyBase *component,
     //
     // Add arguments stored in ViewerServerManager.
     //
-    int i;
-    for (i = 0; i < arguments.size(); ++i)
+    for (size_t i = 0; i < arguments.size(); ++i)
          component->AddArgument(arguments[i].c_str());
 
     //
     // Add any other arguments given to us by the caller
     //
-    for (i = 0; i < args.size(); ++i)
+    for (size_t i = 0; i < args.size(); ++i)
          component->AddArgument(args[i].c_str());
 }
 
@@ -713,7 +712,7 @@ ViewerServerManager::OpenWithLauncher(
             // Search the args list and see if we've supplied the path to
             // the visit executable.
             std::string visitPath;
-            for(int i = 0; i < args.size(); ++i)
+            for(size_t i = 0; i < args.size(); ++i)
             {
                 if(args[i] == "-dir" && (i+1) < args.size())
                 {
@@ -859,7 +858,7 @@ ViewerServerManager::SimConnectThroughLauncher(const std::string &remoteHost,
             // Search the args list and see if we've supplied the path to
             // the visit executeable.
             std::string visitPath;
-            for(int i = 0; i < args.size(); ++i)
+            for(size_t i = 0; i < args.size(); ++i)
             {
                 if(args[i] == "-dir" && (i+1) < args.size())
                 {

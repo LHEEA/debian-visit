@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,13 @@
 #include <math.h>
 
 #include <silo.h>
+
+// supress the following since silo uses char * in its API
+#if defined(__clang__)
+# pragma GCC diagnostic ignored "-Wdeprecated-writable-strings"
+#elif defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
 
 // Parameters
 #define MIN_MASS                 1.
@@ -321,7 +328,7 @@ public:
         const int svartypes[] = {DB_POINTMESH, DB_POINTVAR, DB_POINTVAR, DB_POINTVAR, DB_POINTVAR,
                                                DB_POINTVAR, DB_POINTVAR, DB_POINTVAR};
         const bool isMesh[] = {true, false, false, false, false, false, false, false};
-        for(int i = 0; i < (sizeof(snames)/sizeof(const char*)); ++i)
+        for(size_t i = 0; i < (sizeof(snames)/sizeof(const char*)); ++i)
         {
             std::vector<std::string> names;
             for(int d = 0; d < nDomains; ++d)
@@ -406,7 +413,7 @@ public:
                     double x[nvals];
                     double y[nvals];
                     double z[nvals];
-                    for(size_t i = 0; i < nvals; ++i)
+                    for(int i = 0; i < nvals; ++i)
                     {
                         double t = double(i) / double(nvals-1);
                         x[i] = (1.-t)*thisExtents[0] + t*thisExtents[1];
@@ -450,7 +457,6 @@ public:
 
         double *m, *x, *y, *z, *vx, *vy, *vz, *r;
         int *id, *doms, *contact;
-        int dims[3];
         int ndims = 3;
         float *coords[3];
         x = new double[P.size()];
@@ -465,9 +471,6 @@ public:
         doms = new int[P.size()];
         contact = new int[P.size()];
 
-        dims[0] = (int)P.size();
-        dims[1] = (int)P.size();
-        dims[2] = (int)P.size();
         coords[0] = (float*)x;
         coords[1] = (float*)y;
         coords[2] = (float*)z;
@@ -646,7 +649,6 @@ SimState::CreateParticles(int numNewParticles)
 {
     vector3 emitterCenter(0., 0., extents[5]);
     const double emitterRadius = 1.;
-    const double emitterRadius2 = 2000000.;
 
     int newID = (int)particles.size();
     for(int i = 0; i < numNewParticles; ++i)
@@ -830,7 +832,7 @@ SimState::SaveData(ParticleDataSaver &saver)
                 particleVector P;
 
                 // Select the particles in this domain's box.
-                for(int i = 0; i < particles.size(); ++i)
+                for(size_t i = 0; i < particles.size(); ++i)
                 {
                     const vector3 &L = particles[i].location;
                     bool inX = (L.x >= x0 && L.x <= (x0 + deltaX));

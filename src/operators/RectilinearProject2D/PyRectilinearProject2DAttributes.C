@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewRectilinearProject2DAttributes(int);
 std::string
 PyRectilinearProject2DAttributes_ToString(const RectilinearProject2DAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *reductionOperator_names = "Sum, Average";
     switch (atts->GetReductionOperator())
@@ -388,7 +388,6 @@ PyRectilinearProject2DAttributes_GetLogString()
 static void
 PyRectilinearProject2DAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    RectilinearProject2DAttributes *atts = (RectilinearProject2DAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -90,8 +90,6 @@ avtDeferExpressionBaseFilter::~avtDeferExpressionBaseFilter()
 void
 avtDeferExpressionBaseFilter::SetupExpressionList(void)
 {
-    int  i, j, k;
-
     std::vector<std::string> varsToEvaluate;
     GetVariablesToEvaluate(varsToEvaluate);
 
@@ -115,14 +113,14 @@ avtDeferExpressionBaseFilter::SetupExpressionList(void)
     //
     ExpressionList *el = ParsingExprList::Instance()->GetList();
     ExpressionList new_el;
-    for (j = 0 ; j < varsToEvaluate.size() ; j++)
+    for (size_t j = 0 ; j < varsToEvaluate.size() ; j++)
     {
         bool foundMatch = false;
-        for (i = 0 ; i < el->GetNumExpressions() ; i++)
+        for (size_t i = 0 ; i < (size_t)el->GetNumExpressions() ; i++)
             if (varsToEvaluate[j] == el->GetExpressions(i).GetName())
             {
                 bool replacedByCustom = false;
-                for (k = 0 ; k < customExpressions.size() ; k++)
+                for (size_t k = 0 ; k < customExpressions.size() ; k++)
                      if (varsToEvaluate[j] == customExpressions[k].GetName())
                      {
                           new_el.AddExpressions(customExpressions[k]);
@@ -139,7 +137,7 @@ avtDeferExpressionBaseFilter::SetupExpressionList(void)
 
         // If this is a vector, then look for the magnitude as well.
         std::string newName = varsToEvaluate[j] + "_AVT_mag";
-        for (i = 0 ; i < el->GetNumExpressions() ; i++)
+        for (size_t i = 0 ; i < (size_t)el->GetNumExpressions() ; i++)
             if (newName == el->GetExpressions(i).GetName())
                 new_el.AddExpressions(el->GetExpressions(i));
     }

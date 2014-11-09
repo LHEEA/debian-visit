@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewMaterialAttributes(int);
 std::string
 PyMaterialAttributes_ToString(const MaterialAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetSmoothing())
         SNPRINTF(tmpStr, 1000, "%ssmoothing = 1\n", prefix);
@@ -742,7 +742,6 @@ PyMaterialAttributes_GetLogString()
 static void
 PyMaterialAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    MaterialAttributes *atts = (MaterialAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

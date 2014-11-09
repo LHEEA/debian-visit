@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,11 +43,12 @@
 #ifndef AVT_PSEUDOCOLOR_FILTER_H
 #define AVT_PSEUDOCOLOR_FILTER_H
 
-
 #include <avtDataTreeIterator.h>
+
 #include <PseudocolorAttributes.h>
 
 #include <string>
+
 
 // ****************************************************************************
 //  Class: avtPseudocolorFilter
@@ -65,6 +66,9 @@
 //    Kathleen Biagas, Fri Nov  2 10:25:25 PDT 2012
 //    Added primaryVar.
 //
+//    Eric Brugger, Tue Aug 19 11:10:33 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 class avtPseudocolorFilter : public avtDataTreeIterator
@@ -81,7 +85,7 @@ class avtPseudocolorFilter : public avtDataTreeIterator
   protected:
     bool                      keepNodeZone;
 
-    virtual vtkDataSet       *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     virtual void              UpdateDataObjectInfo(void);
     virtual avtContract_p
                               ModifyContract(avtContract_p);

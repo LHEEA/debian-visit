@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -177,8 +177,13 @@ QvisCreateBondsWindow::CreateWindowContents()
     bondsTree->setColumnWidth(1, 50);
     
     bondsTree->setRootIsDecorated(false);
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     bondsTree->header()->setClickable(false);
     bondsTree->header()->setMovable(false);
+#else
+    bondsTree->header()->setSectionsClickable(false);
+    bondsTree->header()->setSectionsMovable(false);
+#endif
     bondsTree->setAllColumnsShowFocus(true);
     
     listLayout->addWidget(bondsTree);
@@ -855,16 +860,16 @@ void QvisCreateBondsWindow::secondElementChanged(int element)
 
 int QvisCreateBondsWindow::GetListLength()
 {
-    int n1 = atts->GetAtomicNumber1().size();
-    int n2 = atts->GetAtomicNumber2().size();
-    int n3 = atts->GetMinDist().size();
-    int n4 = atts->GetMaxDist().size();
+    size_t n1 = atts->GetAtomicNumber1().size();
+    size_t n2 = atts->GetAtomicNumber2().size();
+    size_t n3 = atts->GetMinDist().size();
+    size_t n4 = atts->GetMaxDist().size();
     if (n1 != n2 || n1 != n3 || n1 != n4)
     {
         EXCEPTION1(ImproperUseException,
                    "Bond list data arrays were not all the same length.");
     }
-    return n1;
+    return (int)n1;
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewAxisTickMarks(int);
 std::string
 PyAxisTickMarks_ToString(const AxisTickMarks *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetVisible())
         SNPRINTF(tmpStr, 1000, "%svisible = 1\n", prefix);
@@ -457,7 +457,6 @@ PyAxisTickMarks_GetLogString()
 static void
 PyAxisTickMarks_CallLogRoutine(Subject *subj, void *data)
 {
-    AxisTickMarks *atts = (AxisTickMarks *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

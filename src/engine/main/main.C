@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -336,8 +336,10 @@ EngineMain(int argc, char *argv[])
         }
     }
 
-    if (DebugStream::Level1())
+    if (DebugStream::Level1()) 
+    {
         debug1 << "ENGINE exited." << endl;
+    }
     engine->Finalize();
 
 #ifdef DEBUG_MEMORY_LEAKS

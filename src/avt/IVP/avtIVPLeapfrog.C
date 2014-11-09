@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,7 @@
 
 #include <limits>
 #include <cmath>
+#include <float.h>
 
 #include <avtIVPFlashField.h>
 
@@ -75,7 +76,6 @@ avtIVPLeapfrog::avtIVPLeapfrog() : vCur(0,0,0)
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    d = 0.0;
     numStep = 0;
 
     order = 2; // Highest order ODE that the integrator can support.
@@ -99,59 +99,6 @@ avtIVPLeapfrog::~avtIVPLeapfrog()
 
 
 // ****************************************************************************
-//  Method: avtIVPLeapfrog::GetCurrentT
-//
-//  Purpose:
-//      Gets the current T.
-//
-//  Creationist: Allen Sanderson
-//  Creation:   20 June 2011
-//
-// ****************************************************************************
-
-double 
-avtIVPLeapfrog::GetCurrentT() const 
-{
-    return t;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPLeapfrog::GetCurrentY
-//
-//  Purpose:
-//      Gets the current Y.
-//
-//  Creationist: Allen Sanderson
-//  Creation:   20 June 2011
-//
-// ****************************************************************************
-
-avtVector 
-avtIVPLeapfrog::GetCurrentY() const
-{
-    return yCur;
-}
-
-// ****************************************************************************
-//  Method: avtIVPLeapfrog::SetCurrentY
-//
-//  Purpose:
-//      Sets the current Y.
-//
-//  Creationist: Allen Sanderson
-//  Creation:   20 June 2011
-//
-// ****************************************************************************
-
-void
-avtIVPLeapfrog::SetCurrentY(const avtVector &newY)
-{
-    yCur = newY;
-}
-
-
-// ****************************************************************************
 //  Method: avtIVPLeapfrog::GetCurrentV
 //
 //  Purpose:
@@ -160,6 +107,8 @@ avtIVPLeapfrog::SetCurrentY(const avtVector &newY)
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+
 // ****************************************************************************
 
 avtVector 
@@ -177,6 +126,8 @@ avtIVPLeapfrog::GetCurrentV() const
 //  Programmer: Dave Pugmire
 //  Creation:   August 5, 2008
 //
+//  Modifications:
+//
 // ****************************************************************************
 
 void
@@ -185,95 +136,6 @@ avtIVPLeapfrog::SetCurrentV(const avtVector &newV)
     vCur = newV;
 }
 
-
-// ****************************************************************************
-//  Method: avtIVPLeapfrog::SetCurrentT
-//
-//  Purpose:
-//      Sets the current T.
-//
-//  Creationist: Allen Sanderson
-//  Creation:   20 June 2011
-//
-// ****************************************************************************
-
-void
-avtIVPLeapfrog::SetCurrentT(double newT)
-{
-    t = newT;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPLeapfrog::SetNextStepSize
-//
-//  Purpose:
-//      Sets the step size for the next step.
-//
-//  Creationist: Allen Sanderson
-//  Creation:   20 June 2011
-//
-// ****************************************************************************
-
-void 
-avtIVPLeapfrog::SetNextStepSize(const double& _h)
-{
-    h = _h;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPLeapfrog::GetNextStepSize
-//
-//  Purpose:
-//      Gets the step size for the next step.
-//
-//  Creationist: Allen Sanderson
-//  Creation:   20 June 2011
-//
-// ****************************************************************************
-
-double 
-avtIVPLeapfrog::GetNextStepSize() const
-{
-    return h;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPLeapfrog::SetMaximumStepSize
-//
-//  Purpose:
-//      Sets the maximum step size for the next step.
-//
-//  Creationist: Allen Sanderson
-//  Creation:   20 June 2011
-//
-// ****************************************************************************
-
-void
-avtIVPLeapfrog::SetMaximumStepSize(const double& hMax)
-{
-    h_max = hMax;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPLeapfrog::SetTolerances
-//
-//  Purpose:
-//      Sets the tolerance.
-//
-//  Creationist: Allen Sanderson
-//  Creation:   20 June 2011
-//
-// ****************************************************************************
-
-void
-avtIVPLeapfrog::SetTolerances(const double& relt, const double& abst)
-{
-    tol = abst;
-}
 
 // ****************************************************************************
 //  Method: avtIVPLeapfrog::Reset
@@ -292,7 +154,6 @@ avtIVPLeapfrog::Reset(const double& t_start,
                       const avtVector &v_start)
 {
     t = t_start;
-    d = 0.0;
     numStep = 0;
 
     yCur = y_start;
@@ -331,21 +192,23 @@ avtIVPLeapfrog::OnExitDomain()
 avtIVPSolver::Result 
 avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
 {
-    const double direction = sign( 1.0, t_max - t );
+    double t_local = GetLocalTime();
+
+    const double direction = sign( 1.0, t_max - t_local );
     
     h = sign( h, direction );
     
     bool last = false;
 
     // do not run past integration end
-    if( (t + 1.01*h - t_max) * direction > 0.0 ) 
+    if( (t_local + 1.01*h - t_max) * direction > 0.0 ) 
     {
         last = true;
-        h = t_max - t;
+        h = t_max - t_local;
     }
 
     // stepsize underflow?
-    if( 0.1*std::abs(h) <= std::abs(t)*epsilon )
+    if( 0.1*std::abs(h) <= std::abs(t_local)*epsilon )
         return avtIVPSolver::STEPSIZE_UNDERFLOW;
     
     avtIVPField::Result fieldResult;
@@ -354,22 +217,25 @@ avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
     if( field->GetOrder() == 2 )
     {
         avtVector aCur;
-        if ((fieldResult = (*field)(t, yCur, vCur, aCur)) != avtIVPField::OK)
+        if ((fieldResult = (*field)(t_local, yCur, vCur, aCur)) != avtIVPField::OK)
             return ConvertResult(fieldResult);
+
         if( numStep )
             vNew = vCur + aCur * h;      // New velocity
         else
             vNew = vCur + aCur * h/2.0;  // Initial velocity at half step
         
-        yNew = yCur + vNew * h;        // New position
+        yNew = yCur + vNew * h;          // New position
     }
     else  //if( field->GetOrder() == 1 )
     {
-        if ((fieldResult = (*field)(t, yCur, vCur)) != avtIVPField::OK)
+        if ((fieldResult = (*field)(t_local, yCur, vCur)) != avtIVPField::OK)
             return ConvertResult(fieldResult);
+
         yNew = yCur + vCur * h;     // New position
     }
     
+    // Convert and save the position.
     ivpstep->resize(2);
 
     if( convertToCartesian )
@@ -385,12 +251,17 @@ avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
     
     ivpstep->t0 = t;
     ivpstep->t1 = t + h;
+
+    // Update for the next step.
     numStep++;
     
     yCur = yNew;
     vCur = vNew;
     t = t+h;
     
+    if( period && last )
+      t += FLT_EPSILON;
+
     // Reset the step size on sucessful step.
     h = h_max;
     
@@ -415,7 +286,6 @@ avtIVPLeapfrog::AcceptStateVisitor(avtIVPStateHelper& aiss)
         .Accept(h)
         .Accept(h_max)
         .Accept(t)
-        .Accept(d)
         .Accept(yCur)
         .Accept(vCur);
 }

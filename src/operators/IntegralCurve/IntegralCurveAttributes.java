@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -61,7 +61,7 @@ import java.util.Vector;
 
 public class IntegralCurveAttributes extends AttributeSubject implements Plugin
 {
-    private static int IntegralCurveAttributes_numAdditionalAtts = 65;
+    private static int IntegralCurveAttributes_numAdditionalAtts = 66;
 
     // Enum values
     public final static int SOURCETYPE_POINT = 0;
@@ -85,13 +85,13 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
     public final static int DATAVALUE_DIFFERENCE = 9;
     public final static int DATAVALUE_VARIABLE = 10;
 
+    public final static int CROPVALUE_DISTANCE = 0;
+    public final static int CROPVALUE_TIME = 1;
+    public final static int CROPVALUE_STEPNUMBER = 2;
+
     public final static int DISPLAYGEOMETRY_LINES = 0;
     public final static int DISPLAYGEOMETRY_TUBES = 1;
     public final static int DISPLAYGEOMETRY_RIBBONS = 2;
-
-    public final static int COORDINATESYSTEM_ASIS = 0;
-    public final static int COORDINATESYSTEM_CYLINDRICALTOCARTESIAN = 1;
-    public final static int COORDINATESYSTEM_CARTESIANTOCYLINDRICAL = 2;
 
     public final static int INTEGRATIONDIRECTION_FORWARD = 0;
     public final static int INTEGRATIONDIRECTION_BACKWARD = 1;
@@ -207,13 +207,14 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         pathlines = false;
         pathlinesOverrideStartingTimeFlag = false;
         pathlinesOverrideStartingTime = 0;
+        pathlinesPeriod = 0;
         pathlinesCMFE = PATHLINESCMFE_POS_CMFE;
         displayGeometry = DISPLAYGEOMETRY_LINES;
-        coordinateSystem = COORDINATESYSTEM_ASIS;
-        phiScalingFlag = false;
-        phiScaling = 1;
-        showLines = true;
-        showPoints = false;
+        cropBeginFlag = false;
+        cropBegin = 0;
+        cropEndFlag = false;
+        cropEnd = 0;
+        cropValue = CROPVALUE_TIME;
         sampleDistance0 = 10;
         sampleDistance1 = 10;
         sampleDistance2 = 10;
@@ -317,13 +318,14 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         pathlines = false;
         pathlinesOverrideStartingTimeFlag = false;
         pathlinesOverrideStartingTime = 0;
+        pathlinesPeriod = 0;
         pathlinesCMFE = PATHLINESCMFE_POS_CMFE;
         displayGeometry = DISPLAYGEOMETRY_LINES;
-        coordinateSystem = COORDINATESYSTEM_ASIS;
-        phiScalingFlag = false;
-        phiScaling = 1;
-        showLines = true;
-        showPoints = false;
+        cropBeginFlag = false;
+        cropBegin = 0;
+        cropEndFlag = false;
+        cropEnd = 0;
+        cropValue = CROPVALUE_TIME;
         sampleDistance0 = 10;
         sampleDistance1 = 10;
         sampleDistance2 = 10;
@@ -431,13 +433,14 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         pathlines = obj.pathlines;
         pathlinesOverrideStartingTimeFlag = obj.pathlinesOverrideStartingTimeFlag;
         pathlinesOverrideStartingTime = obj.pathlinesOverrideStartingTime;
+        pathlinesPeriod = obj.pathlinesPeriod;
         pathlinesCMFE = obj.pathlinesCMFE;
         displayGeometry = obj.displayGeometry;
-        coordinateSystem = obj.coordinateSystem;
-        phiScalingFlag = obj.phiScalingFlag;
-        phiScaling = obj.phiScaling;
-        showLines = obj.showLines;
-        showPoints = obj.showPoints;
+        cropBeginFlag = obj.cropBeginFlag;
+        cropBegin = obj.cropBegin;
+        cropEndFlag = obj.cropEndFlag;
+        cropEnd = obj.cropEnd;
+        cropValue = obj.cropValue;
         sampleDistance0 = obj.sampleDistance0;
         sampleDistance1 = obj.sampleDistance1;
         sampleDistance2 = obj.sampleDistance2;
@@ -569,13 +572,14 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
                 (pathlines == obj.pathlines) &&
                 (pathlinesOverrideStartingTimeFlag == obj.pathlinesOverrideStartingTimeFlag) &&
                 (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime) &&
+                (pathlinesPeriod == obj.pathlinesPeriod) &&
                 (pathlinesCMFE == obj.pathlinesCMFE) &&
                 (displayGeometry == obj.displayGeometry) &&
-                (coordinateSystem == obj.coordinateSystem) &&
-                (phiScalingFlag == obj.phiScalingFlag) &&
-                (phiScaling == obj.phiScaling) &&
-                (showLines == obj.showLines) &&
-                (showPoints == obj.showPoints) &&
+                (cropBeginFlag == obj.cropBeginFlag) &&
+                (cropBegin == obj.cropBegin) &&
+                (cropEndFlag == obj.cropEndFlag) &&
+                (cropEnd == obj.cropEnd) &&
+                (cropValue == obj.cropValue) &&
                 (sampleDistance0 == obj.sampleDistance0) &&
                 (sampleDistance1 == obj.sampleDistance1) &&
                 (sampleDistance2 == obj.sampleDistance2) &&
@@ -926,148 +930,154 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         Select(40);
     }
 
+    public void SetPathlinesPeriod(double pathlinesPeriod_)
+    {
+        pathlinesPeriod = pathlinesPeriod_;
+        Select(41);
+    }
+
     public void SetPathlinesCMFE(int pathlinesCMFE_)
     {
         pathlinesCMFE = pathlinesCMFE_;
-        Select(41);
+        Select(42);
     }
 
     public void SetDisplayGeometry(int displayGeometry_)
     {
         displayGeometry = displayGeometry_;
-        Select(42);
-    }
-
-    public void SetCoordinateSystem(int coordinateSystem_)
-    {
-        coordinateSystem = coordinateSystem_;
         Select(43);
     }
 
-    public void SetPhiScalingFlag(boolean phiScalingFlag_)
+    public void SetCropBeginFlag(boolean cropBeginFlag_)
     {
-        phiScalingFlag = phiScalingFlag_;
+        cropBeginFlag = cropBeginFlag_;
         Select(44);
     }
 
-    public void SetPhiScaling(double phiScaling_)
+    public void SetCropBegin(double cropBegin_)
     {
-        phiScaling = phiScaling_;
+        cropBegin = cropBegin_;
         Select(45);
     }
 
-    public void SetShowLines(boolean showLines_)
+    public void SetCropEndFlag(boolean cropEndFlag_)
     {
-        showLines = showLines_;
+        cropEndFlag = cropEndFlag_;
         Select(46);
     }
 
-    public void SetShowPoints(boolean showPoints_)
+    public void SetCropEnd(double cropEnd_)
     {
-        showPoints = showPoints_;
+        cropEnd = cropEnd_;
         Select(47);
+    }
+
+    public void SetCropValue(int cropValue_)
+    {
+        cropValue = cropValue_;
+        Select(48);
     }
 
     public void SetSampleDistance0(double sampleDistance0_)
     {
         sampleDistance0 = sampleDistance0_;
-        Select(48);
+        Select(49);
     }
 
     public void SetSampleDistance1(double sampleDistance1_)
     {
         sampleDistance1 = sampleDistance1_;
-        Select(49);
+        Select(50);
     }
 
     public void SetSampleDistance2(double sampleDistance2_)
     {
         sampleDistance2 = sampleDistance2_;
-        Select(50);
+        Select(51);
     }
 
     public void SetFillInterior(boolean fillInterior_)
     {
         fillInterior = fillInterior_;
-        Select(51);
+        Select(52);
     }
 
     public void SetRandomSamples(boolean randomSamples_)
     {
         randomSamples = randomSamples_;
-        Select(52);
+        Select(53);
     }
 
     public void SetRandomSeed(int randomSeed_)
     {
         randomSeed = randomSeed_;
-        Select(53);
+        Select(54);
     }
 
     public void SetNumberOfRandomSamples(int numberOfRandomSamples_)
     {
         numberOfRandomSamples = numberOfRandomSamples_;
-        Select(54);
+        Select(55);
     }
 
     public void SetForceNodeCenteredData(boolean forceNodeCenteredData_)
     {
         forceNodeCenteredData = forceNodeCenteredData_;
-        Select(55);
+        Select(56);
     }
 
     public void SetIssueTerminationWarnings(boolean issueTerminationWarnings_)
     {
         issueTerminationWarnings = issueTerminationWarnings_;
-        Select(56);
+        Select(57);
     }
 
     public void SetIssueStiffnessWarnings(boolean issueStiffnessWarnings_)
     {
         issueStiffnessWarnings = issueStiffnessWarnings_;
-        Select(57);
+        Select(58);
     }
 
     public void SetIssueCriticalPointsWarnings(boolean issueCriticalPointsWarnings_)
     {
         issueCriticalPointsWarnings = issueCriticalPointsWarnings_;
-        Select(58);
+        Select(59);
     }
 
     public void SetCriticalPointThreshold(double criticalPointThreshold_)
     {
         criticalPointThreshold = criticalPointThreshold_;
-        Select(59);
+        Select(60);
     }
 
     public void SetCorrelationDistanceAngTol(double correlationDistanceAngTol_)
     {
         correlationDistanceAngTol = correlationDistanceAngTol_;
-        Select(60);
+        Select(61);
     }
 
     public void SetCorrelationDistanceMinDistAbsolute(double correlationDistanceMinDistAbsolute_)
     {
         correlationDistanceMinDistAbsolute = correlationDistanceMinDistAbsolute_;
-        Select(61);
+        Select(62);
     }
 
     public void SetCorrelationDistanceMinDistBBox(double correlationDistanceMinDistBBox_)
     {
         correlationDistanceMinDistBBox = correlationDistanceMinDistBBox_;
-        Select(62);
+        Select(63);
     }
 
     public void SetCorrelationDistanceMinDistType(int correlationDistanceMinDistType_)
     {
         correlationDistanceMinDistType = correlationDistanceMinDistType_;
-        Select(63);
+        Select(64);
     }
 
     public void SetSelection(String selection_)
     {
         selection = selection_;
-        Select(64);
+        Select(65);
     }
 
     // Property getting methods
@@ -1112,13 +1122,14 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
     public boolean  GetPathlines() { return pathlines; }
     public boolean  GetPathlinesOverrideStartingTimeFlag() { return pathlinesOverrideStartingTimeFlag; }
     public double   GetPathlinesOverrideStartingTime() { return pathlinesOverrideStartingTime; }
+    public double   GetPathlinesPeriod() { return pathlinesPeriod; }
     public int      GetPathlinesCMFE() { return pathlinesCMFE; }
     public int      GetDisplayGeometry() { return displayGeometry; }
-    public int      GetCoordinateSystem() { return coordinateSystem; }
-    public boolean  GetPhiScalingFlag() { return phiScalingFlag; }
-    public double   GetPhiScaling() { return phiScaling; }
-    public boolean  GetShowLines() { return showLines; }
-    public boolean  GetShowPoints() { return showPoints; }
+    public boolean  GetCropBeginFlag() { return cropBeginFlag; }
+    public double   GetCropBegin() { return cropBegin; }
+    public boolean  GetCropEndFlag() { return cropEndFlag; }
+    public double   GetCropEnd() { return cropEnd; }
+    public int      GetCropValue() { return cropValue; }
     public double   GetSampleDistance0() { return sampleDistance0; }
     public double   GetSampleDistance1() { return sampleDistance1; }
     public double   GetSampleDistance2() { return sampleDistance2; }
@@ -1223,52 +1234,54 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(40, buf))
             buf.WriteDouble(pathlinesOverrideStartingTime);
         if(WriteSelect(41, buf))
-            buf.WriteInt(pathlinesCMFE);
+            buf.WriteDouble(pathlinesPeriod);
         if(WriteSelect(42, buf))
-            buf.WriteInt(displayGeometry);
+            buf.WriteInt(pathlinesCMFE);
         if(WriteSelect(43, buf))
-            buf.WriteInt(coordinateSystem);
+            buf.WriteInt(displayGeometry);
         if(WriteSelect(44, buf))
-            buf.WriteBool(phiScalingFlag);
+            buf.WriteBool(cropBeginFlag);
         if(WriteSelect(45, buf))
-            buf.WriteDouble(phiScaling);
+            buf.WriteDouble(cropBegin);
         if(WriteSelect(46, buf))
-            buf.WriteBool(showLines);
+            buf.WriteBool(cropEndFlag);
         if(WriteSelect(47, buf))
-            buf.WriteBool(showPoints);
+            buf.WriteDouble(cropEnd);
         if(WriteSelect(48, buf))
-            buf.WriteDouble(sampleDistance0);
+            buf.WriteInt(cropValue);
         if(WriteSelect(49, buf))
-            buf.WriteDouble(sampleDistance1);
+            buf.WriteDouble(sampleDistance0);
         if(WriteSelect(50, buf))
-            buf.WriteDouble(sampleDistance2);
+            buf.WriteDouble(sampleDistance1);
         if(WriteSelect(51, buf))
-            buf.WriteBool(fillInterior);
+            buf.WriteDouble(sampleDistance2);
         if(WriteSelect(52, buf))
-            buf.WriteBool(randomSamples);
+            buf.WriteBool(fillInterior);
         if(WriteSelect(53, buf))
-            buf.WriteInt(randomSeed);
+            buf.WriteBool(randomSamples);
         if(WriteSelect(54, buf))
-            buf.WriteInt(numberOfRandomSamples);
+            buf.WriteInt(randomSeed);
         if(WriteSelect(55, buf))
-            buf.WriteBool(forceNodeCenteredData);
+            buf.WriteInt(numberOfRandomSamples);
         if(WriteSelect(56, buf))
-            buf.WriteBool(issueTerminationWarnings);
+            buf.WriteBool(forceNodeCenteredData);
         if(WriteSelect(57, buf))
-            buf.WriteBool(issueStiffnessWarnings);
+            buf.WriteBool(issueTerminationWarnings);
         if(WriteSelect(58, buf))
-            buf.WriteBool(issueCriticalPointsWarnings);
+            buf.WriteBool(issueStiffnessWarnings);
         if(WriteSelect(59, buf))
-            buf.WriteDouble(criticalPointThreshold);
+            buf.WriteBool(issueCriticalPointsWarnings);
         if(WriteSelect(60, buf))
-            buf.WriteDouble(correlationDistanceAngTol);
+            buf.WriteDouble(criticalPointThreshold);
         if(WriteSelect(61, buf))
-            buf.WriteDouble(correlationDistanceMinDistAbsolute);
+            buf.WriteDouble(correlationDistanceAngTol);
         if(WriteSelect(62, buf))
-            buf.WriteDouble(correlationDistanceMinDistBBox);
+            buf.WriteDouble(correlationDistanceMinDistAbsolute);
         if(WriteSelect(63, buf))
-            buf.WriteInt(correlationDistanceMinDistType);
+            buf.WriteDouble(correlationDistanceMinDistBBox);
         if(WriteSelect(64, buf))
+            buf.WriteInt(correlationDistanceMinDistType);
+        if(WriteSelect(65, buf))
             buf.WriteString(selection);
     }
 
@@ -1400,75 +1413,78 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
             SetPathlinesOverrideStartingTime(buf.ReadDouble());
             break;
         case 41:
-            SetPathlinesCMFE(buf.ReadInt());
+            SetPathlinesPeriod(buf.ReadDouble());
             break;
         case 42:
-            SetDisplayGeometry(buf.ReadInt());
+            SetPathlinesCMFE(buf.ReadInt());
             break;
         case 43:
-            SetCoordinateSystem(buf.ReadInt());
+            SetDisplayGeometry(buf.ReadInt());
             break;
         case 44:
-            SetPhiScalingFlag(buf.ReadBool());
+            SetCropBeginFlag(buf.ReadBool());
             break;
         case 45:
-            SetPhiScaling(buf.ReadDouble());
+            SetCropBegin(buf.ReadDouble());
             break;
         case 46:
-            SetShowLines(buf.ReadBool());
+            SetCropEndFlag(buf.ReadBool());
             break;
         case 47:
-            SetShowPoints(buf.ReadBool());
+            SetCropEnd(buf.ReadDouble());
             break;
         case 48:
-            SetSampleDistance0(buf.ReadDouble());
+            SetCropValue(buf.ReadInt());
             break;
         case 49:
-            SetSampleDistance1(buf.ReadDouble());
+            SetSampleDistance0(buf.ReadDouble());
             break;
         case 50:
-            SetSampleDistance2(buf.ReadDouble());
+            SetSampleDistance1(buf.ReadDouble());
             break;
         case 51:
-            SetFillInterior(buf.ReadBool());
+            SetSampleDistance2(buf.ReadDouble());
             break;
         case 52:
-            SetRandomSamples(buf.ReadBool());
+            SetFillInterior(buf.ReadBool());
             break;
         case 53:
-            SetRandomSeed(buf.ReadInt());
+            SetRandomSamples(buf.ReadBool());
             break;
         case 54:
-            SetNumberOfRandomSamples(buf.ReadInt());
+            SetRandomSeed(buf.ReadInt());
             break;
         case 55:
-            SetForceNodeCenteredData(buf.ReadBool());
+            SetNumberOfRandomSamples(buf.ReadInt());
             break;
         case 56:
-            SetIssueTerminationWarnings(buf.ReadBool());
+            SetForceNodeCenteredData(buf.ReadBool());
             break;
         case 57:
-            SetIssueStiffnessWarnings(buf.ReadBool());
+            SetIssueTerminationWarnings(buf.ReadBool());
             break;
         case 58:
-            SetIssueCriticalPointsWarnings(buf.ReadBool());
+            SetIssueStiffnessWarnings(buf.ReadBool());
             break;
         case 59:
-            SetCriticalPointThreshold(buf.ReadDouble());
+            SetIssueCriticalPointsWarnings(buf.ReadBool());
             break;
         case 60:
-            SetCorrelationDistanceAngTol(buf.ReadDouble());
+            SetCriticalPointThreshold(buf.ReadDouble());
             break;
         case 61:
-            SetCorrelationDistanceMinDistAbsolute(buf.ReadDouble());
+            SetCorrelationDistanceAngTol(buf.ReadDouble());
             break;
         case 62:
-            SetCorrelationDistanceMinDistBBox(buf.ReadDouble());
+            SetCorrelationDistanceMinDistAbsolute(buf.ReadDouble());
             break;
         case 63:
-            SetCorrelationDistanceMinDistType(buf.ReadInt());
+            SetCorrelationDistanceMinDistBBox(buf.ReadDouble());
             break;
         case 64:
+            SetCorrelationDistanceMinDistType(buf.ReadInt());
+            break;
+        case 65:
             SetSelection(buf.ReadString());
             break;
         }
@@ -1605,6 +1621,7 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         str = str + boolToString("pathlines", pathlines, indent) + "\n";
         str = str + boolToString("pathlinesOverrideStartingTimeFlag", pathlinesOverrideStartingTimeFlag, indent) + "\n";
         str = str + doubleToString("pathlinesOverrideStartingTime", pathlinesOverrideStartingTime, indent) + "\n";
+        str = str + doubleToString("pathlinesPeriod", pathlinesPeriod, indent) + "\n";
         str = str + indent + "pathlinesCMFE = ";
         if(pathlinesCMFE == PATHLINESCMFE_CONN_CMFE)
             str = str + "PATHLINESCMFE_CONN_CMFE";
@@ -1619,18 +1636,18 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
         if(displayGeometry == DISPLAYGEOMETRY_RIBBONS)
             str = str + "DISPLAYGEOMETRY_RIBBONS";
         str = str + "\n";
-        str = str + indent + "coordinateSystem = ";
-        if(coordinateSystem == COORDINATESYSTEM_ASIS)
-            str = str + "COORDINATESYSTEM_ASIS";
-        if(coordinateSystem == COORDINATESYSTEM_CYLINDRICALTOCARTESIAN)
-            str = str + "COORDINATESYSTEM_CYLINDRICALTOCARTESIAN";
-        if(coordinateSystem == COORDINATESYSTEM_CARTESIANTOCYLINDRICAL)
-            str = str + "COORDINATESYSTEM_CARTESIANTOCYLINDRICAL";
+        str = str + boolToString("cropBeginFlag", cropBeginFlag, indent) + "\n";
+        str = str + doubleToString("cropBegin", cropBegin, indent) + "\n";
+        str = str + boolToString("cropEndFlag", cropEndFlag, indent) + "\n";
+        str = str + doubleToString("cropEnd", cropEnd, indent) + "\n";
+        str = str + indent + "cropValue = ";
+        if(cropValue == CROPVALUE_DISTANCE)
+            str = str + "CROPVALUE_DISTANCE";
+        if(cropValue == CROPVALUE_TIME)
+            str = str + "CROPVALUE_TIME";
+        if(cropValue == CROPVALUE_STEPNUMBER)
+            str = str + "CROPVALUE_STEPNUMBER";
         str = str + "\n";
-        str = str + boolToString("phiScalingFlag", phiScalingFlag, indent) + "\n";
-        str = str + doubleToString("phiScaling", phiScaling, indent) + "\n";
-        str = str + boolToString("showLines", showLines, indent) + "\n";
-        str = str + boolToString("showPoints", showPoints, indent) + "\n";
         str = str + doubleToString("sampleDistance0", sampleDistance0, indent) + "\n";
         str = str + doubleToString("sampleDistance1", sampleDistance1, indent) + "\n";
         str = str + doubleToString("sampleDistance2", sampleDistance2, indent) + "\n";
@@ -1699,13 +1716,14 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
     private boolean  pathlines;
     private boolean  pathlinesOverrideStartingTimeFlag;
     private double   pathlinesOverrideStartingTime;
+    private double   pathlinesPeriod;
     private int      pathlinesCMFE;
     private int      displayGeometry;
-    private int      coordinateSystem;
-    private boolean  phiScalingFlag;
-    private double   phiScaling;
-    private boolean  showLines;
-    private boolean  showPoints;
+    private boolean  cropBeginFlag;
+    private double   cropBegin;
+    private boolean  cropEndFlag;
+    private double   cropEnd;
+    private int      cropValue;
     private double   sampleDistance0;
     private double   sampleDistance1;
     private double   sampleDistance2;

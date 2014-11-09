@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -204,7 +204,7 @@ void vtkStimulateReader::ExecuteDataWithInformation(
   // appear to be working/is very hard to interface to, so just do a little
   // of the heavy lifting ourselves.
   vtkImageData *data = AllocateOutputData(output, outInfo);
-  int size;
+  int size = sizeof(unsigned char); /// TODO: check fix for uninitialized pointer
   data->SetDimensions(dims[0],dims[1],1);
   switch (dataType)
     {

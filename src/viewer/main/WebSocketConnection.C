@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -142,9 +142,6 @@ void QWsSocket::dataReceived()
     BA = tcpSocket->read(1);
     byte = BA[0];
     quint8 FIN = (byte >> 7);
-    quint8 RSV1 = ((byte & 0x7F) >> 6);
-    quint8 RSV2 = ((byte & 0x3F) >> 5);
-    quint8 RSV3 = ((byte & 0x1F) >> 4);
     EOpcode Opcode = (EOpcode)(byte & 0x0F);
 
     // Mask, PayloadLength
@@ -231,7 +228,7 @@ void QWsSocket::dataReceivedAll()
     QByteArray BA; // ReadBuffer
     quint8 byte; // currentByteBuffer
 
-    size_t offset = 0;
+    int offset = 0;
 
     while(offset < data.size())
     {
@@ -396,7 +393,7 @@ qint64 QWsSocket::write ( const QString & string, int maxFrameBytes )
 {
     if ( protocolVersion == 0 )
     {
-        return QWsSocket::write( string.toAscii(), maxFrameBytes );
+        return QWsSocket::write( string.toLatin1(), maxFrameBytes );
     }
 
     if ( maxFrameBytes == 0 )
@@ -452,7 +449,6 @@ void QWsSocket::close( QString reason )
     }
 
     // Compose and send close frame
-    quint64 messageSize = reason.size();
     QByteArray BA;
 
     QByteArray header = QWsSocket::composeHeader( true, OpClose, 0 );
@@ -645,13 +641,13 @@ QWsSocket::serializeInt( quint32 number, quint8 nbBytes)
     quint8 currentNbBytes = 0;
     while (number > 0 && currentNbBytes < nbBytes)
     {
-        bin.prepend( QChar::fromAscii(number) );
+        bin.prepend( QChar::fromLatin1(number) );
         number = number >> 8;
         currentNbBytes++;
     }
     while (currentNbBytes < nbBytes)
     {
-        bin.prepend( QChar::fromAscii(0) );
+        bin.prepend( QChar::fromLatin1(0) );
         currentNbBytes++;
     }
     return bin;
@@ -702,7 +698,7 @@ QWsSocket::computeAcceptV1( QString key1, QString key2, QString key3 )
 
     QString concat = serializeInt( num1 ) + serializeInt( num2 ) + key3;
 
-    QByteArray md5 = QCryptographicHash::hash( concat.toAscii(), QCryptographicHash::Md5 );
+    QByteArray md5 = QCryptographicHash::hash( concat.toLatin1(), QCryptographicHash::Md5 );
 
     return QString( md5 );
 }
@@ -867,7 +863,7 @@ WebSocketConnection::WebSocketConnection(QTcpSocket* tcpSocket,const QString& re
         std::cerr << "handshake did not match??" << std::endl;
     }
 
-    tcpSocket->write(response.toAscii());
+    tcpSocket->write(response.toLatin1());
     tcpSocket->flush();
     /// end handshake
 
@@ -885,7 +881,7 @@ WebSocketConnection::closeConnection()
     QObject::disconnect(socket,SIGNAL(frameReceived(QByteArray)),this, SLOT(ReadFrame(QByteArray)));
     QObject::disconnect(socket,SIGNAL(frameReceived(QString)),this, SLOT(ReadFrame(QString)));
     QObject::disconnect(socket,SIGNAL(aboutToClose()),this, SLOT(closeConnection()));
-    socket->close();
+    socket->close("closing the connection");
     socket->internalSocket()->close();
 }
 
@@ -928,7 +924,7 @@ WebSocketConnection::ReadFrame(const QString &str)
 
 WebSocketConnection::~WebSocketConnection()
 {
-    socket->close();
+    socket->close("closing the connection");
     delete socket;
 }
 

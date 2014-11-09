@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define HISTOGRAMATTRIBUTES_NMETH 38
+#define HISTOGRAMATTRIBUTES_NMETH 42
 void           PyHistogramAttributes_StartUp(HistogramAttributes *subj, void *data);
 void           PyHistogramAttributes_CloseDown();
 PyMethodDef *  PyHistogramAttributes_GetMethodTable(int *nMethods);

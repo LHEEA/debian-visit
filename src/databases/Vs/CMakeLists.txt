@@ -18,12 +18,6 @@ ${COMMON_SOURCES}
 avtVsFileFormat.C
 avtVsOptions.C
 VsFilter.C
-VsH5Attribute.C
-VsH5Dataset.C
-VsH5File.C
-VsH5Group.C
-VsH5Object.C
-VsH5Reader.C
 VsLog.C
 VsMDMesh.C
 VsMDVariable.C
@@ -38,6 +32,14 @@ VsVariable.C
 VsVariableWithMesh.C
 VsRegistry.C
 VsRegistryObject.C
+VsGroup.C
+VsObject.C
+VsDataset.C
+VsAttribute.C
+VsFile.C
+VsReader.C
+VsStaggeredField.C
+HighOrderUnstructuredData.C
 )
 
 SET(LIBE_SOURCES
@@ -46,12 +48,6 @@ ${COMMON_SOURCES}
 avtVsFileFormat.C
 avtVsOptions.C
 VsFilter.C
-VsH5Attribute.C
-VsH5Dataset.C
-VsH5File.C
-VsH5Group.C
-VsH5Object.C
-VsH5Reader.C
 VsLog.C
 VsMDMesh.C
 VsMDVariable.C
@@ -66,6 +62,13 @@ VsVariable.C
 VsVariableWithMesh.C
 VsRegistry.C
 VsRegistryObject.C
+VsGroup.C
+VsObject.C
+VsDataset.C
+VsAttribute.C
+VsFile.C
+VsReader.C
+HighOrderUnstructuredData.C
 )
 
 INCLUDE_DIRECTORIES(
@@ -91,11 +94,12 @@ ${VISIT_INCLUDE_DIR}/avt/Pipeline/Sources
 ${VISIT_INCLUDE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_INCLUDE_DIR}/visit_vtk/full
 ${VISIT_INCLUDE_DIR}/visit_vtk/lightweight
+${EAVL_INCLUDE_DIR} 
 ${VTK_INCLUDE_DIRS} 
 )
 
 
-LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${HDF5_LIBRARY_DIR} )
+LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${HDF5_LIBRARY_DIR} )
 
 ADD_LIBRARY(IVsDatabase ${LIBI_SOURCES})
 TARGET_LINK_LIBRARIES(IVsDatabase visitcommon)

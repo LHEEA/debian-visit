@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -274,6 +274,7 @@ public:
     void SetPathlines(bool pathlines_);
     void SetPathlinesOverrideStartingTimeFlag(bool pathlinesOverrideStartingTimeFlag_);
     void SetPathlinesOverrideStartingTime(double pathlinesOverrideStartingTime_);
+    void SetPathlinesPeriod(double pathlinesPeriod_);
     void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
     void SetIssueTerminationWarnings(bool issueTerminationWarnings_);
     void SetIssueStiffnessWarnings(bool issueStiffnessWarnings_);
@@ -360,6 +361,7 @@ public:
     bool                 GetPathlines() const;
     bool                 GetPathlinesOverrideStartingTimeFlag() const;
     double               GetPathlinesOverrideStartingTime() const;
+    double               GetPathlinesPeriod() const;
     PathlinesCMFE        GetPathlinesCMFE() const;
     bool                 GetIssueTerminationWarnings() const;
     bool                 GetIssueStiffnessWarnings() const;
@@ -532,6 +534,7 @@ public:
         ID_pathlines,
         ID_pathlinesOverrideStartingTimeFlag,
         ID_pathlinesOverrideStartingTime,
+        ID_pathlinesPeriod,
         ID_pathlinesCMFE,
         ID_issueTerminationWarnings,
         ID_issueStiffnessWarnings,
@@ -613,6 +616,7 @@ private:
     bool           pathlines;
     bool           pathlinesOverrideStartingTimeFlag;
     double         pathlinesOverrideStartingTime;
+    double         pathlinesPeriod;
     int            pathlinesCMFE;
     bool           issueTerminationWarnings;
     bool           issueStiffnessWarnings;
@@ -623,6 +627,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define POINCAREATTRIBUTES_TMFS "idiiiiDDDiibdDiidbddiddiiiiddiiiidddbbiasibibibibisbbbbbbiibdiibbiiiibbdibbbd"
+#define POINCAREATTRIBUTES_TMFS "idiiiiDDDiibdDiidbddiddiiiiddiiiidddbbiasibibibibisbbbbbbiibdiibbiiiibbddibbbd"
 
 #endif

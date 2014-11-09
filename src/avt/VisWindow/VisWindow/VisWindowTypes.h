@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -105,7 +105,7 @@ typedef enum
     NODE_PICK,        /* 3 */
     SPREADSHEET_PICK, /* 4 */
     DDT_PICK,         /* 5 */
-    LINEOUT,          /* 6 */
+    LINEOUT           /* 6 */
 }  INTERACTION_MODE;
 
 typedef enum {

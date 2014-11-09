@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -163,7 +163,7 @@ Contract_UseLoadBalancing(PyObject *self, PyObject *args)
     if(PyBool_Check(py_val) == 0)
         return NULL;
 
-    bool val;
+    bool val = true;
     if(py_val == Py_True)
         val = true;
     else if(py_val == Py_False)
@@ -202,7 +202,7 @@ Contract_SetHaveRectilinearMeshOptimizations(PyObject *self, PyObject *args)
     if(PyBool_Check(py_val) == 0)
         return NULL;
 
-    bool val;
+    bool val = true;
     if(py_val == Py_True)
         val = true;
     else if(py_val == Py_False)
@@ -269,7 +269,7 @@ Contract_SetHaveCurvilinearMeshOptimizations(PyObject *self, PyObject *args)
     if(PyBool_Check(py_val) == 0)
         return NULL;
 
-    bool val;
+    bool val = true;
     if(py_val == Py_True)
         val = true;
     else if(py_val == Py_False)
@@ -359,7 +359,7 @@ Contract_SetOnDemandStreaming(PyObject *self, PyObject *args)
     if(PyBool_Check(py_val) == 0)
         return NULL;
 
-    bool val;
+    bool val = true;
     if(py_val == Py_True)
         val = true;
     else if(py_val == Py_False)

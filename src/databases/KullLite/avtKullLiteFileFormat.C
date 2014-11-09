@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -152,7 +152,7 @@ avtKullLiteFileFormat::avtKullLiteFileFormat(const char *fname)
         string a(fname);
         char b[1024];
         string prefix = "";
-        int last_slash = a.find_last_of(VISIT_SLASH_CHAR);
+        size_t last_slash = a.find_last_of(VISIT_SLASH_CHAR);
         if (last_slash != string::npos)
             prefix = a.substr(0, last_slash + 1);
         inf.getline(b, sizeof(b)); // get end-of-line of 'MKF' line
@@ -179,7 +179,7 @@ avtKullLiteFileFormat::avtKullLiteFileFormat(const char *fname)
     inf.close();
 
     dataset = new vtkUnstructuredGrid*[my_filenames.size()];
-    for (int i = 0; i < my_filenames.size(); i++)
+    for (size_t i = 0; i < my_filenames.size(); i++)
         dataset[i] = NULL;
 
     TRY
@@ -191,7 +191,7 @@ avtKullLiteFileFormat::avtKullLiteFileFormat(const char *fname)
     }
     CATCH(VisItException)
     {
-        for(int j = 0; j < my_filenames.size(); ++j)
+        for(size_t j = 0; j < my_filenames.size(); ++j)
         {
             if(dataset[j] != NULL)
                 dataset[j]->Delete();
@@ -231,7 +231,7 @@ avtKullLiteFileFormat::~avtKullLiteFileFormat()
 {
     if (dataset != NULL)
     {
-        for (int i = 0; i < my_filenames.size(); i++)
+        for (size_t i = 0; i < my_filenames.size(); i++)
             if (dataset[i])
                 dataset[i]->Delete();
         delete[] dataset;
@@ -447,7 +447,7 @@ bool
 avtKullLiteFileFormat::ClassifyAndAdd3DZone(pdb_mesh3d *mesh3d, int zone,
                                             vtkUnstructuredGrid *ugrid)
 {
-    int   i;
+    size_t   i;
 
     int startZoneToFaceIndex = mesh3d->zoneToFacesIndex[zone];
     int endZoneToFaceIndex = mesh3d->zoneToFacesIndex[zone+1];
@@ -477,7 +477,8 @@ avtKullLiteFileFormat::ClassifyAndAdd3DZone(pdb_mesh3d *mesh3d, int zone,
         // Let's grab the nodeId's and store them
         if (sharedSlave) // Shared face, grab them in reverse order
         {
-            for (i = nodesForThisFace-1; i >= 0; i--)
+            //for (i = nodesForThisFace-1; i >= 0; i--)
+            for (i=nodesForThisFace; i-- > 0 ;)
             {
                 int ix2 = nodesForThisFace - 1 - i;
                 nodes[faceI - startZoneToFaceIndex][ix2] =
@@ -486,7 +487,7 @@ avtKullLiteFileFormat::ClassifyAndAdd3DZone(pdb_mesh3d *mesh3d, int zone,
         }
         else // Normal face, just grab them
         {
-            for (i = 0; i < nodesForThisFace; i++)
+            for (i = 0; i < (size_t)nodesForThisFace; i++)
             {
                 nodes[faceI - startZoneToFaceIndex][i] =
                     mesh3d->nodeIndices[i + startNodeIndex];
@@ -508,7 +509,7 @@ avtKullLiteFileFormat::ClassifyAndAdd3DZone(pdb_mesh3d *mesh3d, int zone,
         // If there is, we change our mind: it's a wedge.
         bool first = false;
         type = VTK_PYRAMID;
-        for (i = 0; i < numFaces; i++)
+        for (i = 0; i < (size_t)numFaces; i++)
         {
             if (nodes[i].size() == 4)
             {
@@ -526,7 +527,7 @@ avtKullLiteFileFormat::ClassifyAndAdd3DZone(pdb_mesh3d *mesh3d, int zone,
         return false;
     }
 
-    int cellId;
+    int cellId = 0; (void) cellId;
     // Okay we know what it is.
     // Let's get the points in the right order and build.
 
@@ -579,7 +580,7 @@ avtKullLiteFileFormat::ClassifyAndAdd3DZone(pdb_mesh3d *mesh3d, int zone,
         // This leads to a necessary finding of the offset
         
         // Find different face [other than face 0] that has points[0]
-        int diffFace;
+        size_t diffFace;
         int whichIndex = -1;
         for( diffFace = 1; diffFace < nodes.size(); diffFace++)
         {
@@ -660,7 +661,7 @@ avtKullLiteFileFormat::ClassifyAndAdd3DZone(pdb_mesh3d *mesh3d, int zone,
     {
         vtkIdType points[5];
         // Find the base
-        int base;
+        size_t base;
         for (base = 0; base < nodes.size(); base++)
             if (nodes[base].size() == 4)
                 break;
@@ -672,13 +673,13 @@ avtKullLiteFileFormat::ClassifyAndAdd3DZone(pdb_mesh3d *mesh3d, int zone,
         // Find the top point
         // Need to look at all faces that aren't the base,
         // searching for the 1 node that is not a part of the base
-        for (int i = 0; i < nodes.size(); ++i)
+        for (size_t i = 0; i < nodes.size(); ++i)
         {
             if (i == base)
                 continue;
 
             bool allMatch = true;
-            int j;
+            size_t j;
             for (j = 0; j < nodes[i].size(); j++)
             {
                 allMatch = nodes[i][j] == points[0] ||
@@ -997,21 +998,21 @@ void
 avtKullLiteFileFormat::CreateNodeMeshTags(vtkUnstructuredGrid *ugrid,
                                           pdb_taglist *tags)
 {
-    int  i, j, k;
+    size_t  i, j, k;
 
     int nnodes = 0;
-    for (i = 0 ; i < tags->num_tags ; i++)
+    for (i = 0 ; i < (size_t)tags->num_tags ; i++)
         if (tags->tags[i].type == TAG_NODE)
             nnodes += tags->tags[i].size;
     ugrid->Allocate(nnodes*2);
 
     for (j = 0 ; j < node_tags.size() ; j++)
-        for (i = 0 ; i < tags->num_tags ; i++)
+        for (i = 0 ; i < (size_t)tags->num_tags ; i++)
             if (node_tags[j] == tags->tags[i].tagname)
             {
                 int *buff = new int[tags->tags[i].size];
                 PD_read(m_pdbFile, tags->tags[i].tagname, buff);
-                for (k = 0 ; k < tags->tags[i].size ; k++)
+                for (k = 0 ; k < (size_t)tags->tags[i].size ; k++)
                 {
                     vtkIdType pts[1] = { buff[k] };
                     ugrid->InsertNextCell(VTK_VERTEX, 1, pts);
@@ -1036,21 +1037,21 @@ void
 avtKullLiteFileFormat::CreateEdgeMeshTags(vtkUnstructuredGrid *ugrid,
                                           pdb_taglist *tags,pdb_mesh2d *mesh2d)
 {
-    int   i,j,k;
+    size_t   i,j,k;
 
     int nedges = 0;
-    for (i = 0 ; i < tags->num_tags ; i++)
+    for (i = 0 ; i < (size_t)tags->num_tags ; i++)
         if (tags->tags[i].type == TAG_EDGE)
             nedges += tags->tags[i].size;
     ugrid->Allocate(nedges*3);
 
     for (j = 0 ; j < edge_tags.size() ; j++)
-        for (i = 0 ; i < tags->num_tags ; i++)
+        for (i = 0 ; i < (size_t)tags->num_tags ; i++)
             if (edge_tags[j] == tags->tags[i].tagname)
             {
                 int *buff = new int[tags->tags[i].size];
                 PD_read(m_pdbFile, tags->tags[i].tagname, buff);
-                for (k = 0 ; k < tags->tags[i].size ; k++)
+                for (k = 0 ; k < (size_t)tags->tags[i].size ; k++)
             {
                     vtkIdType pts[2];
                     pts[0] = mesh2d->nodeIndices[2*buff[k]];
@@ -1077,21 +1078,21 @@ void
 avtKullLiteFileFormat::CreateFaceMeshTags(vtkUnstructuredGrid *ugrid,
                                           pdb_taglist *tags,pdb_mesh3d *mesh3d)
 {
-    int   i, j, k, m;
+    size_t   i, j, k, m;
 
     int nfaces = 0;
-    for (i = 0 ; i < tags->num_tags ; i++)
+    for (i = 0 ; i < (size_t)tags->num_tags ; i++)
         if (tags->tags[i].type == TAG_FACE)
             nfaces += tags->tags[i].size;
     ugrid->Allocate(nfaces*5);
 
     for (j = 0 ; j < face_tags.size() ; j++)
-        for (i = 0 ; i < tags->num_tags ; i++)
+        for (i = 0 ; i < (size_t)tags->num_tags ; i++)
             if (face_tags[j] == tags->tags[i].tagname)
             {
                 int *buff = new int[tags->tags[i].size];
                 PD_read(m_pdbFile, tags->tags[i].tagname, buff);
-                for (k = 0 ; k < tags->tags[i].size ; k++)
+                for (k = 0 ; k < (size_t)tags->tags[i].size ; k++)
                 {
                     int startNodeIndex =
                                  mesh3d->faceToNodesIndex[buff[k]];
@@ -1106,7 +1107,7 @@ avtKullLiteFileFormat::CreateFaceMeshTags(vtkUnstructuredGrid *ugrid,
                     }
 
                     vtkIdType pts[4];
-                    for (m = 0 ; m < nodesForThisFace ; m++)
+                    for (m = 0 ; m < (size_t)nodesForThisFace ; m++)
                         pts[m] = 
                                mesh3d->nodeIndices[startNodeIndex+m];
                     int cell_type = (nodesForThisFace == 3 ? VTK_TRIANGLE
@@ -1133,10 +1134,10 @@ void
 avtKullLiteFileFormat::CreateZoneMeshTags(vtkUnstructuredGrid *ugrid,
                                           pdb_taglist *tags, vtkDataSet *ds)
 {
-    int  i, j, k;
+    size_t  i, j, k;
 
     int nzones = 0;
-    for (i = 0 ; i < tags->num_tags ; i++)
+    for (i = 0 ; i < (size_t)tags->num_tags ; i++)
         if (tags->tags[i].type == TAG_ZONE)
             nzones += tags->tags[i].size;
     ugrid->Allocate(nzones*10);
@@ -1144,13 +1145,13 @@ avtKullLiteFileFormat::CreateZoneMeshTags(vtkUnstructuredGrid *ugrid,
     int nInputZones = ds->GetNumberOfCells();
 
     for (j = 0 ; j < zone_tags.size() ; j++)
-        for (i = 0 ; i < tags->num_tags ; i++)
+        for (i = 0 ; i < (size_t)tags->num_tags ; i++)
             if (zone_tags[j] == tags->tags[i].tagname)
             {
                 int *buff = new int[tags->tags[i].size];
                 PD_read(m_pdbFile, tags->tags[i].tagname, buff);
                 vtkIdList *ptIds = vtkIdList::New();
-                for (k = 0 ; k < tags->tags[i].size ; k++)
+                for (k = 0 ; k < (size_t)tags->tags[i].size ; k++)
                 {
                     if (buff[k] > nInputZones)
                     {
@@ -1523,7 +1524,7 @@ avtKullLiteFileFormat::FreeUpResources(void)
 
     // Don't delete: dataset[], or clear the main materials structure,
     // or our metadata is messed up.
-    int i;
+    size_t i;
     if (dataset != NULL)
     {
         for (i = 0 ; i < my_filenames.size(); i++)
@@ -1624,7 +1625,7 @@ avtKullLiteFileFormat::GetAuxiliaryData(const char *var, int domain,
 void *
 avtKullLiteFileFormat::GetMeshTagMaterial(const char *var, int dom)
 {
-    int   i, j, k;
+    size_t   i, j, k;
 
     //
     // Make sure we are really supposed to read in a mesh tag.
@@ -1680,7 +1681,7 @@ avtKullLiteFileFormat::GetMeshTagMaterial(const char *var, int dom)
     //
     int nelems = 0;
     for (j = 0 ; j < tag_list->size() ; j++)
-        for (i = 0 ; i < tags->num_tags ; i++)
+        for (i = 0 ; i < (size_t)tags->num_tags ; i++)
             if ((*tag_list)[j] == tags->tags[i].tagname)
                 nelems += tags->tags[i].size;
 
@@ -1692,11 +1693,11 @@ avtKullLiteFileFormat::GetMeshTagMaterial(const char *var, int dom)
     int index = 0;
     for (j = 0 ; j < tag_list->size() ; j++)
     {
-        for (i = 0 ; i < tags->num_tags ; i++)
+        for (i = 0 ; i < (size_t)tags->num_tags ; i++)
         {
             if ((*tag_list)[j] == tags->tags[i].tagname)
             {
-                for (k = 0 ; k < tags->tags[i].size ; k++)
+                for (k = 0 ; k < (size_t)tags->tags[i].size ; k++)
                 {
                     ptr[index++] = j;
                 }
@@ -1744,6 +1745,9 @@ avtKullLiteFileFormat::GetMeshTagMaterial(const char *var, int dom)
 //    Jeremy Meredith, Thu Aug  7 15:52:08 EDT 2008
 //    Assume PDB won't modify our char*'s, and cast any literals as needed.
 //
+//    Burlen Loring, Sat Jul 12 13:22:38 PDT 2014
+//    fix out-of-bounds index when vectors are empty.
+//
 // ****************************************************************************
 
 void *
@@ -1784,17 +1788,16 @@ avtKullLiteFileFormat::GetRealMaterial(int domain)
     // pure materials, the value -1.0 will represent 0% of a material,
     // and 2.0 will represent 100% of a material.
     vector<vector<float> > values(num_materials);
-    int i, j;
 
     // Initially, all zones are set to 0% for all materials
     // We make storage for the received zones to make computation
     // easier, but we won't use the data when it comes to making
     // the material.
-    for (i = 0 ; i < num_materials ; i++)
+    for (int i = 0 ; i < num_materials ; ++i)
     {
         values[i].resize(total_zones, -1.0f);
     }
-    
+
     // Read in the tags
     m_tags = MAKE_N(pdb_taglist, 1);
     if (PD_read(m_pdbFile, (char*)"MeshTags", m_tags) == false)
@@ -1803,21 +1806,22 @@ avtKullLiteFileFormat::GetRealMaterial(int domain)
         EXCEPTION1(InvalidVariableException, "No meshtag data.");
     }
 
-    // Now we go through the materials, and deal with them accordingly. 
-    for (i = 0; i < num_materials; i++)
+    // Now we go through the materials, and deal with them accordingly.
+    for (int i = 0; i < num_materials; ++i)
     {
         string base = m_names[i];
-       
+
         string matName = "mat_" + base + "_zones";
-     
-        for (j = 0; j < m_tags->num_tags; ++j)
+
+        int j = 0;
+        for (; j < m_tags->num_tags; ++j)
             if (!strcmp(m_tags->tags[j].tagname, matName.c_str()))
                 break;
-       
+
         if (j == m_tags->num_tags)
             continue;           // Material is not in this domain
 
-        int tsize = m_tags->tags[j].size;            
+        int tsize = m_tags->tags[j].size;
         vector<int> ids(tsize);
 
         if (PD_read(m_pdbFile, (char*)matName.c_str(), &(ids[0])) == false)
@@ -1829,15 +1833,16 @@ avtKullLiteFileFormat::GetRealMaterial(int domain)
         // These id's have this material. To what degree, we're not
         // yet sure, but we'll set them all to pure (100%), and find
         // later which ones are factional.
-        for (j = 0; j < ids.size(); ++j)
+        for (size_t q = 0; q < ids.size(); ++q)
         {
-            int zone = ids[j];
+            int zone = ids[q];
             values[i][zone] = 2.0f;
         }
 
         string mixedName = "mat_" + base + "_mixedZones";
 
-        for (j = 0; j < m_tags->num_tags; ++j)        
+        j = 0;
+        for (; j < m_tags->num_tags; ++j)
             if (!strcmp(m_tags->tags[j].tagname, mixedName.c_str()))
                 break;
 
@@ -1852,7 +1857,7 @@ avtKullLiteFileFormat::GetRealMaterial(int domain)
             Close();
             EXCEPTION1(InvalidFilesException, my_filenames[domain].c_str());
         }
-        
+
         // We now have the ids of the mixed zones.
         // This implies that there is a list of fractions of the same
         // size.
@@ -1867,23 +1872,23 @@ avtKullLiteFileFormat::GetRealMaterial(int domain)
         }
 
         // Now set the appropriate values for those zones
-        for (j = 0; j < ids.size(); ++j)
+        for (size_t q = 0; q < ids.size(); ++q)
         {
-            int zone = ids[j];
-            values[i][zone] = static_cast<float>(fractions[j]);
+            int zone = ids[q];
+            values[i][zone] = static_cast<float>(fractions[q]);
         }
     }
 
-    // We've collected the data we need from the files.    
+    // We've collected the data we need from the files.
     Close();
 
     // Now to build into appropriate data structures.
     // Go through the first num_real (which leaves out the recvzones).
-    for (i = 0; i < num_real; ++i)
+    for (int i = 0; i < num_real; ++i)
     {
         bool pure = false;
         // First look for pure materials
-        for (j = 0; j < num_materials; ++j)
+        for (int j = 0; j < num_materials; ++j)
         {
             if (values[j][i] > 1.5f)
             {
@@ -1891,16 +1896,16 @@ avtKullLiteFileFormat::GetRealMaterial(int domain)
                 // For pure materials, the material_list value is that material.
                 // All other tables are left alone.
                 material_list[i] = j;
-                break;                
+                break;
             }
-        } 
+        }
         if (pure)
             continue;
-        
-        // For unpure materials, we need to add entries to the tables.  
+
+        // For unpure materials, we need to add entries to the tables.
         material_list[i] = -1 * (1 + (int)mix_zone.size());
         int numMatch = 0;
-        for (j = 0; j < num_materials; ++j)
+        for (int j = 0; j < num_materials; ++j)
         {
             if (values[j][i] < 0)
                 continue;
@@ -1926,16 +1931,17 @@ avtKullLiteFileFormat::GetRealMaterial(int domain)
     }
 
     // Now give all the receive zones a bogus value.
-    for (i = num_real ; i < total_zones ; i++)
+    for (int i = num_real; i < total_zones; ++i)
         material_list[i] = 0;
 
     int mixed_size = mix_zone.size();
     avtMaterial * mat = new avtMaterial(num_materials, mat_names, total_zones,
                                         &(material_list[0]), mixed_size,
-                                        &(mix_mat[0]), &(mix_next[0]),
-                                        &(mix_zone[0]), &(mix_vf[0]));
-
-    return (void*) mat;    
+                                        (mixed_size?&mix_mat[0]:NULL),
+                                        (mixed_size?&mix_next[0]:NULL),
+                                        (mixed_size?&mix_zone[0]:NULL),
+                                        (mixed_size?&mix_vf[0]:NULL));
+    return (void*) mat;
 }
 
 
@@ -2003,7 +2009,7 @@ avtKullLiteFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     }
 
     vector<string> vFilenames(my_filenames.size());
-    int i;
+    size_t i;
     for (i = 0; i < my_filenames.size(); i++)
         vFilenames[i] = my_filenames[i];
 
@@ -2175,7 +2181,7 @@ void avtKullLiteFileFormat::ReadInMaterialNames()
 {
     m_names.clear();
     m_names_per_domain.clear();
-    for (int i = 0; i < my_filenames.size(); i++)
+    for (size_t i = 0; i < my_filenames.size(); i++)
         ReadInMaterialName(i);
 }
 
@@ -2271,7 +2277,7 @@ void avtKullLiteFileFormat::ReadInMaterialName(int fi)
             // Material tag
             string name = GetMaterialName(originalName);
 
-            int matNumber;
+            size_t matNumber;
             for (matNumber = 0; matNumber < m_names.size(); matNumber++)
             {
                 if (name == m_names[matNumber])
@@ -2295,7 +2301,7 @@ void avtKullLiteFileFormat::ReadInMaterialName(int fi)
         else
         {
             bool hasTag = false;
-            int  i;
+            size_t  i;
             switch (m_tags->tags[curTagI].type)
             {
               case TAG_ZONE:
@@ -2409,7 +2415,7 @@ OrderWedgePoints(const vector< vector<int> > &nodes, vtkIdType *points)
     // First determine that we really have a quad.  Also determine the location
     // of the triangles and the quadrilaterals of the wedge.
     //
-    if (nodes.size() != nWedgeFaces)
+    if (nodes.size() != (size_t)nWedgeFaces)
     {
         // A wedge has 5 faces.  This has been mis-identified.
         EXCEPTION0(ImproperUseException);
@@ -2459,7 +2465,7 @@ OrderWedgePoints(const vector< vector<int> > &nodes, vtkIdType *points)
     int Pt1 = nodes[baseline_quad][1];
     int Pt2 = nodes[baseline_quad][2];
     int Pt3 = nodes[baseline_quad][3];
-    int Pt4, Pt5;
+    int Pt4 = 0, Pt5 = 0; ///TODO: check on fix for uninitialized values
 
     //
     // We would like to be able to assume that Pt0 is incident to tri1.  If
@@ -2584,41 +2590,53 @@ avtKullLiteFileFormat::ReadMeshFromFile(void)
 //    Jeremy Meredith, Thu Aug  7 15:52:08 EDT 2008
 //    Assume PDB won't modify our char*'s, and cast any literals as needed.
 //
+//    Burlen Loring, Sat Jul 12 16:38:51 PDT 2014
+//    fix heap-buffer-overflow resulting from non-null terminated
+//    string and clean up test for 3d/2d.
+//
 // ****************************************************************************
 
 bool
 avtKullLiteFileFormat::GetMeshDimension(void)
 {
-    char *typeofmesh = MAKE_N(char, 1024);
-    if (PD_read(m_pdbFile, (char*)"typeofmesh", &typeofmesh) == false)
+    char *tmpTypeofmesh = NULL;
+    if (!PD_read(m_pdbFile, (char*)"typeofmesh", &tmpTypeofmesh))
     {
         Close();
         EXCEPTION1(InvalidDBTypeException, "Cannot be a KullLite file, does "
                    " not have \"typeofmesh\".");
     }
+    // in some cases the string returned from the preceding read
+    // is *NOT* null terminated. here we ensure that it is.
+    int len = SC_arrlen(tmpTypeofmesh);
+    char *typeofmesh = static_cast<char*>(malloc(len+1));
+    strncpy(typeofmesh, tmpTypeofmesh, len);
+    typeofmesh[len] = '\0';
+    SFREE(tmpTypeofmesh);
 
     bool meshIs3d = false;
-    int search_str_len = strlen(typeofmesh);
-    if (search_str_len >= strlen("polyhedral") &&
-        strstr(typeofmesh, "polyhedral") != NULL)
+
+    if (strstr(typeofmesh, "polyhedral") != NULL)
         meshIs3d = true;
-    else if (search_str_len >= strlen("hexahedral") &&
-             strstr(typeofmesh, "hexahedral") != NULL)
+    else
+    if (strstr(typeofmesh, "hexahedral") != NULL)
         meshIs3d = true;
-    else if (search_str_len >= strlen("polygonal") &&
-             strstr(typeofmesh, "polygonal") != NULL)
+    else
+    if (strstr(typeofmesh, "polygonal") != NULL)
         meshIs3d = false;
-    else if (search_str_len >= strlen("quadrilateral") &&
-             strstr(typeofmesh, "quadrilateral") != NULL)
+    else
+    if (strstr(typeofmesh, "quadrilateral") != NULL)
         meshIs3d = false;
     else
     {
         Close();
+        free(typeofmesh);
         EXCEPTION1(InvalidDBTypeException, "Cannot be a KullLite file, "
                    "\"typeofmesh\" is not a recognized type.");
     }
-  
-    SFREE(typeofmesh);
+
+    free(typeofmesh);
+
     return meshIs3d;
 }
 

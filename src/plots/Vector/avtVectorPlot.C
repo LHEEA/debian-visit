@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -548,7 +548,7 @@ avtVectorPlot::SetAtts(const AttributeGroup *a)
         glyph->CapEndsOff();
     }
 
-    float offset;
+    float offset = 0;
     switch (atts.GetVectorOrigin())
     {
       case VectorAttributes::Head:    offset = -.5;  break;
@@ -701,14 +701,14 @@ void
 avtVectorPlot::SetLegendRanges()
 {
     double min = 0., max = 1.;
-    bool validRange = false;
+
     if (atts.GetLimitsMode() == VectorAttributes::OriginalData)
     {
-        validRange = glyphMapper->GetRange(min, max);
+        glyphMapper->GetRange(min, max);
     }
     else
     {
-        validRange = glyphMapper->GetCurrentRange(min, max);
+        glyphMapper->GetCurrentRange(min, max);
     }
     varLegend->SetRange(min, max);
 

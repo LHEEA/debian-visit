@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -168,11 +168,18 @@ avtL2NormBetweenCurvesQuery::CompareCurves(int n1, const float *x1,
 //    Cyrus Harrison, Tue Sep 18 13:45:35 PDT 2007
 //    Added support for user settable floating point format string
 //
+//    Kathleen Biagas, Thu Feb 13 15:04:58 PST 2014
+//    Add Xml results.
+//
 // ****************************************************************************
 
 std::string
 avtL2NormBetweenCurvesQuery::CreateMessage(double l2norm)
 {
+    MapNode result_node;
+    result_node["L2Norm_between_curves"] = l2norm;
+    queryAtts.SetXmlResult(result_node.ToXML());
+
     char msg[1024];
     std::string format = "The L2Norm between the two curves is " 
                     + queryAtts.GetFloatFormat() +".";

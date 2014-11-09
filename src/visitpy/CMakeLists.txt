@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -59,6 +59,9 @@
 #
 #  Brad Whitlock, Fri May 18 16:35:34 PST 2012
 #  Change the version file that we use.
+#
+#  Kathleen Biagas, Tue Feb 25 11:44:49 PST 2014
+#  Add visitpy/PyThresholdOpAttributes.
 #
 #****************************************************************************/
 
@@ -123,7 +126,8 @@ visitpy/PyColorControlPointList.C
 visitpy/PyColorTableAttributes.C 
 visitpy/PyConstructDataBinningAttributes.C 
 visitpy/PyDatabaseCorrelation.C 
-visitpy/PyDBOptionsAttributes.C 
+visitpy/PyDBOptionsAttributes.C
+visitpy/PyEngineProperties.C 
 visitpy/PyExportDBAttributes.C 
 visitpy/PyExpression.C 
 visitpy/PyExpressionList.C 
@@ -157,6 +161,7 @@ visitpy/PySelectionProperties.C
 visitpy/PySelectionSummary.C
 visitpy/PySelectionVariableSummary.C
 visitpy/PySelectionList.C
+visitpy/PyThresholdOpAttributes.C
 visitpy/PyView2DAttributes.C 
 visitpy/PyView3DAttributes.C 
 visitpy/PyViewAttributes.C 

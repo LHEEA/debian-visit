@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -134,20 +134,27 @@ avtEdgeFilter::Equivalent(const AttributeGroup *a)
 //      Sends the specified input and output through the Edge filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      inDR       The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Jeremy Meredith
 //  Creation:   February 23, 2009
 //
+//  Modifications:
+//   Eric Brugger, Thu Jul 24 09:29:05 PDT 2014
+//   Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtEdgeFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
+avtDataRepresentation *
+avtEdgeFilter::ExecuteData(avtDataRepresentation *inDR)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *inDS = inDR->GetDataVTK();
+
     vtkGeometryFilter *geom = NULL;
     vtkExtractEdges *ee = vtkExtractEdges::New();
     if (inDS->GetDataObjectType() != VTK_POLY_DATA)
@@ -163,13 +170,15 @@ avtEdgeFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
     ee->Update();
 
     vtkPolyData *outDS = ee->GetOutput();
-    ManageMemory(outDS);
+
+    avtDataRepresentation *outDR = new avtDataRepresentation(outDS,
+        inDR->GetDomain(), inDR->GetLabel());
 
     ee->Delete();
     if (geom)
         geom->Delete();
 
-    return outDS;
+    return outDR;
 }
 
 
@@ -191,10 +200,17 @@ avtEdgeFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
 //    e.g. a translucent pseudocolor-edge plot (i.e. topodim==1) with a normal
 //    translucent pseudocolor plot results in lighting being disabled for both.
 //
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
+
 void
 avtEdgeFilter::UpdateDataObjectInfo(void)
 {
     //if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() != 0)
     //    GetOutput()->GetInfo().GetAttributes().SetTopologicalDimension(1);
+
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("Edge");
 }

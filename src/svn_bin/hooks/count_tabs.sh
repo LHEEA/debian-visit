@@ -74,6 +74,8 @@
 #   Brad Whitlock, Wed Jun 13 13:54:46 PDT 2012
 #   Skip qtssh directory.
 #
+#   Kathleen Biagas, Fri Jun  6 11:51:17 PDT 2014
+#   Add simV2_wrap.cxx, as it is a generated file.
 ##############################################################################
 REPOS="$1"
 TXN="$2"
@@ -98,7 +100,7 @@ while read fline; do
     # Filter out other cases HandleCommonSkipCases doesn't catch
     #
     case $fname in
-        *.in|*.rc|*.html|*.doc|*.odt|*.odm|*.nib|*/third_party_builtin/*|*/common/icons/*|*.vcproj|*.sln|*.cmake|*.tcl|*/windowsbuild/ThirdParty/*)
+        *.in|*.rc|*.html|*.doc|*.odt|*.odm|*.nib|*/third_party_builtin/*|*/common/icons/*|*.vcproj|*.sln|*.cmake|*.tcl|*/windowsbuild/*)
             continue
             ;;
         */src/configure|*/src/aclocal.m4|*/bin/db_mktmpl)
@@ -129,6 +131,9 @@ while read fline; do
             continue
             ;;
         */releases/*)
+            continue
+            ;;
+        */sim/V2/swig/python/simV2_wrap.cxx)
             continue
             ;;
     esac

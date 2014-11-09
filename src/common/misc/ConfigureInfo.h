@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,8 @@ namespace visitcommon {
 std::string MISC_API Version();
 
 std::string MISC_API SVNVersion();
+
+std::string MISC_API VersionControlVersionString();
 
 std::string MISC_API SlashString();
 

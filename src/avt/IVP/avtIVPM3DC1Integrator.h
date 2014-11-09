@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,18 +76,7 @@ class IVP_API avtIVPM3DC1Integrator: public avtIVPSolver
 
     virtual void    OnExitDomain();
 
-    virtual avtVector GetCurrentY() const;
-    virtual double GetCurrentT() const;
-    virtual double GetNextStepSize() const;
-    virtual double GetMaximumStepSize() const;
-
-    virtual void   SetCurrentY( const avtVector &newY );
-    virtual void   SetCurrentT( double newT );
-    virtual void   SetNextStepSize( const double& h );
-    virtual void   SetMaximumStepSize( const double& hMax );
-
     virtual void   SetMaximumDegenerateIterations( const unsigned int& max );
-
     virtual void   SetTolerances(const double& reltol, const double& abstol);
 
     virtual avtIVPM3DC1Integrator* Clone() const
@@ -124,13 +113,9 @@ class IVP_API avtIVPM3DC1Integrator: public avtIVPSolver
 
   private:
     int numStep;
-    double tol;
-    double h, h_max;
-    double t, d;
     unsigned int max_degenerate_iterations;
     unsigned int degenerate_iterations;
     double stiffness_eps;
-    avtVector yCur;
     avtVector ys[2];
 };
 

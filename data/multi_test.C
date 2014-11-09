@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -61,6 +61,13 @@
 #include <vector>
 using std::map;
 using std::vector;
+
+// supress the following since silo uses char * in its API
+#if defined(__clang__)
+# pragma GCC diagnostic ignored "-Wdeprecated-writable-strings"
+#elif defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
 
 #define MAXBLOCKS       100         // maximum number of blocks in an object
 #define MAXNUMVARS      10          // maximum number of vars to output
@@ -288,12 +295,13 @@ void
 build_curves(DBfile *dbfile,  char dirnames[MAXBLOCKS][STRLEN])
 {
 #define NVALS 100
-#define NCURVES 3
+#define NCURVES 4
 #define LINE 0
 #define WAVE 1
 #define LOG 2
+#define CIRCLE 3
 
-    int i;
+    int i, coord_sys = DB_SPHERICAL;
     float x[NCURVES][NVALS];
     float y[NCURVES][NVALS];
     for (i = 0; i < NVALS; i++)
@@ -306,6 +314,9 @@ build_curves(DBfile *dbfile,  char dirnames[MAXBLOCKS][STRLEN])
 
         x[LOG][i] = log(i+1.0);
         y[LOG][i] = (float) i;
+
+        x[CIRCLE][i] = 1.0;
+        y[CIRCLE][i] = i * 2.0 * 3.1415926 / (NVALS-1);
     }
 
     DBoptlist *optlist = DBMakeOptlist(10);
@@ -321,6 +332,7 @@ build_curves(DBfile *dbfile,  char dirnames[MAXBLOCKS][STRLEN])
     char *line = "line";
     char *wave = "wave";
     char *log = "log";
+    char *circle = "circle";
     DBAddOption(optlist, DBOPT_LABEL, line);
     DBPutCurve(dbfile, "line", x[LINE], y[LINE], DB_FLOAT, NVALS, optlist);
     DBClearOption(optlist, DBOPT_LABEL);
@@ -329,6 +341,10 @@ build_curves(DBfile *dbfile,  char dirnames[MAXBLOCKS][STRLEN])
     DBClearOption(optlist, DBOPT_LABEL);
     DBAddOption(optlist, DBOPT_LABEL, log);
     DBPutCurve(dbfile, "log", x[LOG], y[LOG], DB_FLOAT, NVALS, optlist);
+    DBClearOption(optlist, DBOPT_LABEL);
+    DBAddOption(optlist, DBOPT_LABEL, circle);
+    DBAddOption(optlist, DBOPT_COORDSYS, &coord_sys);
+    DBPutCurve(dbfile, circle, x[CIRCLE], y[CIRCLE], DB_FLOAT, NVALS, optlist);
 
     DBFreeOptlist(optlist);
 
@@ -2578,8 +2594,6 @@ build_block_ucd3d(DBfile *dbfile, char dirnames[MAXBLOCKS][STRLEN],
             matlist2, &nzones, 1, mix_next, mix_mat, mix_zone,
             mix_vf, mixlen, DB_FLOAT, optlist, zonelist, p2, d2, block);
 
-#ifdef SILO_VERSION_GE
-#if SILO_VERSION_GE(4,8,0)
         // Now, output materials themselves using mrgtrees
         PutMatsUsingMrgtree(dbfile, matname, meshname, nmats, matnos,
             matlist2, &nzones, 1, mix_next, mix_mat, mix_zone,
@@ -2590,8 +2604,6 @@ build_block_ucd3d(DBfile *dbfile, char dirnames[MAXBLOCKS][STRLEN],
         PutMatVarsUsingMrgtrees(dbfile, matname, meshname, nmats, matnos,
             matlist2, &nzones, 1, mix_next, mix_mat, mix_zone,
             mix_vf, mixlen, DB_FLOAT, optlist, zonelist, p2, d2);
-#endif
-#endif
 
         DBFreeOptlist(optlist);
 
@@ -3056,8 +3068,8 @@ build_multi(DBfile *dbfile, int meshtype, int vartype, int dim, int nblocks_x,
         if (i == 0 || i == 2 || i == 9 || i == 11 ||
             i == 24 || i == 26 || i == 33 || i == 35)
         {
-            sprintf(names7[i], "EMPTY", i);
-            sprintf(names9[i], "EMPTY", i);
+            sprintf(names7[i], "EMPTY");
+            sprintf(names9[i], "EMPTY");
         }
         else
         {
@@ -3068,7 +3080,7 @@ build_multi(DBfile *dbfile, int meshtype, int vartype, int dim, int nblocks_x,
             i == 28 || i == 31)
             sprintf(names10[i], "/block%d/m3vf_on_mats_3", i);
         else
-            sprintf(names10[i], "EMPTY", i);
+            sprintf(names10[i], "EMPTY");
         sprintf(names8[i], "/block%d/d_on_mats_1_3", i);
         sprintf(names11[i], "/block%d/m1vf_on_mats_1", i);
         var1names[i] = names1[i];
@@ -3305,7 +3317,7 @@ build_multi(DBfile *dbfile, int meshtype, int vartype, int dim, int nblocks_x,
             else
                 sprintf(tmpNames[i], "/block%d/d_front", i);
             if (i == 0 || (rand() % 7) == 0)
-                sprintf(tmpNames[i], "EMPTY", i);
+                sprintf(tmpNames[i], "EMPTY");
             tmpVarnames[i] = tmpNames[i];
         }
         DBPutMultivar(dbfile, "d_split", nblocks, tmpVarnames, vartypes, NULL);
@@ -3478,7 +3490,6 @@ build_multi(DBfile *dbfile, int meshtype, int vartype, int dim, int nblocks_x,
     free(tmpList);
     DBFreeOptlist(optlist);
 
-#ifdef DB_VARTYPE_SCALAR
     char   vnames[4][STRLEN];
     char   defns[4][STRLEN];
     char *pvnames[4] = {vnames[0], vnames[1], vnames[2], vnames[3]};
@@ -3517,16 +3528,9 @@ build_multi(DBfile *dbfile, int meshtype, int vartype, int dim, int nblocks_x,
     // declare the "magnitude(vec)" expression hidden
     DBAddOption(optlists[3], DBOPT_HIDE_FROM_GUI, &one) ;
 
-#ifdef DB_SDX // Use existence of sdx driver to detect earlier versions.
-              // Sdx driver existes in 4.5.1 and earlier
-    DBPutDefvars(dbfile, "defvars", 4, (const char**)pvnames, types,
-                 (const char**)pdefns, optlists);
-#else
     DBPutDefvars(dbfile, "defvars", 4, pvnames, types,
                  pdefns, optlists);
-#endif
     DBFreeOptlist(optlists[3]);
-#endif
 
     return (0);
 }

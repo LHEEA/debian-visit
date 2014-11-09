@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -59,7 +59,7 @@ import llnl.visit.Plugin;
 
 public class LCSAttributes extends AttributeSubject implements Plugin
 {
-    private static int LCSAttributes_numAdditionalAtts = 42;
+    private static int LCSAttributes_numAdditionalAtts = 43;
 
     // Enum values
     public final static int SOURCETYPE_NATIVEMESH = 0;
@@ -101,8 +101,6 @@ public class LCSAttributes extends AttributeSubject implements Plugin
 
     public final static int OPERATORTYPE_BASEVALUE = 0;
     public final static int OPERATORTYPE_GRADIENT = 1;
-    public final static int OPERATORTYPE_JACOBIAN = 2;
-    public final static int OPERATORTYPE_RATIO = 3;
 
     public final static int TERMINATIONTYPE_TIME = 0;
     public final static int TERMINATIONTYPE_DISTANCE = 1;
@@ -164,6 +162,7 @@ public class LCSAttributes extends AttributeSubject implements Plugin
         pathlines = false;
         pathlinesOverrideStartingTimeFlag = false;
         pathlinesOverrideStartingTime = 0;
+        pathlinesPeriod = 0;
         pathlinesCMFE = PATHLINESCMFE_POS_CMFE;
         forceNodeCenteredData = false;
         issueTerminationWarnings = true;
@@ -224,6 +223,7 @@ public class LCSAttributes extends AttributeSubject implements Plugin
         pathlines = false;
         pathlinesOverrideStartingTimeFlag = false;
         pathlinesOverrideStartingTime = 0;
+        pathlinesPeriod = 0;
         pathlinesCMFE = PATHLINESCMFE_POS_CMFE;
         forceNodeCenteredData = false;
         issueTerminationWarnings = true;
@@ -290,6 +290,7 @@ public class LCSAttributes extends AttributeSubject implements Plugin
         pathlines = obj.pathlines;
         pathlinesOverrideStartingTimeFlag = obj.pathlinesOverrideStartingTimeFlag;
         pathlinesOverrideStartingTime = obj.pathlinesOverrideStartingTime;
+        pathlinesPeriod = obj.pathlinesPeriod;
         pathlinesCMFE = obj.pathlinesCMFE;
         forceNodeCenteredData = obj.forceNodeCenteredData;
         issueTerminationWarnings = obj.issueTerminationWarnings;
@@ -371,6 +372,7 @@ public class LCSAttributes extends AttributeSubject implements Plugin
                 (pathlines == obj.pathlines) &&
                 (pathlinesOverrideStartingTimeFlag == obj.pathlinesOverrideStartingTimeFlag) &&
                 (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime) &&
+                (pathlinesPeriod == obj.pathlinesPeriod) &&
                 (pathlinesCMFE == obj.pathlinesCMFE) &&
                 (forceNodeCenteredData == obj.forceNodeCenteredData) &&
                 (issueTerminationWarnings == obj.issueTerminationWarnings) &&
@@ -639,40 +641,46 @@ public class LCSAttributes extends AttributeSubject implements Plugin
         Select(35);
     }
 
+    public void SetPathlinesPeriod(double pathlinesPeriod_)
+    {
+        pathlinesPeriod = pathlinesPeriod_;
+        Select(36);
+    }
+
     public void SetPathlinesCMFE(int pathlinesCMFE_)
     {
         pathlinesCMFE = pathlinesCMFE_;
-        Select(36);
+        Select(37);
     }
 
     public void SetForceNodeCenteredData(boolean forceNodeCenteredData_)
     {
         forceNodeCenteredData = forceNodeCenteredData_;
-        Select(37);
+        Select(38);
     }
 
     public void SetIssueTerminationWarnings(boolean issueTerminationWarnings_)
     {
         issueTerminationWarnings = issueTerminationWarnings_;
-        Select(38);
+        Select(39);
     }
 
     public void SetIssueStiffnessWarnings(boolean issueStiffnessWarnings_)
     {
         issueStiffnessWarnings = issueStiffnessWarnings_;
-        Select(39);
+        Select(40);
     }
 
     public void SetIssueCriticalPointsWarnings(boolean issueCriticalPointsWarnings_)
     {
         issueCriticalPointsWarnings = issueCriticalPointsWarnings_;
-        Select(40);
+        Select(41);
     }
 
     public void SetCriticalPointThreshold(double criticalPointThreshold_)
     {
         criticalPointThreshold = criticalPointThreshold_;
-        Select(41);
+        Select(42);
     }
 
     // Property getting methods
@@ -712,6 +720,7 @@ public class LCSAttributes extends AttributeSubject implements Plugin
     public boolean  GetPathlines() { return pathlines; }
     public boolean  GetPathlinesOverrideStartingTimeFlag() { return pathlinesOverrideStartingTimeFlag; }
     public double   GetPathlinesOverrideStartingTime() { return pathlinesOverrideStartingTime; }
+    public double   GetPathlinesPeriod() { return pathlinesPeriod; }
     public int      GetPathlinesCMFE() { return pathlinesCMFE; }
     public boolean  GetForceNodeCenteredData() { return forceNodeCenteredData; }
     public boolean  GetIssueTerminationWarnings() { return issueTerminationWarnings; }
@@ -795,16 +804,18 @@ public class LCSAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(35, buf))
             buf.WriteDouble(pathlinesOverrideStartingTime);
         if(WriteSelect(36, buf))
-            buf.WriteInt(pathlinesCMFE);
+            buf.WriteDouble(pathlinesPeriod);
         if(WriteSelect(37, buf))
-            buf.WriteBool(forceNodeCenteredData);
+            buf.WriteInt(pathlinesCMFE);
         if(WriteSelect(38, buf))
-            buf.WriteBool(issueTerminationWarnings);
+            buf.WriteBool(forceNodeCenteredData);
         if(WriteSelect(39, buf))
-            buf.WriteBool(issueStiffnessWarnings);
+            buf.WriteBool(issueTerminationWarnings);
         if(WriteSelect(40, buf))
-            buf.WriteBool(issueCriticalPointsWarnings);
+            buf.WriteBool(issueStiffnessWarnings);
         if(WriteSelect(41, buf))
+            buf.WriteBool(issueCriticalPointsWarnings);
+        if(WriteSelect(42, buf))
             buf.WriteDouble(criticalPointThreshold);
     }
 
@@ -921,21 +932,24 @@ public class LCSAttributes extends AttributeSubject implements Plugin
             SetPathlinesOverrideStartingTime(buf.ReadDouble());
             break;
         case 36:
-            SetPathlinesCMFE(buf.ReadInt());
+            SetPathlinesPeriod(buf.ReadDouble());
             break;
         case 37:
-            SetForceNodeCenteredData(buf.ReadBool());
+            SetPathlinesCMFE(buf.ReadInt());
             break;
         case 38:
-            SetIssueTerminationWarnings(buf.ReadBool());
+            SetForceNodeCenteredData(buf.ReadBool());
             break;
         case 39:
-            SetIssueStiffnessWarnings(buf.ReadBool());
+            SetIssueTerminationWarnings(buf.ReadBool());
             break;
         case 40:
-            SetIssueCriticalPointsWarnings(buf.ReadBool());
+            SetIssueStiffnessWarnings(buf.ReadBool());
             break;
         case 41:
+            SetIssueCriticalPointsWarnings(buf.ReadBool());
+            break;
+        case 42:
             SetCriticalPointThreshold(buf.ReadDouble());
             break;
         }
@@ -989,10 +1003,6 @@ public class LCSAttributes extends AttributeSubject implements Plugin
             str = str + "OPERATORTYPE_BASEVALUE";
         if(operatorType == OPERATORTYPE_GRADIENT)
             str = str + "OPERATORTYPE_GRADIENT";
-        if(operatorType == OPERATORTYPE_JACOBIAN)
-            str = str + "OPERATORTYPE_JACOBIAN";
-        if(operatorType == OPERATORTYPE_RATIO)
-            str = str + "OPERATORTYPE_RATIO";
         str = str + "\n";
         str = str + indent + "terminationType = ";
         if(terminationType == TERMINATIONTYPE_TIME)
@@ -1067,6 +1077,7 @@ public class LCSAttributes extends AttributeSubject implements Plugin
         str = str + boolToString("pathlines", pathlines, indent) + "\n";
         str = str + boolToString("pathlinesOverrideStartingTimeFlag", pathlinesOverrideStartingTimeFlag, indent) + "\n";
         str = str + doubleToString("pathlinesOverrideStartingTime", pathlinesOverrideStartingTime, indent) + "\n";
+        str = str + doubleToString("pathlinesPeriod", pathlinesPeriod, indent) + "\n";
         str = str + indent + "pathlinesCMFE = ";
         if(pathlinesCMFE == PATHLINESCMFE_CONN_CMFE)
             str = str + "PATHLINESCMFE_CONN_CMFE";
@@ -1119,6 +1130,7 @@ public class LCSAttributes extends AttributeSubject implements Plugin
     private boolean  pathlines;
     private boolean  pathlinesOverrideStartingTimeFlag;
     private double   pathlinesOverrideStartingTime;
+    private double   pathlinesPeriod;
     private int      pathlinesCMFE;
     private boolean  forceNodeCenteredData;
     private boolean  issueTerminationWarnings;

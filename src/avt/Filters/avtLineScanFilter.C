@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -462,21 +462,20 @@ avtLineScanFilter::PostExecute(void)
     vtkDataSet **leaves = output_tree->GetAllLeaves(nLeaves);
 
 #ifdef PARALLEL
-    int  i, j;
     int nprocs = PAR_Size();
     vector<int> ncells(nprocs, 0);
-    for (i = 0 ; i < nLeaves ; i++)
+    for (int i = 0 ; i < nLeaves ; i++)
     {
         vtkIntArray *lineId = (vtkIntArray *) 
                                leaves[i]->GetCellData()->GetArray("avtLineID");
         int numIds = lineId->GetNumberOfTuples();
-        for (j = 0 ; j < numIds ; j++)
+        for (int j = 0 ; j < numIds ; j++)
             ncells[AssignToProc(lineId->GetValue(j), nLines)]++;
     }
     vtkPolyData  **pd_msg = new vtkPolyData*[nprocs];
     vtkPoints    **pts    = new vtkPoints*[nprocs];
     vtkCellArray **lines  = new vtkCellArray*[nprocs];
-    for (i = 0 ; i < nprocs ; i++)
+    for (int i = 0 ; i < nprocs ; i++)
     {
         if (ncells[i] > 0)
         {
@@ -502,12 +501,12 @@ avtLineScanFilter::PostExecute(void)
     }
 
     vector<int> curCell(nprocs, 0);
-    for (i = 0 ; i < nLeaves ; i++)
+    for (int i = 0 ; i < nLeaves ; i++)
     {
         vtkIntArray *lineId = (vtkIntArray *) 
                                leaves[i]->GetCellData()->GetArray("avtLineID");
         int numIds = lineId->GetNumberOfTuples();
-        for (j = 0 ; j < numIds ; j++)
+        for (int j = 0 ; j < numIds ; j++)
         {
             int proc = AssignToProc(lineId->GetValue(j), nLines);
             int cc   = curCell[proc];
@@ -532,7 +531,7 @@ avtLineScanFilter::PostExecute(void)
     char **sendmessages = new char*[nprocs];
     int *sendcount = new int[nprocs];
     vector<int> msg_length(nprocs, 0);
-    for (i = 0 ; i < nprocs ; i++)
+    for (int i = 0 ; i < nprocs ; i++)
     {
         if (pd_msg[i] != NULL)
         {
@@ -553,11 +552,11 @@ avtLineScanFilter::PostExecute(void)
     }
 
     int total_send = 0;
-    for (i = 0 ; i < nprocs ; i++)
+    for (int i = 0 ; i < nprocs ; i++)
         total_send += sendcount[i];
     char *big_send_buff = new char[total_send];
     char *tmp = big_send_buff;
-    for (i = 0 ; i < nprocs ; i++)
+    for (int i = 0 ; i < nprocs ; i++)
     {
         memcpy(tmp, sendmessages[i], sendcount[i]*sizeof(char));
         delete [] sendmessages[i];
@@ -596,7 +595,7 @@ avtLineScanFilter::PostExecute(void)
     delete [] recvdisp;
 
     vtkAppendPolyData *appender = vtkAppendPolyData::New();
-    for (i = 0 ; i < nprocs ; i++)
+    for (int i = 0 ; i < nprocs ; i++)
     {
         if (recvcount[i] > 0)
         {
@@ -625,7 +624,7 @@ avtLineScanFilter::PostExecute(void)
     }
     appender->Delete();
 
-    for (i = 0 ; i < nprocs ; i++)
+    for (int i = 0 ; i < nprocs ; i++)
     {
         if (pd_msg[i] != NULL)
             pd_msg[i]->Delete();
@@ -671,20 +670,36 @@ avtLineScanFilter::PostExecute(void)
 //    Dave Bremer, Wed Dec 20 16:22:06 PST 2006
 //    Only use the cylindrical execute mode if we are in two dimensions.
 //
+//    Eric Brugger, Mon Jul 21 13:32:57 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtLineScanFilter::ExecuteData(vtkDataSet *ds, int dom, std::string)
+avtDataRepresentation *
+avtLineScanFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
+    vtkDataSet *out_ds = NULL;
     if (GetInput()->GetInfo().GetAttributes().GetMeshCoordType() == AVT_RZ &&
         GetInput()->GetInfo().GetAttributes().GetSpatialDimension() == 2)
     {
-        return CylindricalExecute(ds);
+        out_ds = CylindricalExecute(in_ds);
     }
     else
     {
-        return CartesianExecute(ds);
+        out_ds = CartesianExecute(in_ds);
     }
+
+    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
+        in_dr->GetDomain(), in_dr->GetLabel());
+
+    out_ds->Delete();
+
+    return out_dr;
 }
 
 
@@ -702,12 +717,15 @@ avtLineScanFilter::ExecuteData(vtkDataSet *ds, int dom, std::string)
 //    Hank Childs, Mon Jun 15 22:56:06 PDT 2009
 //    Fix stupid off-by-one when there are more than two intersections.
 //
+//    Eric Brugger, Mon Jul 21 13:32:57 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 vtkDataSet *
 avtLineScanFilter::CartesianExecute(vtkDataSet *ds)
 {
-    int  i, j;
+    size_t  i, j;
 
     vtkVisItCellLocator *locator = vtkVisItCellLocator::New();
     locator->SetDataSet(ds);
@@ -728,7 +746,7 @@ avtLineScanFilter::CartesianExecute(vtkDataSet *ds)
     UpdateProgress(extraMsg*currentNode, totalProg);
     int lastMilestone = 0;
 
-    for (i = 0 ; i < nLines ; i++)
+    for (i = 0 ; i < (size_t)nLines ; i++)
     {
         double pt1[3];
         pt1[0] = lines[6*i];
@@ -741,7 +759,7 @@ avtLineScanFilter::CartesianExecute(vtkDataSet *ds)
         int success = locator->IntersectWithLine(pt1, pt2, ipts, cpts, cells);
         if (success == 0)
             continue;  // No intersection
-        int nCells = cells->GetNumberOfIds();
+        size_t nCells = cells->GetNumberOfIds();
         for (j = 0 ; j < nCells ; j++)
         {
             vtkIdType id = cells->GetId(j);
@@ -873,7 +891,7 @@ avtLineScanFilter::CartesianExecute(vtkDataSet *ds)
         int    subId;
         double pcoords[3];
         double dist2;
-        for (int i = 0 ; i < dist.size() ; i++)
+        for (size_t i = 0 ; i < dist.size() ; i++)
         {
             int cellId = cells_matched[i/2];
             ds->GetCellPoints(cellId, ids);
@@ -895,7 +913,7 @@ avtLineScanFilter::CartesianExecute(vtkDataSet *ds)
     vtkIntArray *vtk_line_id = vtkIntArray::New();
     vtk_line_id->SetNumberOfTuples(cells_matched.size());
     vtk_line_id->SetName("avtLineID");
-    for (int i = 0 ; i < cells_matched.size() ; i++)
+    for (size_t i = 0 ; i < cells_matched.size() ; i++)
     {
         vtkIdType ids[2];
         ids[0] = 2*i;
@@ -908,9 +926,6 @@ avtLineScanFilter::CartesianExecute(vtkDataSet *ds)
     vtk_line_id->Delete();
     output->SetLines(line_cells);
     line_cells->Delete();
-
-    ManageMemory(output);
-    output->Delete();
 
     UpdateProgress(extraMsg*(currentNode+1), extraMsg*totalNodes);
     return output;
@@ -926,18 +941,22 @@ avtLineScanFilter::CartesianExecute(vtkDataSet *ds)
 //  Programmer: Hank Childs
 //  Creation:   July 28, 2006
 //
+//  Modifications:
+//    Eric Brugger, Mon Jul 21 13:32:57 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 vtkDataSet *
 avtLineScanFilter::CylindricalExecute(vtkDataSet *ds)
 {
-    int  i, j;
+    size_t  i, j;
 
     //
     // Set up an interval tree over the cells, which well help us locate
     // the cells when we cast the lines over the axially-symmetric mesh.
     //
-    int nCells = ds->GetNumberOfCells();
+    size_t nCells = ds->GetNumberOfCells();
     int dims   = 2;
     avtIntervalTree tree(nCells, dims);
     double bounds[6];
@@ -962,7 +981,7 @@ avtLineScanFilter::CylindricalExecute(vtkDataSet *ds)
     int lastMilestone = 0;
 
     vector<int> list;
-    for (i = 0 ; i < nLines ; i++)
+    for (i = 0 ; i < (size_t)nLines ; i++)
     {
         double pt1[3];
         pt1[0] = lines[6*i];
@@ -977,7 +996,7 @@ avtLineScanFilter::CylindricalExecute(vtkDataSet *ds)
         dir[1] = pt2[1]-pt1[1];
         dir[2] = pt2[2]-pt1[2];
         tree.GetElementsFromAxiallySymmetricLineIntersection(pt1, dir, list);
-        int nCells = list.size();
+        size_t nCells = list.size();
         if (nCells == 0)
             continue;  // No intersection
 
@@ -1012,7 +1031,7 @@ avtLineScanFilter::CylindricalExecute(vtkDataSet *ds)
                 if (inter.size() > 0)
                 {
                     std::sort(inter.begin(), inter.end());
-                    for (int l = 0 ; l < inter.size() / 2 ; l++)
+                    for (size_t l = 0 ; l < inter.size() / 2 ; l++)
                     {
                         cells_matched.push_back(id);
                         dist.push_back(inter[2*l]);
@@ -1075,7 +1094,7 @@ avtLineScanFilter::CylindricalExecute(vtkDataSet *ds)
         int    subId;
         double pcoords[3];
         double dist2;
-        for (int i = 0 ; i < dist.size() ; i++)
+        for (size_t i = 0 ; i < dist.size() ; i++)
         {
             int cellId = cells_matched[i/2];
             ds->GetCellPoints(cellId, ids);
@@ -1102,7 +1121,7 @@ avtLineScanFilter::CylindricalExecute(vtkDataSet *ds)
     vtkIntArray *vtk_line_id = vtkIntArray::New();
     vtk_line_id->SetNumberOfTuples(cells_matched.size());
     vtk_line_id->SetName("avtLineID");
-    for (int i = 0 ; i < cells_matched.size() ; i++)
+    for (size_t i = 0 ; i < cells_matched.size() ; i++)
     {
         vtkIdType ids[2];
         ids[0] = 2*i;
@@ -1115,9 +1134,6 @@ avtLineScanFilter::CylindricalExecute(vtkDataSet *ds)
     vtk_line_id->Delete();
     output->SetLines(line_cells);
     line_cells->Delete();
-
-    ManageMemory(output);
-    output->Delete();
 
     UpdateProgress(extraMsg*(currentNode+1), extraMsg*totalNodes);
     return output;

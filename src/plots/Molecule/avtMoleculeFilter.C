@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -114,17 +114,25 @@ avtMoleculeFilter::~avtMoleculeFilter()
 //    Brad Whitlock, Fri Apr 20 16:17:08 PDT 2012
 //    Support non-float arrays.
 //
+//    Eric Brugger, Tue Aug 19 11:00:33 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtMoleculeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
+avtDataRepresentation *
+avtMoleculeFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     vtkIdType natoms = in_ds->GetNumberOfPoints();
     vtkDataArray *primary = in_ds->GetPointData()->GetScalars();
     if (!primary)
     {
         debug4<<"avtMoleculeFilter::ExecuteData: primary was NULL\n";
-        return  in_ds;
+        return  in_dr;
     }
 
     if (natoms>0 && primary)
@@ -178,7 +186,7 @@ avtMoleculeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
             delete [] hasval;
         }
     }
-    return in_ds;
+    return in_dr;
 }
 
 
@@ -336,13 +344,11 @@ avtMoleculeFilter::PostExecute()
         // the known residue names into the labels. We send them all 
         // with an on/off flag so we can let the viewer know about 
         // new residues that we've learned about.
-        bool err = false;
         for(int i = 0; i < NumberOfKnownResidues(); ++i)
         {
             const char *rn = NumberToResiduename(i);
             if(rn == 0)
             {
-                err = true;
                 break;
             }
 

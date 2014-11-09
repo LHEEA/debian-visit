@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define AVTDATABASEMETADATA_NMETH 108
+#define AVTDATABASEMETADATA_NMETH 110
 void VISITPY_API           PyavtDatabaseMetaData_StartUp(avtDatabaseMetaData *subj, void *data);
 void VISITPY_API           PyavtDatabaseMetaData_CloseDown();
 VISITPY_API PyMethodDef *  PyavtDatabaseMetaData_GetMethodTable(int *nMethods);

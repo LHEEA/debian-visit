@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -361,7 +361,7 @@ avtLookupTable::SetColorTable(const char *ctName, bool validName,
         
         unsigned char *a = (unsigned char *) malloc( ct->GetNumColors() );
         
-        for( unsigned int i=0; i<ct->GetNumColors(); ++i )
+        for( unsigned int i=0; i<(unsigned int)ct->GetNumColors(); ++i )
           a[i] = (unsigned char)
             (rampOpacity * (double) i / (double) ct->GetNumColors() );
         

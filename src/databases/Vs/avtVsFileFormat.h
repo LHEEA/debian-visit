@@ -20,11 +20,12 @@
 
 #include <vtkUnsignedCharArray.h>
 #include <vtkPoints.h>
-#include <VsH5Dataset.h>
-//#include <VsH5Reader.h>
+#include <VsDataset.h>
+//#include <VsReader.h>
 #include <avtSTMDFileFormat.h>
 #include <hdf5.h>
 #include <visit-hdf5.h>
+#include "HighOrderUnstructuredData.h"
 
 #include <string>
 #include <vector>
@@ -42,7 +43,7 @@ class VsUniformMesh;
 class VsStructuredMesh;
 class VsRectilinearMesh;
 class VsRegistry;
-class VsH5Reader;
+class VsReader;
 
 /**
  * avtSTMDFileFormat is a base class for multi-domain, single-time
@@ -113,6 +114,35 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   virtual vtkDataArray* GetVar(int domain, const char* varname);
 
   /**
+   * Get variable in the case when it is stored on a node by node basis per cell.  This
+   * is needed for discontinuous Galerkin data.
+   * @param meta is the variable of interest
+   * @param component is the component of interest
+   */
+  virtual vtkDataArray* NodalVar(VsVariable* meta, std::string requestedName, int component);
+
+  /**
+   * Get a variable that is "standard".  A standard variable is a variable that
+   * is stored on cell centers, cell vertices or edges.  It does not include
+   * discontinuous Galerkin type data (or likely other high order data).
+   */
+  virtual vtkDataArray* StandardVar(int domain, const char* requestedName);
+
+  /**
+   * Determine if the name is a component of a larger vector
+   * @param name is the name of the variable
+   * @param componentIndex is the index of that variable (returned).
+   */
+  virtual bool nameIsComponent(std::string& name, int& componentIndex);
+
+  /**
+   * Check to see if the name has been transformed to a different name for
+   * display
+   * @param name is the name of the variable
+   */
+  virtual bool isTransformedName(std::string& name);
+
+  /**
    * Free up any resources created by this object.
    */
   virtual void FreeUpResources(void);
@@ -163,12 +193,28 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   std::string dataFileName;
 
   /** Pointer to the reader */
-  VsH5Reader* reader;
+  VsReader* reader;
 
   /** Ensure data has been read **/
   void LoadData();
 
+  /**
+   * This is not the best way to do this.  In fact every type of mesh should
+   * have a separate class and then there would be a pointer to the type selected.
+   * Since I only have one class that uses this approach I'm doing it this way.
+   */
+  HighOrderUnstructuredData thisData;
+
   private:
+
+  /**
+   * Get the meta data for a variable given a name.
+   * @domain is the domain of interest
+   * @requestedName is the full name of the variable
+   * @componentIndex is the component we are requesting
+   */
+  VsVariable* getVariableMeta(int domain, std::string requestedName, int &componentIndex);
+
   /**
    * A counter to track the number of avtVsFileFormat objects in existence
    */
@@ -205,7 +251,9 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   vtkDataSet* getStructuredMesh(VsStructuredMesh*, bool, int*, int*, int*);
   vtkDataSet* getUnstructuredMesh(VsUnstructuredMesh*, bool, int*, int*, int*);
   vtkDataSet* getPointMesh(VsVariableWithMesh*, bool, int*, int*, int*, bool);
+  vtkDataSet* getHighOrderUnstructuredMesh(VsUnstructuredMesh*, bool, int*, int*, int*);
   vtkDataSet* getCurve(int domain, const std::string& name);
+
 
   /**
    * Each type of object is added to the database with a separate method
@@ -236,7 +284,7 @@ class avtVsFileFormat: public avtSTMDFileFormat {
   
   template <typename TYPE>
   void fillInMaskNodeArray(const std::vector<int>& gdims,
-                           VsH5Dataset *mask, bool maskIsFortranOrder,
+                           VsDataset *mask, bool maskIsFortranOrder,
                            vtkUnsignedCharArray *maskedNodes);
 
   template <typename TYPE>

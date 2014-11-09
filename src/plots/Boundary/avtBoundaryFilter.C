@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -116,11 +116,21 @@ avtBoundaryFilter::SetPlotAtts(const BoundaryAttributes *atts)
 //    Hank Childs, Thu Feb 21 16:13:14 PST 2008
 //    Initialize variable, in case scanf fails.
 //
+//    Eric Brugger, Tue Aug 19 10:00:11 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 avtDataTree_p
-avtBoundaryFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
+avtBoundaryFilter::ExecuteDataTree(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set, the domain number, and the label.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+    int domain = in_dr->GetDomain();
+    std::string label = in_dr->GetLabel();
+
     if (in_ds == NULL || in_ds->GetNumberOfPoints() == 0 ||
         in_ds->GetNumberOfCells() == 0)
     {
@@ -385,7 +395,6 @@ avtBoundaryFilter::ModifyContract(avtContract_p spec)
             spec->GetDataRequest()->AddSecondaryVariable(pointVar.c_str());
         }
 
-        avtDataAttributes &data = GetInput()->GetInfo().GetAttributes();
         if (spec->GetDataRequest()->MayRequireZones() ||
             spec->GetDataRequest()->MayRequireNodes())
         {

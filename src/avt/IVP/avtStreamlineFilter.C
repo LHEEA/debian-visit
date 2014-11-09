@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -77,12 +77,6 @@ Consider the leaveDomains SLs and the balancing at the same time.
 #include <avtDatasetExaminer.h>
 #include <avtExtents.h>
 #include <avtIntegralCurve.h>
-#include <avtIVPVTKField.h>
-#include <avtIVPVTKTimeVaryingField.h>
-#include <avtIVPDopri5.h>
-#include <avtIVPAdamsBashforth.h>
-#include <avtIVPM3DC1Integrator.h>
-#include <avtIVPM3DC1Field.h>
 #include <avtIntervalTree.h>
 #include <avtMetaData.h>
 #include <avtParallel.h>
@@ -281,12 +275,12 @@ avtStreamlineFilter::GetCommunicationPattern()
 //
 // ****************************************************************************
 
-unsigned char
+unsigned int
 avtStreamlineFilter::GenerateAttributeFields() const
 {
 
     // need at least these three attributes
-    unsigned char attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
+    unsigned int attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
 
     if (storeVelocitiesForLighting)
         attr |= avtStateRecorderIntegralCurve::SAMPLE_VELOCITY;
@@ -319,16 +313,16 @@ avtStreamlineFilter::GenerateAttributeFields() const
         attr |= avtStateRecorderIntegralCurve::SAMPLE_ARCLENGTH;
         break;
       case PICS_COLOR_VARIABLE:
-        attr |= avtStateRecorderIntegralCurve::SAMPLE_SCALAR0;
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_SECONDARY0;
         break;
     }
 
     // opacity scalar
     if( !opacityVariable.empty() )
-        attr |= avtStateRecorderIntegralCurve::SAMPLE_SCALAR1;
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_SECONDARY1;
     // tube radius scale scalar
     if (!scaleTubeRadiusVariable.empty())
-        attr |= avtStateRecorderIntegralCurve::SAMPLE_SCALAR2;
+        attr |= avtStateRecorderIntegralCurve::SAMPLE_SECONDARY2;
 
     return attr;
 }
@@ -419,24 +413,27 @@ avtStreamlineFilter::CreateIntegralCurve( const avtIVPSolver* model,
                                           const avtVector &v_start,
                                           long ID ) 
 {
-    unsigned char attr = GenerateAttributeFields();
+    unsigned int attr = GenerateAttributeFields();
 
-    double t = maxTime;
+    double t_end;
+
     if (doPathlines)
     {
         if (dir == avtIntegralCurve::DIRECTION_BACKWARD)
-            t = seedTime0-maxTime;
+            t_end = seedTime0-maxTime;
         else
-            t = seedTime0+maxTime;
+            t_end = seedTime0+maxTime;
     }
     else
     {
         if (dir == avtIntegralCurve::DIRECTION_BACKWARD)
-            t = -maxTime;
+            t_end = -maxTime;
+        else
+            t_end =  maxTime;
     }
 
     avtStateRecorderIntegralCurve *rv = 
-        new avtStreamlineIC(maxSteps, doDistance, maxDistance, doTime, t,
+        new avtStreamlineIC(maxSteps, doDistance, maxDistance, doTime, t_end,
                             attr, model, dir, t_start, p_start, v_start, ID);
 
     return rv;
@@ -974,6 +971,11 @@ avtStreamlineFilter::PostExecute(void)
 //    Hank Childs, Sat Jun  5 16:06:26 PDT 2010
 //    Call the new base class' (avtPICSFilter) method.
 //
+//    Brad Whitlock, Fri Feb 28 12:00:51 PST 2014
+//    Add some hints about what coloring method was used and what colorVar
+//    might actually be.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 
 void
@@ -996,6 +998,31 @@ avtStreamlineFilter::UpdateDataObjectInfo(void)
         atts.SetVariableDimension(1);
         atts.SetCentering(AVT_NODECENT);
     }
+
+    switch(coloringMethod)
+    {
+    case PICS_COLOR_SOLID:
+        atts.AddFilterMetaData("Streamline", "coloringMethod=PICS_COLOR_SOLID");
+        break;
+    case PICS_COLOR_SPEED:
+        atts.AddFilterMetaData("Streamline", "coloringMethod=PICS_COLOR_SPEED");
+        break;
+    case PICS_COLOR_VORTICITY:
+        atts.AddFilterMetaData("Streamline", "coloringMethod=PICS_COLOR_VORTICITY");
+        break;
+    case PICS_COLOR_ARCLENGTH:
+        atts.AddFilterMetaData("Streamline", "coloringMethod=PICS_COLOR_ARCLENGTH");
+        break;
+    case PICS_COLOR_TIME:
+        atts.AddFilterMetaData("Streamline", "coloringMethod=PICS_COLOR_TIME");
+        break;
+    case PICS_COLOR_ID:
+        atts.AddFilterMetaData("Streamline", "coloringMethod=PICS_COLOR_ID");
+        break;
+    case PICS_COLOR_VARIABLE:
+        atts.AddFilterMetaData("Streamline", "coloringMethod=PICS_COLOR_VARIABLE, colorVar=" + coloringVariable);
+        break;
+    }
 }
 
 typedef struct
@@ -1003,25 +1030,6 @@ typedef struct
     avtVector pt;
     int domain, id;
 } seedPtDomain;
-
-static int comparePtDom(const void *a, const void *b)
-{
-    seedPtDomain *pdA = (seedPtDomain *)a, *pdB = (seedPtDomain *)b;
-    
-    if (pdA->domain < pdB->domain)
-        return -1;
-    else if (pdA->domain > pdB->domain)
-        return 1;
-    return 0;
-}
-
-
-static float
-randMinus1_1()
-{
-    float r = 2.0 * ((float)rand() / (float)RAND_MAX);
-    return (r-1.0);
-}
 
 
 // ****************************************************************************

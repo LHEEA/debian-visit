@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1828,7 +1828,6 @@ bool
 MovieTemplateConfig::SequenceGetNameForIndex(int index, std::string &name) const
 {
     StringMovieSequenceMap::const_iterator it = sequences.begin();
-    int i = 0;
     for(int i = 0; it != sequences.end(); ++it, ++i)
     {
         if(index == i)
@@ -1867,7 +1866,6 @@ MovieTemplateConfig::SequenceGetIndexForName(const std::string &name,
     int &index) const
 {
     StringMovieSequenceMap::const_iterator it = sequences.begin();
-    int i = 0;
     for(int i = 0; it != sequences.end(); ++it, ++i)
     {
         if(it->first == name)
@@ -1963,8 +1961,6 @@ MovieTemplateConfig::GetSequence(const std::string &name) const
 bool
 MovieTemplateConfig::SequenceAdd(int type, std::string &name)
 {
-    const char *mName = "MovieTemplateConfig::SequenceAdd1";
-
     bool ret = false;
     MovieSequence *s = MovieSequenceFactory::Instance()->Create(type);
     if(s != 0)

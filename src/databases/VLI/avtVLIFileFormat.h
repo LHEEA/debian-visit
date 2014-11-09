@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -105,7 +105,6 @@ class avtVLIFileFormat : public avtMTMDFileFormat
     int                            *eport;
     void                           *ptid;
     volatile int                    socket;
-    int                            *scount;
     std::vector<avtDataSelection_p> selList;
     std::vector<bool>              *selsApplied;
     std::vector<int>                registeredVars;

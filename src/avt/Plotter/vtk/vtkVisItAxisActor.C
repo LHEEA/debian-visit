@@ -368,7 +368,8 @@ void vtkVisItAxisActor::ShallowCopy(vtkProp *prop)
 
 int vtkVisItAxisActor::RenderOpaqueGeometry(vtkViewport *viewport)
 {
-  int i, renderedSomething=0;
+  int i;
+  int renderedSomething=0;
 
   this->BuildAxis(viewport, false);
 
@@ -608,8 +609,13 @@ vtkVisItAxisActor::SetLabelPositions(vtkViewport *viewport, bool force)
   if (!force && (!this->LabelVisibility || this->NumberOfLabelsBuilt == 0)) 
       return;
 
-  double bounds[6], center[3], tick[3], pos[3];
-  int i, xmult, ymult;
+  double bounds[6]; 
+  double center[3];
+  double tick[3];
+  double pos[3];
+  int i;
+  int xmult = 0;
+  int ymult = 0;
 
   switch (this->AxisType)
    {
@@ -705,7 +711,7 @@ vtkVisItAxisActor::BuildTitle(bool force)
 
   double *p1 = this->Point1Coordinate->GetValue();
   double *p2 = this->Point2Coordinate->GetValue();
-  int xmult, ymult;
+  int xmult = 0, ymult = 0;
 
   if (!force && this->LabelBuildTime.GetMTime() < this->BuildTime.GetMTime() &&
       this->BoundsTime.GetMTime() < this->BuildTime.GetMTime() &&
@@ -854,7 +860,7 @@ vtkVisItAxisActor::SetLabels(const vector<string> &labels)
   // amount of memory.
   //
   size_t numLabels = labels.size();
-  if (this->NumberOfLabelsBuilt != numLabels)
+  if ((size_t)this->NumberOfLabelsBuilt != numLabels)
     {
     if (this->LabelMappers != NULL)
       {
@@ -963,7 +969,9 @@ bool vtkVisItAxisActor::BuildTickPoints(double p1[3], double p2[3], bool force)
     // x axis: b==y, c==z
     // y axis: b==x, c==z
     // z axis: b==x, c==y
-    int aAxis, bAxis, cAxis;
+    int aAxis = 0; 
+    int bAxis = 0;
+    int cAxis = 0;
     switch (this->AxisType)
     {
       case VTK_AXIS_TYPE_X: aAxis=0; bAxis=1; cAxis=2; break;
@@ -972,7 +980,8 @@ bool vtkVisItAxisActor::BuildTickPoints(double p1[3], double p2[3], bool force)
     }
     int Bmult = multiplierTable1[this->AxisPosition];
     int Cmult = multiplierTable2[this->AxisPosition];
-    double gridBLength, gridCLength;
+    double gridBLength = 0;
+    double gridCLength = 0;
     switch (this->AxisType)
     {
       case VTK_AXIS_TYPE_X:

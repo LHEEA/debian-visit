@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewavtArrayMetaData(int);
 std::string
 PyavtArrayMetaData_ToString(const avtArrayMetaData *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     str = PyavtVarMetaData_ToString(atts, prefix);
 
@@ -432,7 +432,6 @@ PyavtArrayMetaData_GetLogString()
 static void
 PyavtArrayMetaData_CallLogRoutine(Subject *subj, void *data)
 {
-    avtArrayMetaData *atts = (avtArrayMetaData *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

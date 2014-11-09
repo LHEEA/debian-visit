@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -803,7 +803,7 @@ static bool ImageObjectEnableLogging = true;
 static void
 PyImageObject_WriteLog(Subject *subj, void *data)
 {
-    AnnotationObject *atts = (AnnotationObject *)subj;
+    AnnotationObject *atts = (AnnotationObject *)subj; (void) atts;
     FILE *logFile = (FILE *)data;
 
     if(!ImageObjectEnableLogging || (logFile == NULL))

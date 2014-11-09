@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,8 +62,8 @@
 #include <avtDataset.h>
 #include <avtExpressionTypeConversions.h>
 #include <avtExtents.h>
-#include <avtIOInformation.h>
 #include <avtIntervalTree.h>
+#include <avtMultiresSelection.h>
 #include <avtSIL.h>
 
 #include <DebugStream.h>
@@ -72,6 +72,8 @@
 #include <InvalidDimensionsException.h>
 #include <InvalidVariableException.h>
 #include <TimingsManager.h>
+
+#include <avtExecutionManager.h>
 
 #include <algorithm>
 #include <map>
@@ -85,8 +87,8 @@ using std::vector;
 void
 ConvertSlashes(char *str)
 {
-    int len = strlen(str);
-    for (int i = 0; i < len; i++)
+    size_t len = strlen(str);
+    for (size_t i = 0; i < len; ++i)
     {
 #ifndef WIN32
         if (str[i] == '\\')
@@ -100,8 +102,8 @@ ConvertSlashes(char *str)
 
 
 // size of MD/SIL caches
-int       avtDatabase::mdCacheSize         = 20;
-int       avtDatabase::silCacheSize        = 20;
+unsigned int avtDatabase::mdMaxCacheSize   = 20;
+unsigned int avtDatabase::silMaxCacheSize  = 20;
 
 bool      avtDatabase::onlyServeUpMetaData = false;
 
@@ -236,13 +238,13 @@ avtDatabase::ComputeRectilinearDecomposition(int ndims, int n, int nx, int ny, i
     /* find all two or three product factors of the number of domains
        and evaluate the communication cost */
 
-   for (i = 1; i <= n; i++)
+   for (i = 1; i <= n; ++i)
    {
       if (n%i == 0)
       {
          if (ndims == 3)
          {
-            for (j = 1; j <= i; j++)
+            for (j = 1; j <= i; ++j)
             {
                if ((i%j) == 0)
                {
@@ -417,7 +419,7 @@ avtDatabase::ComputeDomainBounds(int globalZoneCount, int domCount, int domLogic
     int i;
     int stepSize = domZoneCount;
     *globalZoneStart = 0;
-    for (i = 0; i < domLogicalCoord; i++)
+    for (i = 0; i < domLogicalCoord; ++i)
     {
         *globalZoneStart += stepSize;
         if (i >= domCount - domsWithExtraZones)
@@ -475,11 +477,14 @@ avtDatabase::ComputeDomainSpatialBounds(double globalWidth, int domCount, int do
 //
 //    Mark C. Miller, Tue Jun 10 22:36:25 PDT 2008
 //    Added support for ignoring bad extents from dbs.
+//
+//    Brad Whitlock, Thu Jun 19 10:45:57 PDT 2014
+//    Removed gotIOInfo.
+//
 // ****************************************************************************
 
 avtDatabase::avtDatabase()
 {
-    gotIOInfo         = false;
     invariantMetaData = NULL;
     invariantSIL      = NULL;
     fileFormat        = "<unknown>";
@@ -519,7 +524,7 @@ avtDatabase::avtDatabase()
 avtDatabase::~avtDatabase()
 {
     vector<avtDataObjectSource *>::iterator it;
-    for (it = sourcelist.begin() ; it != sourcelist.end() ; it++)
+    for (it = sourcelist.begin() ; it != sourcelist.end() ; ++it)
     {
         delete *it;
     }
@@ -537,12 +542,12 @@ avtDatabase::~avtDatabase()
     }
 
     std::list<CachedMDEntry>::iterator it2;
-    for (it2 = metadata.begin() ; it2 != metadata.end() ; it2++)
+    for (it2 = metadata.begin() ; it2 != metadata.end() ; ++it2)
     {
         delete (*it2).md;
     }
     std::list<CachedSILEntry>::iterator it3;
-    for (it3 = sil.begin() ; it3 != sil.end() ; it3++)
+    for (it3 = sil.begin() ; it3 != sil.end() ; ++it3)
     {
         delete (*it3).sil;
     }
@@ -795,6 +800,20 @@ avtDatabase::GetOutput(const char *var, int ts)
 //    Hank Childs, Tue Oct 23 14:43:37 PDT 2012
 //    Mark the zones and nodes as invalidated if selections were applied.
 //
+//    Eric Brugger, Fri Dec 20 11:44:53 PST 2013
+//    Set the multi resolution data selection information into the meta data.
+//
+//    Burlen Loring, Sun Apr 27 15:17:23 PDT 2014
+//    Cleanup -Wall warnings
+//
+//    Kathleen Biagas, Wed Jul 23 16:45:34 PDT 2014
+//    Invalidate zones if meshmetadata reports the zones were split as can be
+//    the case for arbitrary polyhedral meshes.
+//
+//    David Camp, Mon Jul 28 09:09:40 PDT 2014
+//    Changed 'for loop' to speed up the action. No need to test all if once
+//    any are true we are going to invalidate the zones.
+//
 // ****************************************************************************
 
 void
@@ -804,8 +823,6 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
                                           const vector<bool> &selectionsApplied,
                                           avtDataRequest_p spec)
 {
-    int   i;
-
     int timerHandle = visitTimer->StartTimer();
 
     avtDataAttributes &atts     = dob->GetInfo().GetAttributes();
@@ -846,17 +863,21 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
 
         vector<bool> tmp = selectionsApplied;
         atts.SetSelectionsApplied(tmp);
-        bool oneSelectionApplied = false;
-        for (unsigned int i = 0 ; i < selectionsApplied.size() ; i++)
-            if (selectionsApplied[i])
-                oneSelectionApplied = true;
-        if (oneSelectionApplied)
+        for (unsigned int i = 0 ; i < selectionsApplied.size() ; ++i)
         {
-            // We need to set these as invalid, or else caching could kick in
-            // and we might end up using acceleration structures across
-            // pipeline executions that were no longer valid.
+            if (selectionsApplied[i])
+            {
+                // We need to set these as invalid, or else caching could kick in
+                // and we might end up using acceleration structures across
+                // pipeline executions that were no longer valid.
+                validity.InvalidateZones();
+                validity.InvalidateNodes();
+                break;
+            }
+        }
+        if (mmd->zonesWereSplit)
+        {
             validity.InvalidateZones();
-            validity.InvalidateNodes();
         }
 
         //
@@ -867,7 +888,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
         if (mmd->hasSpatialExtents)
         {
             double extents[6];
-            for (int i = 0 ; i < mmd->spatialDimension ; i++)
+            for (int i = 0 ; i < mmd->spatialDimension ; ++i)
             {
                 extents[2*i]   = mmd->minSpatialExtents[i];
                 extents[2*i+1] = mmd->maxSpatialExtents[i];
@@ -910,7 +931,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
     {
         const vector<CharStrRef> &secondaryVariables 
                                                = spec->GetSecondaryVariables();
-        for (i = 0 ; i < secondaryVariables.size() ; i++)
+        for (unsigned int i = 0 ; i < secondaryVariables.size() ; ++i)
         {
             var_list.push_back(*(secondaryVariables[i]));
         }
@@ -920,7 +941,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
     // Now iterate through our variable list and add information about each
     // variable as we go.
     //
-    for (i = 0 ; i < var_list.size() ; i++)
+    for (unsigned int i = 0 ; i < var_list.size() ; ++i)
     {
         const avtScalarMetaData *smd = GetMetaData(ts)->GetScalar(var_list[i]);
         if (smd != NULL)
@@ -1088,6 +1109,30 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
     atts.SetActiveVariable(var);
 
     //
+    // Transfer the multi resolution data selection information to the 
+    // avtDataAttributes.
+    //
+    if (*spec != NULL)
+    {
+        vector<avtDataSelection_p> selList = spec->GetAllDataSelections();
+        for (unsigned int i = 0; i < selList.size(); ++i)
+        {
+            if (string(selList[i]->GetType()) == "Multi Resolution Data Selection")
+            {
+                avtMultiresSelection *sel= (avtMultiresSelection*)*(selList[i]);
+                double extents[6];
+                sel->GetActualExtents(extents);
+                double cellArea = sel->GetActualCellArea();
+
+                avtExtents multiresExtents(3);
+                multiresExtents.Set(extents);
+                atts.SetMultiresExtents(&multiresExtents);
+                atts.SetMultiresCellSize(cellArea);
+            }
+        }
+    }
+
+    //
     // SPECIAL CASE:
     //
     // We need to decrement the topological dimension if we asked for
@@ -1174,16 +1219,16 @@ avtDatabase::SILIsInvariant(void)
 int
 avtDatabase::GetMostRecentTimestep(void) const
 {
-   if (sil.size() == 0)
+   if (sil.empty())
    {
-      if (metadata.size() == 0)
+      if (metadata.empty())
          return 0;
       else
          return metadata.front().ts;
    }
    else
    {
-      if (metadata.size() == 0)
+      if (metadata.empty())
          return sil.front().ts;
       else
       {
@@ -1242,6 +1287,10 @@ avtDatabase::GetMostRecentTimestep(void) const
 //
 //    Mark C. Miller, Thu Feb 12 11:35:34 PST 2009
 //    Added call to convert 1D vars to curves
+//
+//    Brad Whitlock, Thu Jun 19 10:36:38 PDT 2014
+//    Removed code to get IO info.
+//
 // ****************************************************************************
 
 void
@@ -1279,12 +1328,6 @@ avtDatabase::GetNewMetaData(int timeState, bool forceReadAllCyclesTimes)
 
     Convert1DVarMDsToCurveMDs(md);
 
-    if (! OnlyServeUpMetaData())
-    {
-        PopulateIOInformation(timeState, ioInfo);
-        gotIOInfo = true;
-    }
-
     // put the metadata at the front of the MRU cache
     CachedMDEntry tmp = {md, timeState};
     metadata.push_front(tmp);
@@ -1315,13 +1358,13 @@ avtDatabase::Convert1DVarMDsToCurveMDs(avtDatabaseMetaData *md)
     // have any 1D vars and we can terminate early.
     //
     map<string, int> meshNameToNumMap;
-    for (i = 0; i < md->GetNumMeshes(); i++)
+    for (i = 0; i < md->GetNumMeshes(); ++i)
     {
         const avtMeshMetaData *mmd = md->GetMesh(i);
         if (mmd->spatialDimension == 1 && mmd->numBlocks == 1)
             meshNameToNumMap[mmd->name] = i;
     }
-    if (meshNameToNumMap.size() == 0)
+    if (meshNameToNumMap.empty())
         return;
 
     //
@@ -1330,7 +1373,7 @@ avtDatabase::Convert1DVarMDsToCurveMDs(avtDatabaseMetaData *md)
     //
     map<string, int>::iterator it;
     vector<int> scalarsToHide;
-    for (i = 0; i < md->GetNumScalars(); i++)
+    for (i = 0; i < md->GetNumScalars(); ++i)
     {
         const avtScalarMetaData *smd = md->GetScalar(i);
         it = meshNameToNumMap.find(smd->meshName);
@@ -1360,9 +1403,9 @@ avtDatabase::Convert1DVarMDsToCurveMDs(avtDatabaseMetaData *md)
     // Hide from the GUI, those scalars that got converted as well
     // as any 1D meshes.
     //
-    for (i = 0; i < (int) scalarsToHide.size(); i++)
+    for (i = 0; i < (int) scalarsToHide.size(); ++i)
         md->GetScalars(scalarsToHide[i]).hideFromGUI = true;
-    for (it = meshNameToNumMap.begin(); it != meshNameToNumMap.end(); it++)
+    for (it = meshNameToNumMap.begin(); it != meshNameToNumMap.end(); ++it)
         md->GetMeshes(it->second).hideFromGUI = true;
 }
 
@@ -1435,7 +1478,7 @@ avtDatabase::AddMeshQualityExpressions(avtDatabaseMetaData *md)
     int nmeshes_done = 0;
     int numpasses = 2;
     int total_iterations = numpasses*nmeshes;
-    for (int iter = 0 ; iter < total_iterations && nmeshes_done < 10 ; iter++)
+    for (int iter = 0 ; iter < total_iterations && nmeshes_done < 10 ; ++iter)
     {
         int i    = iter % nmeshes;
         int pass = (iter < nmeshes ? 1 : 2);
@@ -1466,7 +1509,7 @@ avtDatabase::AddMeshQualityExpressions(avtDatabaseMetaData *md)
         if (pass != pass_for_this_mesh)
             continue;
 
-        nmeshes_done++;
+        ++nmeshes_done;
         const int nPairs = 30;
         // Static allocation?!  Really??!!
         MQExprTopoPair exprs[nPairs];
@@ -1502,7 +1545,7 @@ avtDatabase::AddMeshQualityExpressions(avtDatabaseMetaData *md)
         exprs[29] = MQExprTopoPair("min_sin_corner", 2);
         //exprs[30] = MQExprTopoPair("min_sin_corner_cw", 2);
 
-        for (int j = 0 ; j < nPairs ; j++)
+        for (int j = 0 ; j < nPairs ; ++j)
         {
             if ((topoDim != exprs[j].topo) && (exprs[j].topo != -1))
                 continue;
@@ -1570,7 +1613,7 @@ avtDatabase::AddTimeDerivativeExpressions(avtDatabaseMetaData *md)
     int numMeshes = md->GetNumMeshes();
     string base1 = "time_derivative";
 
-    for (i = 0 ; i < numMeshes ; i++)
+    for (i = 0 ; i < numMeshes ; ++i)
     {
          const avtMeshMetaData *mmd = md->GetMesh(i);
 
@@ -1668,7 +1711,7 @@ avtDatabase::AddTimeDerivativeExpressions(avtDatabaseMetaData *md)
      }
 
          int numScalars = md->GetNumScalars();
-         for (j = 0 ; j < numScalars ; j++)
+         for (j = 0 ; j < numScalars ; ++j)
          {
              const avtScalarMetaData *smd = md->GetScalar(j);
              if (smd->meshName == mmd->name && !smd->hideFromGUI)
@@ -1715,7 +1758,7 @@ avtDatabase::AddTimeDerivativeExpressions(avtDatabaseMetaData *md)
          }
 
          int numVectors = md->GetNumVectors();
-         for (j = 0 ; j < numVectors ; j++)
+         for (j = 0 ; j < numVectors ; ++j)
          {
              const avtVectorMetaData *smd = md->GetVector(j);
              if (smd->meshName == mmd->name && !smd->hideFromGUI)
@@ -1788,7 +1831,7 @@ avtDatabase::AddVectorMagnitudeExpressions(avtDatabaseMetaData *md)
     char buff[1024];
     // get vectors from database metadata
     int nvectors = md->GetNumVectors();
-    for( int i=0; i < nvectors; i++)
+    for(int i=0; i < nvectors; ++i)
     {
         if (md->GetVectors(i).hideFromGUI)
             continue;
@@ -1807,7 +1850,7 @@ avtDatabase::AddVectorMagnitudeExpressions(avtDatabaseMetaData *md)
     // also get any from database expressions
     ExpressionList elist = md->GetExprList();
     int nexprs = elist.GetNumExpressions();
-    for( int i=0; i < nexprs; i++)
+    for(int i=0; i < nexprs; ++i)
     {
         if(elist[i].GetType() == Expression::VectorMeshVar)
         {
@@ -1856,6 +1899,12 @@ avtDatabase::AddVectorMagnitudeExpressions(avtDatabaseMetaData *md)
 //    Tom Fogal, Thu Nov 20 12:13:57 MST 2008
 //    Don't re-use the iterator after the find, because the erase invalidates
 //    it.
+//
+//    David Camp, Thu Jul 10 10:07:30 PDT 2014
+//    Need to protect the metadata list in thread mode.
+//    Also change the erase to a splice operation. This is much faster
+//    and less memory movement.
+//
 // ****************************************************************************
 
 avtDatabaseMetaData *
@@ -1864,10 +1913,11 @@ avtDatabase::GetMetaData(int timeState, bool forceReadAllCyclesTimes,
 {
     std::list<CachedMDEntry>::iterator i;
 
+    VisitMutexLock( "avtDatabase::GetMetaData" );
+
     if (MetaDataIsInvariant() && !treatAllDBsAsTimeVarying)
     {
-
-        if (metadata.size() == 0)
+        if (metadata.empty())
             GetNewMetaData(timeState, forceReadAllCyclesTimes);
         else
         {
@@ -1892,14 +1942,13 @@ avtDatabase::GetMetaData(int timeState, bool forceReadAllCyclesTimes,
     {
         bool found = false;
         // see if we've already cached metadata for this timestep
-        for (i = metadata.begin(); i != metadata.end(); i++)
+        for (i = metadata.begin(); i != metadata.end(); ++i)
         {
             if (timeState == i->ts)
             {
                 // move the found entry to front of list
-                CachedMDEntry tmp = *i;
-                metadata.erase(i);
-                metadata.push_front(tmp);
+                if (i != metadata.begin())
+                    metadata.splice(metadata.begin(), metadata, i);
                 found = true;
                 break;
             }
@@ -1909,13 +1958,12 @@ avtDatabase::GetMetaData(int timeState, bool forceReadAllCyclesTimes,
         // and read new metadata
         avtDatabaseMetaData *frontMd;
         avtDatabaseMetaData *thisMd;
-        if (false == found)
+        if (found == false)
         {
-            if (metadata.size() >= mdCacheSize)
+            if (metadata.size() >= mdMaxCacheSize)
             {
-                CachedMDEntry tmp = metadata.back(); 
+                delete metadata.back().md;
                 metadata.pop_back();
-                delete tmp.md;
             }
 
             GetNewMetaData(timeState, forceReadAllCyclesTimes);
@@ -1933,8 +1981,8 @@ avtDatabase::GetMetaData(int timeState, bool forceReadAllCyclesTimes,
                 //
                 frontMd = metadata.front().md;
                 i = metadata.begin();
-                i++;
-                for (; i != metadata.end(); i++)
+                ++i;
+                for (; i != metadata.end(); ++i)
                 {
                     thisMd = i->md;
 
@@ -1979,8 +2027,8 @@ avtDatabase::GetMetaData(int timeState, bool forceReadAllCyclesTimes,
                     //
                     frontMd = metadata.front().md;
                     i = metadata.begin();
-                    i++;
-                    for (; i != metadata.end(); i++)
+                    ++i;
+                    for (; i != metadata.end(); ++i)
                     {
                         thisMd = i->md;
 
@@ -2002,6 +2050,7 @@ avtDatabase::GetMetaData(int timeState, bool forceReadAllCyclesTimes,
 
     
     avtDatabaseMetaData *retval = metadata.front().md;
+    VisitMutexUnlock( "avtDatabase::GetMetaData" );
 
     if (forceReadThisStateCycleTime)
     {
@@ -2071,15 +2120,22 @@ avtDatabase::GetNewSIL(int timeState, bool treatAllDBsAsTimeVarying)
 //    Tom Fogal, Thu Nov 20 12:28:54 MST 2008
 //    Don't re-use the iterator after an erase.
 //
+//    David Camp, Thu Jul 10 10:07:30 PDT 2014
+//    Need to protect the sil list in thread mode.
+//    Also change the erase to a splice operation. This is much faster
+//    and less memory movement. Other stl changes to speed up the code.
+//
 // ****************************************************************************
 
 avtSIL *
 avtDatabase::GetSIL(int timeState, bool treatAllDBsAsTimeVarying)
 {
-    if (SILIsInvariant() && !treatAllDBsAsTimeVarying)
+    VisitMutexLock( "avtDatabase::GetSIL" );
+
+    if (!treatAllDBsAsTimeVarying && SILIsInvariant())
     {
         // since its invariant, get it at time 0
-        if (sil.size() == 0)
+        if (sil.empty())
             GetNewSIL(0);
     }
     else
@@ -2087,14 +2143,13 @@ avtDatabase::GetSIL(int timeState, bool treatAllDBsAsTimeVarying)
         bool found = false;
         // see if we've already cached sil for this timestep
         std::list<CachedSILEntry>::iterator i;
-        for (i = sil.begin(); i != sil.end(); i++)
+        for (i = sil.begin(); i != sil.end(); ++i)
         {
             if (timeState == i->ts)
             {
                 // move the found entry to front of list
-                CachedSILEntry tmp = *i;
-                sil.erase(i);
-                sil.push_front(tmp);
+                if (i != sil.begin())
+                    sil.splice(sil.begin(), sil, i);
                 found = true;
                 break;
             }
@@ -2102,20 +2157,22 @@ avtDatabase::GetSIL(int timeState, bool treatAllDBsAsTimeVarying)
 
        // if we didn't find it in the cache, remove the oldest (last) entry
        // and read new sil
-       if (false == found)
+       if (found == false)
        {
-           if (sil.size() >= silCacheSize)
+           if (sil.size() >= silMaxCacheSize)
            {
-               CachedSILEntry tmp = sil.back(); 
-               sil.pop_back();
-               delete tmp.sil;
+                delete sil.back().sil;
+                sil.pop_back();
            }
 
            GetNewSIL(timeState, treatAllDBsAsTimeVarying);
        }
     }
 
-    return sil.front().sil;
+    avtSIL *tmp = sil.front().sil;
+    VisitMutexUnlock( "avtDatabase::GetSIL" );
+
+    return tmp;
 }
 
 
@@ -2129,12 +2186,28 @@ avtDatabase::GetSIL(int timeState, bool treatAllDBsAsTimeVarying)
 //  Programmer: Jeremy Meredith
 //  Creation:   August 24, 2004
 //
+//  Modifications:
+//
+//  Burlen Loring, Sun Apr 27 14:22:26 PDT 2014
+//  fixed leak: delete the cached data before clear'ing the list
+//
 // ****************************************************************************
 
 void
 avtDatabase::ClearMetaDataAndSILCache(void)
 {
+    std::list<CachedMDEntry>::iterator it2;
+    for (it2 = metadata.begin() ; it2 != metadata.end() ; ++it2)
+    {
+        delete (*it2).md;
+    }
     metadata.clear();
+
+    std::list<CachedSILEntry>::iterator it3;
+    for (it3 = sil.begin() ; it3 != sil.end() ; ++it3)
+    {
+        delete (*it3).sil;
+    }
     sil.clear();
 }
 
@@ -2188,14 +2261,16 @@ avtDatabase::FreeUpResources(void)
 //    Mark C. Miller, Tue Mar 16 14:49:26 PST 2004
 //    Made it call PopulateIOInformation directly 
 //
+//    Brad Whitlock, Thu Jun 19 10:45:07 PDT 2014
+//    I made it call/return PopulateIOInformation always.
+//
 // ****************************************************************************
 
-const avtIOInformation &
-avtDatabase::GetIOInformation(int stateIndex)
+bool
+avtDatabase::GetIOInformation(int stateIndex, const std::string &meshname,
+    avtIOInformation &ioInfo)
 {
-    if (!gotIOInfo)
-        PopulateIOInformation(stateIndex, ioInfo);
-    return ioInfo;
+    return PopulateIOInformation(stateIndex, meshname, ioInfo);
 }
 
 
@@ -2297,16 +2372,15 @@ avtDatabase::NumStagesForFetch(avtDataRequest_p)
 //    Added support for !NBLOCKS declaration in the file
 // ****************************************************************************
 
-void
+bool
 avtDatabase::GetFileListFromTextFile(const char *textfile,
-                                     char **&filelist, int &filelistN, int *bang_nBlocks)
+    char **&filelist, int &filelistN, int *bang_nBlocksp)
 {
+    debug1 << "Reading file list from text file \"" << textfile << "\"" << endl;
+
     ifstream ifile(textfile);
 
-    if (ifile.fail())
-    {
-        EXCEPTION1(InvalidFilesException, textfile);
-    }
+    if (ifile.fail()) return false;
 
     char          dir[1024];
     const char   *p = textfile, *q = NULL;
@@ -2319,34 +2393,55 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
 
     vector<char *>  list;
     char  str_auto[1024];
-    char  str_with_dir[1024];
+    char  str_with_dir[2048];
     int   count = 0;
     int   badCount = 0;
-    while (!ifile.eof() && badCount < 10000)
+    int   bang_nBlocks = -1;
+    bool failed = false;
+    while (!ifile.eof() && !failed && badCount < 10000)
     {
         str_auto[0] = '\0';
         ifile.getline(str_auto, 1024, '\n');
-        int str_auto_len = strlen(str_auto);
-
+        if (ifile.fail() && !ifile.eof())
+        {
+            failed = true;
+            debug1 << "Got a failure with string \"" << str_auto << "\"" << endl;
+            continue;
+        }
+        size_t str_auto_len = strlen(str_auto);
+        for (int i = 0; i < (int) str_auto_len; i++)
+        {
+            if (!isprint(str_auto[i]))
+            {
+                debug1 << "Got a bad string \"" << str_auto << "\"" << endl;
+                failed = true;
+                break;
+            }
+            if (failed) continue;
+        }
+            
         if (str_auto_len > 0 && str_auto[str_auto_len-1] == '\r')
             str_auto[str_auto_len-1] = '\0';
 
         if (str_auto[0] != '\0' && str_auto[0] != '#')
         {
-            if (strstr(str_auto, "!NBLOCKS ") != NULL)
+            char *bnbp = strstr(str_auto, "!NBLOCKS ");
+            if (bnbp && bnbp == str_auto && !count)
             {
                 errno = 0;
-                int bnb = strtol(str_auto + strlen("!NBLOCKS "), 0, 10);
-                if (errno != 0 || bnb <= 0)
+                bang_nBlocks = strtol(str_auto + strlen("!NBLOCKS "), 0, 10);
+                if (errno != 0 || bang_nBlocks <= 0)
                 {
                     debug1 << "BAD SYNTAX FOR !NBLOCKS, \"" << str_auto << "\", RESETTING TO 1"  << endl;
-                    bnb = 1;
+                    failed = true;
                 }
                 else
-                    debug1 << "Found a multi-block file with " << bnb << " blocks." << endl;
+                    debug1 << "Found a multi-block file with " << bang_nBlocks << " blocks." << endl;
 
-                if (bang_nBlocks)
-                    *bang_nBlocks = bnb;
+                if (bang_nBlocksp)
+                    *bang_nBlocksp = bang_nBlocks;
+ 
+                continue;
             }
 
             ConvertSlashes(str_auto);
@@ -2361,21 +2456,41 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
             }
             char *str_heap = CXX_strdup(str_with_dir);
             list.push_back(str_heap); 
-            count++;
+            ++count;
         }
         else
-            badCount++;
+            ++badCount;
     }
 
-    filelist = new char*[count];
-    vector<char *>::iterator it;
-    filelistN = 0;
-    for (it = list.begin() ; it != list.end() ; it++)
+    if (bang_nBlocks > 0 && !failed)
     {
-        filelist[filelistN++] = *it;
+        if (count % bang_nBlocks)
+        {
+            failed = true;
+            debug1 << "File count of " << count << " not evenly divided by !NBLOCKS value of " << bang_nBlocks << endl;
+        }
     }
-}
 
+    vector<char *>::iterator it;
+    if (failed)
+    {
+        for (it = list.begin() ; it != list.end() ; ++it)
+        {
+            free(*it);
+        }
+    }
+    else
+    {
+        filelist = new char*[count];
+        filelistN = 0;
+        for (it = list.begin() ; it != list.end() ; ++it)
+        {
+            filelist[filelistN++] = *it;
+        }
+    }
+
+    return !failed;
+}
 
 // ****************************************************************************
 //  Method: avtDatabase::Query
@@ -2493,6 +2608,9 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
 //    Hank Childs, Tue Dec 15 13:40:40 PST 2009
 //    Adapt to new SIL interface.
 //
+//    Burlen Loring, Sun Apr 27 15:17:23 PDT 2014
+//    Clean up -Wall warnings
+//
 // ****************************************************************************
 
 void               
@@ -2527,7 +2645,7 @@ avtDatabase::Query(PickAttributes *pa)
         string mesh = GetMetaData(ts)->MeshForVar(pa->GetActiveVariable());
         const vector<int> &wholes = sil->GetWholes();
         avtSILSet_p top = NULL;
-        for (int i = 0 ; i < wholes.size() ; i++)
+        for (unsigned int i = 0 ; i < wholes.size() ; ++i)
         {
             avtSILSet_p candidate = sil->GetSILSet(wholes[i]);
             if (candidate->GetName() == mesh)
@@ -2541,7 +2659,7 @@ avtDatabase::Query(PickAttributes *pa)
         else
         {
             const vector<int> &mapsOut = top->GetMapsOut();
-            for (int j = 0; j < mapsOut.size() ; j++)
+            for (unsigned int j = 0; j < mapsOut.size() ; ++j)
             {
                 int cIndex = mapsOut[j];
                 avtSILCollection_p collection = sil->GetSILCollection(cIndex);
@@ -2641,7 +2759,7 @@ avtDatabase::Query(PickAttributes *pa)
             pa->SetFulfilled(false);
             return;
         }
-        for (int j = 0; j < userVars.size(); j++)
+        for (unsigned int j = 0; j < userVars.size(); ++j)
         {
             PickVarInfo varInfo;
             varInfo.SetVariableName(userVars[j]);
@@ -2655,7 +2773,7 @@ avtDatabase::Query(PickAttributes *pa)
               pa->GetShowMeshName());
     pa->SetMeshInfo(meshInfo);
 
-    for (int varNum = 0; varNum < userVars.size(); varNum++)
+    for (unsigned int varNum = 0; varNum < userVars.size(); ++varNum)
     {
         vName = userVars[varNum];
         if (strcmp(vName.c_str(), "default") == 0)
@@ -2687,7 +2805,6 @@ avtDatabase::Query(PickAttributes *pa)
             }
         }
  
-        bool success = false;
         TRY
         {
             avtVarType varType;
@@ -2709,37 +2826,37 @@ avtDatabase::Query(PickAttributes *pa)
                                    pa->GetRealIncidentElements() : incEls);
             switch(varType)
             {
-                case AVT_SCALAR_VAR : success = 
+                case AVT_SCALAR_VAR :
                    QueryScalars(vName, foundDomain, foundEl, ts, incEls, 
                                 pa->GetVarInfo(varNum), zonePick);
                    pa->GetVarInfo(varNum).SetVariableType("scalar");
                    break; 
-                case AVT_VECTOR_VAR : success = 
+                case AVT_VECTOR_VAR :
                    QueryVectors(vName, foundDomain, foundEl, ts, incEls, 
                                 pa->GetVarInfo(varNum), zonePick);
                    pa->GetVarInfo(varNum).SetVariableType("vector");
                    break; 
-                case AVT_TENSOR_VAR : success = 
+                case AVT_TENSOR_VAR :
                    QueryTensors(vName, foundDomain, foundEl, ts, incEls, 
                                 pa->GetVarInfo(varNum), zonePick);
                    pa->GetVarInfo(varNum).SetVariableType("tensor");
                    break; 
-                case AVT_SYMMETRIC_TENSOR_VAR : success = 
+                case AVT_SYMMETRIC_TENSOR_VAR :
                    QuerySymmetricTensors(vName, foundDomain, foundEl, ts,
                                  incEls, pa->GetVarInfo(varNum), zonePick);
                    pa->GetVarInfo(varNum).SetVariableType("symm_tensor");
                    break; 
-                case AVT_ARRAY_VAR : success = 
+                case AVT_ARRAY_VAR :
                    QueryArrays(vName, foundDomain, foundEl, ts,
                                incEls, pa->GetVarInfo(varNum), zonePick);
                    pa->GetVarInfo(varNum).SetVariableType("array");
                    break; 
-                case AVT_MATERIAL : success = 
+                case AVT_MATERIAL :
                    QueryMaterial(vName, foundDomain, matEl, ts, matIncEls, 
                                  pa->GetVarInfo(varNum), zonePick);
                    pa->GetVarInfo(varNum).SetVariableType("material");
                    break; 
-                case AVT_MATSPECIES : success = 
+                case AVT_MATSPECIES :
                    QuerySpecies(vName, foundDomain, matEl, ts, matIncEls, 
                                 pa->GetVarInfo(varNum), zonePick);
                    pa->GetVarInfo(varNum).SetVariableType("species");
@@ -2748,7 +2865,7 @@ avtDatabase::Query(PickAttributes *pa)
                    if (!pa->GetVarInfo(varNum).HasInfo())
                        pa->GetVarInfo(varNum).SetVariableType("mesh");
                    break; 
-                case AVT_LABEL_VAR : success = 
+                case AVT_LABEL_VAR :
                    QueryLabels(vName, foundDomain, foundEl, ts, incEls, 
                                 pa->GetVarInfo(varNum), zonePick);
                    pa->GetVarInfo(varNum).SetVariableType("label");
@@ -2803,7 +2920,7 @@ avtDatabase::GetExtentsFromAuxiliaryData(avtDataRequest_p spec,
     int nvals = 2;
     if (strcmp(type, AUXILIARY_DATA_SPATIAL_EXTENTS) == 0)
         nvals = 6;
-    for (int i = 0; i < nvals; i++)
+    for (int i = 0; i < nvals; ++i)
         extents[i] = tree_extents[i];
 
     return true;

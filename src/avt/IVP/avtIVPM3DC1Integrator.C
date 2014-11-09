@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,7 +73,6 @@ avtIVPM3DC1Integrator::avtIVPM3DC1Integrator()
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    d = 0.0;
     numStep = 0;
     degenerate_iterations = 0;
     stiffness_eps = tol / 1000.0;
@@ -92,158 +91,6 @@ avtIVPM3DC1Integrator::~avtIVPM3DC1Integrator()
 {
 }
 
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::SetCurrentT
-//
-//  Purpose:
-//      Sets the current T.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   October 24, 2009
-//
-// ****************************************************************************
-
-void
-avtIVPM3DC1Integrator::SetCurrentT(double newT)
-{
-    t = newT;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::GetCurrentT
-//
-//  Purpose:
-//      Gets the current T.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   October 24, 2009
-//
-// ****************************************************************************
-
-double 
-avtIVPM3DC1Integrator::GetCurrentT() const 
-{
-    return t;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::SetCurrentY
-//
-//  Purpose:
-//      Sets the current Y.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   October 24, 2009
-//
-//  Modifications:
-//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
-//    Improved version of A-B solver that builds function history from
-//    initial RK4 steps.
-//
-// ****************************************************************************
-
-void
-avtIVPM3DC1Integrator::SetCurrentY(const avtVector &newY)
-{
-    yCur = newY;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::GetCurrentY
-//
-//  Purpose:
-//      Gets the current Y.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   October 24, 2009
-//
-//  Modifications:
-//    Dave Pugmire, Fri Aug  8 16:05:34 EDT 2008
-//    Improved version of A-B solver that builds function history from
-//    initial RK4 steps.
-//
-// ****************************************************************************
-
-avtVector 
-avtIVPM3DC1Integrator::GetCurrentY() const
-{
-    return yCur;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::SetNextStepSize
-//
-//  Purpose:
-//      Sets the step size for the next step.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   October 24, 2009
-//
-// ****************************************************************************
-
-void 
-avtIVPM3DC1Integrator::SetNextStepSize(const double& newH)
-{
-    h = newH;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::GetNextStepSize
-//
-//  Purpose:
-//      Gets the step size for the next step.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   October 24, 2009
-//
-// ****************************************************************************
-
-double 
-avtIVPM3DC1Integrator::GetNextStepSize() const
-{
-    return h;
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::SetMaximumStepSize
-//
-//  Purpose:
-//      Sets the maximum step size for the next step.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   October 24, 2009
-//
-// ****************************************************************************
-
-void
-avtIVPM3DC1Integrator::SetMaximumStepSize(const double& maxH)
-{
-    h_max = maxH;
-}
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::GetMaximumStepSize
-//
-//  Purpose:
-//      Gets the maximum step size for the next step.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   October 24, 2009
-//
-// ****************************************************************************
-
-double
-avtIVPM3DC1Integrator::GetMaximumStepSize() const
-{
-    return h_max;
-}
 
 // ****************************************************************************
 //  Method: avtIVPM3DC1Integrator::SetMaximumDegenerateIterations
@@ -298,7 +145,6 @@ avtIVPM3DC1Integrator::Reset(const double& t_start,
                              const avtVector& v_start)
 {
     t = t_start;
-    d = 0.0;
     numStep = 0;
 
     degenerate_iterations = 0;
@@ -364,6 +210,7 @@ avtIVPM3DC1Integrator::Step(avtIVPField* field, double t_max,
 
     if( res == avtIVPSolver::OK )
     {
+      // Convert and save the position.
         ivpstep->resize( 2 );
 
         // The integration is done in cylindrical coordinates so
@@ -416,11 +263,11 @@ avtIVPM3DC1Integrator::vpstep(const avtIVPField* field,
   xin[1] = yCur[1];
   xin[2] = yCur[2];
 
-  if (res = partial_step(field,  xin, 0, 0.5*h, xout)) return res;
-  if (res = partial_step(field, xout, 1, 0.5*h, xout)) return res;
-  if (res = partial_step(field, xout, 2,     h, xout)) return res;
-  if (res = partial_step(field, xout, 1, 0.5*h, xout)) return res;
-  if (res = partial_step(field, xout, 0, 0.5*h, xout)) return res;
+  if ((res = partial_step(field,  xin, 0, 0.5*h, xout))) return res;
+  if ((res = partial_step(field, xout, 1, 0.5*h, xout))) return res;
+  if ((res = partial_step(field, xout, 2,     h, xout))) return res;
+  if ((res = partial_step(field, xout, 1, 0.5*h, xout))) return res;
+  if ((res = partial_step(field, xout, 0, 0.5*h, xout))) return res;
 
   yNew[0] = xout[0];
   yNew[1] = xout[1];
@@ -800,7 +647,6 @@ avtIVPM3DC1Integrator::AcceptStateVisitor(avtIVPStateHelper& aiss)
         .Accept(h)
         .Accept(h_max)
         .Accept(t)
-        .Accept(d)
         .Accept(yCur)
         .Accept(ys[0])
         .Accept(ys[1]);

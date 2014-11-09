@@ -55,6 +55,10 @@ if [[ "$OPSYS" == "Darwin" ]]; then
 # Kernel versions to OSX version numbers.
 # Other options for dealing with MACOSX_DEPLOYMENT_TARGET didn't work
 # See issue #1499 (https://visitbugs.ornl.gov/issues/1499)
+
+# use gcc for 10.9 & earlier
+
+
    if (( ${VER%%.*} < 8 )) ; then
       export MACOSX_DEPLOYMENT_TARGET=10.3
    elif [[ ${VER%%.*} == 8 ]] ; then
@@ -69,11 +73,18 @@ if [[ "$OPSYS" == "Darwin" ]]; then
       export MACOSX_DEPLOYMENT_TARGET=10.8
    elif [[ ${VER%%.*} == 13 ]] ; then
       export MACOSX_DEPLOYMENT_TARGET=10.9
+      export C_COMPILER=${C_COMPILER:-"clang"}
+      export CXX_COMPILER=${CXX_COMPILER:-"clang++"}
    else
       export MACOSX_DEPLOYMENT_TARGET=10.9
+      export C_COMPILER=${C_COMPILER:-"clang"}
+      export CXX_COMPILER=${CXX_COMPILER:-"clang++"}
    fi
+   
+   
    export C_COMPILER=${C_COMPILER:-"gcc"}
    export CXX_COMPILER=${CXX_COMPILER:-"g++"}
+
    # Disable Fortran on Darwin since it causes HDF5, H5Part, Silo, ADIOS builds to explode.
    export FC_COMPILER=""
    export C_OPT_FLAGS=${C_OPT_FLAGS:-"-O2"}
@@ -264,6 +275,9 @@ done
 export DO_HOSTCONF="yes"
 export ON_HOSTCONF="on"
 
+export DO_BOOST="yes"
+export ON_BOOST="on"
+
 export DO_DEBUG="no"
 export ON_DEBUG="off"
 export DO_GROUP="no"
@@ -291,9 +305,11 @@ export DO_FORTRAN="no"
 export ON_FORTRAN="off"
 export DO_SLIVR="no"
 export ON_SLIVR="off"
+export DO_PARADIS="no"
+export ON_PARADIS="off"
 export PREVENT_ICET="no"
-GRAPHICAL="yes"
-ON_GRAPHICAL="on"
+GRAPHICAL="no"
+ON_GRAPHICAL="off"
 verify="no"
 ON_verify="off"
 export DO_OPTIONAL="yes"
@@ -911,6 +927,7 @@ for arg in "${arguments[@]}" ; do
         --cxx) next_arg="cxx";;
         --log-file) next_arg="log-file";;
         --console) GRAPHICAL="no"; ON_GRAPHICAL="off";;
+        --gui) GRAPHICAL="yes"; ON_GRAPHICAL="on";;
         --debug) C_OPT_FLAGS="${C_OPT_FLAGS} -g"; CXX_OPT_FLAGS="${CXX_OPT_FLAGS} -g"; VISIT_BUILD_MODE="Debug";;
         --bv-debug) set -vx;;
         --download-only) DOWNLOAD_ONLY="yes";;
@@ -923,11 +940,13 @@ for arg in "${arguments[@]}" ; do
         --java) DO_JAVA="yes"; ON_JAVA="on";;
         --makeflags) next_arg="makeflags";;
         --no-hostconf) DO_HOSTCONF="no"; ON_HOSTCONF="off";;
+        --no-boost) DO_BOOST="no"; ON_BOOST="off";;
         --parallel) parallel="yes"; DO_ICET="yes"; ON_ICET="on"; ON_parallel="on";;
         --prefix) next_arg="prefix";;
         --print-vars) next_action="print-vars";;
         --server-components-only) DO_SERVER_COMPONENTS_ONLY="yes";;
         --slivr) DO_SLIVR="yes"; ON_SLIVR="on";;
+        --paradis) DO_PARADIS="yes"; ON_PARADIS="on";;
         --static) DO_STATIC_BUILD="yes"; USE_VISIBILIITY_HIDDEN="no";;
         --thread) DO_THREAD_BUILD="yes";;
         --stdout) LOG_FILE="/dev/tty";;
@@ -1012,10 +1031,23 @@ fi
 info "[build_visit invocation arguments] $@"
 
 
-#write a unified file
+#
+# Write a unified file
+#
 if [[ $WRITE_UNIFIED_FILE != "" ]] ; then
     bv_write_unified_file $WRITE_UNIFIED_FILE
     exit 0
+fi
+
+#
+# If we doing a trunk build then make sure we are using SVN
+#
+if [[ "$TRUNK_BUILD" == "yes" ]]; then
+    if [[ "$DO_SVN" == "no" ]]; then
+        DO_SVN="yes"
+        DO_SVN_ANON="yes"
+        export SVN_ROOT_PATH=$SVN_ANON_ROOT_PATH
+    fi
 fi
 
 #
@@ -1096,7 +1128,8 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
            "Java"       "enable java client library"      $ON_JAVA\
            "Fortran"    "enable fortran in third party libraries"  $ON_FORTRAN\
            "SLIVR"      "enable SLIVR volume rendering library"  $ON_SLIVR\
-           "EnvVars"     "specify build environment var values"   $ON_verify\
+           "Paradis"    "enable paraDIS client library"   $ON_PARADIS\
+           "EnvVars"    "specify build environment var values"   $ON_verify\
            "Advanced"   "display advanced options"        $ON_MORE  3>&1 1>&2 2>&3)
     retval=$?
 
@@ -1113,6 +1146,7 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
         DO_JAVA="no"
         DO_FORTRAN="no"
         DO_SLIVR="no"
+        DO_PARADIS="no"
         verify="no"
         DO_MORE="no"
         for OPTION in $choice
@@ -1138,6 +1172,8 @@ if [[ "$GRAPHICAL" == "yes" ]] ; then
                  DO_FORTRAN="yes";;
               SLIVR)
                  DO_SLIVR="yes";;
+              Paradis)
+                 DO_PARADIS="yes";;
               EnvVars)
                  verify="yes";;
               Advanced)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -284,7 +284,7 @@ void SharedDaemon::handleConnection()
     else if(QWsSocket::initializeWebSocket(result,response))
     {
         /// this is a websocket connection, respond and get frame..
-        socket->write(response.toAscii());
+        socket->write(response.toLatin1());
         socket->flush();
 
         QEventLoop loop;
@@ -365,7 +365,7 @@ void SharedDaemon::handleConnection()
     {
         const JSONNode::JSONArray& array = jo["windowIds"].GetArray();
 
-        for(int i = 0; i < array.size(); ++i)
+        for(size_t i = 0; i < array.size(); ++i)
         {
             const JSONNode& node = array[i];
 
@@ -509,7 +509,7 @@ void SharedDaemon::AddNewClient(const std::string &host, const stringVector &arg
         if(wsocket->internalSocket()->state() != QAbstractSocket::UnconnectedState)
             wsocket->internalSocket()->waitForBytesWritten();
 
-        wsocket->close();
+        wsocket->close("");
         wsocket->internalSocket()->disconnectFromHost();
         if(wsocket->internalSocket()->state() != QAbstractSocket::UnconnectedState)
             wsocket->internalSocket()->waitForDisconnected();

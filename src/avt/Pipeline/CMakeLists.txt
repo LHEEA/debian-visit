@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -54,6 +54,9 @@
 #   Cyrus Harrison, on Oct 28 14:39:05 PDT 2013
 #   Link vtkCommonDataModel (it contains the vtkDataSet types)
 #
+#   Brad Whitlock, Mon Apr  7 15:24:19 PDT 2014
+#   Link to visit_vtk.
+#
 #****************************************************************************/
 
 SET(DATA_SOURCES
@@ -99,13 +102,13 @@ Data/avtMaterial.C
 Data/avtMaximumIntensityProjectionRF.C
 Data/avtMetaData.C
 Data/avtMixedVariable.C
+Data/avtMultiresSelection.C
 Data/avtNullData.C
 Data/avtOpacityMap.C
 Data/avtOpacityMapSamplePointArbitrator.C
 Data/avtPhong.C
 Data/avtPixelizer.C
 Data/avtPlaneSelection.C
-Data/avtPointAttribute.C
 Data/avtPointExtractor.C
 Data/avtPointSelection.C
 Data/avtPyramidExtractor.C
@@ -114,6 +117,7 @@ Data/avtRay.C
 Data/avtRayFunction.C
 Data/avtRelativeValueSamplePointArbitrator.C
 Data/avtResampleSelection.C
+Data/avtResolutionSelection.C
 Data/avtSamplePointArbitrator.C
 Data/avtSamplePoints.C
 Data/avtSpatialBoxSelection.C
@@ -234,13 +238,15 @@ ${VISIT_SOURCE_DIR}/avt/Pipeline/Data
 ${VISIT_SOURCE_DIR}/avt/Pipeline/Pipeline
 ${VISIT_SOURCE_DIR}/avt/Pipeline/Sinks
 ${VISIT_SOURCE_DIR}/avt/Pipeline/Sources
+${VISIT_SOURCE_DIR}/visit_vtk/full
 ${VISIT_SOURCE_DIR}/visit_vtk/lightweight
+${EAVL_INCLUDE_DIR}
 ${VTK_INCLUDE_DIRS}
 ${ZLIB_INCLUDE_DIR}
 )
 
 # Add link directories
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS})
+LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS})
 
 # Unless we're doing a VISIT_DBIO_ONLY build then we need avtmath
 IF(NOT VISIT_DBIO_ONLY)
@@ -250,11 +256,11 @@ ENDIF(NOT VISIT_DBIO_ONLY)
 #********************************* SERIAL ************************************
 ADD_LIBRARY(avtpipeline_ser ${ALL_SOURCES})
     TARGET_LINK_LIBRARIES(avtpipeline_ser visitcommon ${AVTMATH} avtdbatts 
-                                           lightweight_visit_vtk vtkCommonCore 
+                                           visit_vtk lightweight_visit_vtk vtkCommonCore 
                                            vtkCommonDataModel vtkFiltersGeometry 
                                            vtkRenderingOpenGL vtkRenderingFreeType 
                                            vtkRenderingFreeTypeOpenGL vtkInteractionStyle 
-                                           ${ZLIB_LIB})
+                                           ${ZLIB_LIB} ${EAVL_LIB})
 
 IF(HAVE_LIB_R)
      TARGET_LINK_LIBRARIES(avtpipeline_ser vtkFiltersStatisticsGnuR)
@@ -269,12 +275,12 @@ IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(avtpipeline_par ${ALL_SOURCES})
 
         TARGET_LINK_LIBRARIES(avtpipeline_par visitcommon ${AVTMATH} avtdbatts 
-                                              lightweight_visit_vtk vtkCommonCore 
+                                              visit_vtk lightweight_visit_vtk vtkCommonCore 
                                               vtkCommonDataModel vtkFiltersGeometry 
                                               vtkRenderingOpenGL vtkRenderingFreeType 
                                               vtkRenderingFreeTypeOpenGL 
                                               vtkInteractionStyle ${ZLIB_LIB} 
-                                              )
+                                              ${EAVL_LIB})
     IF(HAVE_LIB_R)
         TARGET_LINK_LIBRARIES(avtpipeline_par vtkFiltersStatisticsGnuR)
     ENDIF(HAVE_LIB_R)

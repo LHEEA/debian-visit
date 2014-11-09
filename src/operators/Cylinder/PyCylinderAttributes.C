@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewCylinderAttributes(int);
 std::string
 PyCylinderAttributes_ToString(const CylinderAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const double *point1 = atts->GetPoint1();
         SNPRINTF(tmpStr, 1000, "%spoint1 = (", prefix);
@@ -513,7 +513,6 @@ PyCylinderAttributes_GetLogString()
 static void
 PyCylinderAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    CylinderAttributes *atts = (CylinderAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

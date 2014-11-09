@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+ * Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
  * Produced at the Lawrence Livermore National Laboratory
  * All rights reserved.
  *
@@ -212,6 +212,9 @@ avtlataFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeSta
     case Domain::polyedre:
     case Domain::hexa:      topo_dim = 3; break;
     default:
+      topo_dim = 3; ///TODO: this should be an error in default case!
+      EXCEPTION1(InvalidVariableException, 
+                 "avtlataFileFormat::PopulateDatabaseMetaData error: unknown element type");
       cerr << "avtlataFileFormat::PopulateDatabaseMetaData error: unknown element type" << endl;
 //      exit(-1);
     }

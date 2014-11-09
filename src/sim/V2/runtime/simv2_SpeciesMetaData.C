@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -285,7 +285,7 @@ simv2_SpeciesMetaData_getSpeciesName(visit_handle h, int i, visit_handle *val)
     }
     int retval = VISIT_ERROR;
     VisIt_SpeciesMetaData *obj = GetObject(h, "simv2_SpeciesMetaData_getSpeciesName");
-    if(obj != NULL && i >= 0 && i < obj->speciesNames.size())
+    if(obj != NULL && i >= 0 && i < (int)obj->speciesNames.size())
     {
         *val = obj->speciesNames[i];
         retval = VISIT_OKAY;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -42,7 +42,6 @@
 #include <cstdlib>
 
 using namespace std;
-int MapNode::MapNodeType = Variant::STRING_VECTOR_TYPE + 1000;
 
 // ****************************************************************************
 //  Method:  MapNode::MapNode
@@ -507,7 +506,7 @@ MapNode::ToJSONNodeData(bool encodeString) const
     }
     else // save value, if we have a value
     {
-        node = Variant::ToJSONNode(encodeString);
+        node = Variant::ToJSONNode(encodeString,true);
     }
 
     return node;
@@ -663,8 +662,8 @@ MapNode::SetValue(const JSONNode& data, const JSONNode& metadata, bool decodeStr
         const JSONNode::JSONArray& marray = metadata.GetArray();
         char buffer[1024];
 
-        for(int i = 0; i < array.size(); ++i) {
-            sprintf(buffer, "%d", i);
+        for(size_t i = 0; i < array.size(); ++i) {
+            sprintf(buffer, "%ld", i);
             entries[buffer] = MapNode();
             entries[buffer].SetValue(array[i], marray[i], decodeString);
         }
@@ -678,6 +677,12 @@ MapNode::SetValue(const JSONNode& data, const JSONNode& metadata, bool decodeStr
             Variant::SetValue(data,metadata,decodeString);
         }
     }
+}
+
+void
+MapNode::SetValue(const JSONNode* data, const JSONNode* metadata, bool decodeString)
+{
+    MapNode::SetValue(*data, *metadata, decodeString);
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -69,6 +69,12 @@
 #    Matthew Wheeler, Mon 20 May 12:00:00 GMT 2013
 #    Added avtMinCornerArea and avtMinSinCorner.C
 #
+#    Gunther H. Weber, Tue May 13 10:40:56 PDT 2014
+#    Added array_sum.
+#
+#    Kevin Griffin, Tue Jul 29 10:08:40 PDT 2014
+#    Added q_criterion.
+#
 #****************************************************************************/
 
 SET(ABSTRACT_SOURCES
@@ -132,6 +138,7 @@ General/avtApplyMapExpression.C
 General/avtArrayComposeExpression.C
 General/avtArrayComposeWithBinsExpression.C
 General/avtArrayDecomposeExpression.C
+General/avtArraySumExpression.C
 General/avtBinExpression.C
 General/avtColorComposeExpression.C
 General/avtConnComponentsExpression.C
@@ -155,6 +162,7 @@ General/avtGradientExpression.C
 General/avtHSVColorComposeExpression.C
 General/avtIsNaNExpression.C
 General/avtKeyAggregatorExpression.C
+General/avtLambda2Expression.C
 General/avtLaplacianExpression.C
 General/avtMIRvfExpression.C
 General/avtMagnitudeExpression.C
@@ -169,6 +177,7 @@ General/avtPerMaterialValueExpression.C
 General/avtPerformColorTableLookupExpression.C
 General/avtProcessorIdExpression.C
 General/avtThreadIdExpression.C
+General/avtQCriterionExpression.C
 General/avtRandomExpression.C
 General/avtRecenterExpression.C
 General/avtRectilinearLaplacianExpression.C
@@ -363,7 +372,7 @@ ENDIF(VISIT_PYTHON_FILTERS)
 
 
 # Add link directories
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR})
+LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR})
 
 IF(VISIT_PYTHON_FILTERS)
     LINK_DIRECTORIES(${PYTHON_LIBRARY_DIRS})

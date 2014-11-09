@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -59,6 +59,9 @@
 #
 #    Brad Whitlock, Thu Apr 11 15:59:49 PDT 2013
 #    Add check for X11. Change how we get zlib.
+#
+#    Eric Brugger, Tue Sep 30 15:03:30 PDT 2014
+#    Add the EAVL library to the list of link libraries.
 #
 #****************************************************************************/
 
@@ -140,6 +143,7 @@ LINK_DIRECTORIES(
 ${LIBRARY_OUTPUT_DIRECTORY}
 ${GLEW_LIBRARY_DIR}
 ${MESA_LIBRARY_DIR}
+${EAVL_LIBRARY_DIR}
 ${VTK_LIBRARY_DIRS}
 ${TCMALLOC_LIBRARY_DIR}
 ${ALL_THIRDPARTY_IO_LIBRARY_DIR}
@@ -193,6 +197,7 @@ TARGET_LINK_LIBRARIES(engine_ser_exe
     ${TCMALLOC_LIB}
     ${CMAKE_THREAD_LIBS} 
     ${ZLIB_LIB}
+    ${EAVL_LIB}
 )
 
 # If we're building statically then the engine can't be linked until the plugin

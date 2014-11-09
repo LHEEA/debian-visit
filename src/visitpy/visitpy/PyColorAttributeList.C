@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewColorAttributeList(int);
 std::string
 PyColorAttributeList_ToString(const ColorAttributeList *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     { // new scope
         int index = 0;
@@ -109,7 +109,7 @@ ColorAttributeList_GetColors(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetColors().size())
+    if(index < 0 || (size_t)index >= obj->data->GetColors().size())
     {
         char msg[200];
         if(obj->data->GetColors().size() == 0)
@@ -430,7 +430,6 @@ PyColorAttributeList_GetLogString()
 static void
 PyColorAttributeList_CallLogRoutine(Subject *subj, void *data)
 {
-    ColorAttributeList *atts = (ColorAttributeList *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

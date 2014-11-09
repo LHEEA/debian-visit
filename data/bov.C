@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,13 +40,24 @@
 #include <stdio.h>
 #include <visit-config.h>
 #include <string.h>
+#include <iostream>
+using std::cerr;
+using std::endl;
 
 #ifndef _WIN32
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 #else
 #define snprintf _snprintf
+#endif
+
+// supress the following since silo uses char * in its API
+#if defined(__clang__)
+# pragma GCC diagnostic ignored "-Wdeprecated-writable-strings"
+#elif defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wwrite-strings"
 #endif
 
 static const float minvals[] = {10.,10.,10.};
@@ -221,7 +232,7 @@ write_BOV_types(const char *tname, const char *sname, int nc, T *data,
     printf("Creating %s\n", filename);
     unsigned char *cptr = (unsigned char *)data;
     fill_BOV_indices(data + offset, full_size);
-    for(int i = 0; i < offset * sizeof(T); ++i)
+    for(size_t i = 0; i < offset * sizeof(T); ++i)
         cptr[i] = (unsigned char)i;
     write_BOV_data(filename, data, nx*ny*nz + offset);
     snprintf(headername, 1000, "%s_indices_div_with_header.bov", tname);
@@ -444,27 +455,21 @@ write_nodal_multi_bov()
     printf("Creating nodal_multi*.bov\n");
 
 #ifndef _WIN32
-    mkdir("nodal_bov", S_IRUSR | S_IWUSR | S_IXUSR);
-    chdir("nodal_bov");
+    if ( (mkdir("nodal_bov", S_IRUSR | S_IWUSR | S_IXUSR) && (errno!=EEXIST))
+      || chdir("nodal_bov") )
+    {
+        cerr << "ERROR: failed to cd to nodal_bov" << endl;
+    }
 #endif
 
     // Write the BOV files.
     int findex = 0;
     for(int k = 0; k < Z_DOMAINS; ++k)
     {
-        float zmin = float(k);
-        float zmax = float(k)+1.f;
-
         for(int j = 0; j < Y_DOMAINS; ++j)
         {
-            float ymin = float(j);
-            float ymax = float(j)+1.f;
-
             for(int i = 0; i < X_DOMAINS; ++i)
             {
-                float xmin = float(i);
-                float xmax = float(i)+1.f;
-
                 float *fptr = data;
                 for(int kk = 0; kk < Z_CELLS; ++kk)
                 {
@@ -498,7 +503,10 @@ write_nodal_multi_bov()
     delete [] data;
 
 #ifndef _WIN32
-    chdir("..");
+    if (chdir(".."))
+    {
+        cerr << "ERROR: failed to cd .." << endl;
+    }
 #endif
 
     // Write the BOV header.

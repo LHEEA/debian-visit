@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -110,7 +110,7 @@ QvisElementButton::QvisElementButton(QWidget *parent, const void *data) :
 QvisElementButton::~QvisElementButton()
 {
     // Remove the "this" pointer from the vector.
-    size_t index;
+    size_t index = 0;
     bool notFound = true;
     for(size_t i = 0; i < buttons.size() && notFound; ++i)
     {
@@ -299,7 +299,7 @@ QvisElementButton::popupPressed()
         // Show the popup menu.         
         sharedpopup->move(menuX, menuY);
         sharedpopup->show();
-        setDown(FALSE);
+        setDown(false);
     }
 }
 

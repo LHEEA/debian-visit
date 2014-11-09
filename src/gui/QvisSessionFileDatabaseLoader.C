@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -223,7 +223,7 @@ QvisSessionFileDatabaseLoader::ProcessFile()
         ++index;
         if(!cancelledObserver->cancelled)
         {
-            if(index < databases.size())
+            if((size_t)index < databases.size())
             {
                 QTimer::singleShot(100, this, SLOT(ProcessFile()));
             }

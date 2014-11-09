@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -160,9 +160,9 @@ avtUnstructuredPointBoundaries::ConfirmMesh(vector<int>       domainNum,
 bool
 avtUnstructuredPointBoundaries::CheckGenerated(int d1, int d2)
 {
-    if (d1 >= generated.size())
+    if ((size_t)d1 >= generated.size())
         generated.resize(d1 + 1);
-    if (d2 >= generated[d1].size())
+    if ((size_t)d2 >= generated[d1].size())
         generated[d1].resize(d2 + 1, false);
     return generated[d1][d2];
 }
@@ -186,6 +186,9 @@ avtUnstructuredPointBoundaries::CheckGenerated(int d1, int d2)
 //  Modifications:
 //    Brad Whitlock, Thu Sep 16 10:55:38 PDT 2004
 //    I added separate Windows coding to make it work with the MSVC6 compiler.
+//
+//    Brad Whitlock, Thu Jun 26 14:21:20 PDT 2014
+//    Permit ghosting for 2D cells so wireframe material plots work properly.
 //
 // ****************************************************************************
 
@@ -229,7 +232,7 @@ avtUnstructuredPointBoundaries::Generate(vector<int> domainNum,
                 for (int k = 0; k < cl->GetNumberOfIds(); ++k)
                 {
                     int cellId = cl->GetId(k);
-                    
+#if 0
                     //
                     // We shouldn't ghost 2D cells.
                     //
@@ -237,7 +240,7 @@ avtUnstructuredPointBoundaries::Generate(vector<int> domainNum,
                     if (type == VTK_LINE || type == VTK_TRIANGLE
                         || type == VTK_VERTEX || type == VTK_QUAD)
                         continue;
-                    
+#endif
                     cells.insert(cellId);
                     ds->GetCellPoints(cellId, pl);
                     for (int m = 0; m < pl->GetNumberOfIds(); ++m)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -744,8 +744,8 @@ QvisQueryWindow::UpdateQueryList()
     int selectedIndex = -1;
     int selectedFunction = displayMode->currentIndex() -1;
     queryList->clear();
-    int i;
-    for(i = 0; i < names.size(); ++i)
+    
+    for(size_t i = 0; i < names.size(); ++i)
     {
         if (!canBePublic[i])
             continue;
@@ -772,7 +772,7 @@ QvisQueryWindow::UpdateQueryList()
     {
         listEnabled = true;
         selectedIndex = 0;
-        for (i = 0; i < queryList->count(); i++)
+        for (size_t i = 0; i < (size_t)queryList->count(); i++)
         {
             if (queryList->item(i)->text() == queryName)
             {
@@ -945,6 +945,9 @@ QvisQueryWindow::UpdateResults(bool)
 //   Kathleen Biagas, Fri Jun 10 08:59:32 PDT 2011
 //   Added pickQueryWidget.
 //
+//   Cyrus Harrison, Thu Jul 17 09:16:39 PDT 2014
+//   Added GUI case for Compactness queries.
+//
 // ****************************************************************************
 
 void
@@ -956,7 +959,7 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
     const intVector &requiresVars = queries->GetRequiresVarSelection();
 
     int index = -1;
-    for (int i = 0; i < names.size(); i++)
+    for (size_t i = 0; i < names.size(); i++)
     {
         if (string(qname.toStdString()) == names[i])
         {
@@ -983,7 +986,7 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
     xRayImageQueryWidget->setEnabled(false);
     xRayImageQueryWidget->hide();
 
-    if(index >= 0 && index < winType.size())
+    if(index >= 0 && (size_t)index < winType.size())
     {
         bool showWidgets[6] = {false, false, false, false, false, false};
         bool showDataOptions = false;
@@ -995,7 +998,7 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
         bool showTime = queryMode[index] != QueryList::QueryOnly;
         bool timeOnly = queryMode[index] == QueryList::TimeOnly;
         bool showVars = requiresVars[index];
-        bool showTimeCurvePlotType = false;
+
         varsLineEdit->setText("default");
         varsButton->setVarTypes(queryVarTypes);
 
@@ -1032,7 +1035,6 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
             showWidgets[1] = true;
             useGlobal->setText("Use Global Zone");
             showGlobal = true;
-            showTimeCurvePlotType = (queries->GetNumVars()[index] < 2);
         }
         else if (winT == QueryList::DomainNode)
         {
@@ -1056,7 +1058,6 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
             showWidgets[1] = true;
             useGlobal->setText("Use Global Node");
             showGlobal = true;
-            showTimeCurvePlotType = (queries->GetNumVars()[index] < 2);
         }
         else if (winT == QueryList::ActualData)
         {
@@ -1125,6 +1126,12 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
         {
             showDumpCoordinates = true;
             showDumpValues = true;
+        }
+        else if (winT == QueryList::Compactness)
+        {
+            labels[0]->setText(tr("Centroid"));
+            textFields[0]->setText("default");
+            showWidgets[0] = true;
         }
 
         // hide and show the right text widgets.
@@ -1416,7 +1423,7 @@ QvisQueryWindow::ExecuteStandardQuery()
 
     QString currentText = queryList->currentItem()->text();
     int index = -1;
-    for (int i = 0; i < names.size(); i++)
+    for (size_t i = 0; i < names.size(); i++)
     {
         if (currentText.toStdString() == names[i])
         {
@@ -1425,11 +1432,9 @@ QvisQueryWindow::ExecuteStandardQuery()
         }
     }
 
-    if(index >= 0 && index < types.size())
+    if(index >= 0 && (size_t)index < types.size())
     {
-        QueryList::QueryType t = (QueryList::QueryType)types[index];
         QueryList::WindowType winT = (QueryList::WindowType)winType[index];
-        double p0[3] = {0., 0., 0.}, p1[3] = {0., 0., 0.};
         stringVector vars;
 
         bool noErrors = GetVars(vars);
@@ -1578,6 +1583,25 @@ QvisQueryWindow::ExecuteStandardQuery()
         {
             if (!pickQueryWidget->GetQueryParameters(queryParams))
                 noErrors = false;
+        }
+        else if(winT == QueryList::Compactness)
+        {
+            string cen_txt = textFields[0]->text().simplified().toStdString();
+            if(cen_txt != "default")
+            {
+                doubleVector vals(3,0.0);
+                int vlen = sscanf(cen_txt.c_str(), "%lg %lg %lg",
+                                  &vals[0], &vals[1], &vals[2]);
+
+                if(vlen > 0)
+                {
+                    queryParams["centroid"] = vals;
+                }
+                else
+                {
+                    noErrors = false;
+                }
+            }
         }
 
         if(!timeQueryOptions->isCheckable() || timeQueryOptions->isChecked())

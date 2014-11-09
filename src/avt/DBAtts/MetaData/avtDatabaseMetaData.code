@@ -115,6 +115,55 @@ avtDatabaseMetaData::SetFormatCanDoDomainDecomposition(bool can)
     formatCanDoDomainDecomposition = can;
 }
 
+Function: SetFormatCanDoMultires
+Declaration: void         SetFormatCanDoMultires(bool can);
+Definition:
+// ****************************************************************************
+//  Method: avtDatabaseMetaData::SetFormatCanDoMultires
+//
+//  Purpose:
+//     Sets flag indicating that format can provide multiple resolutions
+//     of the data. This means all meshes should have numBlocks set to 1.
+//     Upon each attempt to get data from the database, the format can decide
+//     what resolution of the data to provide and how to decompose the data
+//     across processors. This also means that when VisIt "load-balances"
+//     blocks (i.e. domains) across processors, it will do so by assigning
+//     the one and only block to each and every processor. It is up to the
+//     plugin to decide which portion of the whole it will actually return
+//     in a request to GetMesh(), GetVar(), ...
+//
+//  Programmer:  Eric Brugger
+//  Creation:    December 20, 2013
+// ****************************************************************************
+
+void
+avtDatabaseMetaData::SetFormatCanDoMultires(bool can)
+{
+    if (can)
+    {
+        // see if there are any meshes with other than a single block
+        bool someMeshesHaveOtherThanOneBlock = false;
+        for (int i = 0; i < GetNumMeshes(); i++)
+        {
+            if (GetMeshes(i).numBlocks != 1)
+            {
+                someMeshesHaveOtherThanOneBlock = true;
+                break;
+            }
+        }
+
+        if (someMeshesHaveOtherThanOneBlock)
+        {
+            EXCEPTION1(ImproperUseException, "Format cannot provide "
+                "multiple resolutions of the data with meshes having other "
+                "than a single block");
+        }
+    }
+
+    formatCanDoMultires = can;
+    Select(ID_formatCanDoMultires, (void *)&formatCanDoMultires);
+}
+
 Function: SetCycle
 Declaration: void         SetCycle(int, int);
 Definition:
@@ -1761,6 +1810,33 @@ avtDatabaseMetaData::SetContainsGlobalZoneIds(std::string name, bool val)
     }
 }
 
+Function: SetZonesWereSplit
+Declaration: void         SetZonesWereSplit(std::string name, bool);
+Definition:
+// ****************************************************************************
+//  Method: avtDatabaseMetaData::SetZonesWereSplit
+//
+//  Purpose:
+//      Sets whether a particular mesh's zones were split
+//
+//  Programmer:  Kathleen Biagas 
+//  Creation:    July 23, 2014
+//
+// ****************************************************************************
+
+void
+avtDatabaseMetaData::SetZonesWereSplit(std::string name, bool val)
+{
+    for (int i = 0 ; i < GetNumMeshes() ; i++)
+    {
+        if (GetMeshes(i).name == name)
+        {
+            GetMeshes(i).zonesWereSplit = val;
+            return;
+        }
+    }
+}
+
 Function: AddGroupInformation
 Declaration: void         AddGroupInformation(int nGroups, int nBlocks, intVector &blockIds);
 Definition:
@@ -2000,7 +2076,7 @@ avtDatabaseMetaData::ConvertCSGDomainToBlockAndRegion(const char *const var,
     if (mmd && mmd->meshType == AVT_CSG_MESH)
     {
         const intVector& groupIds = mmd->groupIds;
-        if (groupIds.size() > domainAsVisItSeesIt)
+        if (groupIds.size() > (size_t)domainAsVisItSeesIt)
         {
             int i, j = groupIds[domainAsVisItSeesIt];
             for (i = domainAsVisItSeesIt; i >= 0 && groupIds[i] == j; i--)

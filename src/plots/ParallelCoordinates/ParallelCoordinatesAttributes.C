@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1280,8 +1280,8 @@ ParallelCoordinatesAttributes::InsertAxis(const std::string &axisName_)
 {
     std::string newAxisName = axisName_;
 
-    int curAxisCount = scalarAxisNames.size();
-    int axisOrdinal;
+    size_t curAxisCount = scalarAxisNames.size();
+    size_t axisOrdinal;
     double saveExtentMin, saveExtentMax;
 
     stringVector::iterator saxisNamesIt;
@@ -1315,7 +1315,7 @@ ParallelCoordinatesAttributes::InsertAxis(const std::string &axisName_)
         saveExtentMax  = +1e+37;
     }
 
-    int insertOrdinal = scalarAxisNames.size();
+    size_t insertOrdinal = scalarAxisNames.size();
 
     saxisNamesIt = scalarAxisNames.begin()  + insertOrdinal;
     vaxisNamesIt = visualAxisNames.begin()  + insertOrdinal;
@@ -1358,12 +1358,12 @@ void
 ParallelCoordinatesAttributes::DeleteAxis(const std::string &axisName_,
                                           int minAxisCount)
 {
-    if (scalarAxisNames.size() <= minAxisCount) return;
+    if ((int)scalarAxisNames.size() <= minAxisCount) return;
 
     std::string newAxisName = axisName_;
 
-    int curAxisCount = scalarAxisNames.size();
-    int axisOrdinal;
+    size_t curAxisCount = scalarAxisNames.size();
+    size_t axisOrdinal;
 
     for (axisOrdinal = 0; axisOrdinal < curAxisCount; axisOrdinal++)
     {
@@ -1410,8 +1410,8 @@ ParallelCoordinatesAttributes::DeleteAxis(const std::string &axisName_,
 bool
 ParallelCoordinatesAttributes::AttributesAreConsistent() const
 {
-    int axisNamesSize = scalarAxisNames.size();
-    int axisNum, axis2Num;
+    size_t axisNamesSize = scalarAxisNames.size();
+    size_t axisNum, axis2Num;
     std::string axisName;
     
     if (axisNamesSize == 0)

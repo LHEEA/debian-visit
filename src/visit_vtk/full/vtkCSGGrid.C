@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -253,7 +253,7 @@ vtkCSGGrid::Box::IsFlatEnough2(const double *const gridBoundaries,
 
     // find diagonal of grad box most orthogonal to vector vg 
     double mindotp = DBL_MAX;
-    int dmxmin, dmymin;
+    int dmxmin = 0, dmymin = 0;
     for (int d = 0; d < 4; d++)
     {
         int dmx = (d & 0x01) ? -1 : 1;
@@ -285,46 +285,10 @@ vtkCSGGrid::Box::IsFlatEnough2(const double *const gridBoundaries,
     if (cos_theta < 0.0) cos_theta = -cos_theta;
     double theta = acos(cos_theta);
 
-    // compute length of spatial box diagonal
-    double db =  sqrt((upper(X)-lower(X)) * (upper(X)-lower(X)) +
-                      (upper(Y)-lower(Y)) * (upper(Y)-lower(Y)) +
-                      (upper(Z)-lower(Z)) * (upper(Z)-lower(Z)));
-
-    //if (((1-cos(theta/2)) / (2*sin(theta/2))) < tol)
-    //    return true;
     if (2*sin(theta/2) < tol)
         return true;
+
     return false;
-
-#if 0
-    // compute estimate of radius of curvature of this surface
-    double r = (db / 2.0) / sin(theta / 2.0);
-
-    if (r > tol)
-        return true;
-    return false;
-#endif
-
-#if 0
-    // square of length of box diagonal 
-    double db =  (upper(gradX)-lower(gradX)) * (upper(gradX)-lower(gradX)) +
-                 (upper(gradY)-lower(gradY)) * (upper(gradY)-lower(gradY)) +
-                 (upper(gradZ)-lower(gradZ)) * (upper(gradZ)-lower(gradZ));
-
-    // square of distance to center of box 
-    double dc = ((upper(gradX)+lower(gradX)) * (upper(gradX)+lower(gradX)) +
-                 (upper(gradY)+lower(gradY)) * (upper(gradY)+lower(gradY)) +
-                 (upper(gradZ)+lower(gradZ)) * (upper(gradZ)+lower(gradZ))) / 4.0;
-
-    if (dc < 0.0) dc = -dc;
-    if (dc > 0.0)
-    {
-        if (db / dc < tol)
-            return true;
-    }
-    return false;
-#endif
-
 #else
     return false;
 #endif
@@ -1121,22 +1085,9 @@ static void PlanePPPToQuadric(const double *const plane, double *quadric)
     coeffs[5] = xprod[2];
     PlanePNToQuadric(coeffs, quadric);
 }
-static void BoxXYZXYZToQuadric(const double *const box, double *quadric)
-{
-    PlaneXToQuadric(&box[0], &quadric[0*NUM_QCOEFFS]);
-    PlaneYToQuadric(&box[1], &quadric[1*NUM_QCOEFFS]);
-    PlaneZToQuadric(&box[2], &quadric[2*NUM_QCOEFFS]);
-    PlaneXToQuadric(&box[3], &quadric[3*NUM_QCOEFFS]);
-    PlaneYToQuadric(&box[4], &quadric[4*NUM_QCOEFFS]);
-    PlaneZToQuadric(&box[5], &quadric[5*NUM_QCOEFFS]);
-}
+
 static void CylinderPNLRToQuadric(const double *const cyl, double *quadric)
 {
-    // point
-    double px = cyl[0];
-    double py = cyl[1];
-    double pz = cyl[2];
-
     // normal
     double nx = cyl[3];
     double ny = cyl[4];
@@ -1188,10 +1139,6 @@ static void CylinderPPRToQuadric(const double *const cyl, double *quadric)
 }
 static void ConePNLAToQuadric(const double *const cone, double *quadric)
 {
-    // point
-    double px = cone[0];
-    double py = cone[1];
-    double pz = cone[2];
 
     // normal
     double nx = cone[3];
@@ -2317,117 +2264,31 @@ vtkCSGGrid::GetRegionBounds(int reg, std::vector<int> &bounds)
 }
 
 // ****************************************************************************
-// Method:  vtkCSGGrid::DoMultiPassDiscretize
+// Method:  vtkCSGGrid::CreateRectilinearGrid
 //
 // Purpose:
-//   Generates the discretization for the multi-pass approach. If the total
-//   number of boundaries is less than the limit in vtkCSGFixedLengthBitField
-//   then the discretization is shared for all regions and cached. Otherwise
-//   it is done individually for each region. It stores the in/out boundary
-//   flags as a bitfield for each cell, letting us simply threshold the
-//   pieces we want later.
+//   Create a rectilinear grid.
 //
-// Returns:  true on success, false on failue
+// Returns:  The rectilinear grid.
 //
 // Arguments:
-//   specificZone    The region of interest.
 //   bnds            The bounds of the mesh.
 //   dims            The dimensions of the mesh.
 //   subRegion       The region we are processing.
 //
-// Programmer:  Jeremy Meredith
-// Creation:    February 26, 2010
+// Programmer:  Eric Brugger
+// Creation:    Wed Sep  3 14:31:08 PDT 2014
 //
 // Modifications:
-//   Jeremy Meredith, Mon Oct 24 16:07:11 EDT 2011
-//   Added support for 2D case.
-//
-//   Eric Brugger, Wed Jul 25 10:00:27 PDT 2012
-//   Increase the number of boundaries that can be handled by the mulit-pass
-//   CSG discretization from 128 to 512.
-//   Modified the multi-pass CSG discretization to perform the partitions
-//   against all the boundaries and then create a vtkDataSet at the end
-//   rather than creating a new vtkDataSet after partitioning with each
-//   boundary.
-//
-//   Eric Brugger, Wed Apr  2 12:19:49 PDT 2014
-//   I modified the multi-pass discretization of CSG meshes to process
-//   each domain independently if the number total number of boundary
-//   surfaces is above the internal limit. I converted the class to use
-//   vtkCSGFixedLengthBitField instead of FixedLengthBitField.
 //
 // ****************************************************************************
 
-bool
-vtkCSGGrid::DoMultiPassDiscretization(int specificZone,
-    const double bnds[6], const int dims[3], const int subRegion[6])
+vtkRectilinearGrid *
+vtkCSGGrid::CreateRectilinearGrid(const double bnds[6],
+    const int dims[3], const int subRegion[6])
 {
-    double *regionBounds = NULL;
-    int nRegionBounds = 0;
-    if (numBoundaries <= VTK_CSG_MAX_BITS)
-    {
-        //
-        // Do all the grid boundaries at once. If we have the already
-        // processed the boundaries just return.
-        // 
-        if (multipassProcessedGrid != NULL)
-            return true;
-
-        regionBounds = gridBoundaries;
-        nRegionBounds = numBoundaries;
-    }
-    else
-    {
-        //
-        // Do the grid boundaries for just the specified region. If we have
-        // a grid it is from another region so we need to free it.
-        // 
-        if (multipassProcessedGrid != NULL)
-        {
-            multipassProcessedGrid->Delete();
-            multipassProcessedGrid = NULL;
-        }
-        if (multipassTags != NULL)
-        {
-            delete multipassTags;
-            multipassTags = NULL;
-        }
-
-        std::vector<int> bounds;
-        int zone = gridZones[specificZone];
-        GetRegionBounds(zone, bounds);
-        std::sort(bounds.begin(), bounds.end());
-
-        regionBounds = new double[10*bounds.size()];
-        int lastGridBound = -1;
-        int iRegionBounds = 0;
-        for (int i = 0; i < bounds.size(); i++)
-        {
-            if (bounds[i] != lastGridBound)
-            {
-                lastGridBound = bounds[i];
-                for (int j = 0; j < 10; j++)
-                    regionBounds[iRegionBounds+j] =
-                        gridBoundaries[lastGridBound*10+j];
-                iRegionBounds += 10;
-            }
-        }
-        nRegionBounds = iRegionBounds / 10;
-    }
-
     //
-    // Check that the number of boundaries isn't too large.
-    //
-    if (nRegionBounds > VTK_CSG_MAX_BITS)
-    {
-        debug1 << "ERROR: We can't handle more than " << VTK_CSG_MAX_BITS
-               << " boundaries. This is a fixed limit in the code which can"
-               << " be adjusted." << endl;
-        return false;
-    }
-
-    //
-    // set up a rectilinear grid
+    // Create the rectilinear grid.
     //
     vtkRectilinearGrid *rgrid = vtkRectilinearGrid::New();
     vtkFloatArray   *coords[3] = {vtkFloatArray::New(),
@@ -2517,92 +2378,189 @@ vtkCSGGrid::DoMultiPassDiscretization(int specificZone,
     rgrid->GetCellData()->AddArray(ghostCells);
     ghostCells->Delete();
 
+    return rgrid;
+}
+
+// ****************************************************************************
+// Method:  vtkCSGGrid::SplitGrid
+//
+// Purpose:
+//   Split a rectilinear grid using the specified quadric surfaces.
+//
+// Returns:  The split grid.
+//
+// Arguments:
+//   rgrid           The rectilinear grid to split.
+//   nBounds         The number of quadric surfaces.
+//   bounds          The coefficients of the quadric surfaces.
+//
+// Programmer:  Eric Brugger
+// Creation:    Wed Sep  3 14:31:08 PDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+vtkUnstructuredGrid *
+vtkCSGGrid::SplitGrid(vtkRectilinearGrid *rgrid, const int nBounds,
+    double *bounds)
+{
     //
     // Split the rectilinear grid using the boundaries.
     //
-    vtkUnstructuredGrid *output = NULL;
     vtkMultiSplitter *regClipper = vtkMultiSplitter::New();
 
     multipassTags = new vector<vtkCSGFixedLengthBitField>;
 
     regClipper->SetInputData(rgrid);
     regClipper->SetTagBitField(multipassTags);
-    regClipper->SetClipFunctions(regionBounds, nRegionBounds);
+    regClipper->SetClipFunctions(bounds, nBounds);
 
     regClipper->Update();
 
-    output = regClipper->GetOutput();
+    vtkUnstructuredGrid *output = regClipper->GetOutput();
 
     output->Register(0);
     regClipper->Delete();
-    rgrid->Delete();
 
-    multipassProcessedGrid = output;
-
-    if (regionBounds != gridBoundaries)
-        delete [] regionBounds;
-
-    return true;
+    return output;
 }
 
 // ****************************************************************************
-// Method:  vtkCSGGrid::GetMultiPassDiscretization
+// Method:  vtkCSGGrid::DiscretizeSpaceMultiPass
 //
 // Purpose:
-//   Extract out a single zone from the pre-process mesh for the
-//   mutli-pass algorithm.
+//   Extract out a single zone from the pre-process mesh for the mutli-pass
+//   algorithm. If the total number of boundaries is less than the limit in
+//   vtkCSGFixedLengthBitField then the discretization is shared for all
+//   regions and cached. Otherwise it is done individually for each region.
+//   It stores the in/out boundary flags as a bitfield for each cell, letting
+//   us simply threshold the pieces we want later.
 //
 // Arguments:
-//   specificZone   the index of the "zone" to retrieve
+//   specificZone    The region of interest.
+//   bnds            The bounds of the mesh.
+//   dims            The dimensions of the mesh.
+//   subRegion       The region we are processing.
 //
 // Programmer:  Jeremy Meredith
 // Creation:    February 26, 2010
 //
 // Modifications:
+//   Jeremy Meredith, Mon Oct 24 16:07:11 EDT 2011
+//   Added support for 2D case.
+//
+//   Eric Brugger, Wed Jul 25 10:00:27 PDT 2012
+//   Increase the number of boundaries that can be handled by the mulit-pass
+//   CSG discretization from 128 to 512.
+//   Modified the multi-pass CSG discretization to perform the partitions
+//   against all the boundaries and then create a vtkDataSet at the end
+//   rather than creating a new vtkDataSet after partitioning with each
+//   boundary.
+//
 //   Eric Brugger, Wed Apr  2 12:19:49 PDT 2014
 //   I modified the multi-pass discretization of CSG meshes to process
 //   each domain independently if the number total number of boundary
 //   surfaces is above the internal limit.
 //
+//   Eric Brugger, Wed Sep  3 14:31:08 PDT 2014
+//   I refactored some code to correct a bug with the multi-pass CSG
+//   discretization where it would do the wrong thing if a region
+//   referenced the same boundary multiple times.
+//
 // ****************************************************************************
+
 vtkUnstructuredGrid *
 vtkCSGGrid::DiscretizeSpaceMultiPass(int specificZone,
     const double bnds[6], const int dims[3], const int subRegion[6])
 {
-    bool success = DoMultiPassDiscretization(specificZone,
-        bnds, dims, subRegion);
-
-    if (!success)
-        return NULL;
-
-    vtkUnstructuredGrid *rv = multipassProcessedGrid;
-    if (rv == NULL)
-        return NULL;
-
-    int zone = gridZones[specificZone];
-
     zoneMap = new int[numBoundaries];
-
     if (numBoundaries <= VTK_CSG_MAX_BITS)
     {
+        //
+        // Do all the grid boundaries at once. If we have the already
+        // processed the boundaries just skip this step.
+        //
+        if (multipassProcessedGrid == NULL)
+        {
+            vtkRectilinearGrid *rgrid =
+                CreateRectilinearGrid(bnds, dims, subRegion);
+
+            multipassProcessedGrid =
+                SplitGrid(rgrid, numBoundaries, gridBoundaries);
+
+            rgrid->Delete();
+        }
+
         for (int i = 0; i < numBoundaries; i++)
             zoneMap[i] = i;
     }
     else
     {
+        //
+        // Do the grid boundaries for just the specified region. If we have
+        // a grid it is from another region so we need to free it.
+        //
+        if (multipassProcessedGrid != NULL)
+        {
+            multipassProcessedGrid->Delete();
+            multipassProcessedGrid = NULL;
+        }
+        if (multipassTags != NULL)
+        {
+            delete multipassTags;
+            multipassTags = NULL;
+        }
+
+        //
+        // Determine the boundaries used by this region.
+        //
         std::vector<int> bounds;
-        GetRegionBounds(zone, bounds);
+        GetRegionBounds(gridZones[specificZone], bounds);
         std::sort(bounds.begin(), bounds.end());
 
-        for (int i = 0; i < bounds.size(); i++)
-            zoneMap[bounds[i]] = i;
+        int nRegionBounds = 0;
+        double *regionBounds = new double[10*bounds.size()];
+
+        int lastGridBound = -1;
+        for (size_t i = 0; i < bounds.size(); i++)
+        {
+            if (bounds[i] != lastGridBound)
+            {
+                lastGridBound = bounds[i];
+                bounds[nRegionBounds] = bounds[i];
+                for (int j = 0; j < 10; j++)
+                    regionBounds[nRegionBounds*10+j] =
+                        gridBoundaries[lastGridBound*10+j];
+                nRegionBounds++;
+            }
+        }
+        bounds.resize(nRegionBounds);
+
+        //
+        // Create the boundaries.
+        //
+        vtkRectilinearGrid *rgrid =
+            CreateRectilinearGrid(bnds, dims, subRegion);
+
+        multipassProcessedGrid = SplitGrid(rgrid, nRegionBounds, regionBounds);
+
+        rgrid->Delete();
+        delete [] regionBounds;
+
+        for (size_t i = 0; i < bounds.size(); i++)
+            zoneMap[bounds[i]] = (int)i;
     }
 
+    vtkUnstructuredGrid *rv = multipassProcessedGrid;
+    if (rv == NULL)
+        return NULL;
+
     // Evaluate the cell tags against this region
-    int ncells = rv->GetNumberOfCells();
     vtkIntArray *in = vtkIntArray::New();
     in->SetNumberOfComponents(1);
     in->SetNumberOfTuples(rv->GetNumberOfCells());
+    int zone = gridZones[specificZone];
     for (int i=0; i<rv->GetNumberOfCells(); i++)
     {
         bool InOut = EvaluateRegionBits(zone,
@@ -3133,7 +3091,9 @@ vtkCSGGrid::DiscretizeSpace3(
                          boundaryToSenseMap, gridZones[specificZone],
                          points, ugrid, nodemap);
                 if (!flatNessHandledIt)
+                {
                     debug1 << "vtkCSGGrid: Flatness passed; Cutter4 failed. Subdividing..." << endl; 
+                }
             }
 
             if (flatNessHandledIt)

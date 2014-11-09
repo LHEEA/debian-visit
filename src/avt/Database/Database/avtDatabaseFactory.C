@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -93,6 +93,7 @@ bool    avtDatabaseFactory::createTimeDerivativeExpressions = true;
 bool    avtDatabaseFactory::createVectorMagnitudeExpressions = true;
 FileOpenOptions avtDatabaseFactory::defaultFileOpenOptions;
 avtPrecisionType avtDatabaseFactory::precisionType = AVT_PRECISION_NATIVE;
+avtBackendType avtDatabaseFactory::backendType = AVT_BACKEND_VTK;
 
 //
 // Function Prototypes
@@ -141,6 +142,27 @@ avtDatabaseFactory::SetPrecisionType(const int pType)
 {
     if (pType >= 0 && pType < 3)
         precisionType = avtPrecisionType(pType);
+}
+
+// ****************************************************************************
+//  Method:  avtDatabaseFactory::SetBackendType
+//
+//  Purpose:
+//    Store off the backendType.
+//
+//  Arguments:
+//    bType      the new backend type.
+//
+//  Programmer:  Cameron Christensen
+//  Creation:    June 11, 2014
+//
+// ****************************************************************************
+
+void
+avtDatabaseFactory::SetBackendType(const int bType)
+{
+    if (bType >= 0 && bType < 4)
+        backendType = avtBackendType(bType);
 }
 
 // ****************************************************************************
@@ -347,7 +369,8 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
                              int timestep, vector<string> &plugins,
                              const char *format,
                              bool forceReadAllCyclesAndTimes,
-                             bool treatAllDBsAsTimeVarying)
+                             bool treatAllDBsAsTimeVarying,
+                             int bang_nblocks)
 {
     vector<string> noncompliantPlugins;
     vector<string> noncompliantErrors;
@@ -360,12 +383,23 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
     avtDatabase *rv = NULL;
     int fileIndex = 0;
 
-    int nBlocks = 1;
+    int nBlocks = bang_nblocks > 0 ? bang_nblocks : 1;
     bool filesAreEnsemble = false;
     vector<double> times;
     for (int f = 0 ; f < filelistN ; f++)
     {
-         if (strstr(filelist[fileIndex], "!NBLOCKS ") != NULL)
+         //
+         // MCM-28Aug14: All the logic for handling these special values should probably
+         // be re-factored to GetFileListFromTextFile. There is already logic there
+         // for !NBLOCKS and it is being duplicated here. Furthermore, the
+         // list of strings passed in to FileList here is called a 'filelist' but nonetheless
+         // is expected/allowed to contain strings that are certainly not files. OTOH,
+         // the set of !KEYWORDS being processed here has grown on a few occasions and
+         // instead of continuing to add args to the method itself for each such keyword
+         // setting, maybe its ok to use the list of strings passed here as a sort of
+         // catchall container for all such possible !KEYWORD settings.
+         //
+         if (bang_nblocks < 0 && strstr(filelist[fileIndex], "!NBLOCKS ") != NULL)
          {
              errno = 0;
              nBlocks = strtol(filelist[fileIndex] + strlen("!NBLOCKS "), 0, 10);
@@ -499,7 +533,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
     // succeed immediately.
     //
     vector<string> &preferred = defaultFileOpenOptions.GetPreferredIDs();
-    for (int i = 0 ; i < preferred.size() && rv == NULL ; i++)
+    for (size_t i = 0 ; i < preferred.size() && rv == NULL ; i++)
     {
         string formatid = preferred[i];
         if (!dbmgr->PluginAvailable(formatid))
@@ -607,7 +641,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
     if (rv == NULL)
     {
         vector<string> succeeded;
-        for (int i = 0; i < fileMatchedIds.size(); i++)
+        for (size_t i = 0; i < fileMatchedIds.size(); i++)
         {
             // Skip this one if it was preferred -- if we got here, it
             // already failed on the previous pass
@@ -727,7 +761,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
     // fallbacks, unless they are strictly unable to open the given
     // file without a matching filename.
     //
-    for (int i = 0 ; i < preferred.size() && rv == NULL ; i++)
+    for (size_t i = 0 ; i < preferred.size() && rv == NULL ; i++)
     {
         string formatid = preferred[i];
         if (!dbmgr->PluginAvailable(formatid))
@@ -960,7 +994,7 @@ avtDatabaseFactory::SetupDatabase(CommonDatabasePluginInfo *info,
                             treatAllDBsAsTimeVarying);
             int nStates = md->GetNumStates();
             // Expectation is that nStates == times.size() or times.size() == 0
-            int nToDo = (nStates < times.size() ? nStates : times.size());
+            int nToDo = (nStates < (int)times.size() ? nStates : (int)times.size());
             for (int i = 0 ; i < nToDo ; i++)
             {
                 md->SetTime(i, times[i]);
@@ -1053,7 +1087,8 @@ avtDatabaseFactory::VisitFile(DatabasePluginManager *dbmgr,
     //
     char  **reallist  = NULL;
     int     listcount = 0;
-    avtDatabase::GetFileListFromTextFile(visitFile, reallist, listcount);
+    int     bang_nblocks = -1;
+    avtDatabase::GetFileListFromTextFile(visitFile, reallist, listcount, &bang_nblocks);
 
 #if defined(_WIN32)
     //
@@ -1096,8 +1131,8 @@ avtDatabaseFactory::VisitFile(DatabasePluginManager *dbmgr,
     //
     // Create a database using the list of files.
     //
-    avtDatabase *rv = FileList(dbmgr, reallist, listcount, timestep, plugins, format,
-                               forceReadAllCyclesAndTimes, treatAllDBsAsTimeVarying);
+    avtDatabase *rv = FileList(dbmgr, reallist, listcount, timestep, plugins,
+        format, forceReadAllCyclesAndTimes, treatAllDBsAsTimeVarying, bang_nblocks);
 
     //
     // Clean up memory

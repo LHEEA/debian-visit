@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -628,7 +628,7 @@ avtQueryOverTimeFilter::CreateFinalOutput()
             << "problems with the following timesteps and \n"
             << "skipped them while generating the curve:\n   ";
 
-        for (int j = 0; j < skippedTimes.size(); j++)
+        for (size_t j = 0; j < skippedTimes.size(); j++)
             osm << skippedTimes[j] << " ";
         osm << "\nLast message received: " << errorMessage.c_str() << ends;
         debug4 << osm.str() << endl;
@@ -758,7 +758,7 @@ avtQueryOverTimeFilter::CreateTree(const doubleVector &times,
             return tree;
         }
 
-        if (res.size() != nPts*nResultsToStore)
+        if (res.size() != (size_t)nPts*nResultsToStore)
         {
             debug1 << "Mismatch in QOT times/results sizes: " << endl;
             debug1 << "    times size:      " << times.size() << endl;
@@ -806,7 +806,7 @@ avtQueryOverTimeFilter::CreateTree(const doubleVector &times,
             rgrid->Delete();
             return tree;
         }
-        if (res.size() != nPts*nResultsToStore)
+        if (res.size() != (size_t)nPts*nResultsToStore)
         {
             vtkRectilinearGrid *rgrid = 
                 vtkVisItUtility::Create1DRGrid(nPts, VTK_FLOAT);
@@ -818,7 +818,7 @@ avtQueryOverTimeFilter::CreateTree(const doubleVector &times,
             rgrid->Delete();
             return tree;
         }
-        if (vars.size() != nResultsToStore)
+        if (vars.size() != (size_t)nResultsToStore)
         {
             vtkRectilinearGrid *rgrid = 
                 vtkVisItUtility::Create1DRGrid(nPts, VTK_FLOAT);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -219,11 +219,9 @@ avtCylinderFilter::Equivalent(const AttributeGroup *a)
 //      Sends the specified input and output through the Cylinder filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Hank Childs
 //  Creation:   Tue Oct 21 13:17:14 PST 2003
@@ -236,14 +234,22 @@ avtCylinderFilter::Equivalent(const AttributeGroup *a)
 //    Brad Whitlock, Fri May  6 13:41:40 PDT 2011
 //    Do clipping instead of cutting so we can leave the dataset interior.
 //
-//   Dave Pugmire, Fri Aug 30 14:43:48 EDT 2013
-//   Add Inverse clipping option.
+//    Dave Pugmire, Fri Aug 30 14:43:48 EDT 2013
+//    Add Inverse clipping option.
+//
+//    Eric Brugger, Wed Jul 23 11:51:25 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
-vtkDataSet *
-avtCylinderFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
+avtDataRepresentation *
+avtCylinderFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     vtkVisItClipper *clipper = vtkVisItClipper::New();
     if (atts.GetInverse())
         clipper->SetInsideOut(false);
@@ -255,10 +261,12 @@ avtCylinderFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     clipper->Update();
     vtkDataSet *rv = clipper->GetOutput();
 
-    ManageMemory(rv);
+    avtDataRepresentation *out_dr = new avtDataRepresentation(rv,
+        in_dr->GetDomain(), in_dr->GetLabel());
+
     clipper->Delete();
 
-    return rv;
+    return out_dr;
 }
 
 
@@ -279,17 +287,27 @@ avtCylinderFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 //    Brad Whitlock, Fri May  6 13:41:20 PDT 2011
 //    Do not reduce the topological dimension anymore.
 //
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 
 void
 avtCylinderFilter::UpdateDataObjectInfo(void)
 {
-    avtDataAttributes &inAtts      = GetInput()->GetInfo().GetAttributes();
     avtDataAttributes &outAtts     = GetOutput()->GetInfo().GetAttributes();
     avtDataValidity   &outValidity = GetOutput()->GetInfo().GetValidity();
 
     outValidity.InvalidateZones();
     outValidity.ZonesSplit();
+
+    char params[400];
+    SNPRINTF(params, 400, "point1=%lg,%lg,%lg point2=%lg,%lg,%lg radius=%lg",
+        atts.GetPoint1()[0], atts.GetPoint1()[1], atts.GetPoint1()[2],
+        atts.GetPoint2()[0], atts.GetPoint2()[1], atts.GetPoint2()[2],
+        atts.GetRadius());
+    outAtts.AddFilterMetaData("Cylinder", params);
 }
 
 

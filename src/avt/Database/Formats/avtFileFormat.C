@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -253,26 +253,6 @@ avtFileFormat::ActivateTimestep(void)
     debug5 << "Asked " << GetType() << " to activate timestep, but it did not "
            << "define how to do that." << endl;
 }
-
-// ****************************************************************************
-//  Method: avtFileFormat::PopulateIOInformation
-//
-//  Purpose:
-//      This is defined so that individual file formats will not have to
-//      provide information abotu I/O if it does not make sense for that 
-//      format.
-//
-//  Programmer: Hank Childs
-//  Creation:   May 11, 2001
-//
-// ****************************************************************************
-
-void
-avtFileFormat::PopulateIOInformation(avtIOInformation &)
-{
-    debug5 << "No I/O info provided for file format " << GetType() << endl;
-}
-
 
 // ****************************************************************************
 //  Method: avtFileFormat::SetCache
@@ -854,7 +834,7 @@ avtFileFormat::RegisterFile(int fileIndex)
     avtFileDescriptorManager *man = avtFileDescriptorManager::Instance();
     int manIndex = man->RegisterFile(FileFormatCloseFileCallback, this);
  
-    while (fileIndex >= fileIndicesForDescriptorManager.size())
+    while ((size_t)fileIndex >= fileIndicesForDescriptorManager.size())
     {
         fileIndicesForDescriptorManager.push_back(-1);
     }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -272,7 +272,7 @@ static void RotateAroundY(const avtView3D&, double, avtView3D&);
 //    I added a force option to SetAnnotationAttributes.
 //
 //    Eric Brugger, Thu Oct 27 15:47:36 PDT 2011
-//    Add a multi resolution display capability for AMR data.
+//    I added a multi resolution display capability for 2d.
 //
 // ****************************************************************************
 
@@ -345,7 +345,7 @@ ViewerWindow::ViewerWindow(int windowIndex) : ViewerBase(0),
     // Callback for render information.
     //
     visWindow->SetRenderInfoCallback(ViewerWindowManager::RenderInformationCallback,
-        (void *)windowIndex);
+        &windowId);
 
     //
     // Callback for pick.
@@ -1021,8 +1021,7 @@ ViewerWindow::UpdateTools()
                 // same position.  The call below is what makes this
                 // happen.  This is the mechanism where the attributes are 
                 // sent to (for example) the clip operator.
-                ViewerWindowManager *wM = ViewerWindowManager::Instance();
-                bool applyOps = wM->GetClientAtts()->GetApplyOperator();
+                bool applyOps = ViewerWindowManager::Instance()->GetClientAtts()->GetApplyOperator();
                 HandleTool(visWindow->GetToolInterface(toolId), applyOps);
             }
             if(ViewerQueryManager::Instance()->
@@ -1131,6 +1130,7 @@ ViewerWindow::RecenterView()
         GetExtents(2, limits);
         RecenterViewAxisArray(limits);
         break;
+      case WINMODE_NONE:
       default:
         break;
     }
@@ -1218,6 +1218,7 @@ ViewerWindow::ResetView()
       case WINMODE_VERTPARALLELAXES:
         ResetViewAxisArray();
         break;
+      case WINMODE_NONE:
       default:
         break;
     }
@@ -2308,7 +2309,7 @@ ViewerWindow::InvertBackgroundColor()
 //   Add compact domain options.
 //
 //   Eric Brugger, Thu Oct 27 15:47:36 PDT 2011
-//   Add a multi resolution display capability for AMR data.
+//   I added a multi resolution display capability for 2d.
 //
 // ****************************************************************************
 
@@ -2656,6 +2657,7 @@ ViewerWindow::UpdateView(const WINDOW_MODE mode, const double *limits)
       case WINMODE_VERTPARALLELAXES:
         UpdateViewAxisArray(limits);
         break;
+        case WINMODE_NONE:
       default:
         break;
     }
@@ -4283,7 +4285,7 @@ ViewerWindow::RecenterViewCurve(const double *limits)
 //    CanDoLogViewScaling changed to PermitsLogViewScaling.
 //
 //    Eric Brugger, Thu Oct 27 15:47:36 PDT 2011
-//    Add a multi resolution display capability for AMR data.
+//    I added a multi resolution display capability for 2d.
 //
 // ****************************************************************************
 
@@ -4417,6 +4419,9 @@ ViewerWindow::RecenterView2d(const double *limits)
 //    repeated re-centering with a non-1:1:1 3D scale will cause the parallel
 //    scale to keep shrinking/growing.
 //
+//    Eric Brugger, Wed Jan  8 16:52:11 PST 2014
+//    I added a multi resolution display capability for 3d.
+//
 // ****************************************************************************
 
 void
@@ -4437,6 +4442,7 @@ ViewerWindow::RecenterView3d(const double *limits)
     if (limits[0] == DBL_MAX && limits[1] == -DBL_MAX)
     {
         centeringValid3d = false;
+        view3D.windowValid = false;
         if (boundingBoxValid3d)
         {
             //
@@ -4445,12 +4451,12 @@ ViewerWindow::RecenterView3d(const double *limits)
             view3D.focus[0] = (boundingBox3d[1] + boundingBox3d[0]) / 2.;
             view3D.focus[1] = (boundingBox3d[3] + boundingBox3d[2]) / 2.;
             view3D.focus[2] = (boundingBox3d[5] + boundingBox3d[4]) / 2.;
-
-            //
-            // Update the view.
-            //
-            visWindow->SetView3D(view3D);
         }
+
+        //
+        // Update the view.
+        //
+        visWindow->SetView3D(view3D);
 
         return;
     }
@@ -4526,6 +4532,11 @@ ViewerWindow::RecenterView3d(const double *limits)
     view3D.centerOfRotation[0] = view3D.focus[0];
     view3D.centerOfRotation[1] = view3D.focus[1];
     view3D.centerOfRotation[2] = view3D.focus[2];
+
+    //
+    // Mark the view as valid.
+    //
+    view3D.windowValid = true;
 
     //
     // Update the view.
@@ -4778,7 +4789,7 @@ ViewerWindow::ResetViewCurve()
 //    CanDoLogViewScaling changed to PermitsLogViewScaling.
 //
 //    Eric Brugger, Thu Oct 27 15:47:36 PDT 2011
-//    Add a multi resolution display capability for AMR data.
+//    I added a multi resolution display capability for 2d.
 //
 // ****************************************************************************
 
@@ -4938,6 +4949,9 @@ ViewerWindow::ResetView2d()
 //    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
 //    Add shear for oblique projection support.
 //
+//    Eric Brugger, Wed Jan  8 16:52:11 PST 2014
+//    I added a multi resolution display capability for 3d.
+//
 // ****************************************************************************
 
 void
@@ -4968,6 +4982,8 @@ ViewerWindow::ResetView3d()
         centeringValid3d = false;
         viewSetIn3d = false;
         viewPartialSetIn3d = false;
+        view3D.windowValid = false;
+        visWindow->SetView3D(view3D);
         return;
     }
 
@@ -4978,6 +4994,7 @@ ViewerWindow::ResetView3d()
     centeringValid3d = true;
     viewSetIn3d = true;
     viewPartialSetIn3d = true;
+    view3D.windowValid = true;
 
     //
     // Set the scale.  They are choosen such that the object should fit
@@ -5464,12 +5481,13 @@ ViewerWindow::UpdateViewCurve(const double *limits)
     // The recentering uses the current limits or the merged limits from
     // the previous plots based on the mergeViewLimits flag.
     //
+    //TODO: check on fixed parentheses warning
     else if (centeringValidCurve == false ||
-             maintainView == false && viewModifiedCurve == false &&
+             (maintainView == false && viewModifiedCurve == false &&
              (limits[0] != boundingBoxCurve[0] ||
               limits[1] != boundingBoxCurve[1] ||
               limits[2] != boundingBoxCurve[2] ||
-              limits[3] != boundingBoxCurve[3]))
+              limits[3] != boundingBoxCurve[3])))
     {
         if (centeringValidCurve == true && mergeViewLimits == true)
         {
@@ -5621,10 +5639,11 @@ ViewerWindow::UpdateView2d(const double *limits)
     // The recentering uses the current limits or the merged limits from
     // the previous plots based on the mergeViewLimits flag.
     //
+    // TODO: check on fixed parentheses warning
     else if (centeringValid2d == false ||
-             maintainView == false && viewModified2d == false &&
+             (maintainView == false && viewModified2d == false &&
              (limits[0] != boundingBox2d[0] || limits[1] != boundingBox2d[1] ||
-              limits[2] != boundingBox2d[2] || limits[3] != boundingBox2d[3]))
+              limits[2] != boundingBox2d[2] || limits[3] != boundingBox2d[3])))
     {
         if (centeringValid2d == true && mergeViewLimits == true)
         {
@@ -5769,10 +5788,11 @@ ViewerWindow::UpdateView3d(const double *limits)
     // limits or the merged limits from the previous plots based on the
     // mergeViewLimits flag.
     //
-    else if (centeringValid3d == false || maintainView == false &&
+    // TODO: check on fix for parentheses warning
+    else if (centeringValid3d == false || (maintainView == false &&
              (limits[0] != boundingBox3d[0] || limits[1] != boundingBox3d[1] ||
               limits[2] != boundingBox3d[2] || limits[3] != boundingBox3d[3] ||
-              limits[4] != boundingBox3d[4] || limits[5] != boundingBox3d[5]))
+              limits[4] != boundingBox3d[4] || limits[5] != boundingBox3d[5])))
     {
         if (centeringValid3d == true && mergeViewLimits == true)
         {
@@ -5842,7 +5862,6 @@ ViewerWindow::UpdateViewAxisArray(const double *limits)
 
         boundingBoxValidAxisArray = true;
         centeringValidAxisArray   = true;
-        const avtViewAxisArray &viewAxisArray = GetViewAxisArray();
 
         if (!viewSetInAxisArray)
         {
@@ -5864,12 +5883,13 @@ ViewerWindow::UpdateViewAxisArray(const double *limits)
     // The recentering uses the current limits or the merged limits from
     // the previous plots based on the mergeViewLimits flag.
     //
+    // TODO: check on fixed parentheses warning
     else if (centeringValidAxisArray == false ||
-             maintainView == false && viewModifiedAxisArray == false &&
+             (maintainView == false && viewModifiedAxisArray == false &&
              (limits[0] != boundingBoxAxisArray[0] ||
               limits[1] != boundingBoxAxisArray[1] ||
               limits[2] != boundingBoxAxisArray[2] ||
-              limits[3] != boundingBoxAxisArray[3]))
+              limits[3] != boundingBoxAxisArray[3])))
     {
         if (centeringValidAxisArray == true && mergeViewLimits == true)
         {
@@ -5898,7 +5918,6 @@ ViewerWindow::UpdateViewAxisArray(const double *limits)
     //
     else
     {
-        const avtViewAxisArray &viewAxisArray = GetViewAxisArray();
         visWindow->UpdateView();
     }
 
@@ -6452,7 +6471,7 @@ ViewerWindow::SetLargeIcons(bool val)
 //    Add compact domain options.
 //
 //    Eric Brugger, Thu Oct 27 15:47:36 PDT 2011
-//    Add a multi resolution display capability for AMR data.
+//    I added a multi resolution display capability for 2d.
 //
 // ****************************************************************************
 
@@ -6731,7 +6750,7 @@ ViewerWindow::GetPickAttributesForScreenPoint(double sx, double sy,
         if (ViewerEngineManager::Instance()->EngineExists(key))
         {
             intVector netIds;
-            for (int i = 0; i < plotIds.size(); i++)
+            for (size_t i = 0; i < plotIds.size(); i++)
             {
                 netIds.push_back(plist->GetPlot(plotIds[i])->GetNetworkID());
             }
@@ -8402,7 +8421,7 @@ ViewerWindow::GetCompactDomainsAutoThreshold() const
 //   Added automatic depth cueing mode.
 //
 //   Eric Brugger, Thu Oct 27 15:47:36 PDT 2011
-//   Add a multi resolution display capability for AMR data.
+//   I added a multi resolution display capability for 2d.
 //
 // ****************************************************************************
 
@@ -8694,7 +8713,7 @@ ViewerWindow::CreateNode(DataNode *parentNode,
 //   I added a force option to SetAnnotationAttributes.
 //
 //   Eric Brugger, Thu Oct 27 15:47:36 PDT 2011
-//   Add a multi resolution display capability for AMR data.
+//   I added a multi resolution display capability for 2d.
 //
 // ****************************************************************************
 
@@ -9045,7 +9064,7 @@ ViewerWindow::SetFromNode(DataNode *parentNode,
     if((node = windowNode->GetNode("activeTools")) != 0)
     {
         const stringVector &activeTools = node->AsStringVector();
-        for(int i = 0; i < activeTools.size(); ++i)
+        for(size_t i = 0; i < activeTools.size(); ++i)
         {
             for(int j = 0; j < GetNumTools(); ++j)
             {
@@ -9396,10 +9415,9 @@ void
 ViewerWindow::UpdateLastExternalRenderRequestInfo(
     const ExternalRenderRequestInfo &newRequest)
 {
-    int i = 0;
 
     // delete any old copies of plot attributes
-    for (i = 0; i < lastExternalRenderRequest.plotIdsList.size(); i++)
+    for (size_t i = 0; i < lastExternalRenderRequest.plotIdsList.size(); i++)
     {
         if (lastExternalRenderRequest.attsList[i] != NULL)
             delete lastExternalRenderRequest.attsList[i];
@@ -9407,7 +9425,7 @@ ViewerWindow::UpdateLastExternalRenderRequestInfo(
 
     // make copies of the plot attributes 
     lastExternalRenderRequest.attsList.clear();
-    for (i = 0; i < newRequest.plotIdsList.size(); i++)
+    for (size_t i = 0; i < newRequest.plotIdsList.size(); i++)
     {
         AttributeSubject *tmp = newRequest.attsList[i]->NewInstance(true);
         lastExternalRenderRequest.attsList.push_back(tmp);
@@ -9422,9 +9440,9 @@ ViewerWindow::UpdateLastExternalRenderRequestInfo(
     lastExternalRenderRequest.annotObjs     = newRequest.annotObjs;
     lastExternalRenderRequest.extStr        = newRequest.extStr;
     lastExternalRenderRequest.visCues       = newRequest.visCues;
-    for (i = 0; i < 7; i++)
+    for (size_t i = 0; i < 7; i++)
         lastExternalRenderRequest.frameAndState[i] = newRequest.frameAndState[i];
-    for (i = 0; i < 6; i++)
+    for (size_t i = 0; i < 6; i++)
         lastExternalRenderRequest.viewExtents[i] = newRequest.viewExtents[i];
     lastExternalRenderRequest.lastChangedCtName = ""; 
     lastExternalRenderRequest.leftEye       = newRequest.leftEye;
@@ -9574,8 +9592,8 @@ ViewerWindow::CanSkipExternalRender(const ExternalRenderRequestInfo& thisRequest
         return false;
 
     bool sameFrameAndState = true;
-    int i;
-    for (i = 0; i < 7; i++)
+
+    for (size_t i = 0; i < 7; i++)
     {
         if (thisRequest.frameAndState[i] != lastRequest.frameAndState[i])
         {
@@ -9587,7 +9605,7 @@ ViewerWindow::CanSkipExternalRender(const ExternalRenderRequestInfo& thisRequest
         return false;
 
     bool sameViewExtents = true;
-    for (i = 0; i < 6; i++)
+    for (size_t i = 0; i < 6; i++)
     {
         if (thisRequest.viewExtents[i] != lastRequest.viewExtents[i])
         {
@@ -9602,16 +9620,16 @@ ViewerWindow::CanSkipExternalRender(const ExternalRenderRequestInfo& thisRequest
         (thisRequest.plotIdsList.size() != lastRequest.plotIdsList.size()))
         return false;
 
-    for (i = 0; i < thisRequest.plotIdsList.size(); i++)
+    for (size_t i = 0; i < thisRequest.plotIdsList.size(); i++)
     {
         // search for index of current plot in last list
         int indexOfPlotInLastList = -1;
-        for (int j = 0; j < lastRequest.plotIdsList.size(); j++)
+        for (size_t j = 0; j < lastRequest.plotIdsList.size(); j++)
         {
             if ((lastRequest.plotIdsList[j] == thisRequest.plotIdsList[i]) &&
                 (lastRequest.engineKeysList[j] == thisRequest.engineKeysList[i]))
             {
-                indexOfPlotInLastList = j;
+                indexOfPlotInLastList = (int)j;
                 break;
             }
         }
@@ -9823,7 +9841,7 @@ ViewerWindow::ExternalRender(const ExternalRenderRequestInfo& thisRequest,
         int numCols = thisRequest.winAtts.GetSize()[0];
 
         imageCompositer.SetOutputImageSize(numRows, numCols);
-        for (int i = 0; i < imgList.size(); i++)
+        for (size_t i = 0; i < imgList.size(); i++)
             imageCompositer.AddImageInput(imgList[i], 0, 0);
         imageCompositer.Execute();
         dob = imageCompositer.GetOutput();
@@ -10077,7 +10095,6 @@ ViewerWindow::ExternalRenderCallback(void *data, avtDataObject_p& dob)
 void
 ViewerWindow::ViewChangedCallback(void *data)
 {
-    unsigned char* argsBuf = (unsigned char*) data;
     ViewerWindow *win;
 
     win = (ViewerWindow *)data;

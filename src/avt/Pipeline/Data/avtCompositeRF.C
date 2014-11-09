@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -214,7 +214,10 @@ avtCompositeRF::GetRayValue(const avtRay *ray,
     {
         if (validSample[z])
         {
-            float opacityValue, value, diffRGB, diffAlpha;
+            float opacityValue;
+            float value;
+            float diffRGB = 0;
+            float diffAlpha = 0;
             RGBA colorLow, colorHigh, opacLow, opacHigh;
 
             if (trilinearSampling == true){

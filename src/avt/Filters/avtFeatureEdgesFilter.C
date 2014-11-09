@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -104,11 +104,9 @@ avtFeatureEdgesFilter::~avtFeatureEdgesFilter()
 //      Sends the specified input and output through the FeatureEdges filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      inDR       The input data representation.
 //
-//  Returns:       The output unstructured grid.
+//  Returns:       The output data representation.
 //
 //  Programmer: Jeremy Meredith
 //  Creation:   March 12, 2001
@@ -140,11 +138,23 @@ avtFeatureEdgesFilter::~avtFeatureEdgesFilter()
 //    Kathleen Biagas, Mon Jan 28 10:52:35 PST 2013
 //    Call Update on filter not data object.
 //
+//    Eric Brugger, Mon Jul 21 11:41:48 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
+//    Eric Brugger, Fri Sep 26 08:35:00 PDT 2014
+//    I modified the routine to return a NULL in the case where it previously
+//    returned an avtDataRepresentation with a NULL vtkDataSet.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtFeatureEdgesFilter::ExecuteData(vtkDataSet *inDS, int, string)
+avtDataRepresentation *
+avtFeatureEdgesFilter::ExecuteData(avtDataRepresentation *inDR)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *inDS = inDR->GetDataVTK();
+
     if (inDS->GetDataObjectType() != VTK_POLY_DATA)
     {
         // We only work on surface data
@@ -154,7 +164,7 @@ avtFeatureEdgesFilter::ExecuteData(vtkDataSet *inDS, int, string)
 
     if (GetInput()->GetInfo().GetAttributes().GetTopologicalDimension() == 1)
     {
-        return inDS;
+        return inDR;
     }
 
     vtkDataSet *outDS = NULL;
@@ -218,8 +228,6 @@ avtFeatureEdgesFilter::ExecuteData(vtkDataSet *inDS, int, string)
         output->SetLines(lines);
         lines->Delete();
 
-        ManageMemory(output);
-        output->Delete();
         outDS = output;
     }
     else
@@ -249,12 +257,20 @@ avtFeatureEdgesFilter::ExecuteData(vtkDataSet *inDS, int, string)
         if (output->GetNumberOfCells() > 0)
         {
             outDS = output;
+            outDS->Register(NULL);
         }
-        ManageMemory(outDS);
         featureEdgesFilter->Delete();
     }
 
-    return outDS;
+    if (outDS == NULL)
+        return NULL;
+
+    avtDataRepresentation *outDR = new avtDataRepresentation(outDS,
+        inDR->GetDomain(), inDR->GetLabel());
+
+    outDS->Delete();
+
+    return outDR;
 }
 
 

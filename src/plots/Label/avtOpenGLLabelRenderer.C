@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2076,11 +2076,17 @@ avtOpenGLLabelRenderer::InitializeZBuffer(bool haveNodeData,
     }
 
     if(zBufferMode == ZBUFFER_DONT_USE)
+    {
         debug4 << mName << "zBufferMode = ZBUFFER_DONT_USE" << endl;
+    }
     else if(zBufferMode == ZBUFFER_USE_PROVIDED)
+    {
         debug4 << mName << "zBufferMode = ZBUFFER_USE_PROVIDED" << endl;
+    }
     else if(zBufferMode == ZBUFFER_QUERY)
+    {
         debug4 << mName << "zBufferMode = ZBUFFER_QUERY" << endl;
+    }
 }
 
 // ****************************************************************************

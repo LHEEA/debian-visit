@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -68,7 +68,7 @@ public:
     virtual int Fill();
     virtual void Flush();
     virtual long Size();
-    virtual void Append(unsigned char *buf, int count);
+    virtual void Append(const unsigned char *buf, int count);
     virtual long DirectRead(unsigned char *buf, long len);
     virtual long DirectWrite(const unsigned char *buf, long len);
 protected:

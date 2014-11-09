@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -113,7 +113,7 @@ SILRestriction_Categories(PyObject *self, PyObject *args)
     // Allocate a tuple the with enough entries to hold the Collection name list.
     PyObject *retval = PyTuple_New(mapsOut.size());
 
-    for(int i = 0; i < mapsOut.size(); ++i)
+    for(size_t i = 0; i < mapsOut.size(); ++i)
     {
         int cIndex = mapsOut[i];
         avtSILCollection_p collection = silr->GetSILCollection(cIndex);
@@ -736,7 +736,7 @@ SILRestriction_Wholes(PyObject *self, PyObject *args)
     // Allocate a tuple the with enough entries to hold the wholes.
     PyObject *retval = PyTuple_New(silr->GetWholes().size());
 
-    for(int i = 0; i < silr->GetWholes().size(); ++i)
+    for(size_t i = 0; i < silr->GetWholes().size(); ++i)
     {
         PyObject *dval = PyLong_FromLong((long)silr->GetWholes()[i]);
         if(dval == NULL)

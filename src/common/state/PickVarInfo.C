@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1394,7 +1394,7 @@ PickVarInfo::CreateOutputString(std::string &os, const std::string &type)
                 else if (variableType == "label")
                 {
                     int labelSize = values.size() / names.size();
-                    for (j = labelSize*i; j < labelSize * (i+1); j++) 
+                    for (size_t j = labelSize*i; j < labelSize * (i+1); j++) 
                     {
                         char c[2] = {(char)values[j], 0};
                         os += c;
@@ -1795,7 +1795,6 @@ PickVarInfo::CreateOutputMapNode(const std::string &type, MapNode &m)
         else
         {
             MapNode n;
-            int mixOffset = 0; 
             for (size_t i = 0; i < names.size(); ++i)
             {
                 std::string stripName = names[i].substr(1, names[i].size() -2);
@@ -1878,6 +1877,7 @@ PickVarInfo::CreateOutputMapNode(const std::string &type, MapNode &m)
                 m[variableName] = n;
                 
 #if 0
+            int mixOffset = 0; 
             if (mixVar)
             {
                 int nMats = numMatsPerZone[i];

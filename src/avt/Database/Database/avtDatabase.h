@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -303,6 +303,15 @@ typedef struct {
 //   Dave Pugmire, Fri Feb  8 17:22:01 EST 2013
 //   Added support for ensemble databases. (multiple time values)
 //
+//   Burlen Loring, Sun Apr 27 14:35:26 PDT 2014
+//   make copy constructor and assignment operator private since
+//   using the default implmentations would result in multiple
+//   delete's of raw pointers held stl containers. make names of
+//   variables used to limit cache sizes describe their purpose.
+//
+//   Brad Whitlock, Thu Jun 19 10:47:28 PDT 2014
+//   I changed how getting IO information works. 
+//
 // ****************************************************************************
 
 class DATABASE_API avtDatabase
@@ -331,8 +340,6 @@ class DATABASE_API avtDatabase
     int                         GetMostRecentTimestep() const;
 
     virtual void                ActivateTimestep(int stateIndex) {;}; 
-    virtual void                PopulateIOInformation(int stateIndex,
-                                    avtIOInformation& ioInfo) {;};
 
     virtual avtVariableCache   *GetCache(void) { return NULL; };
     virtual void                ClearCache(void);
@@ -342,7 +349,9 @@ class DATABASE_API avtDatabase
     virtual bool                CanDoStreaming(avtDataRequest_p);
     virtual int                 NumStagesForFetch(avtDataRequest_p);
 
-    const avtIOInformation     &GetIOInformation(int stateIndex);
+    virtual bool                GetIOInformation(int stateIndex, 
+                                                 const std::string &meshname,
+                                                 avtIOInformation &info);
 
     static bool                 OnlyServeUpMetaData(void)
                                      { return onlyServeUpMetaData; };
@@ -361,7 +370,7 @@ class DATABASE_API avtDatabase
     virtual void                GetDomainName(const std::string &, const int ts,
                                     const int dom, std::string &) {;};
 
-    static void                 GetFileListFromTextFile(const char *,
+    static bool                 GetFileListFromTextFile(const char *,
                                                         char **&, int &, int * =0);
 
     void                        SetFileFormat(const std::string &ff)
@@ -401,14 +410,12 @@ class DATABASE_API avtDatabase
     std::list<CachedMDEntry>               metadata;
     std::list<CachedSILEntry>              sil;
     std::vector<avtDataObjectSource *>     sourcelist;
-    avtIOInformation                       ioInfo;
-    bool                                   gotIOInfo;
     static bool                            onlyServeUpMetaData;
     std::string                            fileFormat;
     std::string                            fullDBName;
 
-    static int                             mdCacheSize;
-    static int                             silCacheSize;
+    static unsigned int                    mdMaxCacheSize;
+    static unsigned int                    silMaxCacheSize;
 
     bool                                  *invariantMetaData;
     bool                                  *invariantSIL;
@@ -434,6 +441,10 @@ class DATABASE_API avtDatabase
                                     int=0, bool=false) = 0;
     virtual void                PopulateSIL(avtSIL *, int=0,
                                     bool treatAllDBsAsTimeVarying = false) = 0;
+
+    virtual bool                PopulateIOInformation(int stateIndex,
+                                                      const std::string &meshname,
+                                                      avtIOInformation& ioInfo) { return false;}
 
     void                        PopulateDataObjectInformation(avtDataObject_p&,
                                                   const char *,
@@ -517,7 +528,9 @@ class DATABASE_API avtDatabase
                                         const int, const bool, const int)
                                         { return -1; };
 
- 
+private:
+    avtDatabase(const avtDatabase &); // not implemented
+    void operator=(const avtDatabase &); //not implemented
 };
 
 

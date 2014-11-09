@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -97,7 +97,8 @@ class avtSimV2FileFormat : public avtSTMDFileFormat
                                             const char *type, void *,
                                             DestructorFunction &df);
 
-    virtual void           PopulateIOInformation(avtIOInformation& ioInfo);
+    virtual bool           PopulateIOInformation(const std::string &meshname,
+                                                 avtIOInformation& ioInfo);
 
   protected:
     avtSpecies            *GetSpecies(int, const char *);

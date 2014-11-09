@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -90,7 +90,6 @@ avtICAlgorithm::avtICAlgorithm( avtPICSFilter *f ) :
 {
     picsFilter = f;
     numDomains = picsFilter->numDomains;
-    numTimeSteps = picsFilter->numTimeSteps;
 
     domainsUsed = 0;
     totDomainsLoaded = 0;
@@ -311,8 +310,9 @@ void
 avtICAlgorithm::PostExecute()
 {
     if (DebugStream::Level1())
+    {
         debug1<<"avtICAlgorithm::PostExecute()\n";
-
+    }
     vector<avtIntegralCurve *> v;
     
     while (! terminatedICs.empty())
@@ -323,7 +323,7 @@ avtICAlgorithm::PostExecute()
 
     picsFilter->CreateIntegralCurveOutput(v);
 
-    for (int i = 0; i < v.size(); i++)
+    for (size_t i = 0; i < v.size(); i++)
         delete v[i];
     
     if (visitTimer->Enabled())
@@ -733,7 +733,7 @@ avtICAlgorithm::ComputeDomainLoadStatistic()
     
     for (it = picsFilter->domainLoadCount.begin(); it != picsFilter->domainLoadCount.end(); it++)
     {
-        if (it->first >= numDomains)
+        if (it->first >= (size_t)numDomains)
         {
             // This can happen with pathlines ... we aren't even doing the right sort of
             // counting ... just give up.
@@ -1085,7 +1085,7 @@ avtICAlgorithm::PrintCounter(ostream &os,
             sprintf(f, "%s_histogram.txt", str);
             ofstream hos;
             hos.open(f, ios::out);
-            for (int i = 0; i < s.histogram.size(); i++)
+            for (size_t i = 0; i < s.histogram.size(); i++)
                 hos<<s.histogram[i]<<endl;
             hos.close();
         }

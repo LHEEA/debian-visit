@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -49,13 +49,16 @@
 #   Removed conditional check for OSMESA SIZE LIMIT, in case something wasn't
 #   set up correctly during first configure pass (eg Mesa lib).
 #
+#   Kathleen Biagas, Tues Oct 1 09:33:47 MST 2013
+#   Removed VISIT_MSVC_VERSION from windows handling.
+#
 #****************************************************************************/
 
 # Use the VTK_DIR hint from the config-site .cmake file 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-    SET_UP_THIRD_PARTY(MESA lib/${VISIT_MSVC_VERSION} include MesaGL32 osmesa32)
+    SET_UP_THIRD_PARTY(MESA lib include MesaGL32 osmesa32)
 ELSE (WIN32)
     SET_UP_THIRD_PARTY(MESA lib include OSMesa)
 

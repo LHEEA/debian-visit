@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -161,40 +161,33 @@ void
 avtTimeIteratorDataTreeIteratorExpression::PrepareAndExecuteDataset(
                                                         vtkDataSet *ds, int ts)
 {
-    int  i;
-
     std::vector<vtkDataArray *> ds_vars;
     std::vector<vtkDataArray *> delete_vars;
 
     bool haveZonal = false;
-    bool haveNodal = false;
 
-    int nvars = varnames.size();
+    size_t nvars = varnames.size();
     if (cmfeType == POS_CMFE)
         nvars--;
-    for (i = 0 ; i < nvars ; i++)
+    for (size_t i = 0 ; i < nvars ; i++)
     {
         std::string vname = GetInternalVarname(i);
         vtkDataArray *cell_data1 = ds->GetCellData()->GetArray(vname.c_str());
         vtkDataArray *point_data1 = ds->GetPointData()->GetArray(vname.c_str());
-
-        if (cell_data1 != NULL)
-            haveZonal = true;
-        else if (point_data1 != NULL)
-            haveNodal = true;
-        else
+        if (cell_data1 == NULL && point_data1 == NULL)
         {
             EXCEPTION2(ExpressionException, outputVariableName,
                        "An internal error occurred when calculating an expression."
                        "  Please contact a VisIt developer.");
         }
+        haveZonal = (cell_data1 != NULL);
     }
 
     bool doZonal = false;
     if (haveZonal)
         doZonal = true;  // mixed centering -> zonal
 
-    for (i = 0 ; i < nvars ; i++)
+    for (size_t i = 0 ; i < nvars ; i++)
     {
         std::string vname = GetInternalVarname(i);
         vtkDataArray *cell_data1 = ds->GetCellData()->GetArray(vname.c_str());
@@ -229,7 +222,7 @@ avtTimeIteratorDataTreeIteratorExpression::PrepareAndExecuteDataset(
     vtkDataArray *out_arr = vars[arrayIndex++];
     ExecuteDataset(ds_vars, out_arr, ts);
 
-    for (i = 0 ; i < delete_vars.size() ; i++)
+    for (size_t i = 0 ; i < delete_vars.size() ; i++)
         delete_vars[i]->Delete();
 }
 
@@ -255,7 +248,7 @@ avtTimeIteratorDataTreeIteratorExpression::InitializeOutput(void)
     avtDataTree_p topTree = GetInputDataTree();
     std::vector<avtDataTree_p> treesToProcess;
     treesToProcess.push_back(topTree);
-    int curIndex = 0;
+    size_t curIndex = 0;
     vars.clear();
     while (curIndex < treesToProcess.size())
     {

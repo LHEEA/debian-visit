@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -490,7 +490,7 @@ avtSAMIFileFormat::GetMesh(const char *meshname)
     }
     else if (strncmp(meshname, "slide_", 6) == 0)
     {
-        int nlsize, *nd[4] = {0,0,0,0};
+        int nlsize = 0, *nd[4] = {0,0,0,0}; (void) nlsize; //TODO: check fix for uninitialized value
         for (j = 0; j < (1<<(ndims-1)); j++)
         {
             char tmpName[256];

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -91,17 +91,20 @@ class     vtkDataArray;
 //    Added 'connecteNodesOnly' to GetDataExtents.  Meant to be set to true
 //    if actual extents are desired.
 //
+//    Kathleen Biagas, Thu Sep 11 09:17:10 PDT 2014
+//    Added bool flag to GetNumberOfNodes/Zones for counting original only.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtDatasetExaminer
 {
   public:
-    static VISIT_LONG_LONG    GetNumberOfNodes(avtDataset_p &);
-    static VISIT_LONG_LONG    GetNumberOfZones(avtDataset_p &);
+    static VISIT_LONG_LONG    GetNumberOfNodes(avtDataset_p &, bool=false);
+    static VISIT_LONG_LONG    GetNumberOfZones(avtDataset_p &, bool = false);
     static void               GetNumberOfZones(avtDataset_p&, VISIT_LONG_LONG&,
-                                               VISIT_LONG_LONG&);
+                                               VISIT_LONG_LONG&, bool=false);
     static void               GetNumberOfNodes(avtDataset_p&, VISIT_LONG_LONG&,
-                                               VISIT_LONG_LONG&);
+                                               VISIT_LONG_LONG&, bool=false);
     static void               GetVariableList(avtDataset_p &, VarList &);
     static bool               GetSpatialExtents(avtDataset_p &, double *);
     static bool               GetSpatialExtents(std::vector<avtDataTree_p> &, 

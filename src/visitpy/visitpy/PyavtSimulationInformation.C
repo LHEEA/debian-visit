@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,8 +75,8 @@ static PyObject *NewavtSimulationInformation(int);
 std::string
 PyavtSimulationInformation_ToString(const avtSimulationInformation *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%shost = \"%s\"\n", prefix, atts->GetHost().c_str());
     str += tmpStr;
@@ -350,7 +350,7 @@ avtSimulationInformation_GetGenericCommands(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetGenericCommands().size())
+    if(index < 0 || (size_t)index >= obj->data->GetGenericCommands().size())
     {
         char msg[200];
         if(obj->data->GetGenericCommands().size() == 0)
@@ -498,7 +498,7 @@ avtSimulationInformation_GetCustomCommands(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetCustomCommands().size())
+    if(index < 0 || (size_t)index >= obj->data->GetCustomCommands().size())
     {
         char msg[200];
         if(obj->data->GetCustomCommands().size() == 0)
@@ -714,6 +714,8 @@ PyavtSimulationInformation_setattr(PyObject *self, char *name, PyObject *args)
         Py_DECREF(obj);
 
     Py_DECREF(tuple);
+    if( obj == NULL)
+        PyErr_Format(PyExc_RuntimeError, "Unable to set unknown attribute: '%s'", name);
     return (obj != NULL) ? 0 : -1;
 }
 
@@ -867,7 +869,6 @@ PyavtSimulationInformation_GetLogString()
 static void
 PyavtSimulationInformation_CallLogRoutine(Subject *subj, void *data)
 {
-    avtSimulationInformation *atts = (avtSimulationInformation *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

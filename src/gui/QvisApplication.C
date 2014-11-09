@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,7 +40,7 @@
 
 #include <QMenuBar>
 
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
 // Include some MacOS X stuff
 #include <Carbon/Carbon.h>
 #include <visit-config.h>
@@ -65,7 +65,7 @@
 QvisApplication::QvisApplication( int &argc, char **argv) :
     QApplication(argc, argv)
 {
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
     needToMakeActive = false;
     eventLoop = 0;
 #endif
@@ -74,7 +74,7 @@ QvisApplication::QvisApplication( int &argc, char **argv) :
 QvisApplication::QvisApplication( int &argc, char **argv, bool GUIenabled ) :
     QApplication(argc, argv, GUIenabled)
 {
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
     needToMakeActive = false;
     eventLoop = 0;
 #endif
@@ -97,7 +97,8 @@ QvisApplication::~QvisApplication()
 {
 }
 
-#ifdef Q_WS_MACX
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
 // ****************************************************************************
 // Method: QvisApplication::macEventFilter
 //
@@ -265,7 +266,7 @@ QvisApplication::macEventFilter(EventHandlerCallRef er, EventRef event)
 
                 // Inject a Carbon event to make the application active.
                 CreateEvent(NULL, kEventClassApplication, kEventAppActivated, GetCurrentEventTime(),
-                     NULL, &request_make_app_active);
+                     0, &request_make_app_active);
                 PostEventToQueue(GetCurrentEventQueue(), request_make_app_active, kEventPriorityHigh);
                 // Inject a directive to exit a sub-event loop that we'll be creating.
                 QTimer::singleShot(10, this, SLOT(exitTheLoop()));
@@ -287,6 +288,7 @@ QvisApplication::macEventFilter(EventHandlerCallRef er, EventRef event)
     return ret;
 }
 #endif
+#endif
 
 // ****************************************************************************
 // Method: QvisApplication::exitTheLoop
@@ -305,7 +307,7 @@ QvisApplication::macEventFilter(EventHandlerCallRef er, EventRef event)
 void
 QvisApplication::exitTheLoop()
 {
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
     eventLoop->exit();
     delete eventLoop;
     eventLoop = 0;

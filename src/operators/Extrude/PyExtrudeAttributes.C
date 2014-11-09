@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewExtrudeAttributes(int);
 std::string
 PyExtrudeAttributes_ToString(const ExtrudeAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const double *axis = atts->GetAxis();
         SNPRINTF(tmpStr, 1000, "%saxis = (", prefix);
@@ -469,7 +469,6 @@ PyExtrudeAttributes_GetLogString()
 static void
 PyExtrudeAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ExtrudeAttributes *atts = (ExtrudeAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

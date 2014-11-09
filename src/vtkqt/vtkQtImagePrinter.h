@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ protected:
   vtkQtImagePrinter(const vtkQtImagePrinter&) {};
   void operator=(const vtkQtImagePrinter&) {};
 
-  virtual void WriteFile(ofstream *file, vtkImageData *data, int ext[6]);
-  virtual void WriteFileHeader(ofstream *, vtkImageData *) { };
+  virtual void WriteFile(ofstream *file, vtkImageData *data, int ext[6], int wext[6]);
+  virtual void WriteFileHeader(ofstream *, vtkImageData *, int [6]) { };
 private:
   QPrinter print;
 };

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -576,9 +576,6 @@ QvisAbstractOpacityBar::resizeEvent(QResizeEvent*)
     framerect.setLeft(framerect.left()     +5);
     framerect.setRight(framerect.right()   -10);
     setFrameRect(framerect);
-
-    int w=contentsRect().width();
-    int h=contentsRect().height();
 
     imageDirty();
     update();

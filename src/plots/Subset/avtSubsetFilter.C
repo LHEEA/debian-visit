@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -143,11 +143,21 @@ avtSubsetFilter::SetPlotAtts(const SubsetAttributes *atts)
 //    chunk case, and if it's a NULL label, use the label from the plot
 //    attributes.  This fixes subset plots of materials.
 //
+//    Eric Brugger, Tue Aug 19 11:20:07 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 avtDataTree_p
-avtSubsetFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
+avtSubsetFilter::ExecuteDataTree(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set, the domain number, and the label.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+    int domain = in_dr->GetDomain();
+    std::string label = in_dr->GetLabel();
+
     if (in_ds == NULL || in_ds->GetNumberOfPoints() == 0 ||
         in_ds->GetNumberOfCells() == 0)
     {
@@ -423,7 +433,6 @@ avtSubsetFilter::ModifyContract(avtContract_p spec)
             spec->SetCalculateVariableExtents(pointVar, true);
         }
 
-        avtDataAttributes &data = GetInput()->GetInfo().GetAttributes();
         if (spec->GetDataRequest()->MayRequireZones() ||
             spec->GetDataRequest()->MayRequireNodes())
         {

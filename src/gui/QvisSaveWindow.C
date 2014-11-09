@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -231,7 +231,7 @@ QvisSaveWindow::CreateWindowContents()
     connect(outputDirectoryLineEdit, SIGNAL(returnPressed()),
             this, SLOT(processOutputDirectoryText()));
 
-#ifndef Q_WS_MACX
+#if !(defined(Q_WS_MACX) || defined(Q_OS_MAC))
     outputDirectorySelectButton->setMaximumWidth(
          fontMetrics().boundingRect("...").width() + 6);
 #endif

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -269,6 +269,9 @@ avtConnComponentsSummaryQuery::PreExecute(void)
 //    Cyrus Harrison, Mon Jun  6 17:05:47 PDT 2011
 //    Support 1D case (line length).
 //
+//    Cyrus Harrison, Wed Jul 16 15:36:45 PDT 2014
+//    Added XML (MapNode) results.
+//
 // ****************************************************************************
 
 void
@@ -409,6 +412,11 @@ avtConnComponentsSummaryQuery::PostExecute(void)
 
         // set output values
         SetResultValues(results);
+
+        // set Xml result
+        MapNode result_node;
+        PrepareMapNodeResult(result_node);
+        SetXmlResult(result_node.ToXML());
     }
 }
 
@@ -678,7 +686,6 @@ avtConnComponentsSummaryQuery::VerifyInput(void)
                                      ->GetFullDataRequest();
 
     // get the variable name
-    avtDataAttributes &dataAtts = GetInput()->GetInfo().GetAttributes();
     variableName = dataRequest->GetVariable();
 }
 
@@ -959,7 +966,7 @@ avtConnComponentsSummaryQuery::SaveComponentResults(std::string fname)
 }
 
 // ****************************************************************************
-//  Method: avtConnComponentsSummaryQuery::PackResults
+//  Method: avtConnComponentsSummaryQuery::PrepareComponentResults
 //
 //  Purpose: Packs component summary results for return with Set
 //
@@ -1043,4 +1050,49 @@ avtConnComponentsSummaryQuery::PrepareComponentResults(vector<double> &results)
         results[idx++] = zMinPerComp[i];
         results[idx++] = zMaxPerComp[i];
     }
+}
+
+// ****************************************************************************
+//  Method: avtConnComponentsSummaryQuery::PrepareMapNodeResult
+//
+//  Purpose: Packs component summary results into a MapNode
+//
+//  Programmer: Cyrus Harrison
+//  Creation:   July 16, 2014
+//
+//  Modifications:
+//
+// ****************************************************************************
+void 
+avtConnComponentsSummaryQuery::PrepareMapNodeResult(MapNode &result_node)
+{
+    result_node["connected_component_count"] = nComps;
+    
+    result_node["comp_x"] = xCentroidPerComp;
+    result_node["comp_y"] = yCentroidPerComp;
+    result_node["comp_z"] = zCentroidPerComp;
+
+    result_node["comp_num_cells"] = nCellsPerComp;
+    result_node["comp_num_procs"] = nProcsPerComp;
+
+    if(findLength)
+        result_node["comp_length"] = lengthPerComp;
+
+    if(findArea)
+        result_node["comp_area"] = areaPerComp;;
+
+    if(findVolume)
+        result_node["comp_volume"] = volPerComp;
+
+    result_node["comp_sum"] = sumPerComp;
+    result_node["comp_weighted_sum"] = wsumPerComp;
+
+    result_node["comp_bb_x_min"] = xMinPerComp;
+    result_node["comp_bb_x_max"] = xMaxPerComp;
+    
+    result_node["comp_bb_y_min"] = yMinPerComp;
+    result_node["comp_bb_y_max"] = yMaxPerComp;
+
+    result_node["comp_bb_z_min"] = zMinPerComp;
+    result_node["comp_bb_z_max"] = zMaxPerComp;
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,6 +84,8 @@
 
 using std::vector;
 using std::string;
+using std::set;
+using std::pair;
 using namespace std;
 
 // ****************************************************************************
@@ -397,6 +399,57 @@ CGetNumberOfZones(avtDataRepresentation &data, void *sum, bool &)
     }
     vtkDataSet *ds = data.GetDataVTK();
     *numCells += ds->GetNumberOfCells();
+}
+
+
+// ****************************************************************************
+//  Method: CGetNumberOfOriginalZones
+//
+//  Purpose:
+//    Adds the number of cells in the vtk input to the passed argument.
+//    Utilizes avtOriginalCellNumbers to ensure count does not include
+//    duplicate 'original' zones.
+//
+//  Arguments:
+//    data      The data from which to calculate number of cells.
+//    arg       A place to store the cumulative number of cells.
+//    <unused>
+//
+//  Notes:
+//      This method is designed to be used as the function parameter of
+//      avtDataTree::Iterate.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   September 11, 2014
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+CGetNumberOfOriginalZones(avtDataRepresentation &data, void *arg, bool &)
+{
+    if (!data.Valid())
+    {
+        EXCEPTION0(NoInputException);
+    }
+    vtkDataSet *ds = data.GetDataVTK();
+    vtkUnsignedIntArray *ocArray = vtkUnsignedIntArray::SafeDownCast(
+              ds->GetCellData()->GetArray("avtOriginalCellNumbers"));
+    if (ocArray)
+    {
+        OrigElementCountArgs *args = (OrigElementCountArgs *) arg;
+        int ncomp = ocArray->GetNumberOfComponents();
+        int ntups = ocArray->GetNumberOfTuples();
+        unsigned int *oca = (unsigned int*) ocArray->GetPointer(0);
+        for (int i = 0; i < ntups; ++i)
+        {
+            if (ncomp ==2)
+                args->elementCount.insert(pair<unsigned int, unsigned int>(oca[2*i], oca[2*i+1]));
+            else 
+                args->elementCount.insert(pair<unsigned int, unsigned int>(0, oca[i]));
+        }
+    }
 }
 
 
@@ -804,7 +857,7 @@ CPruneByDomainList(avtDataRepresentation & data, void *arg, bool &success)
     bool keepIt = false;
     if (data.GetDomain() < 0)
         keepIt = true;
-    else if (data.GetDomain() < pmap->lookup.size())
+    else if ((size_t)data.GetDomain() < pmap->lookup.size())
         keepIt = pmap->lookup[data.GetDomain()];
     if (keepIt)
     {
@@ -1347,8 +1400,8 @@ GetScalarRange(T *buf, int n, double *exts, unsigned char *ghosts,
                bool checkFinite)
 {
     T *buf_orig = buf;
-    T min; 
-    T max;
+    T min = 0;
+    T max = 0;
     bool setOne = false;
     for (int i = 0; i < n; i++, buf++)
     {
@@ -1532,8 +1585,8 @@ GetDataScalarRange(vtkDataSet *ds, double *exts, const char *vname,
 template <class T> static bool
 GetComponentRange(T *buf, int n, int c, int nc, double *exts, unsigned char *ghosts)
 {
-    T min; 
-    T max;
+    T min = 0;
+    T max = 0;
     bool setOne = false;
     buf += c;
     for (int i = c; i < n*nc; i+=nc, buf+=nc)
@@ -2678,6 +2731,58 @@ CGetNumberOfNodes(avtDataRepresentation &data, void *sum, bool &)
 
 
 // ****************************************************************************
+//  Method: CGetNumberOfOriginalNodes
+//
+//  Purpose:
+//    Adds the number of nodes in the vtk input to the passed sum argument.
+//    Utilizes avtOriginalNodeNumbers to ensure count does not include dups.
+//
+//  Arguments:
+//    data      The data from which to calculate number of nodes.
+//    arg       A place to store the cumulative number of nodes.
+//    <unused>
+//
+//  Notes:
+//      This method is designed to be used as the function parameter of
+//      avtDataTree::Iterate.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   September 11, 2014
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+CGetNumberOfOriginalNodes(avtDataRepresentation &data, void *arg, bool &)
+{
+    if (!data.Valid())
+    {
+        EXCEPTION0(NoInputException);
+    }
+
+    vtkDataSet *ds = data.GetDataVTK();
+    vtkIntArray *onArray = vtkIntArray::SafeDownCast(
+              ds->GetPointData()->GetArray("avtOriginalNodeNumbers"));
+    if (onArray)
+    {
+        OrigElementCountArgs *args = (OrigElementCountArgs *) arg;
+        int ncomp = onArray->GetNumberOfComponents();
+        int ntups = onArray->GetNumberOfTuples();
+        for (int i = 0; i < ntups; ++i)
+        {
+            int oNode = onArray->GetComponent(i, ncomp-1);
+            if (oNode == -1)
+                continue;
+            unsigned int dom = ncomp == 1 ? 0 : onArray->GetComponent(i, 0);
+            args->elementCount.insert(pair<unsigned int, unsigned int>(dom, (unsigned int)oNode));
+        }
+    }
+
+}
+
+
+// ****************************************************************************
 //  Method: CGetNumberOfRealZones
 //
 //  Purpose:
@@ -2739,6 +2844,78 @@ CGetNumberOfRealZones(avtDataRepresentation &data, void *sum, bool &)
         numZones[0] += nCells;
     }
 }
+
+
+// ****************************************************************************
+//  Method: CGetNumberOfRealOriginalZones
+//
+//  Purpose:
+//    Adds the number of zones in the vtk input to the passed argument.
+//    Counts 'real' and 'ghost' separately.
+//    Utilizes avtOriginalCellNumbers to ensure count does not include dups.
+//
+//  Arguments:
+//    data      The data from which to calculate number of zones.
+//    sum       A place to store the cumulative number of zones.
+//    <unused>
+//
+//  Notes:
+//      This method is designed to be used as the function parameter of
+//      avtDataTree::Iterate.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   September 11, 2014
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+CGetNumberOfRealOriginalZones(avtDataRepresentation &data, void *arg, bool &dummy)
+{
+    if (!data.Valid())
+    {
+        EXCEPTION0(NoInputException);
+    }
+    vtkDataSet *ds = data.GetDataVTK();
+    vtkUnsignedCharArray *ghosts = (vtkUnsignedCharArray*)
+        ds->GetCellData()->GetArray("avtGhostZones");
+    if (!ghosts)
+    {
+        CGetNumberOfOriginalZones(data, arg, dummy);
+        return;
+    }
+
+    vtkUnsignedIntArray *ocArray = vtkUnsignedIntArray::SafeDownCast(
+        ds->GetCellData()->GetArray("avtOriginalCellNumbers"));
+    if (ocArray)
+    {
+        OrigElementCountArgs *args = (OrigElementCountArgs *) arg;
+        int ncomp = ocArray->GetNumberOfComponents();
+        int ntups = ocArray->GetNumberOfTuples();
+        unsigned int *oca = (unsigned int*) ocArray->GetPointer(0);
+        unsigned char *gptr = ghosts->GetPointer(0);
+
+        for (int i = 0; i < ntups; i++)
+        {
+            if (gptr[i])
+            {
+                if (ncomp ==2)
+                    args->ghostElementCount.insert(pair<unsigned int, unsigned int>(oca[2*i], oca[2*i+1]));
+                else 
+                    args->ghostElementCount.insert(pair<unsigned int, unsigned int>(0, oca[i]));
+            }
+            else
+            {
+                if (ncomp ==2)
+                    args->elementCount.insert(pair<unsigned int, unsigned int>(oca[2*i], oca[2*i+1]));
+                else
+                    args->elementCount.insert(pair<unsigned int, unsigned int>(0, oca[i]));
+            }
+        }
+    }
+}
+
 
 
 // ****************************************************************************
@@ -2822,6 +2999,108 @@ CGetNumberOfRealNodes(avtDataRepresentation &data, void *sum, bool &)
     else
     {
         numNodes[0] += nPoints;
+    }
+}
+
+
+// ****************************************************************************
+//  Method: CGetNumberOfRealOriginalNodes
+//
+//  Purpose:
+//    Adds the number of nodes in the vtk input to the passed sum argument.
+//    Counts 'real' and 'ghost' separately.
+//    Utilizes avtOriginalNodeNumbers to ensure count does not include dups.
+//
+//  Arguments:
+//    data      The data from which to calculate number of nodes.
+//    sum       A place to store the cumulative number of nodes.
+//    <unused>
+//
+//  Notes:
+//      This method is designed to be used as the function parameter of
+//      avtDataTree::Iterate.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   September 11, 2014
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+CGetNumberOfRealOriginalNodes(avtDataRepresentation &data, void *arg, bool &dummy)
+{
+    if (!data.Valid())
+    {
+        EXCEPTION0(NoInputException);
+    }
+    vtkDataSet *ds = data.GetDataVTK();
+    vtkUnsignedCharArray *ghostNodes = (vtkUnsignedCharArray*)
+        ds->GetPointData()->GetArray("avtGhostNodes");
+    vtkUnsignedCharArray *ghostZones = (vtkUnsignedCharArray*)
+        ds->GetCellData()->GetArray("avtGhostZones");
+
+    if (!ghostNodes && !ghostZones)
+    {
+        CGetNumberOfOriginalNodes(data, arg, dummy);
+        return;
+    }
+
+    vtkIntArray *onArray = vtkIntArray::SafeDownCast(
+        ds->GetPointData()->GetArray("avtOriginalNodeNumbers"));
+
+    if (onArray)
+    {
+        OrigElementCountArgs *args = (OrigElementCountArgs*)arg;
+        int nPoints = ds->GetNumberOfPoints();
+        int nComp = onArray->GetNumberOfComponents();
+        if (ghostNodes != NULL)
+        {
+            unsigned char *gptr = ghostNodes->GetPointer(0);
+            for (int i = 0; i < nPoints; i++)
+            {
+              int origNode = onArray->GetComponent(i, nComp-1);
+              if (origNode == -1)
+                  continue;
+              unsigned int dom = nComp == 1 ? 0 : onArray->GetComponent(i, 0);
+
+              if (gptr[i])
+              {
+                  args->ghostElementCount.insert(pair<unsigned int, unsigned int>(dom, (unsigned int)origNode));
+              }
+              else
+              {
+                  args->elementCount.insert(pair<unsigned int, unsigned int>(dom, (unsigned int)origNode));
+              }
+            }
+        }
+        else
+        {
+            unsigned char *gptr = ghostZones->GetPointer(0);
+            vtkIdList *ids = vtkIdList::New();
+            for (int i = 0; i < nPoints; i++)
+            {
+               int origNode = onArray->GetComponent(i, nComp-1);
+               if (origNode == -1)
+                   continue;
+               unsigned int dom = nComp == 1 ? 0 : onArray->GetComponent(i, 0);
+
+               ds->GetPointCells(i, ids);    
+               int numGhostCells = 0;
+               if (ids->GetNumberOfIds() == 0)
+                   continue;
+
+               for (int j = 0; j < ids->GetNumberOfIds(); j++)
+               {
+                   numGhostCells += gptr[ids->GetId(j)] > 0 ? 1 : 0;
+               }
+               if (numGhostCells == ids->GetNumberOfIds())
+                   args->ghostElementCount.insert(pair<unsigned int, unsigned int>(dom, (unsigned int)origNode));
+               else
+                   args->elementCount.insert(pair<unsigned int, unsigned int>(dom, (unsigned int)origNode));
+            }
+            ids->Delete();
+        }
     }
 }
 
@@ -3303,5 +3582,4 @@ CCalculateHistogram(avtDataRepresentation &data, void *args, bool &errOccurred)
             ntups, nbins, min, max, numVals));
     }
 }
-
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -142,8 +142,11 @@ int main(int argc, char **argv)
     }
 
     // fewer args than conversion specifiers
+    // Note a valid test on all systems because va_args cannot determine end of arg list
+#if 0
     if (ValidatePrintfFormatString("%d %d %d", "int", "int"))
         falsePositives.push_back(__LINE__);
+#endif
     // incompatible types and conversion specs
     if (ValidatePrintfFormatString("%d %d", "short", "unsigned"))
         falsePositives.push_back(__LINE__);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -795,7 +795,7 @@ QvisSelectionsWindow::GetCurrentValues(int which_widget)
             float r0, r1;
             cqLimits->getVariable(i)->getSelectedRange(r0, r1);
 
-            if(i < selectionProps.GetVariableMins().size())
+            if((size_t)i < selectionProps.GetVariableMins().size())
             {
                 selectionProps.GetVariableMins()[i] = r0;
                 selectionProps.GetVariableMaxs()[i] = r1;

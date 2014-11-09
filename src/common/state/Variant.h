@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,7 +78,7 @@ class STATE_API Variant
         FLOAT_TYPE, DOUBLE_TYPE, STRING_TYPE,
         BOOL_VECTOR_TYPE, CHAR_VECTOR_TYPE, UNSIGNED_CHAR_VECTOR_TYPE,
         INT_VECTOR_TYPE, LONG_VECTOR_TYPE, FLOAT_VECTOR_TYPE,
-        DOUBLE_VECTOR_TYPE, STRING_VECTOR_TYPE
+        DOUBLE_VECTOR_TYPE, STRING_VECTOR_TYPE, ID__LAST
     } VariantTypeEnum;
 
     Variant();
@@ -215,10 +215,10 @@ class STATE_API Variant
 
     void                      Reset() {Cleanup();} // set to empty
 
-    virtual std::string       ToXML(const std::string &indent="",bool encodeString = true) const;
-    virtual std::string       ToJSON(const std::string &indent="",bool encodeString = true) const;
-    virtual XMLNode           ToXMLNode(bool encodeString = true) const;
-    virtual JSONNode          ToJSONNode(bool encodeString = true) const;
+    virtual std::string       ToXML(const std::string &indent, bool encodeString) const;
+    virtual std::string       ToJSON(const std::string &indent, bool encodeString) const;
+    virtual XMLNode           ToXMLNode(bool encodeString) const;
+    virtual JSONNode          ToJSONNode(bool encodeString, bool id) const;
 
  protected:
     void                      Write(Connection &conn) const;

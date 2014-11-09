@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -92,6 +92,10 @@ using std::string;
 //
 //    Mark C. Miller, Tue Mar 27 08:39:55 PDT 2007
 //    Added support for node origin
+//
+//    Kathleen Biagas, Mon Apr 21 14:39:15 PDT 2014
+//    Use DBL_Max for limits.
+//
 // ****************************************************************************
 
 avtMinMaxQuery::avtMinMaxQuery(bool domin, bool domax)
@@ -111,10 +115,10 @@ avtMinMaxQuery::avtMinMaxQuery(bool domin, bool domax)
     zoneMsg1 = "(using only per-zone quantities)";
     zoneMsg2 = "(using per-material zonal quantities)";
 
-    minInfo1.Initialize(FLT_MAX, "Min");
-    minInfo2.Initialize(FLT_MAX, "Min");
-    maxInfo1.Initialize(-FLT_MAX, "Max");
-    maxInfo2.Initialize(-FLT_MAX, "Max");
+    minInfo1.Initialize(DBL_MAX, "Min");
+    minInfo2.Initialize(DBL_MAX, "Min");
+    maxInfo1.Initialize(-DBL_MAX, "Max");
+    maxInfo2.Initialize(-DBL_MAX, "Max");
 }
 
 // ****************************************************************************
@@ -182,6 +186,10 @@ avtMinMaxQuery::VerifyInput()
 //
 //    Mark C. Miller, Tue Mar 27 08:39:55 PDT 2007
 //    Added support for node origin
+//
+//    Kathleen Biagas, Mon Apr 21 14:39:15 PDT 2014
+//    Use DBL_Max for limits.
+//
 // ****************************************************************************
 
 void
@@ -200,11 +208,11 @@ avtMinMaxQuery::PreExecute()
     maxMsg = "No Information Found";
     elementName = "";
 
-    minInfo1.Initialize(FLT_MAX, "Min");
-    minInfo2.Initialize(FLT_MAX, "Min");
+    minInfo1.Initialize(DBL_MAX, "Min");
+    minInfo2.Initialize(DBL_MAX, "Min");
 
-    maxInfo1.Initialize(-FLT_MAX, "Max");
-    maxInfo2.Initialize(-FLT_MAX, "Max");
+    maxInfo1.Initialize(-DBL_MAX, "Max");
+    maxInfo2.Initialize(-DBL_MAX, "Max");
 }
 
 
@@ -277,7 +285,7 @@ avtMinMaxQuery::Execute(vtkDataSet *ds, const int dom)
     {
         return;
     }
-    int i;
+
     vtkUnsignedCharArray *ghostZones = 
            (vtkUnsignedCharArray*)ds->GetCellData()->GetArray("avtGhostZones");
     vtkUnsignedCharArray *ghostNodes = 
@@ -452,7 +460,7 @@ avtMinMaxQuery::Execute(vtkDataSet *ds, const int dom)
             if (!ghost && mat != NULL && elNum >= 0 && elNum < mat->GetNZones())
             {
                 matInfo = mat->ExtractCellMatInfo(elNum);
-                for (i = 0; i < matInfo.size(); ++i)
+                for (size_t i = 0; i < matInfo.size(); ++i)
                 {
                     matNames.push_back(matInfo[i].name);
                     if (matInfo[i].mix_index != -1)
@@ -476,7 +484,7 @@ avtMinMaxQuery::Execute(vtkDataSet *ds, const int dom)
                     minInfo1.SetValue(val);
                     minInfo1.SetDomain(domain);
                 }
-                for (i = 0; i < matValues.size(); i++)
+                for (size_t i = 0; i < matValues.size(); i++)
                 {
                     if (matValues[i] < minInfo2.GetValue())
                     {
@@ -497,7 +505,7 @@ avtMinMaxQuery::Execute(vtkDataSet *ds, const int dom)
                     maxInfo1.SetValue(val);
                     maxInfo1.SetDomain(domain);
                 }
-                for (i = 0; i < matValues.size(); i++)
+                for (size_t i = 0; i < matValues.size(); i++)
                 {
                     if (matValues[i] > maxInfo2.GetValue())
                     {
@@ -653,6 +661,9 @@ avtMinMaxQuery::TimeVaryingPostExecute(void)
 //    GetQueryOutputObject() without needing to parse the query output
 //    string.
 //
+//    Kathleen Biagas, Mon Apr 21 14:39:15 PDT 2014
+//    Use DBL_Max for limits.
+//
 // ****************************************************************************
 
 void 
@@ -662,7 +673,7 @@ avtMinMaxQuery::StandardPostExecute(void)
     int hasMin2 = 0, hasMax2 = 0; 
 
     hasMin1 = (ThisProcessorHasMinimumValue(minInfo1.GetValue()) && 
-               minInfo1.GetValue() != FLT_MAX);
+               minInfo1.GetValue() != DBL_MAX);
     if (hasMin1)
     {
         minInfo1.TransformCoord(invTransform);
@@ -670,7 +681,7 @@ avtMinMaxQuery::StandardPostExecute(void)
     }
 
     hasMax1 = (ThisProcessorHasMaximumValue(maxInfo1.GetValue()) && 
-               maxInfo1.GetValue() != -FLT_MAX);
+               maxInfo1.GetValue() != -DBL_MAX);
     if (hasMax1)
     {
         maxInfo1.TransformCoord(invTransform);
@@ -678,7 +689,7 @@ avtMinMaxQuery::StandardPostExecute(void)
     }
 
     hasMin2 = (ThisProcessorHasMinimumValue(minInfo2.GetValue()) && 
-               minInfo2.GetValue() != FLT_MAX);
+               minInfo2.GetValue() != DBL_MAX);
     if (hasMin2)
     {
         minInfo2.TransformCoord(invTransform);
@@ -686,7 +697,7 @@ avtMinMaxQuery::StandardPostExecute(void)
     }
 
     hasMax2 = (ThisProcessorHasMaximumValue(maxInfo2.GetValue()) && 
-               maxInfo2.GetValue() != -FLT_MAX);
+               maxInfo2.GetValue() != -DBL_MAX);
     if (hasMax2)
     {
         maxInfo2.TransformCoord(invTransform);

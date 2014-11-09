@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -100,6 +100,11 @@
 //    rather than creating a new vtkDataSet after partitioning with each
 //    boundary.
 //
+//    Eric Brugger, Wed Sep  3 14:31:08 PDT 2014
+//    I refactored some code to correct a bug with the multi-pass CSG
+//    discretization where it would do the wrong thing if a region 
+//    referenced the same boundary multiple times.
+//
 
 // .SECTION See Also
 // vtkImplicitFunction, vtkQuadric, vtkUnstructuredGrid, vtkDataSet
@@ -121,6 +126,7 @@
 #include <float.h>
 
 class vtkPolyData;
+class vtkRectilinearGrid;
 class vtkUnstructuredGrid;
 
 #define VTK_CSG_GRID 20
@@ -308,9 +314,11 @@ protected:
   vtkCSGGrid();
   ~vtkCSGGrid();
 
-  bool DoMultiPassDiscretization(int specificZone,
-                                 const double bnds[6], const int dims[3],
-                                 const int subRegion[6]);
+  vtkRectilinearGrid *CreateRectilinearGrid(const double bnds[6],
+                                            const int dims[3],
+                                            const int subRegion[6]);
+  vtkUnstructuredGrid *SplitGrid(vtkRectilinearGrid *rgrid,
+                                 const int nBounds, double *bounds);
 
   bool EvaluateRegionBits(int region, vtkCSGFixedLengthBitField &bits);
   void GetRegionBounds(int reg, std::vector<int> &bounds);

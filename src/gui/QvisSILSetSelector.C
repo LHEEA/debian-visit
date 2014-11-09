@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -253,7 +253,7 @@ QvisSILSetSelector::FillCategoryBox()
         avtSILRestriction_p restriction = GetViewerProxy()->GetPlotSILRestriction();
         avtSILSet_p current = restriction->GetSILSet(silTopSet);
         const intVector &mapsOut = current->GetMapsOut();
-        for (int j = 0; j < mapsOut.size(); ++j)
+        for (size_t j = 0; j < mapsOut.size(); ++j)
         {
             int cIndex = mapsOut[j];
             avtSILCollection_p collection =restriction->GetSILCollection(cIndex);

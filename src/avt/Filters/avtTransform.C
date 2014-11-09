@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,22 +62,6 @@
 
 
 static bool IsIdentity(vtkMatrix4x4 *);
-static void TransformVecAsDisplacement(vtkMatrixToLinearTransform *t,
-                                       vtkDataArray *outVecs, 
-                                       vtkDataArray *inVecs,
-                                       vtkDataArray *x, 
-                                       vtkDataArray *y, 
-                                       vtkDataArray *z,
-                                       int *dims);
-static void TransformVecAsDirection(vtkMatrixToLinearTransform *t,
-                                    vtkDataArray *outVecs, 
-                                    vtkDataArray *inVecs,
-                                    vtkDataArray *x, 
-                                    vtkDataArray *y, 
-                                    vtkDataArray *z,
-                                    int *dims,
-                                    vtkPoints *pts);
-
 
 // START VTK WORKAROUND
 class vtkVisItMatrixToHomogeneousTransform : public vtkMatrixToHomogeneousTransform
@@ -251,9 +235,7 @@ avtTransform::~avtTransform()
 //      Executes the transform on the specified domain.
 //
 //  Arguments:
-//      in_ds       The input dataset.
-//      <unnamed>   The domain number.
-//      <unnamed>   The label.
+//      in_dr       The input data representation.
 //
 //  Programmer: Hank Childs
 //  Creation:   November 27, 2000
@@ -293,21 +275,36 @@ avtTransform::~avtTransform()
 //    Kathleen Biagas, Fri Jan 25 16:39:17 PST 2013
 //    Call Update on filter, not data object.
 //
+//    Eric Brugger, Tue Jul 22 12:07:56 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtTransform::ExecuteData(vtkDataSet *in_ds, int, std::string)
+avtDataRepresentation *
+avtTransform::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     vtkMatrix4x4 *mat = GetTransform();
     if (IsIdentity(mat))
     {
-        return in_ds;
+        return in_dr;
     }
 
     int  datatype = in_ds->GetDataObjectType();
     if (datatype == VTK_RECTILINEAR_GRID)
     {
-        return TransformRectilinear((vtkRectilinearGrid *) in_ds);
+        vtkDataSet *out_ds = TransformRectilinear((vtkRectilinearGrid *) in_ds);
+
+        avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
+            in_dr->GetDomain(), in_dr->GetLabel());
+
+        out_ds->Delete();
+
+        return out_dr;
     }
 
     vtkTransformFilter *transform = vtkTransformFilter::New();
@@ -337,10 +334,12 @@ avtTransform::ExecuteData(vtkDataSet *in_ds, int, std::string)
     transform->Update();
     vtkPointSet *out_ds = transform->GetOutput();
 
-    ManageMemory(out_ds);
+    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
+        in_dr->GetDomain(), in_dr->GetLabel());
+
     transform->Delete();
 
-    return out_ds;
+    return out_dr;
 }
 
 
@@ -361,6 +360,9 @@ avtTransform::ExecuteData(vtkDataSet *in_ds, int, std::string)
 //    If we're doing a transform on curve data that would cause it to need 
 //    to change to polydata or something else, just store the transform so
 //    we can do the right thing later.
+//
+//    Eric Brugger, Tue Jul 22 12:07:56 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -404,9 +406,6 @@ avtTransform::TransformRectilinear(vtkRectilinearGrid *rgrid)
         for(int i = 0; i < 16; ++i)
             ct->SetTuple1(i, t->GetElement(i / 4, i % 4));
         out->GetFieldData()->AddArray(ct);
-
-        ManageMemory(out);
-        out->Delete();
 
         rv = out;
     }
@@ -491,6 +490,9 @@ avtTransform::OutputIsRectilinear(vtkMatrix4x4 *mat)
 //    Kathleen Bonnell, Fri Dec 13 14:07:15 PST 2002 
 //    Use NewInstance instead of MakeObject, to match new vtk api.
 //
+//    Eric Brugger, Tue Jul 22 12:07:56 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -554,14 +556,6 @@ avtTransform::TransformRectilinearToRectilinear(vtkRectilinearGrid *rgrid)
     out->SetZCoordinates(z_new);
     z_new->Delete();
 
-    //
-    // We want to reduce the reference count of this dataset so it doesn't get
-    // leaked.  But where to store it?  Fortunately, our base class handles
-    // this for us.
-    //
-    ManageMemory(out);
-    out->Delete();
-
     return out;
 }
 
@@ -603,6 +597,9 @@ avtTransform::TransformRectilinearToRectilinear(vtkRectilinearGrid *rgrid)
 //
 //    Kathleen Biagas, Tue Aug 21 16:49:12 MST 2012
 //    Preserve coordinate type.
+//
+//    Eric Brugger, Tue Jul 22 12:07:56 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -721,14 +718,7 @@ avtTransform::TransformRectilinearToCurvilinear(vtkRectilinearGrid *rgrid)
         arr->Delete();
     }
 
-    //
-    // We want to reduce the reference count of this dataset so it doesn't get
-    // leaked.  But where to store it?  Fortunately, our base class handles
-    // this for us.
-    //
-    ManageMemory(out);
     trans->Delete();
-    out->Delete();
 
     return out;
 }
@@ -817,113 +807,4 @@ IsIdentity(vtkMatrix4x4 *mat)
     }
 
     return true;
-}
-
-void
-TransformVecAsDisplacement(vtkMatrixToLinearTransform *t, 
-                           vtkDataArray *outVecs, vtkDataArray *inVecs, 
-                           vtkDataArray *x, vtkDataArray *y, vtkDataArray *z,
-                           int *dims)
-{
-    int index = 0;
-    for (int k = 0; k < dims[2]; k++)
-    {
-        for (int j = 0; j < dims[1]; j++)
-        {
-            for (int i = 0; i < dims[0]; i++)
-            {
-                double inPt[3];
-                inPt[0] = x->GetComponent(i,0);
-                inPt[1] = y->GetComponent(j,0);
-                inPt[2] = z->GetComponent(k,0);
-                
-                double vec[3], vec2[3];
-                inVecs->GetTuple(index, vec);
-                vec[0] += inPt[0];
-                vec[1] += inPt[1];
-                vec[2] += inPt[2];
-                t->TransformVector(vec, vec2);
-
-                vec2[0] -= inPt[0];
-                vec2[1] -= inPt[1];
-                vec2[2] -= inPt[2];
-                outVecs->SetTuple(index, vec2);
-                index++;
-
-                if (index < 10)
-                {
-                    t->Print(cout);
-                    cout<<"v: "<<vec[0]<<" "<<vec[1]<<" "<<vec[2]<<" ==> "<<vec2[0]<<" "<<vec2[1]<<" "<<vec2[2]<<endl;
-                }
-            }
-        }
-    }
-}
-
-
-// ****************************************************************************
-//  Modifications:
-//    Kathleen Bonnell, Thu Dec  9 14:49:04 PST 2010
-//    Normalize the vector before transform.
-//
-// ****************************************************************************
-
-void
-TransformVecAsDirection(vtkMatrixToLinearTransform *t,
-                        vtkDataArray *outVecs, vtkDataArray *inVecs,
-                        vtkDataArray *x, vtkDataArray *y, vtkDataArray *z,
-                        int *dims,
-                        vtkPoints *pts)
-{
-    const double instantEps    = 1.e-5;
-    const double instantEpsInv = 1.e+5;
-    
-    int index = 0;
-    for (int k = 0; k < dims[2]; k++)
-    {
-        for (int j = 0; j < dims[1]; j++)
-        {
-            for (int i = 0; i < dims[0]; i++)
-            {
-                double inPt[3];
-                inPt[0] = x->GetComponent(i,0);
-                inPt[1] = y->GetComponent(j,0);
-                inPt[2] = z->GetComponent(k,0);
-                
-                double vec[3],  vec2[3];
-                inVecs->GetTuple(index, vec);
-                double mag = sqrt(vec[0]*vec[0]+vec[1]*vec[1]+vec[2]*vec[2]);
-                if (mag == 0.)
-                {
-                    vec[0] = vec[1] = vec[2] = 0.;
-                }
-                else 
-                {
-                    vec[0] = vec[0] / mag;
-                    vec[1] = vec[1] / mag;
-                    vec[2] = vec[2] / mag;
-                }
-
-                vec[0] = instantEps*vec[0] + inPt[0];
-                vec[1] = instantEps*vec[1] + inPt[1];
-                vec[2] = instantEps*vec[2] + inPt[2];
-                t->TransformVector(vec, vec2);
-
-                double outPt[3];
-                pts->GetPoint(index, outPt);
-                vec2[0] = (vec2[0]-outPt[0]) * instantEpsInv *mag;
-                vec2[1] = (vec2[1]-outPt[1]) * instantEpsInv *mag;
-                vec2[2] = (vec2[2]-outPt[2]) * instantEpsInv *mag;
-
-                outVecs->SetTuple(index, vec2);
-                index++;
-
-                if (index < 10)
-                {
-                    t->Print(cout);
-                    cout<<"v: "<<vec[0]<<" "<<vec[1]<<" "<<vec[2]<<" ==> "<<vec2[0]<<" "<<vec2[1]<<" "<<vec2[2]<<endl;
-                }
-            }
-        }
-    }
 }

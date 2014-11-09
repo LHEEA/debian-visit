@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -100,7 +100,7 @@ QvisDatabaseCorrelationListWindow::~QvisDatabaseCorrelationListWindow()
 {
     correlationList = 0;
 
-    int i;
+    size_t i;
     for(i = 0; i < windowsToDelete.size(); ++i)
         delete windowsToDelete[i];
     windowsToDelete.clear();
@@ -256,8 +256,8 @@ QvisDatabaseCorrelationListWindow::UpdateWindow(bool doAll)
         // of correlation names.
         //
         NameSimplifier simplifier;
-        int i, nC = correlationList->GetNumCorrelations();
-        for(i = 0; i < nC; ++i)
+        size_t nC = correlationList->GetNumCorrelations();
+        for(size_t i = 0; i < nC; ++i)
         {
             const DatabaseCorrelation &c = correlationList->GetCorrelations(i);
             simplifier.AddName(c.GetName());
@@ -265,7 +265,7 @@ QvisDatabaseCorrelationListWindow::UpdateWindow(bool doAll)
         stringVector shortNames;
         simplifier.GetSimplifiedNames(shortNames);
         nameMap.clear();
-        for(i = 0; i < shortNames.size(); ++i)
+        for(size_t i = 0; i < shortNames.size(); ++i)
         {
             const DatabaseCorrelation &c = correlationList->GetCorrelations(i);
             nameMap[shortNames[i]] = c.GetName();
@@ -432,7 +432,7 @@ QvisDatabaseCorrelationListWindow::showMinimized()
     QvisPostableWindowObserver::showMinimized();
 
     // Show any correlation windows minimized too.
-    for(int i = 0; i < activeCorrelationWindows.size(); ++i)
+    for(size_t i = 0; i < activeCorrelationWindows.size(); ++i)
         activeCorrelationWindows[i]->showMinimized();
 }
 
@@ -457,7 +457,7 @@ QvisDatabaseCorrelationListWindow::showNormal()
     QvisPostableWindowObserver::showNormal();
 
     // Show any correlation windows minimized too.
-    for(int i = 0; i < activeCorrelationWindows.size(); ++i)
+    for(size_t i = 0; i < activeCorrelationWindows.size(); ++i)
         activeCorrelationWindows[i]->showNormal();
 }
 
@@ -689,7 +689,7 @@ QvisDatabaseCorrelationListWindow::deleteWindow(QvisWindowBase *win)
 void
 QvisDatabaseCorrelationListWindow::delayedDeleteWindows()
 {
-    for(int i = 0; i < windowsToDelete.size(); ++i)
+    for(size_t i = 0; i < windowsToDelete.size(); ++i)
         delete windowsToDelete[i];
     windowsToDelete.clear();
 }

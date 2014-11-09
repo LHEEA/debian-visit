@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define COLORTABLEATTRIBUTES_NMETH 13
+#define COLORTABLEATTRIBUTES_NMETH 15
 void VISITPY_API           PyColorTableAttributes_StartUp(ColorTableAttributes *subj, void *data);
 void VISITPY_API           PyColorTableAttributes_CloseDown();
 VISITPY_API PyMethodDef *  PyColorTableAttributes_GetMethodTable(int *nMethods);

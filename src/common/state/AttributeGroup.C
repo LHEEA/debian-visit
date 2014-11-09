@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,7 +84,7 @@ static const unsigned char msgTypeVectorBool           = 0x1b;
 
 static const unsigned char msgTypeMapNode              = 0x1c;
 
-#if 0
+#if 1 /// enabled for remote vis work.
 // These are uesful for creating debugging output. Ordinarily, these
 // are not needed so they are ifdef'd out.
 static const char *typeNames[] = {
@@ -210,7 +210,7 @@ AttributeGroup::IsSelected(int i) const
     bool retval = false;
 
     // If the index is valid, check the selected flag.
-    if(i >= 0 && i < typeMap.size())
+    if(i >= 0 && (size_t)i < typeMap.size())
     {
          retval = typeMap[i].selected;
     }
@@ -536,12 +536,12 @@ AttributeGroup::InterpolateLinear(const AttributeGroup *atts1,
                 AttributeGroupVector &a2 =*(AttributeGroupVector*)addr2;
                 size_t l0 = out.size();
                 size_t l1 = a1.size();
-                int l2 = a2.size();
-                int lmax = (l1 > l2) ? l1 : l2;
+                size_t l2 = a2.size();
+                size_t lmax = (l1 > l2) ? l1 : l2;
                 out.resize(lmax);
                 if (lmax > l0)
                 {
-                    for (int j=l0; j<lmax; j++)
+                    for (size_t j=l0; j<lmax; j++)
                     {
                         out[j] = CreateSubAttributeGroup(i);
                     }
@@ -817,8 +817,12 @@ AttributeGroup::WriteAPI(JSONNode &map, int attrId, AttributeGroup::typeInfo &in
     case msgTypeVectorFloat:
     case msgTypeVectorDouble:
     case msgTypeVectorString:
-    case msgTypeMapNode:
-        map[name] = attrId;
+    case msgTypeMapNode: {
+        map[name] = JSONNode::JSONObject();
+        JSONNode::JSONObject& obj = map[name].GetJsonObject();
+        obj["attrId"] = attrId;
+        obj["type"] = typeNames[info.typeCode];
+        }
         break;
     case msgTypeAttributeGroup:
         {
@@ -827,52 +831,53 @@ AttributeGroup::WriteAPI(JSONNode &map, int attrId, AttributeGroup::typeInfo &in
            // sub-AttributeGroup onto the connection.
            AttributeGroup *aptr = (AttributeGroup *)(info.address);
 
-           map[name] = JSONNode::JSONArray();
-           JSONNode::JSONArray& array = map[name].GetArray();
+           map[name] = JSONNode::JSONObject();
+           JSONNode::JSONObject& obj = map[name].GetJsonObject();
+           obj["attrId"] = attrId;
+           obj["type"] = typeNames[info.typeCode];
 
            JSONNode child;
            aptr->WriteAPI(child);
-
-           array.push_back(attrId);
-           array.push_back(child);
+           obj["api"] = child;
         }
         break;
     case msgTypeListAttributeGroup:
+    case msgTypeVectorAttributeGroup:
         { // new scope
-          AttributeGroup **aptr = (AttributeGroup **)(info.address);
+          //AttributeGroup **aptr = (AttributeGroup **)(info.address);
 
-          map[name] = JSONNode::JSONArray();
+          map[name] = JSONNode::JSONObject();
+          JSONNode::JSONObject& obj = map[name].GetJsonObject();
+          obj["attrId"] = attrId;
+          obj["type"] = typeNames[info.typeCode];
 
-          JSONNode::JSONArray& array = map[name].GetArray();
-
-          array.push_back(attrId);
-          for(int i = 0; i < info.length; ++i, ++aptr)
-          {
-              JSONNode child;
-              if((*aptr) != 0)
-                  (*aptr)->WriteAPI(child);
-              array.push_back(child);
+          JSONNode child;
+          AttributeGroup* aptr = CreateSubAttributeGroup(attrId);
+          if(aptr) {
+            aptr->WriteAPI(child);
+            obj["api"] = child;
+            delete aptr; /// clear up new sub attribute group instance
           }
         }
         break;
-    case msgTypeVectorAttributeGroup:
-        { // new scope
-          AttributeGroupVector *va = (AttributeGroupVector *)(info.address);
-          AttributeGroupVector::iterator apos;
+//    case msgTypeVectorAttributeGroup:
+//        { // new scope
+//          AttributeGroupVector *va = (AttributeGroupVector *)(info.address);
+//          AttributeGroupVector::iterator apos;
 
-          map[name] = JSONNode::JSONArray();
+//          map[name] = JSONNode::JSONArray();
 
-          JSONNode::JSONArray& array = map[name].GetArray();
+//          JSONNode::JSONArray& array = map[name].GetArray();
 
-          // Write out the AttributeGroups
-          array.push_back(attrId);
-          for(apos = va->begin(); apos != va->end(); ++apos)
-          {
-              JSONNode child;
-              (*apos)->WriteAPI(child);
-              array.push_back(child);
-          }
-        }
+//          // Write out the AttributeGroups
+//          array.push_back(attrId);
+//          for(apos = va->begin(); apos != va->end(); ++apos)
+//          {
+//              JSONNode child;
+//              (*apos)->WriteAPI(child);
+//              array.push_back(child);
+//          }
+//        }
         break;
     case msgTypeNone:
     default:
@@ -950,51 +955,11 @@ AttributeGroup::WriteMetaData(JSONNode &map, int attrId, AttributeGroup::typeInf
         map[name] = MapNode::MapNodeType;
         break;
     case msgTypeAttributeGroup:
-        {
-           AttributeGroup *aptr = (AttributeGroup *)(info.address);
-
-           map[name] = JSONNode::JSONArray();
-           JSONNode::JSONArray& array = map[name].GetArray();
-
-           JSONNode child;
-           aptr->WriteMetaData(child);
-           array.push_back(child);
-        }
+        map[name] = AttributeGroup::AttributeGroupType;
         break;
     case msgTypeListAttributeGroup:
-        { // new scope
-          AttributeGroup **aptr = (AttributeGroup **)(info.address);
-
-          map[name] = JSONNode::JSONArray();
-
-          JSONNode::JSONArray& array = map[name].GetArray();
-
-          for(int i = 0; i < info.length; ++i, ++aptr)
-          {
-              JSONNode child;
-              if((*aptr) != 0)
-                  (*aptr)->WriteMetaData(child);
-              array.push_back(child);
-          }
-        }
-        break;
     case msgTypeVectorAttributeGroup:
-        { // new scope
-          AttributeGroupVector *va = (AttributeGroupVector *)(info.address);
-          AttributeGroupVector::iterator apos;
-
-          map[name] = JSONNode::JSONArray();
-
-          JSONNode::JSONArray& array = map[name].GetArray();
-
-          // Write out the AttributeGroups
-          for(apos = va->begin(); apos != va->end(); ++apos)
-          {
-              JSONNode child;
-              (*apos)->WriteMetaData(child);
-              array.push_back(child);
-          }
-        }
+        map[name] = AttributeGroup::AttributeGroupVectorType;
         break;
     case msgTypeNone:
     default:
@@ -2358,7 +2323,7 @@ AttributeGroup::CreateSubAttributeGroup(int)
 void
 AttributeGroup::Select(int index, void *address, int length)
 {
-    if(index < typeMap.size())
+    if((size_t)index < typeMap.size())
     {
         typeMap[index].address = address;
         typeMap[index].selected = true;
@@ -2385,7 +2350,7 @@ AttributeGroup::Select(int index, void *address, int length)
 void
 AttributeGroup::SelectField(int index)
 {
-    if(index >= 0 && index < typeMap.size())
+    if(index >= 0 && (size_t)index < typeMap.size())
     {
         if(typeMap[index].address != 0)
             typeMap[index].selected = true;
@@ -2420,7 +2385,7 @@ AttributeGroup::SelectFields(const std::vector<int> &indices)
         for(size_t i = 0; i < indices.size(); ++i)
         {
             int index = indices[i];
-            if(index >= 0 && index < typeMap.size())
+            if(index >= 0 && (size_t)index < typeMap.size())
                 typeMap[index].selected = true;
         }
     }
@@ -2817,7 +2782,7 @@ AttributeGroup::Read(Connection &conn)
 
         // Read the attribute if the attrIndex is valid. Indicate that
         // it is selected.
-        if(attrIndex < typeMap.size())
+        if((size_t)attrIndex < typeMap.size())
         {
             ReadType(conn, i, typeMap[attrIndex]);
             typeMap[attrIndex].selected = true;
@@ -3506,7 +3471,7 @@ AttributeGroup::GetFieldTypeName(int index) const
     "MapNode"
     };
     std::string retval("<UNKNOWN type>");
-    if(index >= 0 && index < typeMap.size())
+    if(index >= 0 && (size_t)index < typeMap.size())
     { 
         // Get around calling some non-const methods for now.
         AttributeGroup *THIS = const_cast<AttributeGroup *>(this);

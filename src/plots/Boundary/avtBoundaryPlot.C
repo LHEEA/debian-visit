@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -816,7 +816,7 @@ avtBoundaryPlot::ReleaseData(void)
 void
 avtBoundaryPlot::SortLabels()
 {
-    int   i;
+    size_t   i;
 
     vector < string > originalLabels = atts.GetBoundaryNames();
 
@@ -826,14 +826,14 @@ avtBoundaryPlot::SortLabels()
     vector < pair < string, int > > originalLabelPairs;
     for (i = 0 ; i < originalLabels.size() ; i++)
     {
-        originalLabelPairs.push_back(pair<string, int>(originalLabels[i], i));
+        originalLabelPairs.push_back(pair<string, int>(originalLabels[i], (int)i));
     }
     sort(originalLabelPairs.begin(), originalLabelPairs.end());
     
     vector < string > usedLabels;
     behavior->GetInfo().GetAttributes().GetLabels(usedLabels);
     sort(usedLabels.begin(), usedLabels.end());
-    int origLabelIndex = 0;
+    size_t origLabelIndex = 0;
     vector < pair < int, string > > sortedUsedLabels;
     for (i = 0 ; i < usedLabels.size() ; i++)
     {

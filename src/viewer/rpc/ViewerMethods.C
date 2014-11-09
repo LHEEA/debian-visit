@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1915,6 +1915,40 @@ ViewerMethods::AddPlot(int type, const std::string &var)
     // Issue the RPC.
     //
     state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+//  Method: ViewerMethods::AddEmbeddedPlot
+//
+//  Purpose:
+//    Add a plot to the plot list with an externally specified id number.
+//
+//  Arguments:
+//    type      The type of plot to add.
+//    var       The variable to use for the plot.
+//    id        The plot id from the external source
+//
+//  Programmer: Marc Durant
+//  Creation:   June 19, 2011
+//
+//  Modifications:
+//
+// ****************************************************************************
+void
+ViewerMethods::AddEmbeddedPlot(int type, const std::string &var, int id)
+{
+  //
+  // Set the rpc type and arguments.
+  //
+  state->GetViewerRPC()->SetRPCType(ViewerRPC::AddEmbeddedPlotRPC);
+  state->GetViewerRPC()->SetPlotType(type);
+  state->GetViewerRPC()->SetVariable(var);
+  state->GetViewerRPC()->SetEmbeddedPlotId(id);
+  
+  //
+  // Issue the RPC.
+  //
+  state->GetViewerRPC()->Notify();
 }
 
 // ****************************************************************************
@@ -5396,6 +5430,25 @@ ViewerMethods::SetPrecisionType(int flag)
 {
     state->GetViewerRPC()->SetRPCType(
         ViewerRPC::SetPrecisionTypeRPC);
+    state->GetViewerRPC()->SetIntArg1(flag);
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
+//  Method: ViewerMethods::SetBackendType
+//
+//  Purpose: Tells viewer to set the backend type used in the pipeline.
+//
+//  Programmer: Cameron Christensen
+//  Creation:   June 10, 2014
+//
+// ****************************************************************************
+
+void
+ViewerMethods::SetBackendType(int flag)
+{
+    state->GetViewerRPC()->SetRPCType(
+        ViewerRPC::SetBackendTypeRPC);
     state->GetViewerRPC()->SetIntArg1(flag);
     state->GetViewerRPC()->Notify();
 }

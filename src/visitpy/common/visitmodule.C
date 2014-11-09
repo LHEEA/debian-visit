@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -98,6 +98,7 @@
 #include <DatabaseCorrelation.h>
 #include <DBPluginInfoAttributes.h>
 #include <EngineList.h>
+#include <EngineProperties.h>
 #include <ExportDBAttributes.h>
 #include <FileOpenOptions.h>
 #include <GlobalAttributes.h>
@@ -148,6 +149,7 @@
 #include <PyColorControlPointList.h>
 #include <PyConstructDataBinningAttributes.h>
 #include <PyDatabaseCorrelation.h>
+#include <PyEngineProperties.h>
 #include <PyExportDBAttributes.h>
 #include <PyExpression.h>
 #include <PyExpressionList.h>
@@ -469,6 +471,13 @@ typedef struct
 static std::map<std::string, AnnotationObjectRef> localObjectMap;
 
 static bool                  suppressQueryOutputState = false;
+
+static enum QueryOutputReturnType {
+    QueryString = 0,
+    QueryValue,
+    QueryObject
+} queryOutputReturnType = QueryString;
+
 // pickle related
 bool      pickleReady=false;
 PyObject *pickleDumps=NULL;
@@ -672,7 +681,7 @@ DeprecatedMessage(const char *deprecatedFunction, const char *ver,
             "***\n",
             deprecatedFunction, ver, deprecatedFunction, newFunction);
 }
-
+#if 0
 // ****************************************************************************
 // Method: StringVectorToTupleString
 //
@@ -714,6 +723,7 @@ StringVectorToTupleString(const stringVector &s)
 
     return str;
 }
+#endif
 
 // ****************************************************************************
 // Method: GetStringVectorFromPyObject
@@ -1096,6 +1106,30 @@ CreateDictionaryFromDBOptions(DBOptionsAttributes &opts)
     return dict;
 }
 
+
+// ****************************************************************************
+// Function: ToggleSuppressQueryOutput_NoLogging
+//
+// Purpose:
+//   Helper method for toggling SuppressQueryOutput without it being logged.
+//   Used when query ouput suppression is a consequence of another action,
+//   like with Pick functions.
+//
+// Programmer: Kathleen Bigagas
+// Creation:   January 9, 2012
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+ToggleSuppressQueryOutput_NoLogging(bool onoff)
+{
+    LogFile_IncreaseLevel();
+    GetViewerMethods()->SuppressQueryOutput(onoff);
+    Synchronize();
+    LogFile_DecreaseLevel();
+}
 
 
 //
@@ -2109,7 +2143,7 @@ visit_GetTimeSliders(PyObject *self, PyObject *args)
 
     // Create a dictionary object and put the time sliders in it.
     PyObject *dict = PyDict_New();
-    for(int i = 0; i < timeSliders.size(); ++i)
+    for(size_t i = 0; i < timeSliders.size(); ++i)
     {
         PyObject *tsName = PyString_FromString(timeSliders[i].c_str());
         PyObject *tsValue = PyInt_FromLong(timeSliderStates[i]);
@@ -3761,7 +3795,7 @@ visit_CloseComputeEngine(PyObject *self, PyObject *args)
          {
              const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
              const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
-             for (int i=0; i<engines.size(); i++)
+             for (size_t i=0; i<engines.size(); i++)
              {
                  if (engines[i] == engineName)
                  {
@@ -4966,7 +5000,7 @@ visit_SaveSession(PyObject *self, PyObject *args)
 
     std::string session_file(filename);
     // check for ".session" extension
-    int rpos = session_file.rfind(".session");
+    size_t rpos = session_file.rfind(".session");
     if( rpos  == std::string::npos || rpos != session_file.size() - 8)
         session_file += ".session";
         
@@ -4991,6 +5025,8 @@ visit_SaveSession(PyObject *self, PyObject *args)
 // Creation:   Mon Nov 12 12:15:53 PDT 2001
 //
 // Modifications:
+//   Brad Whitlock, Wed Jul 16 11:17:28 PDT 2014
+//   Make it possible to return the sim name.
 //
 // ****************************************************************************
 
@@ -4998,17 +5034,107 @@ STATIC PyObject *
 visit_GetEngineList(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
-    NO_ARGUMENTS();
+    int getSimName = 0;
+    if(!PyArg_ParseTuple(args, "i", &getSimName))
+    {
+        PyErr_Clear();
+    }
 
     // Allocate a tuple the with enough entries to hold the engine list.
     const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
+    const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
     PyObject *retval = PyTuple_New(engines.size());
-    for(int i = 0; i < engines.size(); ++i)
+    for(size_t i = 0; i < engines.size(); ++i)
     {
         PyObject *name = PyString_FromString(engines[i].c_str());
         if(name == NULL)
             continue;
-        PyTuple_SET_ITEM(retval, i, name);
+        if(getSimName != 0)
+        {
+            PyObject *sim = PyString_FromString(sims[i].c_str());
+
+            PyObject *tup = PyTuple_New(2);
+            PyTuple_SET_ITEM(tup, 0, name);
+            PyTuple_SET_ITEM(tup, 1, sim);
+
+            PyTuple_SET_ITEM(retval, i, tup);
+        }
+        else
+        {
+            PyTuple_SET_ITEM(retval, i, name);
+        }
+    }
+
+    return retval;
+}
+
+// ****************************************************************************
+// Function: visit_GetEngineProperties
+//
+// Purpose:
+//   Returns an EngineProperties object for the specified engine/sim.
+//
+// Notes:
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Jul 16 11:17:28 PDT 2014
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_GetEngineProperties(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+    char *engine = NULL, *sim = NULL;
+    if(!PyArg_ParseTuple(args, "ss", &engine, &sim))
+    {
+        if(!PyArg_ParseTuple(args, "s", &engine))
+        {
+            PyObject *t = NULL;
+            if(PyArg_ParseTuple(args, "O", &t))
+            {
+                if(!PyArg_ParseTuple(t, "ss", &engine, &sim))
+                    return NULL;
+            }
+            else
+                return NULL;
+        }
+
+        PyErr_Clear();
+    }
+
+    PyObject *retval = PyEngineProperties_New();
+    if(engine != NULL)
+    {
+        const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
+        const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
+        int index = -1;
+        for(size_t i = 0; i < engines.size(); ++i)
+        {
+            if(engines[i] == engine)
+            {
+                if(sim != NULL)
+                {
+                    if(sims[i] == sim)
+                    {
+                        index = (int)i; 
+                        break;
+                    }
+                }
+                else
+                {
+                    index = (int)i;
+                    break;
+                }
+            }
+        }
+
+        // Poke the desired engine properties into the new object.
+        if(index != -1)
+        {
+            EngineProperties *props = PyEngineProperties_FromPyObject(retval);
+            *props = GetViewerState()->GetEngineList()->GetProperties(index);
+        }
     }
 
     return retval;
@@ -5499,7 +5625,7 @@ visit_SetMachineProfile(PyObject *self, PyObject *args)
             rmhosts.push_back(i);
     }
 
-    for(int i = 0; i < rmhosts.size(); ++i)
+    for(size_t i = 0; i < rmhosts.size(); ++i)
         hpl->RemoveMachines(rmhosts[rmhosts.size() - 1 - i]);
 
     hpl->AddMachines(ma);
@@ -5573,7 +5699,7 @@ visit_RemoveMachineProfile(PyObject *self, PyObject *args)
             rmhosts.push_back(i);
     }
 
-    for(int i = 0; i < rmhosts.size(); ++i)
+    for(size_t i = 0; i < rmhosts.size(); ++i)
         hpl->RemoveMachines(rmhosts[rmhosts.size() - 1 - i]);
     hpl->Notify();
 
@@ -5609,7 +5735,7 @@ visit_GetMachineProfileNames(PyObject *self, PyObject *args)
     MUTEX_UNLOCK();
 
     PyObject *retval = PyTuple_New(names.size());
-    for(int i = 0; i < names.size(); ++i)
+    for(size_t i = 0; i < names.size(); ++i)
     {
         PyObject *s = PyString_FromString(names[i].c_str());
         PyTuple_SET_ITEM(retval, i, s);
@@ -5990,7 +6116,7 @@ visit_ExportDatabase(PyObject *self, PyObject *args)
     const stringVector &types = dbplugininfo->GetTypes();
     bool foundMatch = false;
     bool hasWriter = false;
-    for (int i = 0 ; i < types.size() ; i++)
+    for (size_t i = 0 ; i < types.size() ; i++)
     {
         if (types[i] == db_type)
         {
@@ -6076,7 +6202,7 @@ visit_GetExportOptions(PyObject *self, PyObject *args)
     const stringVector &types = dbplugininfo->GetTypes();
     bool foundMatch = false;
     bool hasWriter = false;
-    for (int i = 0 ; i < types.size() ; i++)
+    for (size_t i = 0 ; i < types.size() ; i++)
     {
         if (types[i] == plugin)
         {
@@ -6154,7 +6280,7 @@ visit_GetDefaultFileOpenOptions(PyObject *self, PyObject *args)
     PyObject *dict = NULL;
     const stringVector &types = foo->GetTypeNames();
     bool foundMatch = false;
-    for (int i = 0 ; i < types.size() ; i++)
+    for (size_t i = 0 ; i < types.size() ; i++)
     {
         if (types[i] == plugin)
         {
@@ -6221,7 +6347,7 @@ visit_SetDefaultFileOpenOptions(PyObject *self, PyObject *args)
 
     const stringVector &types = foo->GetTypeNames();
     bool foundMatch = false;
-    for (int i = 0 ; i < types.size() ; i++)
+    for (size_t i = 0 ; i < types.size() ; i++)
     {
         if (types[i] == plugin)
         {
@@ -6281,7 +6407,7 @@ visit_GetPreferredFileFormats(PyObject *self, PyObject *args)
     const stringVector &ids = foo->GetPreferredIDs();
     PyObject *retval = PyTuple_New(ids.size());
 
-    for(int i = 0; i < ids.size(); ++i)
+    for(size_t i = 0; i < ids.size(); ++i)
     {
         PyObject *s = PyString_FromString(ids[i].c_str());
         PyTuple_SET_ITEM(retval, i, s);
@@ -6324,9 +6450,9 @@ visit_SetPreferredFileFormats(PyObject *self, PyObject *args)
     // match names to ids if necessary
     const stringVector &allnames = foo->GetTypeNames();
     const stringVector &allids = foo->GetTypeIDs();
-    for (int i = 0 ; i < newIDs.size() ; i++)
+    for (size_t i = 0 ; i < newIDs.size() ; i++)
     {
-        for (int j = 0 ; j < allnames.size() ; j++)
+        for (size_t j = 0 ; j < allnames.size() ; j++)
         {
             if (newIDs[i] == allnames[j])
             {
@@ -7304,7 +7430,7 @@ visit_ListPlots(PyObject *self, PyObject *args)
              char tmpStr[2048];
              size_t  strLen = 0;
 
-             int j;
+             size_t j;
              SNPRINTF(tmpStr, sizeof(tmpStr),
                  "Plot[%d]|id=%d;type=\"%s\";database=\"%s\";var=%s;active=%d;"
                  "hidden=%d;framerange=(%d, %d);keyframes={", i,
@@ -7346,13 +7472,13 @@ visit_ListPlots(PyObject *self, PyObject *args)
              strLen = strlen(tmpStr);
 
              // Print out the plot operators.
-             for(j = 0; j < plot.GetNumOperators(); ++j)
+             for(j = 0; j < (size_t)plot.GetNumOperators(); ++j)
              {
                  int op = plot.GetOperator(j);
                  SNPRINTF(&tmpStr[strLen], sizeof(tmpStr)-strLen, "\"%s\"",
                      GetViewerProxy()->GetOperatorPluginManager()->GetEnabledID(op).c_str());
                  strLen = strlen(tmpStr);
-                 if(j < plot.GetNumOperators() - 1)
+                 if(j < (size_t)plot.GetNumOperators() - 1)
                      SNPRINTF(&tmpStr[strLen], sizeof(tmpStr)-strLen, ", ");
                  strLen = strlen(tmpStr);
              }
@@ -7676,7 +7802,7 @@ visit_SetActivePlots(PyObject *self, PyObject *args)
     bool okayToSet = false;
     MUTEX_LOCK();
     intVector activePlots;
-    for(int j = 0; j < vec.size(); ++j)
+    for(size_t j = 0; j < vec.size(); ++j)
     {
         if(vec[j] < 0 || vec[j] >= GetViewerState()->GetPlotList()->GetNumPlots())
         {
@@ -8550,7 +8676,7 @@ visit_GetOperatorOptions(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &operatorIndex))
         return NULL;
 
-    int plotIndex = 0, plotType = -1, operatorType = 0;
+    int plotIndex = 0, plotType = -1, operatorType = 0; (void) plotType;
     PyObject *retval = 0;
     MUTEX_LOCK();
         PlotList plCopy(*GetViewerState()->GetPlotList());
@@ -8570,7 +8696,7 @@ visit_GetOperatorOptions(PyObject *self, PyObject *args)
             }
 
             // Let's check that the operator index that was passed is in range.
-            if(operatorIndex < 0 || operatorIndex >= plCopy[plotIndex].GetOperators().size())
+            if(operatorIndex < 0 || (size_t)operatorIndex >= plCopy[plotIndex].GetOperators().size())
             {
                 VisItErrorFunc("The supplied operator index was out of range.");
             }
@@ -8581,7 +8707,7 @@ visit_GetOperatorOptions(PyObject *self, PyObject *args)
                 const Plot &p = plCopy[plotIndex];
                 int opCount = 0;
                 operatorType = p.GetOperators()[operatorIndex];
-                for(int op = 0; op < p.GetOperators().size(); ++op)
+                for(size_t op = 0; op < p.GetOperators().size(); ++op)
                 {
                     if(p.GetOperators()[op] == operatorType)
                         ++opCount;
@@ -8824,7 +8950,6 @@ STATIC PyObject *
 visit_GetQueryOutputString(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
-    NO_ARGUMENTS();
 
     std::string queryOut;
     QueryAttributes *qa = GetViewerState()->GetQueryAttributes();
@@ -8853,7 +8978,6 @@ STATIC PyObject *
 visit_GetQueryOutputValue(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
-    NO_ARGUMENTS();
 
     QueryAttributes *qa = GetViewerState()->GetQueryAttributes();
     doubleVector vals = qa->GetResultsValue();
@@ -8863,7 +8987,7 @@ visit_GetQueryOutputValue(PyObject *self, PyObject *args)
     else
     {
         PyObject *tuple = PyTuple_New(vals.size());
-        for(int j = 0; j < vals.size(); ++j)
+        for(size_t j = 0; j < vals.size(); ++j)
         {
             PyObject *item = PyFloat_FromDouble(vals[j]);
             if(item == NULL)
@@ -8917,7 +9041,6 @@ STATIC PyObject *
 visit_GetQueryOutputObject(PyObject *self, PyObject *args)
 {
     ENSURE_VIEWER_EXISTS();
-    NO_ARGUMENTS();
 
     QueryAttributes *qa = GetViewerState()->GetQueryAttributes();
     std::string xml_string = qa->GetXmlResult();
@@ -9187,7 +9310,7 @@ TurnOnOffHelper(SILCategoryRole role, bool val, const stringVector &names)
 
                     if(names.size() > 0)
                     {
-                        for(int j = 0; j < names.size(); ++j)
+                        for(size_t j = 0; j < names.size(); ++j)
                         {
                             bool nameMatched = false;
                             for(int k = 0; k < nsets; ++k)
@@ -9557,7 +9680,7 @@ visit_ColorTableNames(PyObject *self, PyObject *args)
     const stringVector &ctNames = GetViewerState()->GetColorTableAttributes()->GetNames();
     PyObject *retval = PyTuple_New(ctNames.size());
 
-    for(int i = 0; i < ctNames.size(); ++i)
+    for(size_t i = 0; i < ctNames.size(); ++i)
     {
         PyObject *dval = PyString_FromString(ctNames[i].c_str());
         if(dval == NULL)
@@ -10017,7 +10140,7 @@ visit_Queries(PyObject *self, PyObject *args)
     // We only want to include Database queries, so count them.
     intVector types = GetViewerState()->GetQueryList()->GetTypes();
     int nQueries = 0;
-    for(int i = 0; i < types.size(); ++i)
+    for(size_t i = 0; i < types.size(); ++i)
     {
         if (types[i] == QueryList::DatabaseQuery)
             nQueries++;
@@ -10026,7 +10149,7 @@ visit_Queries(PyObject *self, PyObject *args)
     // Allocate a tuple with enough entries to hold the queries name list.
     PyObject *retval = PyTuple_New(nQueries);
 
-    for(int j = 0, k = 0; j < queries.size(); ++j)
+    for(size_t j = 0, k = 0; j < queries.size(); ++j)
     {
         if (types[j] == QueryList::DatabaseQuery)
         {
@@ -10072,7 +10195,7 @@ visit_QueriesOverTime(PyObject *self, PyObject *args)
     intVector types = GetViewerState()->GetQueryList()->GetTypes();
     intVector mode = GetViewerState()->GetQueryList()->GetQueryMode();
     int nQueries = 0;
-    for(int i = 0; i < types.size(); ++i)
+    for(size_t i = 0; i < types.size(); ++i)
     {
         if (types[i] == QueryList::DatabaseQuery &&
             mode[i] != QueryList::QueryOnly )
@@ -10082,7 +10205,7 @@ visit_QueriesOverTime(PyObject *self, PyObject *args)
     // Allocate a tuple with enough entries to hold the queries name list.
     PyObject *retval = PyTuple_New(nQueries);
 
-    for(int j = 0, k = 0; j < queries.size(); ++j)
+    for(size_t j = 0, k = 0; j < queries.size(); ++j)
     {
         if (types[j] == QueryList::DatabaseQuery &&
             mode[j] != QueryList::QueryOnly)
@@ -11035,6 +11158,10 @@ visit_GetQueryParameters(PyObject *self, PyObject *args)
 //   E4ric Brugger, Mon May 14 10:51:24 PDT 2012
 //   I added the bov output type to the XRay Image query.
 //
+//   Kathleen Biagas, Thu Feb 27 15:17:45 PST 2014
+//   Change return type (Object/Value/String) based on user request from
+//   SetQueryOutputToxxx calls. Default is string.
+//
 // ****************************************************************************
 
 STATIC PyObject*
@@ -11047,7 +11174,6 @@ visit_Query_deprecated(PyObject *self, PyObject *args)
     int arg1 = 0, arg2 = 0;
     double darg;
     doubleVector darg1(3), darg2(2), darg3(2); 
-    bool dumpSteps = false;
     PyObject *tuple = NULL;
     
     bool parse_success = false;
@@ -11313,12 +11439,32 @@ visit_Query_deprecated(PyObject *self, PyObject *args)
         params["vars"] = vars;
 
     debug3 << mn << " sending query params: " << params.ToXML() << endl;
-    MUTEX_LOCK();
-    GetViewerMethods()->Query(params);
-    MUTEX_UNLOCK();
 
-    // Return the success value.
-    return IntReturnValue(Synchronize());
+    if (!suppressQueryOutputState)
+        ToggleSuppressQueryOutput_NoLogging(true);
+
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(params);
+    MUTEX_UNLOCK();
+    Synchronize();
+
+    if (!suppressQueryOutputState)
+        ToggleSuppressQueryOutput_NoLogging(false);
+
+    // Return the output.
+    PyObject *retval = NULL;
+    if (QueryObject == queryOutputReturnType)
+        retval = visit_GetQueryOutputObject(self, args);
+    else if (QueryValue == queryOutputReturnType)
+        retval = visit_GetQueryOutputValue(self, args);
+    else if (QueryString == queryOutputReturnType)
+        retval = visit_GetQueryOutputString(self, args);
+    else
+    {
+        retval = Py_None;
+        Py_INCREF(retval);
+    }
+    return retval;
 }
 
 
@@ -11336,6 +11482,10 @@ visit_Query_deprecated(PyObject *self, PyObject *args)
 // Modifications:
 //   Kathleen Biagas, Wed Sep  7 12:46:24 PDT 2011
 //   Use VisItErrorFunc instead of cerr.
+//
+//   Kathleen Biagas, Thu Feb 27 15:17:45 PST 2014
+//   Change return type (Object/Value/String) based on user request from
+//   SetQueryOutputToxxx calls. Default is string.
 //
 // ****************************************************************************
 
@@ -11411,12 +11561,31 @@ visit_Query(PyObject *self, PyObject *args, PyObject *kwargs)
         queryParams["query_name"] = std::string(queryName);
     }
 
-    MUTEX_LOCK();
-    GetViewerMethods()->Query(queryParams);
-    MUTEX_UNLOCK();
+    if (!suppressQueryOutputState)
+        ToggleSuppressQueryOutput_NoLogging(true);
 
-    // Return the success value.
-    return IntReturnValue(Synchronize());
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(queryParams);
+    MUTEX_UNLOCK();
+    Synchronize();
+
+    if (!suppressQueryOutputState)
+        ToggleSuppressQueryOutput_NoLogging(false);
+
+    // Return the output.
+    PyObject *retval  = NULL;
+    if (QueryObject == queryOutputReturnType)
+        retval = visit_GetQueryOutputObject(self, args);
+    else if (QueryValue == queryOutputReturnType)
+        retval = visit_GetQueryOutputValue(self, args);
+    else if (QueryString == queryOutputReturnType)
+        retval = visit_GetQueryOutputString(self, args);
+    else
+    {
+        retval = Py_None;
+        Py_INCREF(retval);
+    }
+    return retval;
 }
 
 
@@ -11453,14 +11622,14 @@ visit_PythonQuery(PyObject *self, PyObject *args, PyObject *kwargs)
     PyObject *py_vars_tuple = NULL;
     PyObject *py_args       = NULL;
 
-    static char *kwlist[] = {"source", "file", "vars","args",NULL};
+    static const char *kwlist[] = {"source", "file", "vars","args",NULL};
 
     // keyword arguments
     // source: string containg the python filter source
     // file: string containing the location of a script file
     // vars: tuple containing variable names
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssOO", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|ssOO", const_cast<char**>(kwlist),
                                      &source_text, &source_file,
                                      &py_vars_tuple,
                                      &py_args))
@@ -11551,19 +11720,19 @@ visit_DefinePythonExpression(PyObject *self, PyObject *args, PyObject *kwargs)
     ENSURE_VIEWER_EXISTS();
 
     char     *var_name      = NULL;
-    char     *var_type      = "scalar";
+    const char     *var_type      = "scalar";
     PyObject *args_tuple    = NULL;
     char     *source_text   = NULL;
     char     *source_file   = NULL;
 
-    static char *kwlist[] = {"name","args","source", "file", "type", NULL};
+    static const char *kwlist[] = {"name","args","source", "file", "type", NULL};
 
     // keyword arguments
     // source: string containg the python filter source
     // file: string containing the location of a script file
     // vars: tuple containing variable names
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|sss", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "sO|sss", const_cast<char**>(kwlist),
                                      &var_name, &args_tuple,
                                      &source_text,
                                      &source_file, &var_type))
@@ -11734,29 +11903,82 @@ visit_SuppressQueryOutputOff(PyObject *self, PyObject *args)
     return IntReturnValue(Synchronize());
 }
 
+
 // ****************************************************************************
-// Function: ToggleSuppressQueryOutput_NoLogging
+// Function: visit_SetQueryOutputToObject
 //
 // Purpose:
-//   Helper method for toggling SuppressQueryOutput without it being logged.
-//   Used when query ouput suppression is a consequence of another action,
-//   like with Pick functions.
+//   Sets query return type to be the object(XML) form.
 //
-// Programmer: Kathleen Bigagas
-// Creation:   January 9, 2012
+// Programmer: Kathleen Biagas
+// Creation:   February 27, 2014 
 //
 // Modifications:
 //
 // ****************************************************************************
 
-void
-ToggleSuppressQueryOutput_NoLogging(bool onoff)
+STATIC PyObject *
+visit_SetQueryOutputToObject(PyObject *self, PyObject *args)
 {
-    LogFile_IncreaseLevel();
-    GetViewerMethods()->SuppressQueryOutput(onoff);
-    Synchronize();
-    LogFile_DecreaseLevel();
+    NO_ARGUMENTS();
+    if (queryOutputReturnType != QueryObject)
+    {
+        queryOutputReturnType = QueryObject;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
 }
+
+// ****************************************************************************
+// Function: visit_SetQueryOutputToValue
+//
+// Purpose:
+//   Sets query return type to be the value form.
+//
+// Programmer: Kathleen Biagas
+// Creation:   February 27, 2014 
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SetQueryOutputToValue(PyObject *self, PyObject *args)
+{
+    NO_ARGUMENTS();
+    if (queryOutputReturnType != QueryValue)
+    {
+        queryOutputReturnType = QueryValue;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+// ****************************************************************************
+// Function: visit_SetQueryOutputToString
+//
+// Purpose:
+//   Sets query return type to be the string form.
+//
+// Programmer: Kathleen Biagas
+// Creation:   February 27, 2014 
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SetQueryOutputToString(PyObject *self, PyObject *args)
+{
+    NO_ARGUMENTS();
+    if (queryOutputReturnType != QueryString)
+    {
+        queryOutputReturnType = QueryString;
+    }
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
 
 // ****************************************************************************
 // Function: visit_SetQueryFloatFormat()
@@ -13839,7 +14061,7 @@ visit_Lineout(PyObject *self, PyObject *args, PyObject *kwargs)
 
     bool parse_success = true;
     MapNode queryParams;
-    PyObject *repr = NULL; 
+    PyObject *repr = NULL;  (void) repr;
 
 
     if (args == NULL)
@@ -14304,7 +14526,7 @@ visit_GetAnnotationObject(PyObject *self, PyObject *args)
     const char *mName = "visit_GetAnnotationObject: ";
     ENSURE_VIEWER_EXISTS();
 
-    bool useIndex = true;
+    //bool useIndex = true;
     char *annotName = NULL;
 
     if(!PyArg_ParseTuple(args, "s", &annotName))
@@ -14870,7 +15092,7 @@ visit_LoadNamedSelection(PyObject *self, PyObject *args)
         {
             const stringVector &engines = GetViewerState()->GetEngineList()->GetEngineName();
             const stringVector &sims = GetViewerState()->GetEngineList()->GetSimulationName();
-            for (int i=0; i<engines.size(); i++)
+            for (size_t i=0; i<engines.size(); i++)
             {
                 if (engines[i] == engineName)
                 {
@@ -14913,8 +15135,8 @@ visit_SaveNamedSelection(PyObject *self, PyObject *args)
     ENSURE_VIEWER_EXISTS();
 
     char *selName;
-    bool useFirstEngine = false;
-    bool useFirstSimulation = false;
+    //bool useFirstEngine = false;
+    //bool useFirstSimulation = false;
     const char *engineName = 0;
     const char *simulationName = 0;
 
@@ -15346,7 +15568,7 @@ visit_ClientMethod(PyObject *self, PyObject *args)
     ENSURE_VIEWER_EXISTS();
 
     char *name = 0;
-    char *arg1 = 0;
+    //char *arg1 = 0;
     const char *CMError = "The tuple passed as the arguments to the"
                           "client method must contain only int, long, "
                           " float, tuples, or lists.";
@@ -15474,7 +15696,7 @@ visit_ExecuteMacro(PyObject *self, PyObject *args)
     ENSURE_VIEWER_EXISTS();
 
     char *name = 0;
-    PyObject *obj = 0;
+    //PyObject *obj = 0;
 
     if (!PyArg_ParseTuple(args, "s", &name))
         return NULL;
@@ -15629,7 +15851,7 @@ visit_GetCallbackNames(PyObject *, PyObject *args)
 
     // Allocate a tuple the with enough entries to hold the plugin name list.
     PyObject *retval = PyTuple_New(names.size());
-    for(int i = 0; i < names.size(); ++i)
+    for(size_t i = 0; i < names.size(); ++i)
     {
         PyObject *dval = PyString_FromString(names[i].c_str());
         if(dval == NULL)
@@ -15668,7 +15890,7 @@ visit_GetCallbackArgumentCount(PyObject *, PyObject *args)
     callbackMgr->GetCallbackNames(names);
     bool failed = true;
     int retval = 0;
-    for(int i = 0; i < names.size(); ++i)
+    for(size_t i = 0; i < names.size(); ++i)
     {
         if(names[i] == name)
         {
@@ -15768,7 +15990,7 @@ visit_RegisterCallback(PyObject *, PyObject *args)
         stringVector names;
         callbackMgr->GetCallbackNames(names);
         failed = true;
-        for(int i = 0; i < names.size(); ++i)
+        for(size_t i = 0; i < names.size(); ++i)
         {
             if(names[i] == name)
             {
@@ -15865,8 +16087,8 @@ visit_exec_client_method(void *data)
         keepGoing = false;
         // Make the interpreter quit.
         viewerInitiatedQuit = true;
-        if(acquireLock)
-            VisItUnlockPythonInterpreter(myThreadState);
+        //if(acquireLock)
+        //    VisItUnlockPythonInterpreter(myThreadState);
 
         PyGILState_STATE state = PyGILState_Ensure();
         PyRun_SimpleString("import sys; sys.exit(0)");
@@ -16577,6 +16799,9 @@ AddMethod(const char *methodName,
 //   Kathleen Biagas, Wed Oct 26 09:28:41 PDT 2011
 //   Add GetPickOutputObject.
 //
+//   Brad Whitlock, Wed Jul 16 11:52:54 PDT 2014
+//   Add GetEngineProperties.
+//
 // ****************************************************************************
 
 static void
@@ -16722,6 +16947,7 @@ AddProxyMethods()
     AddMethod("GetDefaultFileOpenOptions", visit_GetDefaultFileOpenOptions,
                                           visit_GetDefaultFileOpenOptions_doc);
     AddMethod("GetEngineList", visit_GetEngineList, visit_GetEngineList_doc);
+    AddMethod("GetEngineProperties", visit_GetEngineProperties, visit_GetEngineProperties_doc);
     AddMethod("GetExportOptions", visit_GetExportOptions, NULL);
     AddMethod("GetGlobalAttributes", visit_GetGlobalAttributes,
                                                 visit_GetGlobalAttributes_doc);
@@ -16961,6 +17187,9 @@ AddProxyMethods()
     AddMethod("ShowToolbars", visit_ShowToolbars, visit_ShowToolbars_doc);
     AddMethod("SuppressQueryOutputOn", visit_SuppressQueryOutputOn, visit_SuppressQueryOutput_doc);
     AddMethod("SuppressQueryOutputOff", visit_SuppressQueryOutputOff, visit_SuppressQueryOutput_doc);
+    AddMethod("SetQueryOutputToObject", visit_SetQueryOutputToObject, visit_SetQueryOutputToObject_doc);
+    AddMethod("SetQueryOutputToValue", visit_SetQueryOutputToValue, visit_SetQueryOutputToValue_doc);
+    AddMethod("SetQueryOutputToString", visit_SetQueryOutputToString, visit_SetQueryOutputToString_doc);
     AddMethod("SetQueryFloatFormat", visit_SetQueryFloatFormat, visit_SetQueryFloatFormat_doc);
     AddMethod("TimeSliderGetNStates", visit_TimeSliderGetNStates,
                                                visit_TimeSliderGetNStates_doc);
@@ -17138,6 +17367,9 @@ AddProxyMethods()
 //   Brad Whitlock, Wed Jun  6 13:36:36 PDT 2012
 //   Add KeyframeAttributes.
 //
+//   Brad Whitlock, Wed Jul 16 11:50:08 PDT 2014
+//   Add EngineProperties.
+//
 // ****************************************************************************
 
 static void
@@ -17153,6 +17385,7 @@ AddExtensions()
     ADD_EXTENSION(PyColorControlPoint_GetMethodTable);
     ADD_EXTENSION(PyColorControlPointList_GetMethodTable);
     ADD_EXTENSION(PyConstructDataBinningAttributes_GetMethodTable);
+    ADD_EXTENSION(PyEngineProperties_GetMethodTable);
     ADD_EXTENSION(PyExportDBAttributes_GetMethodTable);
     ADD_EXTENSION(PyExpression_GetMethodTable);
     ADD_EXTENSION(PyExpressionList_GetMethodTable);
@@ -17249,6 +17482,12 @@ AddExtensions()
 //   Brad Whitlock, Wed Jun  6 13:35:46 PDT 2012
 //   Add KeyframeAttributes.
 //
+//   Kathleen Biagas, Mon Jun 23 09:52:42 MST 2014
+//   Add QueryOvertimeAttributes.
+//
+//   Brad Whitlock, Wed Jul 16 11:50:44 PDT 2014
+//   Add EngineProperties.
+//
 // ****************************************************************************
 
 static void
@@ -17257,6 +17496,7 @@ InitializeExtensions()
     PyAnimationAttributes_StartUp(GetViewerState()->GetAnimationAttributes(), 0);
     PyAnnotationAttributes_StartUp(GetViewerState()->GetAnnotationAttributes(), 0);
     PyConstructDataBinningAttributes_StartUp(GetViewerState()->GetConstructDataBinningAttributes(), 0);
+    PyEngineProperties_StartUp(0, 0);
     PyExportDBAttributes_StartUp(GetViewerState()->GetExportDBAttributes(), 0);
     PyExpression_StartUp(0, 0);
     PyExpressionList_StartUp(GetViewerState()->GetExpressionList(), 0);
@@ -17269,6 +17509,7 @@ InitializeExtensions()
     PyPickAttributes_StartUp(GetViewerState()->GetPickAttributes(), 0);
     PyPrinterAttributes_StartUp(GetViewerState()->GetPrinterAttributes(), 0);
     PyProcessAttributes_StartUp(GetViewerState()->GetProcessAttributes(), 0);
+    PyQueryOverTimeAttributes_StartUp(GetViewerState()->GetQueryOverTimeAttributes(), 0);
     PyRenderingAttributes_StartUp(GetViewerState()->GetRenderingAttributes(), 0);
     PySaveWindowAttributes_StartUp(GetViewerState()->GetSaveWindowAttributes(), 0);
     PySelectionProperties_StartUp(0, 0);
@@ -17315,6 +17556,9 @@ InitializeExtensions()
 //   Brad Whitlock, Wed Jun  6 13:35:46 PDT 2012
 //   Add KeyframeAttributes.
 //
+//   Brad Whitlock, Wed Jul 16 11:50:44 PDT 2014
+//   Add EngineProperties.
+//
 // ****************************************************************************
 
 static void
@@ -17322,6 +17566,7 @@ CloseExtensions()
 {
     PyAnimationAttributes_CloseDown();
     PyAnnotationAttributes_CloseDown();
+    PyEngineProperties_CloseDown();
     PyGlobalAttributes_CloseDown();
     PyKeyframeAttributes_CloseDown();
     PyMaterialAttributes_CloseDown();
@@ -17691,7 +17936,7 @@ NeedToLoadPlugins(Subject *, void *)
 static int
 InitializeModule()
 {
-    bool ret = false;
+    bool ret = false; (void) ret;
 
     // Register a close-down function to close the viewer.
     Py_AtExit(terminatevisit);
@@ -17884,7 +18129,7 @@ ReadVisItPluginDir(const char *visitProgram)
 
     while(!feof(p))
     {
-        fgets(line, 2000, p);
+        char* res = fgets(line, 2000, p); (void) res;
         if(strncmp(line, vpd, vpdLen) == 0)
         {
             char *value = NULL, *end = NULL;
@@ -18433,13 +18678,16 @@ void initvisitmodule()
 void
 initvisit()
 {
-    int initCode = 0;
+    int initCode = 0; (void) initCode;
     PyObject *main_module = NULL;
-    PyObject *gdict = NULL;
+    PyObject *gdict = NULL; (void) gdict;
     PyEval_InitThreads();
     // save a pointer to the main PyThreadState object
     mainThreadState = PyThreadState_Get();
-
+    ///http://porky.linuxjournal.com:8080/LJ/073/3641.html
+    ///according to the above article PyEval_InitThreads() is
+    ///acquiring lock and needs to be released.
+    //PyEval_ReleaseLock();
     //
     // Initialize the module, but only do it one time.
     //
@@ -18468,7 +18716,6 @@ initvisit()
     PyDict_SetItemString(d, "VisItException", VisItError);
     VisItInterrupt = PyErr_NewException((char*)"visit.VisItInterrupt", NULL, NULL);
     PyDict_SetItemString(d, "VisItInterrupt", VisItInterrupt);
-
 }
 
 // ****************************************************************************

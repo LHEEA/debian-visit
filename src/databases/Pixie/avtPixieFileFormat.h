@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -189,6 +189,7 @@ protected:
     std::vector<int>       cycles;
     std::vector<double>    time_val;
 
+    static herr_t VisitLinks(hid_t, const char *, const H5L_info_t *, void *);
     static herr_t GetVariableList(hid_t, const char *, void *);
 
     enum PartitioningDirection {XSLAB=0, YSLAB, ZSLAB, KDTREE};

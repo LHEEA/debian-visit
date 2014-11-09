@@ -237,9 +237,6 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         fieldType != obj.fieldType ||
         fieldConstant != obj.fieldConstant ||
         integrationType != obj.integrationType ||
-        coordinateSystem != obj.coordinateSystem ||
-        phiScalingFlag != obj.phiScalingFlag ||
-        phiScaling != obj.phiScaling ||
         maxStepLength != obj.maxStepLength ||
         maxTimeStep != obj.maxTimeStep ||
         limitMaximumTimestep != obj.limitMaximumTimestep ||
@@ -248,20 +245,25 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         absTolBBox != obj.absTolBBox ||
         absTolSizeType != obj.absTolSizeType ||
         forceNodeCenteredData != obj.forceNodeCenteredData ||
-        showPoints != obj.showPoints ||
-        showLines != obj.showLines ||
+        cropBeginFlag != obj.cropBeginFlag ||
+        cropBegin != obj.cropBegin ||
+        cropEndFlag != obj.cropEndFlag ||
+        cropEnd != obj.cropEnd ||
+        cropValue != obj.cropValue ||
         pathlines != obj.pathlines ||
         pathlinesOverrideStartingTimeFlag != obj.pathlinesOverrideStartingTimeFlag ||
         pathlinesOverrideStartingTime != obj.pathlinesOverrideStartingTime ||
         pathlinesCMFE != obj.pathlinesCMFE ||
         dataVariable != obj.dataVariable ||
         (dataValue != obj.dataValue && obj.dataValue != Solid) ||
-        ((dataValue == CorrelationDistance) && (correlationDistanceAngTol != obj.correlationDistanceAngTol ||
-                                                     correlationDistanceMinDistAbsolute != obj.correlationDistanceMinDistAbsolute ||
-                                                     correlationDistanceMinDistBBox != obj.correlationDistanceMinDistBBox ||
-                                                     correlationDistanceMinDistType != obj.correlationDistanceMinDistType)) ||
+        ((dataValue == CorrelationDistance) &&
+         (correlationDistanceAngTol != obj.correlationDistanceAngTol ||
+          correlationDistanceMinDistAbsolute != obj.correlationDistanceMinDistAbsolute ||
+          correlationDistanceMinDistBBox != obj.correlationDistanceMinDistBBox ||
+          correlationDistanceMinDistType != obj.correlationDistanceMinDistType)) ||
         0 )
     {
+
         return true;
     }
          
@@ -416,7 +418,6 @@ IntegralCurveViewerPluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
 {
     IntegralCurveAttributes *atts_in = (IntegralCurveAttributes *)atts;
 
-    const char numTypes = 11;
     const char *typeString[11] =
       { "None", "Seed Point ID", "Speed", "Vorticity", "Arc Length",
          "Absolute Time", "Relative Time",

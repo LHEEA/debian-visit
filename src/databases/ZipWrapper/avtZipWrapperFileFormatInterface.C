@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -310,7 +310,7 @@ avtZipWrapperFileFormatInterface::Initialize(int procNum, int procCount,
     //
     // Process any read options
     //
-    bool dontAtExit = false;
+    bool dontAtExit = false; (void) dontAtExit;
     string userName = "$USER"; 
     for (int i = 0; rdopts != 0 && i < rdopts->GetNumberOfOptions(); ++i)
     {
@@ -469,7 +469,7 @@ avtZipWrapperFileFormatInterface::Finalize()
 avtZipWrapperFileFormatInterface::avtZipWrapperFileFormatInterface(
     const char *const *list, int nl, int nb, const DBOptionsAttributes *rdopts,
     CommonDatabasePluginInfo *zwinfo) : 
-    inputFileListSize(nl), inputFileBlockCount(nb),
+    inputFileBlockCount(nb),
     decompressedFilesCache(FreeUpCacheSlot)
 {
     procNum = 0;
@@ -515,7 +515,7 @@ avtZipWrapperFileFormatInterface::avtZipWrapperFileFormatInterface(
     dummyInterface = 0;
     const bool searchAllPlugins = true;
     vector<string> ids = pluginManager->GetMatchingPluginIds(dcname.c_str(), searchAllPlugins);
-    for (int i = 0; i < ids.size() && dummyInterface == 0; i++)
+    for (size_t i = 0; i < ids.size() && dummyInterface == 0; i++)
     {
         realPluginWasLoadedByMe = pluginManager->LoadSinglePluginNow(ids[i]);
         TRY

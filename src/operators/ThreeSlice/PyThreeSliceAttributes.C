@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewThreeSliceAttributes(int);
 std::string
 PyThreeSliceAttributes_ToString(const ThreeSliceAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sx = %g\n", prefix, atts->GetX());
     str += tmpStr;
@@ -425,7 +425,6 @@ PyThreeSliceAttributes_GetLogString()
 static void
 PyThreeSliceAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ThreeSliceAttributes *atts = (ThreeSliceAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1005,7 +1005,7 @@ const char *NameschemeAttributes::GetName(int n) const
 
     // First, see if we have ALL explicit names defined and, if so,
     // ensure 'n' is in correct range for it.
-    if (n < allExplicitNames.size())
+    if ((size_t)n < allExplicitNames.size())
         return allExplicitNames[n].c_str();
         
     // Next, see if we have an explicit names map for this object.

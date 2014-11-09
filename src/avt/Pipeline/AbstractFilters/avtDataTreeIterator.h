@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -91,6 +91,13 @@
 //    Hank Childs, Thu Dec 21 09:17:43 PST 2006
 //    Remove support for debug dumps.
 //
+//    Eric Brugger, Fri Jul 18 14:00:24 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
+//    Eric Brugger, Fri Sep 26 14:14:36 PDT 2014
+//    I removed all the remaining traces of vtkDataSet since all the
+//    filters have been converted to use avtDataRepresentation.
+//
 // **************************************************************************** 
 
 class PIPELINE_API avtDataTreeIterator : virtual public avtSIMODataTreeIterator
@@ -102,12 +109,8 @@ class PIPELINE_API avtDataTreeIterator : virtual public avtSIMODataTreeIterator
     virtual void             ReleaseData(void);
 
   protected:
-    vtkDataSet              *lastDataset;
-
-    virtual avtDataTree_p    ExecuteDataTree(vtkDataSet *, int, std::string);
-    virtual vtkDataSet      *ExecuteData(vtkDataSet *, int, std::string) = 0;
-
-    void                     ManageMemory(vtkDataSet *);
+    virtual avtDataTree_p    ExecuteDataTree(avtDataRepresentation *);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *) = 0;
 };
 
 

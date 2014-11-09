@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -101,6 +101,9 @@ private:
   void ConsolidateFacesWithoutGhostZones(vtkRectilinearGrid *, vtkPolyData *);
   vtkPolyData *ConsolidateFacesWithGhostZones(vtkPolyData *, vtkIdTypeArray *,
                        std::vector<int>&, std::vector<int>&,std::vector<int>&);
+
+  static const vtkIdType quads2[1][4];
+  static const vtkIdType quads3[6][4];
 };
 
 #endif

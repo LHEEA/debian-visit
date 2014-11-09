@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -558,8 +558,6 @@ QvisRenderingWindow::CreateInformationPage()
 void
 QvisRenderingWindow::CreateWindowContents()
 {
-    int row = 0;
-
     QTabWidget *topTab = new QTabWidget(central);
     topLayout->addWidget(topTab);
 
@@ -900,8 +898,6 @@ void
 QvisRenderingWindow::UpdateWindowSensitivity()
 {
     bool multiresolutionOn = renderAtts->GetMultiresolutionMode();
-    bool scalableAlways =
-        renderAtts->GetScalableActivationMode() == RenderingAttributes::Always;
     bool scalableAuto =
         renderAtts->GetScalableActivationMode() == RenderingAttributes::Auto;
     bool compactAuto =

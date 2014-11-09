@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -387,7 +387,7 @@ avtSiloMBObjectCache::HasEntry(const char *path, const char *name) const
 void
 avtSiloMBObjectCache::RemoveEntry(const string &full_path)
 {
-    avtSiloMBObjectCacheEntry *res = NULL;
+    //avtSiloMBObjectCacheEntry *res = NULL; (void) res;
     map<string, avtSiloMBObjectCacheEntry * >::iterator itr;
     itr = cache.find(full_path);
     if(itr != cache.end())

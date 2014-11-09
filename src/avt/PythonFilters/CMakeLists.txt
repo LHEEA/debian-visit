@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -66,7 +66,7 @@ ${PYTHON_INCLUDE_PATH}
 )
 
 # Add link directories
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS} ${PYTHON_DIR})
+LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${PYTHON_DIR})
 
 
 #********************************* SERIAL ************************************
@@ -80,3 +80,4 @@ IF(VISIT_PARALLEL)
     TARGET_LINK_LIBRARIES(avtpythonfilters_par visitcommon avtdbatts avtpipeline_par ${PYTHON_LIBRARIES})
     VISIT_INSTALL_TARGETS(avtpythonfilters_par)
 ENDIF(VISIT_PARALLEL)
+

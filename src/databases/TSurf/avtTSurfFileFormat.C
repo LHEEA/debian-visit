@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -397,7 +397,7 @@ avtTSurfFileFormat::ReadFile(const char *name, int nLines)
     float pt[3];
     vtkIdType verts[8];
     bool recognized = false;
-    bool titleRead = false;
+    bool titleRead = false; (void) titleRead;
     for(int lineIndex = 0; !ifile.eof(); ++lineIndex)
     {
         if(nLines != ALL_LINES && lineIndex >= nLines)

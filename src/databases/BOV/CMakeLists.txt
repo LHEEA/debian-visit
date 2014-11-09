@@ -47,11 +47,12 @@ ${VISIT_INCLUDE_DIR}/avt/Pipeline/Sources
 ${VISIT_INCLUDE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_INCLUDE_DIR}/visit_vtk/full
 ${VISIT_INCLUDE_DIR}/visit_vtk/lightweight
+${EAVL_INCLUDE_DIR} 
 ${VTK_INCLUDE_DIRS} 
 )
 
 
-LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} )
+LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} )
 
 ADD_LIBRARY(IBOVDatabase ${LIBI_SOURCES})
 TARGET_LINK_LIBRARIES(IBOVDatabase visitcommon)
@@ -59,19 +60,19 @@ SET(INSTALLTARGETS IBOVDatabase)
 
 IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
     ADD_LIBRARY(MBOVDatabase ${LIBM_SOURCES}    )
-    TARGET_LINK_LIBRARIES(MBOVDatabase visitcommon avtdbatts avtdatabase_ser ${ZLIB_LIB} )
+    TARGET_LINK_LIBRARIES(MBOVDatabase visitcommon avtdbatts avtdatabase_ser ${vtkzlib_LIBRARIES} )
     ADD_TARGET_DEFINITIONS(MBOVDatabase MDSERVER)
     SET(INSTALLTARGETS ${INSTALLTARGETS} MBOVDatabase)
 ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(EBOVDatabase_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(EBOVDatabase_ser visitcommon avtdatabase_ser avtpipeline_ser ${ZLIB_LIB} )
+TARGET_LINK_LIBRARIES(EBOVDatabase_ser visitcommon avtdatabase_ser avtpipeline_ser ${vtkzlib_LIBRARIES} )
 ADD_TARGET_DEFINITIONS(EBOVDatabase_ser ENGINE)
 SET(INSTALLTARGETS ${INSTALLTARGETS} EBOVDatabase_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(EBOVDatabase_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(EBOVDatabase_par visitcommon avtdatabase_par avtpipeline_par ${ZLIB_LIB} )
+    TARGET_LINK_LIBRARIES(EBOVDatabase_par visitcommon avtdatabase_par avtpipeline_par ${vtkzlib_LIBRARIES} )
     ADD_TARGET_DEFINITIONS(EBOVDatabase_par ENGINE)
     SET(INSTALLTARGETS ${INSTALLTARGETS} EBOVDatabase_par)
 ENDIF(VISIT_PARALLEL)

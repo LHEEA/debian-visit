@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1151,19 +1151,18 @@ void
 VisWinQuery::GetVisualCues(const VisualCueInfo::CueType cueType,
     std::vector<const VisualCueInfo*>& cues) const
 {
-    int i;
 
     if ((cueType == VisualCueInfo::PickPoint) ||
         (cueType == VisualCueInfo::Unknown))
     {
-        for (i = 0; i < pickPoints.size(); i++)
+        for (size_t i = 0; i < pickPoints.size(); i++)
             cues.push_back(&(pickPoints[i].vqInfo));
     }
 
     if ((cueType == VisualCueInfo::RefLine) ||
         (cueType == VisualCueInfo::Unknown))
     {
-        for (i = 0; i < lineOuts.size(); i++)
+        for (size_t i = 0; i < lineOuts.size(); i++)
             cues.push_back(&(lineOuts[i].vqInfo));
     }
 }

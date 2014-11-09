@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,6 +79,18 @@ class View3DAttributes;
 //    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
 //    Add shear for oblique projection support.
 //
+//    Eric Brugger, Thu Jan  2 15:04:00 PST 2014
+//    I added GetFrustum to add support for 3d multi resolution data
+//    selections.
+//
+//    Eric Brugger, Wed Jan  8 16:44:28 PST 2014
+//    I added windowValid to support adding a multi resolution display
+//    capability.
+//
+//    Eric Brugger, Thu Jan 23 16:24:37 PST 2014
+//    I deleted GetFrustum. I added GetCompositeProjectionTransformMatrix
+//    and CalculateExtentsAndArea.
+//
 // ****************************************************************************
 
 struct AVTVIEW_API avtView3D
@@ -99,6 +111,7 @@ struct AVTVIEW_API avtView3D
     bool     axis3DScaleFlag;
     double   axis3DScales[3];
     double   shear[3];
+    bool     windowValid;
 
   public:
                     avtView3D();
@@ -109,6 +122,11 @@ struct AVTVIEW_API avtView3D
 
     void            SetFromView3DAttributes(const View3DAttributes *);
     void            SetToView3DAttributes(View3DAttributes *) const;
+
+    void            GetCompositeProjectionTransformMatrix(double *, double)
+                        const;
+
+    static void     CalculateExtentsAndArea(double *, double &, double *);
 };
 
 

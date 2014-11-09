@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,13 +43,14 @@
 #ifndef AVT_CreateBonds_FILTER_H
 #define AVT_CreateBonds_FILTER_H
 
-
 #include <avtPluginDataTreeIterator.h>
+
 #include <CreateBondsAttributes.h>
 
 class vtkPoints;
 class vtkDataSet;
 class vtkPolyData;
+
 
 // ****************************************************************************
 //  Class: avtCreateBondsFilter
@@ -77,6 +78,9 @@ class vtkPolyData;
 //    routine a poor choice, or in case we need to add some feature which
 //    be too hard to add in the more complex fast routine.
 //
+//    Eric Brugger, Wed Jul 23 11:24:54 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 class avtCreateBondsFilter : public avtPluginDataTreeIterator
@@ -97,12 +101,13 @@ class avtCreateBondsFilter : public avtPluginDataTreeIterator
   protected:
     CreateBondsAttributes   atts;
 
-    virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     vtkDataSet           *ExecuteData_Fast(vtkPolyData*, float maxBondDist,
                                           float,float,float,float,float,float);
     vtkDataSet           *ExecuteData_Slow(vtkPolyData*);
     virtual avtContract_p
                           ModifyContract(avtContract_p spec);
+    virtual void          UpdateDataObjectInfo(void);
 
     bool AtomBondDistances(int eA, int eB, double &dmin, double &dmax);
 };

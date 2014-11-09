@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -850,8 +850,8 @@ Transition_Ripple(const TransitionOptions &options, ImageObject *image1, ImageOb
         float hW = float(image1->Width()) / 2.f + 1.;
         float hH = float(image1->Height()) / 2.f + 1.;
         float imageRad = sqrt(hW * hW + hH * hH);
-        float currentRad = t * imageRad;
-        unsigned char black[3] = {0,0,0};
+        //float currentRad = t * imageRad;
+        //unsigned char black[3] = {0,0,0};
 
         for(int y = 0; y < image1->Height(); ++y)
         {

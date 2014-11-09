@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewCoordSwapAttributes(int);
 std::string
 PyCoordSwapAttributes_ToString(const CoordSwapAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *newCoord1_names = "Coord1, Coord2, Coord3";
     switch (atts->GetNewCoord1())
@@ -489,7 +489,6 @@ PyCoordSwapAttributes_GetLogString()
 static void
 PyCoordSwapAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    CoordSwapAttributes *atts = (CoordSwapAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

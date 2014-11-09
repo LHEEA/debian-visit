@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -64,7 +64,7 @@ public:
     enum Mode
     {
         GET,
-        PUT,
+        PUT
     };
     
                 avtIVPStateHelper( Mode mode, void* data )

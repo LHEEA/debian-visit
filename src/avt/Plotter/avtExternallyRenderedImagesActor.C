@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -133,7 +133,7 @@ avtExternallyRenderedImagesActor::avtExternallyRenderedImagesActor()
     extRenderCallback     = NULL;
     extRenderCallbackArgs = NULL;
     makeExternalRenderRequests = false;
-    for (int i = 0; i < sizeof(renderTimeHistory)/sizeof(renderTimeHistory[0]); i++)
+    for (size_t i = 0; i < sizeof(renderTimeHistory)/sizeof(renderTimeHistory[0]); i++)
         renderTimeHistory[i] = 0.0;
     rtIdx = 0;
     doNextExternalRenderAsVisualQueue = false;

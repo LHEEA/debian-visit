@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -299,8 +299,12 @@ avtWPPImageFileFormat::GetVar(int domain, const char *varname)
         arr = vtkFloatArray::New();
         arr->SetNumberOfTuples(npts);
         float* data = (float *)arr->GetVoidPointer(0);
+#ifdef WIN32
+        nr = _read(fd, data, (unsigned int)(sizeof(float)*npts));
+#else
         nr = READ(fd,data,sizeof(float)*npts);
-        if( nr != sizeof(float)*npts )
+#endif
+        if( (size_t)nr != sizeof(float)*npts )
         {
             CLOSE(fd);
             SNPRINTF(errmsg,500,"Error reading array in %s", 
@@ -313,8 +317,12 @@ avtWPPImageFileFormat::GetVar(int domain, const char *varname)
         arr = vtkDoubleArray::New();
         arr->SetNumberOfTuples(npts);
         double* data = (double *)arr->GetVoidPointer(0);
+#ifdef WIN32
+        nr = _read(fd, data, (unsigned int)(sizeof(double)*npts));
+#else
         nr = READ(fd,data,sizeof(double)*npts);
-        if( nr != sizeof(double)*npts )
+#endif
+        if( (size_t)nr != sizeof(double)*npts )
         {
             CLOSE(fd); 
             SNPRINTF(errmsg,500,"Error reading array in %s", 
@@ -396,7 +404,7 @@ void avtWPPImageFileFormat::Initialize()
     {
         // We have a '3D.mode' type file -- this is for volimage
         SNPRINTF(errmsg,500,"Error: WPPImage reader does not read 3D volimage"
-                " files -- use the volimage reader instead.", m_mode.c_str());
+                " files -- use the volimage reader instead. mode -- %s", m_mode.c_str());
         debug1 << errmsg << endl; 
         EXCEPTION1( InvalidDBTypeException, errmsg );
     }

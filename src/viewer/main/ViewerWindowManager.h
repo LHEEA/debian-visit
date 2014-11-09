@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -434,6 +434,9 @@ typedef struct {
 //    Kathleen Biagas, Wed Aug  7 13:01:13 PDT 2013
 //    Add SetPrecisionType.
 //
+//    Cameron Christensen, Tuesday, June 10, 2014
+//    Added SetBackendType.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerWindowManager : public ViewerBase
@@ -581,6 +584,7 @@ class VIEWER_API ViewerWindowManager : public ViewerBase
     bool SetCreateTimeDerivativeExpressions(bool val);
     bool SetCreateVectorMagnitudeExpressions(bool val);
     void SetPrecisionType(int val);
+    void SetBackendType(int val);
 
     void ReplaceDatabase(const EngineKey &key,
                          const std::string &database,

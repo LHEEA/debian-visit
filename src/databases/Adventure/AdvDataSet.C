@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,7 +78,6 @@ AdvDataSet::VarInfo::CheckFormat(int &ncomps) const
         }
     }
     int nTypes = 0;
-    int lastIndex = 0;
     for(int i = 0; i < nSupportedTypes; ++i)
     {
         if(typeCount[i] > 0)
@@ -247,9 +246,6 @@ vtkDataSet *
 AdvDataSet::GetMesh(AdvDocFile *f, int d, AdvDataSet::AdvElementType elementType)
 {
     const char *mName = "AdvDataSet::GetMesh: ";
-
-    // Get this domain.
-    int domain = domainToSubDomain[d];
 
     AdvDocument *doc = 0;
 

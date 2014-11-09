@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,13 +44,13 @@
 
 #include <math.h>
 
+#include <cmath>
+
 #include <avtViewInfo.h>
 #include <View3DAttributes.h>
 
-//
-// Local macros.
-//
-#define max(x,y) ((x) > (y) ? (x) : (y))
+#include <vtkCamera.h>
+#include <vtkMatrix4x4.h>
 
 
 // ****************************************************************************
@@ -91,6 +91,10 @@ avtView3D::avtView3D()
 //    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
 //    Add shear for oblique projection support.
 //
+//    Eric Brugger, Wed Jan  8 16:46:42 PST 2014
+//    I added windowValid to support adding a multi resolution display
+//    capability.
+//
 // ****************************************************************************
 
 avtView3D &
@@ -125,6 +129,7 @@ avtView3D::operator=(const avtView3D &vi)
     shear[0]            = vi.shear[0];
     shear[1]            = vi.shear[1];
     shear[2]            = vi.shear[2];
+    windowValid         = vi.windowValid;
 
     return *this;
 }
@@ -153,6 +158,10 @@ avtView3D::operator=(const avtView3D &vi)
 //
 //    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
 //    Add shear for oblique projection support.
+//
+//    Eric Brugger, Wed Jan  8 16:46:42 PST 2014
+//    I added windowValid to support adding a multi resolution display
+//    capability.
 //
 // ****************************************************************************
 
@@ -203,7 +212,8 @@ avtView3D::operator==(const avtView3D &vi)
         imageZoom != vi.imageZoom || perspective != vi.perspective ||
         eyeAngle != vi.eyeAngle ||
         centerOfRotationSet != vi.centerOfRotationSet ||
-        axis3DScaleFlag != vi.axis3DScaleFlag)
+        axis3DScaleFlag != vi.axis3DScaleFlag ||
+        windowValid != vi.windowValid)
     {
         return false;
     }
@@ -241,6 +251,10 @@ avtView3D::operator==(const avtView3D &vi)
 //    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
 //    Add shear for oblique projection support.
 //
+//    Eric Brugger, Wed Jan  8 16:46:42 PST 2014
+//    I added windowValid to support adding a multi resolution display
+//    capability.
+//
 // ****************************************************************************
 
 void
@@ -275,6 +289,7 @@ avtView3D::SetToDefault()
     shear[0]            = 0.;
     shear[1]            = 0.;
     shear[2]            = 1.;
+    windowValid         = false;
 }
 
 // ****************************************************************************
@@ -380,7 +395,7 @@ avtView3D::SetViewInfoFromView(avtViewInfo &viewInfo) const
     // number should be as large as possible.  10000 would probably also
     // work, but 100000 would start showing z buffering artifacts.
     //
-    viewInfo.nearPlane = max (nearPlane + distance, (farPlane - nearPlane) / 5000.);
+    viewInfo.nearPlane = std::max(nearPlane + distance, (farPlane - nearPlane) / 5000.);
     viewInfo.farPlane = farPlane + distance;
 
     //
@@ -426,6 +441,10 @@ avtView3D::SetViewInfoFromView(avtViewInfo &viewInfo) const
 //    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
 //    Add shear for oblique projection support.
 //
+//    Eric Brugger, Wed Jan  8 16:46:42 PST 2014
+//    I added windowValid to support adding a multi resolution display
+//    capability.
+//
 // ****************************************************************************
 
 void
@@ -452,6 +471,7 @@ avtView3D::SetFromView3DAttributes(const View3DAttributes *view3DAtts)
     eyeAngle = view3DAtts->GetEyeAngle();
     centerOfRotationSet = view3DAtts->GetCenterOfRotationSet();
     axis3DScaleFlag = view3DAtts->GetAxis3DScaleFlag();
+    windowValid = view3DAtts->GetWindowValid();
 }
 
 // ****************************************************************************
@@ -482,6 +502,10 @@ avtView3D::SetFromView3DAttributes(const View3DAttributes *view3DAtts)
 //    Jeremy Meredith, Mon Aug  2 14:23:08 EDT 2010
 //    Add shear for oblique projection support.
 //
+//    Eric Brugger, Wed Jan  8 16:46:42 PST 2014
+//    I added windowValid to support adding a multi resolution display
+//    capability.
+//
 // ****************************************************************************
 
 void
@@ -503,4 +527,141 @@ avtView3D::SetToView3DAttributes(View3DAttributes *view3DAtts) const
     view3DAtts->SetAxis3DScaleFlag(axis3DScaleFlag);
     view3DAtts->SetAxis3DScales(axis3DScales);
     view3DAtts->SetShear(shear);
+    view3DAtts->SetWindowValid(windowValid);
 }
+
+// ****************************************************************************
+//  Method: avtView3D::GetCompositeProjectionTransformMatrix
+//
+//  Purpose: 
+//    Returns the composite projection transform matrix given the aspect
+//    ratio of the window width to height.
+//
+//  Arguments:
+//    matrix     : The returned composite projection transform matrix.
+//    aspect     : The aspect ratio of window width to height.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Jan 23 16:25:23 PST 2014
+//
+// ****************************************************************************
+
+void
+avtView3D::GetCompositeProjectionTransformMatrix(double *matrix, double aspect)
+    const
+{
+    //
+    // Get the inverse of the composite projection transform matrix.
+    //
+    avtViewInfo viewInfo;
+    SetViewInfoFromView(viewInfo);
+    vtkCamera *vtkcam = vtkCamera::New();
+    viewInfo.SetCameraFromView(vtkcam);
+    vtkMatrix4x4::DeepCopy(
+        matrix,
+        vtkcam->GetCompositeProjectionTransformMatrix(aspect, -1, +1));
+}
+
+// ****************************************************************************
+//  Method: avtView3D::CalculateExtentsAndArea
+//
+//  Purpose: 
+//    Calculate the 3d view extents and its area from the composite
+//    projection transform matrix.
+//
+//  Arguments:
+//    extents    : The returned extents.
+//    area       : The returned area.
+//    matrix     : The composite projection transform matrix.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Jan 23 16:25:23 PST 2014
+//
+// ****************************************************************************
+
+void
+avtView3D::CalculateExtentsAndArea(double *extents, double &area,
+    double *matrix)
+{
+    //
+    // Invert the matrix.
+    //
+    double matrix2[16];
+    vtkMatrix4x4::Invert(matrix, matrix2);
+
+    //
+    // Transform the corners of the back plane, front plane and view plane
+    // in normalized device coordinates to world coordinates.
+    //
+    double c[12][4];
+    c[0][0]  = -1.; c[0][1]  = -1.; c[0][2]  = -1.; c[0][3]  = 1.;
+    c[1][0]  = +1.; c[1][1]  = -1.; c[1][2]  = -1.; c[1][3]  = 1.;
+    c[2][0]  = +1.; c[2][1]  = +1.; c[2][2]  = -1.; c[2][3]  = 1.;
+    c[3][0]  = -1.; c[3][1]  = +1.; c[3][2]  = -1.; c[3][3]  = 1.;
+    c[4][0]  = -1.; c[4][1]  = -1.; c[4][2]  = +1.; c[4][3]  = 1.;
+    c[5][0]  = +1.; c[5][1]  = -1.; c[5][2]  = +1.; c[5][3]  = 1.;
+    c[6][0]  = +1.; c[6][1]  = +1.; c[6][2]  = +1.; c[6][3]  = 1.;
+    c[7][0]  = -1.; c[7][1]  = +1.; c[7][2]  = +1.; c[7][3]  = 1.;
+    c[8][0]  = -1.; c[8][1]  = -1.; c[8][2]  =  0.; c[8][3]  = 1.;
+    c[9][0]  = +1.; c[9][1]  = -1.; c[9][2]  =  0.; c[9][3]  = 1.;
+    c[10][0] = +1.; c[10][1] = +1.; c[10][2] =  0.; c[10][3] = 1.;
+    c[11][0] = -1.; c[11][1] = +1.; c[11][2] =  0.; c[11][3] = 1.;
+    for (int i = 0; i < 12; i++)
+    {
+        vtkMatrix4x4::MultiplyPoint(matrix2, c[i], c[i]);
+        c[i][0] /= c[i][3]; c[i][1] /= c[i][3]; c[i][2] /= c[i][3];
+    }
+
+    //
+    // Calculate the extents from the corners.
+    //
+    double xmin, xmax, ymin, ymax, zmin, zmax; 
+    xmin = c[0][0]; xmax = c[0][0];
+    ymin = c[0][1]; ymax = c[0][1];
+    zmin = c[0][2]; zmax = c[0][2];
+    for (int i = 1; i < 8; i++)
+    {
+        xmin = std::min(xmin, c[i][0]);
+        xmax = std::max(xmax, c[i][0]);
+        ymin = std::min(ymin, c[i][1]);
+        ymax = std::max(ymax, c[i][1]);
+        zmin = std::min(zmin, c[i][2]);
+        zmax = std::max(zmax, c[i][2]);
+    }
+    
+    extents[0] = xmin;
+    extents[1] = xmax;
+    extents[2] = ymin;
+    extents[3] = ymax;
+    extents[4] = zmin;
+    extents[5] = zmax;
+
+    //
+    // Calculate the area from the corners of the view plane.
+    //
+    double v1[3], v2[3], v3[3];
+    v1[0] = c[11][0] - c[8][0];
+    v1[1] = c[11][1] - c[8][1];
+    v1[2] = c[11][2] - c[8][2];
+    v2[0] = c[9][0] - c[8][0];
+    v2[1] = c[9][1] - c[8][1];
+    v2[2] = c[9][2] - c[8][2];
+    v3[0] = v1[1] * v2[2] - v1[2] * v2[1];
+    v3[1] = v1[2] * v2[0] - v1[0] * v2[2];
+    v3[2] = v1[0] * v2[1] - v1[1] * v2[0];
+    area = std::sqrt(v3[0] * v3[0] + v3[1] * v3[1] + v3[2] * v3[2]);
+}
+
+#if 0
+    //
+    // Code that gets the plane equations of the 6 frustum planes.
+    // I'm leaving it here in case I decide I later want to use
+    // that instead of an AABB for the frustum.
+    avtViewInfo viewInfo;
+    SetViewInfoFromView(viewInfo);
+    vtkCamera *vtkcam = vtkCamera::New();
+    viewInfo.SetCameraFromView(vtkcam);
+    double planes[24];
+    vtkcam->GetFrustumPlanes(aspect, planes);
+    vtkcam->Delete();
+#endif

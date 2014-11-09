@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -90,8 +90,8 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/ThirdPartyInstallLibrary.cmake)
 
 # Use the VTK_DIR hint from the config-site .cmake file 
 
-IF(EXISTS ${VISIT_VTK_DIR}/lib/cmake/vtk-6.0/VTKConfig.cmake)
-    SET(VTK_DIR ${VISIT_VTK_DIR}/lib/cmake/vtk-6.0)
+IF(EXISTS ${VISIT_VTK_DIR}/lib/cmake/vtk-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}/VTKConfig.cmake)
+    SET(VTK_DIR ${VISIT_VTK_DIR}/lib/cmake/vtk-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION})
 ENDIF()
 
 MESSAGE(STATUS "Checking for VTK in ${VTK_DIR}")
@@ -133,7 +133,7 @@ ENDIF()
 # if it issued a warning instead. Perhaps one day it will be fixed, and we can 
 # use this: find_package(VTK 6.0 REQUIRED ${REQ_VTK_MODS} OPTIONAL_COMPONENTS ${OPT_VTK_MODS} NO_MODULE PATHS ${VTK_DIR})
 
-find_package(VTK 6.0 REQUIRED NO_MODULE PATHS ${VTK_DIR})
+find_package(VTK ${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION} REQUIRED NO_MODULE PATHS ${VTK_DIR})
 
 # Ensure we have all the required modules:
 FOREACH(module ${REQ_VTK_MODS})
@@ -236,7 +236,11 @@ ENDIF(VISIT_VTK_SKIP_INSTALL)
 IF (NOT WIN32)
     FILE(GLOB VTK_PY_WRAPPERS_DIR ${VTK_LIBRARY_DIRS}/python*/)
 ELSE (NOT WIN32)
-    FILE(GLOB VTK_PY_WRAPPERS_DIR ${VISIT_VTK_DIR}/lib)
+    IF(${VTK_VERSION} VERSION_LESS "6.1.0")
+        FILE(GLOB VTK_PY_WRAPPERS_DIR ${VISIT_VTK_DIR}/lib)
+    ELSE()
+        FILE(GLOB VTK_PY_WRAPPERS_DIR ${VISIT_VTK_DIR}/lib/python*)
+    ENDIF()
 ENDIF (NOT WIN32)
 MESSAGE(STATUS "  VTK_PY_WRAPPERS_DIR=${VTK_PY_WRAPPERS_DIR}")
 

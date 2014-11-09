@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewConeAttributes(int);
 std::string
 PyConeAttributes_ToString(const ConeAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sangle = %g\n", prefix, atts->GetAngle());
     str += tmpStr;
@@ -686,7 +686,6 @@ PyConeAttributes_GetLogString()
 static void
 PyConeAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ConeAttributes *atts = (ConeAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

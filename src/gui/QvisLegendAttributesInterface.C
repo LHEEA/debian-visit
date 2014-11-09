@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -803,7 +803,6 @@ QvisLegendAttributesInterface::GetCurrentValues(int which_widget)
         suppliedLabels->setCurrentCell(currentRow, currentCol);
 
         int nRows = suppliedLabels->rowCount();
-        bool allEmpty = true;
         for (int rowNum = 0; rowNum < nRows; ++rowNum)
         {
             txt = suppliedLabels->item(rowNum, 1)->text();

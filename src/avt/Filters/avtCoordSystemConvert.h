@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,8 +44,8 @@
 #define AVT_CoordConvert_FILTER_H
 
 #include <filters_exports.h>
-#include <avtDataTreeIterator.h>
 
+#include <avtDataTreeIterator.h>
 
 // ****************************************************************************
 //  Class: avtCoordSystemConvert
@@ -65,6 +65,9 @@
 //    Added selectable vector transform method.
 //    Made the coord system enum be within the class namespace.
 //
+//    Eric Brugger, Mon Jul 21 10:19:29 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtCoordSystemConvert : public avtDataTreeIterator
@@ -72,9 +75,9 @@ class AVTFILTERS_API avtCoordSystemConvert : public avtDataTreeIterator
   public:
     enum CoordSystem
     {
-        CARTESIAN       = 0,
-        CYLINDRICAL,   /* 1 */
-        SPHERICAL      /* 2 */
+        CARTESIAN = 0,                /* 0 */
+        CYLINDRICAL,                  /* 1 */
+        SPHERICAL                     /* 2 */
     };
 
     enum VectorTransformMethod
@@ -94,19 +97,20 @@ class AVTFILTERS_API avtCoordSystemConvert : public avtDataTreeIterator
 
     void                 SetInputCoordSys(CoordSystem a) { inputSys = a; };
     void                 SetOutputCoordSys(CoordSystem a) { outputSys = a; };
+    void                 SetContinuousPhi(bool a) { continuousPhi = a; };
     void                 SetVectorTransformMethod(VectorTransformMethod m)
                                                { vectorTransformMethod = m; }
 
   protected:
     CoordSystem           inputSys;
     CoordSystem           outputSys;
+    bool                  continuousPhi;
+
     VectorTransformMethod vectorTransformMethod;
 
-    virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     virtual void          PostExecute(void);
 
     virtual void          UpdateDataObjectInfo(void);
 };
-
-
 #endif

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -562,7 +562,7 @@ avtMoleculePlot::EnhanceSpecification(avtContract_p spec)
     avtDataRequest_p nds = new avtDataRequest(primaryVariable,
                                                          ds->GetTimestep(),
                                                          ds->GetRestriction());
-    for (int i=0; i<added_vars.size(); i++)
+    for (size_t i=0; i<added_vars.size(); i++)
     {
         nds->AddSecondaryVariable(added_vars[i].c_str());
     }
@@ -700,7 +700,7 @@ avtMoleculePlot::SetLegendRange()
     // Set attributes for levels legend
     vector <string> usedLabels;
     behavior->GetInfo().GetAttributes().GetLabels(usedLabels);
-    int nlabels = usedLabels.size();
+    size_t nlabels = usedLabels.size();
 
     if (nlabels == 0)
     {
@@ -740,7 +740,7 @@ avtMoleculePlot::SetLegendRange()
             // renderer for drawing resseq.
             numcolors = int(max);
             residueColorMap.clear();
-            for (int i=0; i<nlabels; i++)
+            for (size_t i=0; i<nlabels; i++)
             {
                 int val;
                 sscanf(usedLabels[i].c_str(), "%d", &val);
@@ -763,7 +763,7 @@ avtMoleculePlot::SetLegendRange()
             // Make sure that all of the labels that we're using are learned
             // so we get the right items.
             vector<string> uLabels;
-            for(int k = 0; k < nlabels; k += 3)
+            for(size_t k = 0; k < nlabels; k += 3)
             {
                 if(usedLabels[k] == "on")
                     uLabels.push_back(usedLabels[k+1]);
@@ -780,7 +780,7 @@ avtMoleculePlot::SetLegendRange()
             }
 
             usedLabels = uLabels;
-            nlabels = (int)usedLabels.size();
+            nlabels = usedLabels.size();
 
             // Redo the colormap in case there are new restypes that we've
             // learned about.
@@ -796,7 +796,7 @@ avtMoleculePlot::SetLegendRange()
             if (colortablename == "Default")
                 colortablename = string(ct->GetDefaultContinuousColorTable());
 
-            numcolors = nlabels;//256;
+            numcolors = (int)nlabels;//256;
 
             levelsLegend->SetLabelColorMap(blankColorMap);
         }

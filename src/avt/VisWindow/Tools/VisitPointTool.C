@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -910,8 +910,7 @@ VisitPointTool::UpdateSphere()
     source->SetThetaResolution(15);
 
     vtkPolyDataNormals *pdn = vtkPolyDataNormals::New();
-    // FIX_ME_VTK6.0, ESB, should this be a AddInputConnection?
-    pdn->AddInputData(source->GetOutput());
+    pdn->SetInputConnection(source->GetOutputPort());
     pdn->Update();
     sphereData = pdn->GetOutput();
     sphereData->Register(NULL);

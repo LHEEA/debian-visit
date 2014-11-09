@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,6 +56,8 @@ class QSpinBox;
 
 class Subject;
 class PseudocolorAttributes;
+
+class QvisCollapsibleLayout;
 
 // ****************************************************************************
 // Class: QvisPseudocolorPlotWindow
@@ -198,6 +200,8 @@ private:
     int                   plotType;
     PseudocolorAttributes *pcAtts;
 
+    QvisCollapsibleLayout *propertyLayout;
+
     QButtonGroup          *scalingButtons;
     QLineEdit             *skewLineEdit;
 
@@ -267,5 +271,4 @@ private:
     QCheckBox             *legendToggle;
     QCheckBox             *lightingToggle;
 };
-
 #endif

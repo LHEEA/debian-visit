@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -277,6 +277,32 @@ private:
     int                   maxPixmapWidth, maxPixmapHeight;
     PluginEntryVector     pluginEntries;
     VariableMenuPopulator menuPopulator;
+};
+
+// ****************************************************************************
+// Class: AddEmbeddedPlotAction
+//
+// Purpose:
+//   This action adds a plot to the window's plot list, using an id specified
+//   by the embedding code.
+//   It also differs from the regular AddPlot because it isn't exposed in a menu
+//
+// Notes:      
+//
+// Programmer: Marc Durant
+// Creation:   June 19, 2011
+//
+// Modifications:
+//
+// ****************************************************************************
+
+class AddEmbeddedPlotAction : public ViewerAction
+{
+public:
+  AddEmbeddedPlotAction(ViewerWindow *win);
+  virtual ~AddEmbeddedPlotAction();  
+  virtual void Execute();
+  virtual bool Enabled() const;
 };
 
 // ****************************************************************************

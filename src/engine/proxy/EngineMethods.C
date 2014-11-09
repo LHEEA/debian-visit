@@ -471,13 +471,17 @@ EngineMethods::Execute(bool respondWithNull, void (*waitCB)(void *), void *cbDat
     int readData = visitTimer->StartTimer();
     if(engineP != NULL)
     {
-        if (engineP->GetReadConnection(1)->DirectRead((unsigned char *)buf, size) < 0)
+        if (engineP->GetReadConnection(1)->DirectRead((unsigned char *)buf, size) < 0) 
+        {
             debug1 << "Error reading VTK data!!!!\n";
+        }
     }
     else if(component != NULL)
     {
-        if (component->GetWriteConnection(1)->DirectRead((unsigned char *)buf, size) < 0)
+        if (component->GetWriteConnection(1)->DirectRead((unsigned char *)buf, size) < 0) 
+        {
             debug1 << "Error reading VTK data!!!!\n";
+        }
     }
 
     char msg[128];
@@ -716,13 +720,17 @@ EngineMethods::Render(bool sendZBuffer, const intVector& networkIDs,
 
     if(engineP != NULL)
     {
-        if (engineP->GetReadConnection(1)->DirectRead((unsigned char *)buf, size) < 0)
+        if (engineP->GetReadConnection(1)->DirectRead((unsigned char *)buf, size) < 0) 
+        {
             debug1 << "Error reading VTK data!!!!\n";
+        }
     }
     else if(component != NULL)
     {
-        if (component->GetWriteConnection(1)->DirectRead((unsigned char *)buf, size) < 0)
+        if (component->GetWriteConnection(1)->DirectRead((unsigned char *)buf, size) < 0) 
+        {
             debug1 << "Error reading VTK data!!!!\n";
+        }
     }
 
     // The data object reader will clean up the memory with buf.
@@ -1376,16 +1384,26 @@ EngineMethods::ConstructDataBinning(const int id, const ConstructDataBinningAttr
 //  Arguments:
 //    id         the id of the network to be cloned.
 //    atts       the attributes to export the database.
+//    timeSuffix a time state string that will be put into the exported filename.
 //
 //  Programmer:  Hank Childs
 //  Creation:    May 26, 2005
 //
+//  Modifications:
+//    Brad Whitlock, Fri Jan 24 16:37:14 PST 2014
+//    Allow more than one network.
+//    Work partially supported by DOE Grant SC0007548.
+//
+//    Brad Whitlock, Thu Jul 24 22:18:34 EDT 2014
+//    Pass timeSuffix.
+//
 // ****************************************************************************
 
 void
-EngineMethods::ExportDatabase(const int id, const ExportDBAttributes *atts)
+EngineMethods::ExportDatabases(const intVector &ids, const ExportDBAttributes &atts,
+    const std::string &timeSuffix)
 {
-    state->exportDatabaseRPC(id, atts);
+    state->exportDatabaseRPC(ids, atts, timeSuffix);
     if (state->exportDatabaseRPC.GetStatus() == VisItRPC::error)
     {
         RECONSTITUTE_EXCEPTION(state->exportDatabaseRPC.GetExceptionType(),
@@ -1498,6 +1516,26 @@ void
 EngineMethods::SetPrecisionType(const int pType)
 {
     state->setPrecisionTypeRPC(pType);
+}
+
+// ****************************************************************************
+//  Method:  EngineMethods::SetBackendType
+//
+//  Purpose:
+//    Tells the engine about the latest user-requested backend.
+//
+//  Arguments:
+//    bType      The new backend.
+//
+//  Programmer:  Cameron Christensen
+//  Creation:    June 10, 2014
+//
+// ****************************************************************************
+
+void
+EngineMethods::SetBackendType(const int bType)
+{
+    state->setBackendTypeRPC(bType);
 }
 
 // ****************************************************************************

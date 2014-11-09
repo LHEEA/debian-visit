@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,11 +89,13 @@
 #include <utility>
 #include <stdio.h>
 #include <snprintf.h>
+#include <sstream>
 
 using std::vector;
 using std::string;
 using std::map;
 using std::pair;
+using std::ostringstream;
 
 #include <ViewerEngineManager_macros.h>
 
@@ -493,6 +495,9 @@ ViewerEngineManager::CreateEngine(const EngineKey &ek,
 //    Kathleen Biagas, Wed Aug  7 13:02:34 PDT 2013
 //    Send precision type to newly created engine.
 //
+//    Cameron Christensen, Tuesday, June 10, 2014
+//    Send backend type to newly created engine.
+//
 // ****************************************************************************
 
 bool
@@ -570,7 +575,7 @@ ViewerEngineManager::CreateEngineEx(const EngineKey &ek,
     stringVector eArgs;
     if (newEngine.profile.GetActiveLaunchProfile()) 
         eArgs = newEngine.profile.GetActiveLaunchProfile()->GetArguments();
-    for(int s = 0; s < args.size(); ++s)
+    for(size_t s = 0; s < args.size(); ++s)
         eArgs.push_back(args[s]);
     if (newEngine.profile.GetActiveLaunchProfile()) 
         newEngine.profile.GetActiveLaunchProfile()->SetArguments(eArgs);
@@ -698,6 +703,11 @@ ViewerEngineManager::CreateEngineEx(const EngineKey &ek,
         newEngine.proxy->GetEngineMethods()->SetPrecisionType(
             ViewerWindowManager::Instance()->GetClientAtts()->
                     GetPrecisionType());
+
+        // Tell the new engine the requested backend type
+        newEngine.proxy->GetEngineMethods()->SetBackendType(
+            ViewerWindowManager::Instance()->GetClientAtts()->
+                    GetBackendType());
 
         // Now that the new engine is in the list, tell the GUI.
         UpdateEngineList();
@@ -873,7 +883,7 @@ ViewerEngineManager::ConnectSim(const EngineKey &ek,
            << " ek.originalhostname=" << ek.OriginalHostName()
            << " ek.SimName=" << ek.SimName();
     debug1 << " args={";
-    for(int i = 0; i < args.size(); ++i)
+    for(size_t i = 0; i < args.size(); ++i)
         debug1 << args[i] << ", ";
     debug1 << "} simHost=" << simHost << " simPort=" << simPort
            << " simSecurityKey=" << simSecurityKey << endl;
@@ -1555,7 +1565,6 @@ ViewerEngineManager::ExternalRender(const ExternalRenderRequestInfo& reqInfo,
                                     int windowID)
 {
     // break-out individual members of the request info
-    const vector<string> &plotNames                  = reqInfo.plotNames;
     const vector<const char*>& pluginIDsList         = reqInfo.pluginIDsList;
     const vector<EngineKey>& engineKeysList          = reqInfo.engineKeysList;
     const vector<int>& plotIdsList                   = reqInfo.plotIdsList;
@@ -1576,7 +1585,7 @@ ViewerEngineManager::ExternalRender(const ExternalRenderRequestInfo& reqInfo,
     map<EngineKey,vector<int> > perEnginePlotIds;
 
     // make a pass over list of plots to make sure all associated engines exist
-    for (int i = 0; i < engineKeysList.size(); i++)
+    for (size_t i = 0; i < engineKeysList.size(); i++)
     {
         if (!EngineExists(engineKeysList[i]))
             return false;
@@ -1590,8 +1599,7 @@ ViewerEngineManager::ExternalRender(const ExternalRenderRequestInfo& reqInfo,
 #endif
 
         // build list of per-engine plot ids
-        int i;
-        for (i = 0; i < plotIdsList.size(); i++)
+        for (size_t i = 0; i < plotIdsList.size(); i++)
         {
             ek = engineKeysList[i];
             perEnginePlotIds[ek].push_back(plotIdsList[i]);
@@ -1625,7 +1633,7 @@ ViewerEngineManager::ExternalRender(const ExternalRenderRequestInfo& reqInfo,
         }
 
         // send per-plot RPCs
-        for (i = 0; i < plotIdsList.size(); i++)
+        for (size_t i = 0; i < plotIdsList.size(); i++)
         {
             ek = engineKeysList[i];
             engines[ek].proxy->GetEngineMethods()->UpdatePlotAttributes(pluginIDsList[i],
@@ -2716,7 +2724,6 @@ ViewerEngineManager::UpdateEngineList()
     
     // Go through the list of engines and add each engine to the engine list
     // that gets returned to the viewer's client.
-    int i;
     for (EngineMap::iterator it = engines.begin() ; it != engines.end(); it++)
     {
         ids.push_back(it->first);
@@ -2729,7 +2736,7 @@ ViewerEngineManager::UpdateEngineList()
     EngineList newEL;
 
     // Add the other information about the engine.
-    for(i = 0; i < ids.size(); ++i) 
+    for(size_t i = 0; i < ids.size(); ++i) 
     {
         EngineKey ek = ids[i];
         if (EngineExists(ek))
@@ -3356,6 +3363,26 @@ ViewerEngineManager::UpdatePrecisionType(const int pType)
     }
 }
 
+// ****************************************************************************
+//  Method: ViewerEngineManager::UpdateBackendType
+//
+//  Purpose:
+//      Sets the backend type.
+//
+//  Programmer: Cameron Christensen
+//  Creation:   June 10, 2014
+//
+// ****************************************************************************
+
+void
+ViewerEngineManager::UpdateBackendType(const int bType)
+{
+    for (EngineMap::iterator it = engines.begin() ; it != engines.end(); it++)
+    {
+        it->second.proxy->GetEngineMethods()->SetBackendType(bType);
+    }
+}
+
 
 // ****************************************************************************
 //  Method: ViewerEngineManager::GetExportDBAtts
@@ -3405,7 +3432,7 @@ ViewerEngineManager::SetExportDBAtts(ExportDBAttributes *e)
 
 
 // ****************************************************************************
-//  Method: ViewerEngineManager::ExportDatabase
+//  Method: ViewerEngineManager::ExportDatabases
 //
 //  Purpose:
 //      Exports a database.
@@ -3420,15 +3447,28 @@ ViewerEngineManager::SetExportDBAtts(ExportDBAttributes *e)
 //    Brad Whitlock, Tue Apr 29 14:48:11 PDT 2008
 //    Added tr()
 //
+//    Brad Whitlock, Fri Jan 24 16:34:24 PST 2014
+//    Allow exporting of multiple plots.
+//    Work partially supported by DOE Grant SC0007548.
+//
+//    Brad Whitlock, Thu Jul 24 21:52:34 EDT 2014
+//    Pass in the export attributes.
+//
+//    Brad Whitlock, Thu Jul 24 22:18:34 EDT 2014
+//    Pass timeSuffix.
+//
 // ****************************************************************************
 
 bool
-ViewerEngineManager::ExportDatabase(const EngineKey &ek, int id)
+ViewerEngineManager::ExportDatabases(const EngineKey &ek, 
+    const intVector &ids, const ExportDBAttributes &expAtts, 
+    const std::string &timeSuffix)
 {
     ENGINE_PROXY_RPC_BEGIN("ExportDatabase");
     // If we're trying to export to a simulation but the data is not from
     // a simulation then issue an error message.
-    if(exportDBAtts->GetDb_type() == "SimV1" && !ek.IsSimulation())
+    if((exportDBAtts->GetDb_type() == "SimV1" || 
+        exportDBAtts->GetDb_type() == "SimV2") && !ek.IsSimulation())
     {
         Error(tr("VisIt can only export data to a simulation if the "
                  "data being exported originated in a simulation."));
@@ -3436,7 +3476,7 @@ ViewerEngineManager::ExportDatabase(const EngineKey &ek, int id)
     }
     else
     {
-        engine->GetEngineMethods()->ExportDatabase(id, exportDBAtts);
+        engine->GetEngineMethods()->ExportDatabases(ids, expAtts, timeSuffix);
     }
     ENGINE_PROXY_RPC_END_NORESTART_RETHROW2;
 }
@@ -3724,10 +3764,13 @@ ViewerEngineManager::CloneNetwork(const EngineKey &ek, int nid,
 //   Make sure the "RunningEngines" machine profile as written only has a
 //   single launch profile (the active one) -- this simplifies later parsing.
 //
+//   Brad Whitlock, Fri Jul 25 1:12:23 EDT 2014
+//   Add export atts.
+//
 // ****************************************************************************
 
 void
-ViewerEngineManager::CreateNode(DataNode *parentNode) const
+ViewerEngineManager::CreateNode(DataNode *parentNode, bool detailed) const
 {
     bool haveNonSimEngines = false;
     EngineMap::const_iterator it;
@@ -3738,10 +3781,11 @@ ViewerEngineManager::CreateNode(DataNode *parentNode) const
     parentNode->AddNode(vemNode);
 
     // save material and mesh management attributes
-    GetMaterialClientAtts()->CreateNode(vemNode,true,true);
-    GetMeshManagementClientAtts()->CreateNode(vemNode,true,true);
+    GetMaterialClientAtts()->CreateNode(vemNode,detailed,true);
+    GetMeshManagementClientAtts()->CreateNode(vemNode,detailed,true);
+    GetExportDBAtts()->CreateNode(vemNode, detailed, true);
 
-    if(haveNonSimEngines)
+    if(detailed && haveNonSimEngines)
     {
         DataNode *runningEnginesNode = new DataNode("RunningEngines");
         vemNode->AddNode(runningEnginesNode);
@@ -3784,6 +3828,9 @@ ViewerEngineManager::CreateNode(DataNode *parentNode) const
 //   Brad Whitlock, Wed Feb 13 14:45:27 PST 2008
 //   Added configVersion.
 //
+//   Brad Whitlock, Fri Jul 25 1:12:23 EDT 2014
+//   Add export atts.
+//
 // ****************************************************************************
 
 void
@@ -3802,12 +3849,15 @@ ViewerEngineManager::SetFromNode(DataNode *parentNode,
     // we call SetFromNode.
     GetMaterialClientAtts()->ProcessOldVersions(vem_node, configVersion.c_str());
     GetMeshManagementClientAtts()->ProcessOldVersions(vem_node, configVersion.c_str());
+    GetExportDBAtts()->ProcessOldVersions(vem_node, configVersion.c_str());
 
     // restore material and mesh management attributes
     GetMaterialClientAtts()->SetFromNode(vem_node);
     GetMeshManagementClientAtts()->SetFromNode(vem_node);
+    GetExportDBAtts()->SetFromNode(vem_node);
     GetMaterialClientAtts()->Notify();
     GetMeshManagementClientAtts()->Notify();
+    GetExportDBAtts()->Notify();
 }
 
 
@@ -3975,9 +4025,29 @@ ViewerEngineManager::SendSimulationCommand(const EngineKey &ek,
                                            const std::string &argument)
 {
     if (EngineExists(ek))
+    {
         engines[ek].proxy->GetEngineMethods()->ExecuteSimulationControlCommand(command, argument);
+    }
     else
+    {
+        ostringstream oss;
+        oss << "In ViewerEngineManager::SendSimulationCommand"
+               " failed to find the engine for key:" << endl
+            << "  ";
+        ek.Print(oss);
+        oss << endl
+            << "Known keys:" << endl;
+        EngineMap::iterator it = engines.begin();
+        EngineMap::iterator end = engines.end();
+        for (; it != end; ++it)
+          {
+          oss << "  ";
+          (*it).first.Print(oss);
+          oss << endl;
+          }
+        debug1 << oss.str() << endl;
         EXCEPTION0(NoEngineException);
+    }
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -131,6 +131,10 @@ avtAggregateChordLengthDistributionQuery::PreExecute(void)
 //    I changed the name of the curve in the ultra file to avoid using
 //    special characters.
 //
+//    Kathleen Biagas, Tue Feb 25 08:58:52 PST 2014
+//    Add XML results, and ResultValues, allowing them to be set even if
+//    output file could not be opened.
+//
 // ****************************************************************************
 
 void
@@ -188,9 +192,12 @@ avtAggregateChordLengthDistributionQuery::PostExecute(void)
         {
             sprintf(msg, "Unable to write out file containing distribution.");
             SetResultMessage(msg);
-            return;
         }
-        ofile << "# Chord length distribution - aggregate" << endl;
+        if (!ofile.fail())
+            ofile << "# Chord length distribution - aggregate" << endl;
+
+        MapNode result_node;
+        doubleVector curve;
 
         for (int i = 0 ; i < numBins ; i++)
         {
@@ -199,9 +206,19 @@ avtAggregateChordLengthDistributionQuery::PostExecute(void)
             double x2 = minLength + (i+1)*binWidth;
             double y = numChords[i] / totalArea; // Make it be 
                             // a distribution ... the area under the curve: 1
-            ofile << x1 << " " << y << endl;
-            ofile << x2 << " " << y << endl;
+            curve.push_back(x1);
+            curve.push_back(y);
+            curve.push_back(x2);
+            curve.push_back(y);
+            if (!ofile.fail())
+            {
+                ofile << x1 << " " << y << endl;
+                ofile << x2 << " " << y << endl;
+            }
         }
+        result_node["chord_length_distribution_aggregate"] = curve;
+        SetXmlResult(result_node.ToXML());
+        SetResultValues(curve);
     }
 }
 
@@ -301,11 +318,11 @@ avtAggregateChordLengthDistributionQuery::ExecuteLineScan(vtkPolyData *pd)
     for (int i = 0 ; i < hashSize ; i++)
     {
         std::vector<int> already_considered;
-        for (int j = 0 ; j < hashed_lineid_lookup[i].size() ; j++)
+        for (size_t j = 0 ; j < hashed_lineid_lookup[i].size() ; j++)
         {
              bool alreadyDoneLineId = false;
-             int  k;
-             for (k = 0 ; k < already_considered.size() ; k++)
+
+             for (size_t k = 0 ; k < already_considered.size() ; k++)
                  if (hashed_lineid_lookup[i][j] == already_considered[k])
                      alreadyDoneLineId = true;
              if (alreadyDoneLineId)
@@ -314,7 +331,7 @@ avtAggregateChordLengthDistributionQuery::ExecuteLineScan(vtkPolyData *pd)
              int lineid = hashed_lineid_lookup[i][j];
              already_considered.push_back(lineid);
              double length = 0.;
-             for (k = j ; k < hashed_lineid_lookup[i].size() ; k++)
+             for (size_t k = j ; k < hashed_lineid_lookup[i].size() ; k++)
              {
                  if (hashed_lineid_lookup[i][k] == lineid)
                      length += hashed_segment_length[i][k];

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewModelFitAtts(int);
 std::string
 PyModelFitAtts_ToString(const ModelFitAtts *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const stringVector &Vars = atts->GetVars();
         SNPRINTF(tmpStr, 1000, "%sVars = (", prefix);
@@ -1215,7 +1215,6 @@ PyModelFitAtts_GetLogString()
 static void
 PyModelFitAtts_CallLogRoutine(Subject *subj, void *data)
 {
-    ModelFitAtts *atts = (ModelFitAtts *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

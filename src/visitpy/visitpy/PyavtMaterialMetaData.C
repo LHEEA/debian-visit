@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewavtMaterialMetaData(int);
 std::string
 PyavtMaterialMetaData_ToString(const avtMaterialMetaData *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     str = PyavtBaseVarMetaData_ToString(atts, prefix);
 
@@ -503,7 +503,6 @@ PyavtMaterialMetaData_GetLogString()
 static void
 PyavtMaterialMetaData_CallLogRoutine(Subject *subj, void *data)
 {
-    avtMaterialMetaData *atts = (avtMaterialMetaData *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

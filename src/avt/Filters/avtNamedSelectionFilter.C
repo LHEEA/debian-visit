@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,11 +89,9 @@ avtNamedSelectionFilter::~avtNamedSelectionFilter()
 //      Sends the specified input and output through the NamedSelection filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Hank Childs
 //  Creation:   February 2, 2009
@@ -108,19 +106,27 @@ avtNamedSelectionFilter::~avtNamedSelectionFilter()
 //    Dave Pugmire, Thu Mar 15 10:55:22 EDT 2012
 //    Support for location named selections.
 //
+//    Eric Brugger, Mon Jul 21 16:42:08 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtNamedSelectionFilter::ExecuteData(vtkDataSet *in_ds, int dom, std::string)
+avtDataRepresentation *
+avtNamedSelectionFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     //
     // See if the input reader applied the named selection on read.
     //
     if (selectionId >= 0)
         if (GetInput()->GetInfo().GetAttributes().GetSelectionApplied(selectionId))
-            return in_ds;
+            return in_dr;
 
-    vtkDataSet *rv = NULL;
+    vtkDataSet *out_ds = NULL;
     avtNamedSelectionManager *nsm = avtNamedSelectionManager::GetInstance();
     avtNamedSelection *ns = nsm->GetNamedSelection(selName);
     if(ns == NULL)
@@ -131,10 +137,16 @@ avtNamedSelectionFilter::ExecuteData(vtkDataSet *in_ds, int dom, std::string)
     {
         std::vector<vtkIdType> ids;
         ns->GetMatchingIds(in_ds, ids);
-        rv = SelectedData(in_ds, ids);
+        out_ds = SelectedData(in_ds, ids);
     }
 
-    return rv;
+    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
+        in_dr->GetDomain(), in_dr->GetLabel());
+
+    if (out_ds != NULL)
+        out_ds->Delete();
+
+    return out_dr;
 }
 
 // ****************************************************************************
@@ -159,6 +171,9 @@ avtNamedSelectionFilter::ExecuteData(vtkDataSet *in_ds, int dom, std::string)
 //    Kathleen Biagas, Mon Jan 28 10:56:30 PST 2013
 //    Call upate on filter not data object.
 //
+//    Eric Brugger, Mon Jul 21 16:42:08 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -177,7 +192,7 @@ avtNamedSelectionFilter::SelectedData(vtkDataSet *in_ds,
         arr->SetName("_avt_thresh_var");
         for (vtkIdType i = 0 ; i < ncells ; i++)
             arr->SetValue(i, 0.);
-        for (vtkIdType i = 0 ; i < ids.size() ; i++)
+        for (vtkIdType i = 0 ; i < (vtkIdType)ids.size() ; i++)
             arr->SetValue(ids[i], 1.);
         ds->GetCellData()->AddArray(arr);
         arr->Delete();
@@ -188,7 +203,7 @@ avtNamedSelectionFilter::SelectedData(vtkDataSet *in_ds,
               vtkDataObject::FIELD_ASSOCIATION_CELLS, "_avt_thresh_var");
         thres->Update();
         rv = thres->GetOutput();
-        ManageMemory(rv);
+        rv->Register(NULL);
         thres->Delete();
         ds->Delete();
     }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -823,11 +823,20 @@ VisitInteractor::EndMiddleButtonAction()
 //    Kathleen Bonnell, Fri Dec 13 14:07:15 PST 2002  
 //    Removed arguments to comply with vtk's new interactor interface.
 //
+//    Brad Whitlock, Mon Aug 18 11:23:49 PDT 2014
+//    Clear flag that caused popup menu to keep activating.
+//
 // ****************************************************************************
 
 void
 VisitInteractor::StartRightButtonAction()
 {
+    // The right button is generally for popup menus in VisIt. We don't seem to
+    // get the OnRightButtonUp event firing to clear this flag. This results in
+    // the popup menu showing itself all over the place during animation, etc.
+    // Let's clear the flag here.
+    rightButtonDown = false;
+
     VisWindow *vw = proxy;
     vw->ShowMenu();
 }
@@ -1181,10 +1190,9 @@ VisitInteractor::PanCamera3D(const int x, const int y)
         // Determine the size of the window.
         //
         int       size[2];
-        int       width, height;
+        int       height;
 
         rwi->GetSize(size);
-        width = size[0];
         height = size[1];
 
         //
@@ -1295,8 +1303,6 @@ VisitInteractor::PanCamera3D(const int x, const int y)
 void
 VisitInteractor::ZoomImage3D(double f)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
     //
     // Calculate the zoom factor.
     //
@@ -1377,8 +1383,6 @@ VisitInteractor::ZoomImage3D(const int x, const int y)
 void
 VisitInteractor::DollyCameraTowardFocus3D(const int x, const int y)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
     if (OldY != y)
     {
         //
@@ -1422,8 +1426,6 @@ VisitInteractor::DollyCameraTowardFocus3D(const int x, const int y)
 void
 VisitInteractor::DollyCameraAndFocus3D(const int x, const int y)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
     if (OldY != y)
     {
         //

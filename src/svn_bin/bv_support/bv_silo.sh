@@ -1,19 +1,28 @@
 function bv_silo_initialize
 {
-export DO_SILO="no"
-export ON_SILO="off"
+    export DO_SILO="no"
+    export ON_SILO="off"
+    export DO_SILEX="no"
+    add_extra_commandline_args "silo" "silex" 0 "Enable silex when building Silo"
 }
 
 function bv_silo_enable
 {
-DO_SILO="yes"
-ON_SILO="on"
+    DO_SILO="yes"
+    ON_SILO="on"
 }
 
 function bv_silo_disable
 {
-DO_SILO="no"
-ON_SILO="off"
+    DO_SILO="no"
+    ON_SILO="off"
+}
+
+function bv_silo_silex
+{
+    info "Enabling silex in Silo build"
+    DO_SILEX="yes"
+    bv_silo_enable
 }
 
 function bv_silo_depends_on
@@ -37,13 +46,13 @@ function bv_silo_depends_on
 
 function bv_silo_info
 {
-export SILO_VERSION=${SILO_VERSION:-"4.9.1"}
+export SILO_VERSION=${SILO_VERSION:-"4.10.1"}
 export SILO_FILE=${SILO_FILE:-"silo-${SILO_VERSION}.tar.gz"}
-export SILO_COMPATIBILITY_VERSION=${SILO_COMPATIBILITY_VERSION:-"4.9"}
+export SILO_COMPATIBILITY_VERSION=${SILO_COMPATIBILITY_VERSION:-"4.10.1"}
 export SILO_BUILD_DIR=${SILO_BUILD_DIR:-"silo-${SILO_VERSION}"}
 export SILO_URL=${SILO_URL:-https://wci.llnl.gov/codes/silo/silo-${SILO_VERSION}}
-export SILO_MD5_CHECKSUM="aea6992437e1ed75cddcec1d91c6ff36"
-export SILO_SHA256_CHECKSUM="4908eb77577e26948aedee5976deedc3d2c1fd01b6fc5bd9cb61772cbbe2a56e"
+export SILO_MD5_CHECKSUM="29e6cdf25e98aef96e1f541167839c6f"
+export SILO_SHA256_CHECKSUM="8549167d1315ab27d3752ee463c45a6919d68a3bdad4acc8389a1d5f73071028"
 }
 
 function bv_silo_print
@@ -57,6 +66,7 @@ function bv_silo_print
 function bv_silo_print_usage
 {
 printf "%-15s %s [%s]\n" "--silo" "Build Silo support" "$DO_SILO"
+printf "%-15s %s [%s]\n" "--silex" "Enable silex when building Silo" "$DO_SILEX"
 }
 
 function bv_silo_graphical
@@ -133,6 +143,9 @@ function bv_silo_dry_run
 #   Brad Whitlock, Tue Apr  9 12:20:22 PDT 2013
 #   Add support for custom zlib.
 #
+#   Kathleen Biagas, Tue Jun 10 08:21:33 MST 2014
+#   Disable silex for static builds.
+#
 # *************************************************************************** #
 
 function build_silo
@@ -170,11 +183,19 @@ function build_silo
     else
        WITHSZIPARG="--without-szlib"
     fi
-    if [[ "$DO_QT" != "yes" || "$OPSYS" == "Darwin" ]] ; then
-       WITHSILOQTARG="--disable-silex"
+    WITHSHAREDARG="--enable-shared"
+    if [[ "$DO_STATIC_BUILD" == "yes" ]] ; then
+        WITHSHAREDARG="--disable-shared"
+    fi
+    if [[ "$DO_SILEX" == "no" || "$DO_QT" != "yes" || "$DO_STATIC_BUILD" == "yes" || "$IS_QT5" == "yes" ]] ; then
+       WITHSILOQTARG='--disable-silex'
     else
        export SILOQTDIR="$QT_INSTALL_DIR" #"${VISITDIR}/qt/${QT_VERSION}/${VISITARCH}"
-       WITHSILOQTARG='--with-Qt-dir=$SILOQTDIR --with-Qt-lib="QtGui -lQtCore"'
+       if [[ "$OPSYS" == "Darwin" ]] ; then
+           WITHSILOQTARG='--enable-silex --with-Qt-dir=$SILOQTDIR --with-Qt-lib="m -F${SILOQTDIR}/lib -framework QtGui -framework QtCore"'
+       else
+           WITHSILOQTARG='--enable-silex --with-Qt-dir=$SILOQTDIR --with-Qt-lib="QtGui -lQtCore"'
+       fi
     fi
 
     if [[ "$DO_ZLIB" == "yes" ]] ; then
@@ -191,8 +212,9 @@ function build_silo
         CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
         $FORTRANARGS \
         --prefix=\"$VISITDIR/silo/$SILO_VERSION/$VISITARCH\" \
-        $WITHHDF5ARG $WITHSZIPARG $WITHSILOQTARG \
-        --enable-install-lite-headers --without-readline $ZLIBARGS $SILO_EXTRA_OPTIONS"
+        $WITHHDF5ARG $WITHSZIPARG $WITHSILOQTARG $WITHSHAREDARG \
+        --enable-install-lite-headers --without-readline \
+        $ZLIBARGS $SILO_EXTRA_OPTIONS"
 
     # In order to ensure $FORTRANARGS is expanded to build the arguments to
     # configure, we wrap the invokation in 'sh -c "..."' syntax
@@ -200,8 +222,9 @@ function build_silo
         CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
         $FORTRANARGS \
         --prefix=\"$VISITDIR/silo/$SILO_VERSION/$VISITARCH\" \
-        $WITHHDF5ARG $WITHSZIPARG $WITHSILOQTARG \
-        --enable-install-lite-headers --without-readline $ZLIBARGS $SILO_EXTRA_OPTIONS"
+        $WITHHDF5ARG $WITHSZIPARG $WITHSILOQTARG $WITHSHAREDARG \
+        --enable-install-lite-headers --without-readline \
+        $ZLIBARGS $SILO_EXTRA_OPTIONS"
 
     if [[ $? != 0 ]] ; then
        warn "Silo configure failed.  Giving up"
@@ -222,66 +245,10 @@ function build_silo
     #
     info "Installing Silo"
 
-    if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
-        mkdir "$VISITDIR/silo"
-        mkdir "$VISITDIR/silo/${SILO_VERSION}"
-        mkdir "$VISITDIR/silo/${SILO_VERSION}/$VISITARCH"
-        mkdir "$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/include"
-        mkdir "$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/lib"
-        mkdir "$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/bin"
-        cp src/silo/silo.h   \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/include"
-        cp src/silo/silo.inc \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/include"
-        cp src/silo/pmpio.h \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/include"
-        test -e src/pdb/lite_pdb.h && cp src/pdb/lite_pdb.h \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/include"
-        test -e src/score/lite_score.h && cp src/score/lite_score.h \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/include"
-        test -e tools/silex/silex && cp tools/silex/silex \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/bin"
-        test -e tools/browser/browser && cp tools/browser/browser \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/bin"
-        cp tools/browser/silodiff \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/bin"
-        cp tools/browser/silofile \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/bin"
-        test -e tools/silock/silock && cp tools/silock/silock \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/bin"
-        #
-        # Make dynamic executable
-        #
-        INSTALLNAMEPATH="$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/lib"
-
-        # Remove the tmp directory if it is already present
-        if [[ -d tmp ]] ; then
-            rm -rf tmp
-        fi
-        mkdir tmp
-        cd tmp
-        SILO_H5=""
-        if [[ "$DO_HDF5" == "yes" ]] ; then
-            SILO_H5="h5"
-        fi
-        ar x ../src/.libs/libsilo${SILO_H5}.a
-        $CXX_COMPILER -dynamiclib -o libsilo${SILO_H5}.${SO_EXT} *.o \
-           -Wl,-headerpad_max_install_names \
-           -Wl,-install_name,$INSTALLNAMEPATH/libsilo${SILO_H5}.${SO_EXT} \
-           -Wl,-compatibility_version,${SILO_COMPATIBILITY_VERSION} \
-           -Wl,-current_version,${SILO_VERSION} $SILO_LINK_OPT
-        if [[ $? != 0 ]] ; then
-           warn "Silo dynamic library build failed.  Giving up"
-           return 1
-        fi
-        cp libsilo${SILO_H5}.${SO_EXT}  \
-"$VISITDIR/silo/${SILO_VERSION}/$VISITARCH/lib"
-    else
-        $MAKE install
-        if [[ $? != 0 ]] ; then
-           warn "Silo install failed.  Giving up"
-           return 1
-        fi
+    $MAKE install
+    if [[ $? != 0 ]] ; then
+        warn "Silo install failed.  Giving up"
+        return 1
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then

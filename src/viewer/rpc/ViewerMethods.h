@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -173,6 +173,9 @@ class ViewerState;
 //   Kathleen Biagas, Wed Aug  7 13:05:32 PDT 2013
 //   Added SetPrecisionType.
 //
+//   Cameron Christensen, Tuesday, June 10, 2014
+//   Added SetBackendType.
+//
 // ****************************************************************************
 
 class VIEWER_RPC_API ViewerMethods
@@ -263,6 +266,7 @@ public:
     void SetActiveTimeSlider(const std::string &ts);
 
     void AddPlot(int type, const std::string &var);
+    void AddEmbeddedPlot(int type, const std::string &var, int id);
     void CopyActivePlots(void);
     void SetPlotFrameRange(int plotId, int frame0, int frame1);
     void DeletePlotKeyframe(int plotId, int frame);
@@ -397,6 +401,7 @@ public:
     void SetCreateTimeDerivativeExpressions(int flag);
     void SetCreateVectorMagnitudeExpressions(int flag);
     void SetPrecisionType(int flag);
+    void SetBackendType(int flag);
     
     void SetSuppressMessages(int flag);
 

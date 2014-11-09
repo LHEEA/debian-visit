@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewModelBasedClusteringAttributes(int);
 std::string
 PyModelBasedClusteringAttributes_ToString(const ModelBasedClusteringAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%snumClusters = %d\n", prefix, atts->GetNumClusters());
     str += tmpStr;
@@ -532,7 +532,6 @@ PyModelBasedClusteringAttributes_GetLogString()
 static void
 PyModelBasedClusteringAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ModelBasedClusteringAttributes *atts = (ModelBasedClusteringAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

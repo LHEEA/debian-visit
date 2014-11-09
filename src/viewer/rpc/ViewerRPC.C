@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,78 +54,79 @@ static const char *ViewerRPCType_strings[] = {
 "OpenComputeEngineRPC", "CloseComputeEngineRPC", "AnimationSetNFramesRPC", 
 "AnimationPlayRPC", "AnimationReversePlayRPC", "AnimationStopRPC", 
 "TimeSliderNextStateRPC", "TimeSliderPreviousStateRPC", "SetTimeSliderStateRPC", 
-"SetActiveTimeSliderRPC", "AddPlotRPC", "SetPlotFrameRangeRPC", 
-"DeletePlotKeyframeRPC", "MovePlotKeyframeRPC", "DeleteActivePlotsRPC", 
-"HideActivePlotsRPC", "DrawPlotsRPC", "DisableRedrawRPC", 
-"RedrawRPC", "SetActivePlotsRPC", "ChangeActivePlotsVarRPC", 
-"AddOperatorRPC", "AddInitializedOperatorRPC", "PromoteOperatorRPC", 
-"DemoteOperatorRPC", "RemoveOperatorRPC", "RemoveLastOperatorRPC", 
-"RemoveAllOperatorsRPC", "SaveWindowRPC", "SetDefaultPlotOptionsRPC", 
-"SetPlotOptionsRPC", "SetDefaultOperatorOptionsRPC", "SetOperatorOptionsRPC", 
-"WriteConfigFileRPC", "ConnectToMetaDataServerRPC", "IconifyAllWindowsRPC", 
-"DeIconifyAllWindowsRPC", "ShowAllWindowsRPC", "HideAllWindowsRPC", 
-"UpdateColorTableRPC", "SetAnnotationAttributesRPC", "SetDefaultAnnotationAttributesRPC", 
-"ResetAnnotationAttributesRPC", "SetKeyframeAttributesRPC", "SetPlotSILRestrictionRPC", 
-"SetViewAxisArrayRPC", "SetViewCurveRPC", "SetView2DRPC", 
-"SetView3DRPC", "ResetPlotOptionsRPC", "ResetOperatorOptionsRPC", 
-"SetAppearanceRPC", "ProcessExpressionsRPC", "SetLightListRPC", 
-"SetDefaultLightListRPC", "ResetLightListRPC", "SetAnimationAttributesRPC", 
-"SetWindowAreaRPC", "PrintWindowRPC", "ResetViewRPC", 
-"RecenterViewRPC", "ToggleAllowPopupRPC", "ToggleMaintainViewModeRPC", 
-"ToggleBoundingBoxModeRPC", "ToggleCameraViewModeRPC", "TogglePerspectiveViewRPC", 
-"ToggleSpinModeRPC", "ToggleLockTimeRPC", "ToggleLockToolsRPC", 
-"ToggleLockViewModeRPC", "ToggleFullFrameRPC", "UndoViewRPC", 
-"RedoViewRPC", "InvertBackgroundRPC", "ClearPickPointsRPC", 
-"SetWindowModeRPC", "EnableToolRPC", "SetToolUpdateModeRPC", 
-"CopyViewToWindowRPC", "CopyLightingToWindowRPC", "CopyAnnotationsToWindowRPC", 
-"CopyPlotsToWindowRPC", "ClearCacheRPC", "ClearCacheForAllEnginesRPC", 
-"SetViewExtentsTypeRPC", "ClearRefLinesRPC", "SetRenderingAttributesRPC", 
-"QueryRPC", "CloneWindowRPC", "SetMaterialAttributesRPC", 
-"SetDefaultMaterialAttributesRPC", "ResetMaterialAttributesRPC", "SetPlotDatabaseStateRPC", 
-"DeletePlotDatabaseKeyframeRPC", "MovePlotDatabaseKeyframeRPC", "ClearViewKeyframesRPC", 
-"DeleteViewKeyframeRPC", "MoveViewKeyframeRPC", "SetViewKeyframeRPC", 
-"OpenMDServerRPC", "EnableToolbarRPC", "HideToolbarsRPC", 
-"HideToolbarsForAllWindowsRPC", "ShowToolbarsRPC", "ShowToolbarsForAllWindowsRPC", 
-"SetToolbarIconSizeRPC", "SaveViewRPC", "SetGlobalLineoutAttributesRPC", 
-"SetPickAttributesRPC", "ExportColorTableRPC", "ExportEntireStateRPC", 
-"ImportEntireStateRPC", "ImportEntireStateWithDifferentSourcesRPC", "ResetPickAttributesRPC", 
-"AddAnnotationObjectRPC", "HideActiveAnnotationObjectsRPC", "DeleteActiveAnnotationObjectsRPC", 
-"RaiseActiveAnnotationObjectsRPC", "LowerActiveAnnotationObjectsRPC", "SetAnnotationObjectOptionsRPC", 
-"SetDefaultAnnotationObjectListRPC", "ResetAnnotationObjectListRPC", "ResetPickLetterRPC", 
-"SetDefaultPickAttributesRPC", "ChooseCenterOfRotationRPC", "SetCenterOfRotationRPC", 
-"SetQueryOverTimeAttributesRPC", "SetDefaultQueryOverTimeAttributesRPC", "ResetQueryOverTimeAttributesRPC", 
-"ResetLineoutColorRPC", "SetInteractorAttributesRPC", "SetDefaultInteractorAttributesRPC", 
-"ResetInteractorAttributesRPC", "GetProcInfoRPC", "SendSimulationCommandRPC", 
-"UpdateDBPluginInfoRPC", "ExportDBRPC", "SetTryHarderCyclesTimesRPC", 
-"OpenClientRPC", "OpenGUIClientRPC", "OpenCLIClientRPC", 
-"SuppressQueryOutputRPC", "SetQueryFloatFormatRPC", "SetMeshManagementAttributesRPC", 
-"SetDefaultMeshManagementAttributesRPC", "ResetMeshManagementAttributesRPC", "ResizeWindowRPC", 
-"MoveWindowRPC", "MoveAndResizeWindowRPC", "SetStateLoggingRPC", 
-"ConstructDataBinningRPC", "RequestMetaDataRPC", "SetTreatAllDBsAsTimeVaryingRPC", 
-"SetCreateMeshQualityExpressionsRPC", "SetCreateTimeDerivativeExpressionsRPC", "SetCreateVectorMagnitudeExpressionsRPC", 
-"SetPrecisionTypeRPC", "CopyActivePlotsRPC", "SetPlotFollowsTimeRPC", 
-"TurnOffAllLocksRPC", "SetDefaultFileOpenOptionsRPC", "SetSuppressMessagesRPC", 
-"ApplyNamedSelectionRPC", "CreateNamedSelectionRPC", "DeleteNamedSelectionRPC", 
-"LoadNamedSelectionRPC", "SaveNamedSelectionRPC", "SetNamedSelectionAutoApplyRPC", 
-"UpdateNamedSelectionRPC", "InitializeNamedSelectionVariablesRPC", "MenuQuitRPC", 
-"SetPlotDescriptionRPC", "MovePlotOrderTowardFirstRPC", "MovePlotOrderTowardLastRPC", 
-"SetPlotOrderToFirstRPC", "SetPlotOrderToLastRPC", "RenamePickLabelRPC", 
-"GetQueryParametersRPC", "DDTConnectRPC", "DDTFocusRPC", 
-"ReleaseToDDTRPC", "PlotDDTVispointVariablesRPC", "ExportRPC", 
-"MaxRPC"};
+"SetActiveTimeSliderRPC", "AddPlotRPC", "AddEmbeddedPlotRPC", 
+"SetPlotFrameRangeRPC", "DeletePlotKeyframeRPC", "MovePlotKeyframeRPC", 
+"DeleteActivePlotsRPC", "HideActivePlotsRPC", "DrawPlotsRPC", 
+"DisableRedrawRPC", "RedrawRPC", "SetActivePlotsRPC", 
+"ChangeActivePlotsVarRPC", "AddOperatorRPC", "AddInitializedOperatorRPC", 
+"PromoteOperatorRPC", "DemoteOperatorRPC", "RemoveOperatorRPC", 
+"RemoveLastOperatorRPC", "RemoveAllOperatorsRPC", "SaveWindowRPC", 
+"SetDefaultPlotOptionsRPC", "SetPlotOptionsRPC", "SetDefaultOperatorOptionsRPC", 
+"SetOperatorOptionsRPC", "WriteConfigFileRPC", "ConnectToMetaDataServerRPC", 
+"IconifyAllWindowsRPC", "DeIconifyAllWindowsRPC", "ShowAllWindowsRPC", 
+"HideAllWindowsRPC", "UpdateColorTableRPC", "SetAnnotationAttributesRPC", 
+"SetDefaultAnnotationAttributesRPC", "ResetAnnotationAttributesRPC", "SetKeyframeAttributesRPC", 
+"SetPlotSILRestrictionRPC", "SetViewAxisArrayRPC", "SetViewCurveRPC", 
+"SetView2DRPC", "SetView3DRPC", "ResetPlotOptionsRPC", 
+"ResetOperatorOptionsRPC", "SetAppearanceRPC", "ProcessExpressionsRPC", 
+"SetLightListRPC", "SetDefaultLightListRPC", "ResetLightListRPC", 
+"SetAnimationAttributesRPC", "SetWindowAreaRPC", "PrintWindowRPC", 
+"ResetViewRPC", "RecenterViewRPC", "ToggleAllowPopupRPC", 
+"ToggleMaintainViewModeRPC", "ToggleBoundingBoxModeRPC", "ToggleCameraViewModeRPC", 
+"TogglePerspectiveViewRPC", "ToggleSpinModeRPC", "ToggleLockTimeRPC", 
+"ToggleLockToolsRPC", "ToggleLockViewModeRPC", "ToggleFullFrameRPC", 
+"UndoViewRPC", "RedoViewRPC", "InvertBackgroundRPC", 
+"ClearPickPointsRPC", "SetWindowModeRPC", "EnableToolRPC", 
+"SetToolUpdateModeRPC", "CopyViewToWindowRPC", "CopyLightingToWindowRPC", 
+"CopyAnnotationsToWindowRPC", "CopyPlotsToWindowRPC", "ClearCacheRPC", 
+"ClearCacheForAllEnginesRPC", "SetViewExtentsTypeRPC", "ClearRefLinesRPC", 
+"SetRenderingAttributesRPC", "QueryRPC", "CloneWindowRPC", 
+"SetMaterialAttributesRPC", "SetDefaultMaterialAttributesRPC", "ResetMaterialAttributesRPC", 
+"SetPlotDatabaseStateRPC", "DeletePlotDatabaseKeyframeRPC", "MovePlotDatabaseKeyframeRPC", 
+"ClearViewKeyframesRPC", "DeleteViewKeyframeRPC", "MoveViewKeyframeRPC", 
+"SetViewKeyframeRPC", "OpenMDServerRPC", "EnableToolbarRPC", 
+"HideToolbarsRPC", "HideToolbarsForAllWindowsRPC", "ShowToolbarsRPC", 
+"ShowToolbarsForAllWindowsRPC", "SetToolbarIconSizeRPC", "SaveViewRPC", 
+"SetGlobalLineoutAttributesRPC", "SetPickAttributesRPC", "ExportColorTableRPC", 
+"ExportEntireStateRPC", "ImportEntireStateRPC", "ImportEntireStateWithDifferentSourcesRPC", 
+"ResetPickAttributesRPC", "AddAnnotationObjectRPC", "HideActiveAnnotationObjectsRPC", 
+"DeleteActiveAnnotationObjectsRPC", "RaiseActiveAnnotationObjectsRPC", "LowerActiveAnnotationObjectsRPC", 
+"SetAnnotationObjectOptionsRPC", "SetDefaultAnnotationObjectListRPC", "ResetAnnotationObjectListRPC", 
+"ResetPickLetterRPC", "SetDefaultPickAttributesRPC", "ChooseCenterOfRotationRPC", 
+"SetCenterOfRotationRPC", "SetQueryOverTimeAttributesRPC", "SetDefaultQueryOverTimeAttributesRPC", 
+"ResetQueryOverTimeAttributesRPC", "ResetLineoutColorRPC", "SetInteractorAttributesRPC", 
+"SetDefaultInteractorAttributesRPC", "ResetInteractorAttributesRPC", "GetProcInfoRPC", 
+"SendSimulationCommandRPC", "UpdateDBPluginInfoRPC", "ExportDBRPC", 
+"SetTryHarderCyclesTimesRPC", "OpenClientRPC", "OpenGUIClientRPC", 
+"OpenCLIClientRPC", "SuppressQueryOutputRPC", "SetQueryFloatFormatRPC", 
+"SetMeshManagementAttributesRPC", "SetDefaultMeshManagementAttributesRPC", "ResetMeshManagementAttributesRPC", 
+"ResizeWindowRPC", "MoveWindowRPC", "MoveAndResizeWindowRPC", 
+"SetStateLoggingRPC", "ConstructDataBinningRPC", "RequestMetaDataRPC", 
+"SetTreatAllDBsAsTimeVaryingRPC", "SetCreateMeshQualityExpressionsRPC", "SetCreateTimeDerivativeExpressionsRPC", 
+"SetCreateVectorMagnitudeExpressionsRPC", "SetPrecisionTypeRPC", "SetBackendTypeRPC", 
+"CopyActivePlotsRPC", "SetPlotFollowsTimeRPC", "TurnOffAllLocksRPC", 
+"SetDefaultFileOpenOptionsRPC", "SetSuppressMessagesRPC", "ApplyNamedSelectionRPC", 
+"CreateNamedSelectionRPC", "DeleteNamedSelectionRPC", "LoadNamedSelectionRPC", 
+"SaveNamedSelectionRPC", "SetNamedSelectionAutoApplyRPC", "UpdateNamedSelectionRPC", 
+"InitializeNamedSelectionVariablesRPC", "MenuQuitRPC", "SetPlotDescriptionRPC", 
+"MovePlotOrderTowardFirstRPC", "MovePlotOrderTowardLastRPC", "SetPlotOrderToFirstRPC", 
+"SetPlotOrderToLastRPC", "RenamePickLabelRPC", "GetQueryParametersRPC", 
+"DDTConnectRPC", "DDTFocusRPC", "ReleaseToDDTRPC", 
+"PlotDDTVispointVariablesRPC", "ExportRPC", "MaxRPC"
+};
 
 std::string
 ViewerRPC::ViewerRPCType_ToString(ViewerRPC::ViewerRPCType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 202) index = 0;
+    if(index < 0 || index >= 204) index = 0;
     return ViewerRPCType_strings[index];
 }
 
 std::string
 ViewerRPC::ViewerRPCType_ToString(int t)
 {
-    int index = (t < 0 || t >= 202) ? 0 : t;
+    int index = (t < 0 || t >= 204) ? 0 : t;
     return ViewerRPCType_strings[index];
 }
 
@@ -133,7 +134,7 @@ bool
 ViewerRPC::ViewerRPCType_FromString(const std::string &s, ViewerRPC::ViewerRPCType &val)
 {
     val = ViewerRPC::CloseRPC;
-    for(int i = 0; i < 202; ++i)
+    for(int i = 0; i < 204; ++i)
     {
         if(s == ViewerRPCType_strings[i])
         {
@@ -176,6 +177,7 @@ void ViewerRPC::Init()
     queryPoint1[1] = 0;
     queryPoint1[2] = 0;
     toolId = 0;
+    embeddedPlotId = 0;
     boolFlag = false;
     intArg1 = 0;
     intArg2 = 0;
@@ -230,6 +232,7 @@ void ViewerRPC::Copy(const ViewerRPC &obj)
     queryPoint1[2] = obj.queryPoint1[2];
 
     toolId = obj.toolId;
+    embeddedPlotId = obj.embeddedPlotId;
     boolFlag = obj.boolFlag;
     intArg1 = obj.intArg1;
     intArg2 = obj.intArg2;
@@ -428,6 +431,7 @@ ViewerRPC::operator == (const ViewerRPC &obj) const
             (queryName == obj.queryName) &&
             queryPoint1_equal &&
             (toolId == obj.toolId) &&
+            (embeddedPlotId == obj.embeddedPlotId) &&
             (boolFlag == obj.boolFlag) &&
             (intArg1 == obj.intArg1) &&
             (intArg2 == obj.intArg2) &&
@@ -602,6 +606,7 @@ ViewerRPC::SelectAll()
     Select(ID_queryName,         (void *)&queryName);
     Select(ID_queryPoint1,       (void *)queryPoint1, 3);
     Select(ID_toolId,            (void *)&toolId);
+    Select(ID_embeddedPlotId,    (void *)&embeddedPlotId);
     Select(ID_boolFlag,          (void *)&boolFlag);
     Select(ID_intArg1,           (void *)&intArg1);
     Select(ID_intArg2,           (void *)&intArg2);
@@ -778,6 +783,13 @@ ViewerRPC::SetToolId(int toolId_)
 {
     toolId = toolId_;
     Select(ID_toolId, (void *)&toolId);
+}
+
+void
+ViewerRPC::SetEmbeddedPlotId(int embeddedPlotId_)
+{
+    embeddedPlotId = embeddedPlotId_;
+    Select(ID_embeddedPlotId, (void *)&embeddedPlotId);
 }
 
 void
@@ -1056,6 +1068,12 @@ ViewerRPC::GetToolId() const
     return toolId;
 }
 
+int
+ViewerRPC::GetEmbeddedPlotId() const
+{
+    return embeddedPlotId;
+}
+
 bool
 ViewerRPC::GetBoolFlag() const
 {
@@ -1269,6 +1287,7 @@ ViewerRPC::GetFieldName(int index) const
     case ID_queryName:         return "queryName";
     case ID_queryPoint1:       return "queryPoint1";
     case ID_toolId:            return "toolId";
+    case ID_embeddedPlotId:    return "embeddedPlotId";
     case ID_boolFlag:          return "boolFlag";
     case ID_intArg1:           return "intArg1";
     case ID_intArg2:           return "intArg2";
@@ -1324,6 +1343,7 @@ ViewerRPC::GetFieldType(int index) const
     case ID_queryName:         return FieldType_string;
     case ID_queryPoint1:       return FieldType_doubleArray;
     case ID_toolId:            return FieldType_int;
+    case ID_embeddedPlotId:    return FieldType_int;
     case ID_boolFlag:          return FieldType_bool;
     case ID_intArg1:           return FieldType_int;
     case ID_intArg2:           return FieldType_int;
@@ -1379,6 +1399,7 @@ ViewerRPC::GetFieldTypeName(int index) const
     case ID_queryName:         return "string";
     case ID_queryPoint1:       return "doubleArray";
     case ID_toolId:            return "int";
+    case ID_embeddedPlotId:    return "int";
     case ID_boolFlag:          return "bool";
     case ID_intArg1:           return "int";
     case ID_intArg2:           return "int";
@@ -1536,6 +1557,11 @@ ViewerRPC::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_toolId:
         {  // new scope
         retval = (toolId == obj.toolId);
+        }
+        break;
+    case ID_embeddedPlotId:
+        {  // new scope
+        retval = (embeddedPlotId == obj.embeddedPlotId);
         }
         break;
     case ID_boolFlag:

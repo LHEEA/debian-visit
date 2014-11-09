@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -99,6 +99,7 @@ extern const char *visit_GetDatabaseNStates_doc;
 extern const char *visit_GetDefaultFileOpenOptions_doc;
 extern const char *visit_GetDomains_doc;
 extern const char *visit_GetEngineList_doc;
+extern const char *visit_GetEngineProperties_doc;
 extern const char *visit_GetGlobalAttributes_doc;
 extern const char *visit_GetGlobalLineoutAttributes_doc;
 extern const char *visit_GetInteractorAttributes_doc;
@@ -227,6 +228,9 @@ extern const char *visit_SetPlotSILRestriction_doc;
 extern const char *visit_SetPreferredFileFormats_doc;
 extern const char *visit_SetPrecisionType_doc;
 extern const char *visit_SetPrinterAttributes_doc;
+extern const char *visit_SetQueryOutputToObject_doc;
+extern const char *visit_SetQueryOutputToValue_doc;
+extern const char *visit_SetQueryOutputToString_doc;
 extern const char *visit_SetQueryFloatFormat_doc;
 extern const char *visit_SetQueryOverTimeAttributes_doc;
 extern const char *visit_SetRenderingAttributes_doc;

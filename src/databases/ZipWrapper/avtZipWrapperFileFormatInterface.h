@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -160,7 +160,9 @@ class avtZipWrapperFileFormatInterface : public avtFileFormatInterface
 
     virtual void            FreeUpResources(int, int);
     virtual void            ActivateTimestep(int ts);
-    virtual void            PopulateIOInformation(int ts, avtIOInformation &) { return; };
+    virtual bool            PopulateIOInformation(int ts, 
+                               const std::string &meshName,avtIOInformation &)
+                               { return false; }
 
   protected:
     virtual int             GetNumberOfFileFormats(void) { return 1; };
@@ -190,7 +192,6 @@ class avtZipWrapperFileFormatInterface : public avtFileFormatInterface
 
       DatabasePluginManager       *pluginManager;
       std::vector<std::vector<std::string> >      inputFileList;
-      int                          inputFileListSize;
       int                          inputFileBlockCount;
       int                          nTimesteps;
       int                          dbType;

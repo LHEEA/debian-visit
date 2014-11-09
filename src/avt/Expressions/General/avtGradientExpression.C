@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -687,7 +687,7 @@ double avtGradientExpression::EvaluateValue(double x, double y, double z,
     double *abnormalWeights = NULL; // In case of more than 8 points
     
     vtkIdType cellId;
-    vtkCell *c;
+    vtkCell *c = NULL;
     for (cellId = 0 ; cellId < neighborCells->GetNumberOfIds() ; cellId++)
     {
         c = in_ds->GetCell(neighborCells->GetId(cellId));
@@ -1056,7 +1056,6 @@ avtGradientExpression::LogicalGradient(vtkStructuredGrid *sg,
 
     int dims[3];
     sg->GetDimensions(dims);
-    bool isNodal = true;
     vtkDataArray *s = sg->GetPointData()->GetScalars();
     if (s == NULL)
     {
@@ -1067,7 +1066,6 @@ avtGradientExpression::LogicalGradient(vtkStructuredGrid *sg,
                                              " be found.");
          }
 
-         isNodal = false;
          dims[0] -= 1;
          dims[1] -= 1;
          dims[2] -= 1;

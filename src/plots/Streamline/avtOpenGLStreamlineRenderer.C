@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -507,7 +507,7 @@ avtOpenGLStreamlineRenderer::DrawAsLines(vtkPolyData *data)
             p[1] = prev[1] + t0*(pt[1]-prev[1]);
             p[2] = prev[2] + t0*(pt[2]-prev[2]);
             
-            float  s0, s1, s, o;
+            float  s0, s1, s;
             s0 = scalar[segptr[idx0-1]];
             s1 = scalar[segptr[idx0]];
             s = s0 + t0*(s1-s0);
@@ -569,7 +569,7 @@ avtOpenGLStreamlineRenderer::DrawAsLines(vtkPolyData *data)
             p[1] = pt[1] + t1*(next[1]-pt[1]);
             p[2] = pt[2] + t1*(next[2]-pt[2]);
 
-            float  s0, s1, s, o;
+            float  s0, s1, s;
             s0 = scalar[segptr[idx1]];
             s1 = scalar[segptr[idx1+1]];
             s = s0 + t1*(s1-s0);
@@ -672,7 +672,6 @@ avtOpenGLStreamlineRenderer::DrawAsTubes(vtkPolyData *data)
         // If we need to trim either end, create a new trimmed polyline
         // and run the tube on this geometry.
         
-        vtkPoints *points = data->GetPoints();
         vtkCellArray *lines = data->GetLines();
         vtkIdType *segments = lines->GetPointer();
     
@@ -689,8 +688,6 @@ avtOpenGLStreamlineRenderer::DrawAsTubes(vtkPolyData *data)
                 pd->Delete();
             }
         }
-        //VTK-6.0 FIX ME -- ksb, is this update necessary?
-        //append->Update();
         tube->SetInputConnection(append->GetOutputPort());
         append->Delete();
     }
@@ -739,7 +736,6 @@ avtOpenGLStreamlineRenderer::DrawAsTubes(vtkPolyData *data)
 void
 avtOpenGLStreamlineRenderer::DrawAsRibbons(vtkPolyData *data)
 {
-    vtkPoints *points = data->GetPoints();
     vtkCellArray *lines = data->GetLines();
     vtkIdType *segments = lines->GetPointer();
     float *t = NULL;
@@ -952,7 +948,8 @@ avtOpenGLStreamlineRenderer::DrawHeadGeom(vtkPolyData *data)
     
     vtkIdType *segptr = segments;
     double endPt[3], endPtPrev[3];
-    float scalar, opacity=1.0;
+    float scalar = 0.0;
+    float opacity=1.0; 
 
     for (int i=0; i<data->GetNumberOfLines(); i++)
     {
@@ -969,23 +966,49 @@ avtOpenGLStreamlineRenderer::DrawHeadGeom(vtkPolyData *data)
             segptr += nPts;
             continue;
         }
-        
-        if (idx1 == nPts-1)
+
+        // Just incase everything is cropped away
+        if (idx1 == 0 )
         {
-            points->GetPoint(segptr[idx1-1], endPtPrev);
-            points->GetPoint(segptr[idx1], endPt);
-            
-            float  s0, s1;
-            s0 = s[segptr[idx1-1]];
-            s1 = s[segptr[idx1]];
-            scalar = s0 + t1*(s1-s0);
+            double next[3];
+            points->GetPoint(segptr[0], endPt);
+            points->GetPoint(segptr[1], next);
+
+            // For cones fake a previous point using the next point.
+            endPtPrev[0] = endPt[0] - .1*(next[0]-endPt[0]);
+            endPtPrev[1] = endPt[1] - .1*(next[1]-endPt[1]);
+            endPtPrev[2] = endPt[2] - .1*(next[2]-endPt[2]);
+
+            scalar = s[*(segptr)];
             if (o)
+              opacity = o[*(segptr)];
+        }
+        // If we have an interpolated end point, calculate it.
+        else if (0 < idx1 && idx1 < nPts-1)
+        {
+            double next[3];
+            points->GetPoint(segptr[idx1], endPtPrev);
+            points->GetPoint(segptr[idx1+1], next);
+
+            endPt[0] = endPtPrev[0] + t1*(next[0]-endPtPrev[0]);
+            endPt[1] = endPtPrev[1] + t1*(next[1]-endPtPrev[1]);
+            endPt[2] = endPtPrev[2] + t1*(next[2]-endPtPrev[2]);
+
+            float  s0, s1;
+            s0 = s[segptr[idx1]];
+            s1 = s[segptr[idx1+1]];
+            scalar = s0 + t1*(s1-s0);
+            
+            if (atts.GetOpacityType() == StreamlineAttributes::Ramp)
+                opacity = 1.0;
+            else if (o)
             {
-                s0 = o[segptr[idx1-1]];
-                s1 = o[segptr[idx1]];
+                s0 = o[segptr[idx1]];
+                s1 = o[segptr[idx1+1]];
                 opacity = s0 + t1*(s1-s0);
             }
         }
+        // No points are cropped.
         else
         {
             points->GetPoint(segptr[nPts-1], endPt);
@@ -2150,14 +2173,13 @@ avtOpenGLStreamlineRenderer::GetEndPoints(vtkPolyData *data,
     if (! atts.GetDisplayBeginFlag() && !atts.GetDisplayEndFlag())
         return false;
     
-    vtkPoints *points = data->GetPoints();
     vtkDataArray *param = data->GetPointData()->GetArray(avtStreamlinePolyDataFilter::paramArrayName.c_str());
     
     t0 = 0.0;
     t1 = 0.0;
     
     bool modifiedStartEnd = false;
-    
+
     //Find the begining
     double beg = atts.GetDisplayBegin();
     if (atts.GetDisplayBeginFlag() && beg > 0.0)
@@ -2183,7 +2205,7 @@ avtOpenGLStreamlineRenderer::GetEndPoints(vtkPolyData *data,
         if (nPts > 0 && (param->GetTuple1(segptr[nPts-1])<beg))
            j0 = nPts+1;
     }
-    
+
     float termination = 1000000;
     switch (atts.GetReferenceTypeForDisplay())
     {

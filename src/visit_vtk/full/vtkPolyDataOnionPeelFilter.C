@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1019,7 +1019,7 @@ vtkPolyDataOnionPeelFilter::FindCellsCorrespondingToOriginal(
         for (int i = comp; i < n; i+=nc )
         {
             int id = i / nc;
-            if (oc[i] == orig && group->IsId(id) == -1)
+            if (oc[i] == (unsigned int)orig && group->IsId(id) == -1)
                 group->InsertNextId(id);
         }
     }

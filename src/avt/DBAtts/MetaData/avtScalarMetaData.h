@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -147,6 +147,13 @@ public:
 protected:
     static std::string MissingData_ToString(int);
 public:
+
+    // Keyframing methods
+    virtual std::string               GetFieldName(int index) const;
+    virtual AttributeGroup::FieldType GetFieldType(int index) const;
+    virtual std::string               GetFieldTypeName(int index) const;
+    virtual bool                      FieldsEqual(int index, const AttributeGroup *rhs) const;
+
     // User-defined methods
     avtScalarMetaData(std::string, std::string, avtCentering);
     avtScalarMetaData(std::string, std::string, avtCentering, double, double);

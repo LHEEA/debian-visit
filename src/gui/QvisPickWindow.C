@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -764,7 +764,7 @@ QvisPickWindow::UpdateAll(bool doAll)
     {
         stringVector userVars = pickAtts->GetVariables();
         std::string allVars2;
-        for (int i = 0; i < userVars.size(); i++)
+        for (size_t i = 0; i < userVars.size(); i++)
         {
            allVars2 += userVars[i];
            allVars2 += " ";

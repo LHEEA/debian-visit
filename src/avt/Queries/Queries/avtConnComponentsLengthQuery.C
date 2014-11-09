@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -129,6 +129,8 @@ avtConnComponentsLengthQuery::PreExecute(void)
 //  Creation:   Wed Jun 15 13:09:43 PDT 2011
 //
 //  Modifications:
+//    Kathleen Biagas, Wed Feb 26 12:00:54 PST 2014
+//    Add Xml results.
 //
 // ****************************************************************************
 
@@ -168,6 +170,10 @@ avtConnComponentsLengthQuery::PostExecute(void)
 
         SetResultMessage(msg);
         SetResultValues(lengthPerComp);
+        MapNode result_node;
+        result_node["connected_components_count"] = nComps;
+        result_node["lengths"] = lengthPerComp;
+        SetXmlResult(result_node.ToXML());
     }
 }
 
@@ -211,8 +217,7 @@ avtConnComponentsLengthQuery::Execute(vtkDataSet *ds, const int dom)
     // loop over all cells
     for (int i = 0 ; i < ncells ; i++)
     {
-        // get the cell  & and its component label
-        vtkCell *cell    = ds->GetCell(i);
+        // get the component label
         int      comp_id = labels->GetValue(i);
 
         // get cell area

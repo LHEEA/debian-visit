@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -166,8 +166,7 @@ QvisDatabaseCorrelationWindow::CreateWidgets(
     topLayout->addLayout(srcLayout);
     srcLayout->setSpacing(5);
     const int S[] = {1, 5, 1, 1, 5};
-    int i;
-    for(i = 0; i < 5; ++i)
+    for(size_t i = 0; i < 5; ++i)
         srcLayout->setRowStretch(i, S[i]);
     srcLayout->addWidget(new QLabel(tr("Sources"), central), 0, 0);
     srcLayout->addWidget(new QLabel(tr("Correlated sources"), central), 0, 2);
@@ -177,12 +176,12 @@ QvisDatabaseCorrelationWindow::CreateWidgets(
     //
     NameSimplifier simplifier;
     const stringVector &sources = GetViewerState()->GetGlobalAttributes()->GetSources();
-    for(i = 0; i < sources.size(); ++i)
+    for(size_t i = 0; i < sources.size(); ++i)
         simplifier.AddName(sources[i]);
     stringVector shortSources;
     simplifier.GetSimplifiedNames(shortSources);
     std::map<std::string, std::string> shortToLong, longToShort;
-    for(i = 0; i < sources.size(); ++i)
+    for(size_t i = 0; i < sources.size(); ++i)
     {
         shortToLong[shortSources[i]] = sources[i];
         longToShort[sources[i]] = shortSources[i];
@@ -191,7 +190,7 @@ QvisDatabaseCorrelationWindow::CreateWidgets(
     // Create and populate the list of sources.
     sourcesListBox = new QListWidget(central);
     sourcesListBox->setSelectionMode(QAbstractItemView::MultiSelection);
-    for(i = 0; i < sources.size(); ++i)
+    for(size_t i = 0; i < sources.size(); ++i)
     {
         if(!correlation.UsesDatabase(sources[i]))
             sourcesListBox->addItem(shortSources[i].c_str());
@@ -206,7 +205,7 @@ QvisDatabaseCorrelationWindow::CreateWidgets(
     correlatedSourcesListBox = new QListWidget(central);
     correlatedSourcesListBox->setSelectionMode(QAbstractItemView::MultiSelection);
     const stringVector &dbs = correlation.GetDatabaseNames();
-    for(i = 0; i < correlation.GetNumDatabases(); ++i)
+    for(size_t i = 0; i < (size_t)correlation.GetNumDatabases(); ++i)
         correlatedSourcesListBox->addItem(longToShort[dbs[i]].c_str());
     if(dbs.size() > 0)
         correlatedSourcesListBox->setCurrentRow(0);
@@ -320,8 +319,8 @@ QvisDatabaseCorrelationWindow::TransferItems(QListWidget *srcLB, QListWidget *de
 {
     stringVector src;
     stringVector dest;
-    int i;
-    for(i = 0; i < srcLB->count(); ++i)
+    size_t i;
+    for(i = 0; i < (size_t)srcLB->count(); ++i)
     {
         if(srcLB->item(i)->isSelected())
             dest.push_back(srcLB->item(i)->text().toStdString());
@@ -329,7 +328,7 @@ QvisDatabaseCorrelationWindow::TransferItems(QListWidget *srcLB, QListWidget *de
             src.push_back(srcLB->item(i)->text().toStdString());
     }
 
-    for(i = 0; i < destLB->count(); ++i)
+    for(i = 0; i < (size_t)destLB->count(); ++i)
         dest.push_back(destLB->item(i)->text().toStdString());
 
     srcLB->blockSignals(true);
@@ -475,7 +474,7 @@ QvisDatabaseCorrelationWindow::actionClicked()
     //
     NameSimplifier simplifier;
     const stringVector &sources = GetViewerState()->GetGlobalAttributes()->GetSources();
-    int i;
+    size_t i;
     for(i = 0; i < sources.size(); ++i)
         simplifier.AddName(sources[i]);
     stringVector shortSources;
@@ -485,7 +484,7 @@ QvisDatabaseCorrelationWindow::actionClicked()
         shortToLong[shortSources[i]] = sources[i];
 
     // Get the sources from the correlated source list.
-    for(i = 0; i < correlatedSourcesListBox->count(); ++i)
+    for(i = 0; i < (size_t)correlatedSourcesListBox->count(); ++i)
     {
         std::string srcName(correlatedSourcesListBox->item(i)->text().toStdString());
         dbs.push_back(shortToLong[srcName]);

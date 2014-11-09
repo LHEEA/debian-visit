@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -67,6 +67,44 @@
 static int oneXGridDomainToSubgrid[4] = {0, 1, 0, 1};
 static int twoXGridDomainToSubgrid[6] = {0, 1, 0, 2, 1, 2};
 
+#define READSCALARINTO(VARNAME, VAR) \
+    {\
+        TypeEnum t = NO_TYPE;\
+        int ndims = 0, *dims = 0;\
+        void *vals = 0;\
+        if (meshFile->ReadVariable(VARNAME, &t, &ndims, &dims, &vals))\
+        {\
+            if (ndims != 0) \
+            {\
+                std::string msg;\
+                msg = std::string("Error reading ") + std::string(VARNAME) + std::string(": Not a scalar");\
+                EXCEPTION2(NonCompliantFileException, "BOUT", msg);\
+            }\
+            delete [] dims;\
+            if (t != INTEGERARRAY_TYPE && t != SHORTARRAY_TYPE) \
+            {\
+                std::string msg;\
+                msg = std::string("Error reading ") + std::string(VARNAME) + std::string(": Not an int or short");\
+                EXCEPTION2(NonCompliantFileException, "BOUT", msg);\
+            }\
+            if (t == INTEGERARRAY_TYPE) \
+            {\
+                VAR = ((int*)vals)[0];\
+                delete [] (int*) vals;\
+            }\
+            else if (t == SHORTARRAY_TYPE) \
+            {\
+                VAR = ((short*)vals)[0];\
+                delete [] (short*) vals; \
+            }\
+        }\
+        else\
+        {\
+            std::string msg;\
+            msg = std::string("Error reading ") + std::string(VARNAME);\
+            EXCEPTION2(NonCompliantFileException, "BOUT", msg);\
+        }\
+    }
 // ****************************************************************************
 // Method: avtBOUTFileFormat::Identify
 //
@@ -376,13 +414,13 @@ avtBOUTFileFormat::ReadTimes()
             }
             else
             {
-                debug4 << mName << "error reading timestep" << endl;
+                debug4 << mName << "Error reading timestep." << endl;
             }
             delete [] dims;
         }
         else
         {
-            debug4 << mName << "error reading timestep" << endl;
+            debug4 << mName << "Error reading timestep." << endl;
         }
         timesRead = true;
     }
@@ -466,6 +504,10 @@ avtBOUTFileFormat::GetTimes(doubleVector &t)
 //   I modified the creation of the diverter to include all of the lower
 //   diverter as well as create the upper diverter with a two X point grid.
 //
+//   Eric Brugger, Mon Sep 22 16:45:10 PDT 2014
+//   I modified the routine to handle zperiod being a char, short, int, long,
+//   float or double. I also added a check to make sure zperiod was valid.
+//
 // ****************************************************************************
 
 void
@@ -494,22 +536,67 @@ avtBOUTFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     //
     // Read the zperiod.
     //
+    zperiod = -1;
     TypeEnum t = NO_TYPE;
     int ndims = 0, *dims = 0;
     void *vals = 0;
     if (fileObject->ReadVariable("zperiod", &t, &ndims, &dims, &vals))
     {
-        if (t == SHORTARRAY_TYPE && ndims == 0)
+        if (t == CHARARRAY_TYPE || t == UCHARARRAY_TYPE)
         {
-            zperiod = ((short*)vals)[0];
+            if (ndims == 0)
+                zperiod = ((unsigned char*)vals)[0];
+            delete [] (unsigned char*) vals;
+        }
+        else if (t == SHORTARRAY_TYPE)
+        {
+            if (ndims == 0)
+                zperiod = ((short*)vals)[0];
+            delete [] (short*) vals;
+        }
+        else if (t == INTEGERARRAY_TYPE)
+        {
+            if (ndims == 0)
+                zperiod = ((int*)vals)[0];
+            delete [] (int*) vals;
+        }
+        else if (t == LONGARRAY_TYPE)
+        {
+            if (ndims == 0)
+                zperiod = ((long*)vals)[0];
+            delete [] (long*) vals;
+        }
+        else if (t == FLOATARRAY_TYPE)
+        {
+            if (ndims == 0)
+                zperiod = ((float*)vals)[0];
+            delete [] (float*) vals;
+        }
+        else if (t == DOUBLEARRAY_TYPE)
+        {
+            if (ndims == 0)
+                zperiod = ((double*)vals)[0];
+            delete [] (double*) vals;
         }
         delete [] dims;
-        delete [] (short*) vals;
     }
     else
     {
-        debug4 << mName << "error reading zperiod" << endl;
+        debug4 << mName << "Error reading zperiod." << endl;
     }
+
+    //
+    // Check that zperiod is valid.
+    //
+    if (zperiod <= 0)
+    {
+        zperiod = 1;
+        debug4 << mName << "Warning: zperiod is <= zero, setting zperiod = 1." << endl;
+    } 
+    else if (zperiod > 50)
+    {
+        debug4 << mName << "Warning: zperiod is greater than 50." << endl;
+    } 
 
     //
     // Read the mesh meta data so that we can determine the type of
@@ -806,6 +893,10 @@ avtBOUTFileFormat::DetermineMeshReplication(Subgrid &grid)
 //   I corrected an uninitialized memory error in the code that forms the
 //   full path of the grid file.
 //
+//   Eric Brugger, Mon Sep 22 16:45:10 PDT 2014
+//   I moved READSCALARINTO to the top of the file and removed VARTYPE from
+//   READSCALARINTO since it wasn't used.
+//
 // ****************************************************************************
 
 void
@@ -854,58 +945,19 @@ avtBOUTFileFormat::ReadMeshMetaData()
     //
     // Read some key scalars that indicate how the grid is connected.
     //
-#define READSCALARINTO(VARNAME, VAR, VARTYPE) \
-    {\
-        TypeEnum t = NO_TYPE;\
-        int ndims = 0, *dims = 0;\
-        void *vals = 0;\
-        if (meshFile->ReadVariable(VARNAME, &t, &ndims, &dims, &vals))\
-        {\
-            if (ndims != 0) \
-            {\
-                std::string msg;\
-                msg = std::string("Error reading ") + std::string(VARNAME) + std::string(": Not a scalar");\
-                EXCEPTION2(NonCompliantFileException, "BOUT", msg);\
-            }\
-            delete [] dims;\
-            if (t != INTEGERARRAY_TYPE && t != SHORTARRAY_TYPE) \
-            {\
-                std::string msg;\
-                msg = std::string("Error reading ") + std::string(VARNAME) + std::string(": Not an int or short");\
-                EXCEPTION2(NonCompliantFileException, "BOUT", msg);\
-            }\
-            if (t == INTEGERARRAY_TYPE) \
-            {\
-                VAR = ((int*)vals)[0];\
-                delete [] (int*) vals;\
-            }\
-            else if (t == SHORTARRAY_TYPE) \
-            {\
-                VAR = ((short*)vals)[0];\
-                delete [] (short*) vals; \
-            }\
-        }\
-        else\
-        {\
-            std::string msg;\
-            msg = std::string("Error reading ") + std::string(VARNAME);\
-            EXCEPTION2(NonCompliantFileException, "BOUT", msg);\
-        }\
-    }
-    READSCALARINTO("ixseps1", ixseps1, INTEGERARRAY_TYPE);
-    READSCALARINTO("ixseps2", ixseps2, SHORTARRAY_TYPE);
-    READSCALARINTO("jyseps1_1", jyseps1_1, INTEGERARRAY_TYPE);
-    READSCALARINTO("jyseps1_2", jyseps1_2, INTEGERARRAY_TYPE);
-    READSCALARINTO("jyseps2_1", jyseps2_1, INTEGERARRAY_TYPE);
-    READSCALARINTO("jyseps2_2", jyseps2_2, INTEGERARRAY_TYPE);
-#if 0
-    cerr << "ixseps1=" << ixseps1 << endl;
-    cerr << "ixseps2=" << ixseps2 << endl;
-    cerr << "jyseps1_1=" << jyseps1_1 << endl;
-    cerr << "jyseps1_2=" << jyseps1_2 << endl;
-    cerr << "jyseps2_1=" << jyseps2_1 << endl;
-    cerr << "jyseps2_2=" << jyseps2_2 << endl;
-#endif
+    READSCALARINTO("ixseps1", ixseps1);
+    READSCALARINTO("ixseps2", ixseps2);
+    READSCALARINTO("jyseps1_1", jyseps1_1);
+    READSCALARINTO("jyseps1_2", jyseps1_2);
+    READSCALARINTO("jyseps2_1", jyseps2_1);
+    READSCALARINTO("jyseps2_2", jyseps2_2);
+
+    debug4 << "   ixseps1   = " << ixseps1 << endl;
+    debug4 << "   ixseps2   = " << ixseps2 << endl;
+    debug4 << "   jyseps1_1 = " << jyseps1_1 << endl;
+    debug4 << "   jyseps1_2 = " << jyseps1_2 << endl;
+    debug4 << "   jyseps2_1 = " << jyseps2_1 << endl;
+    debug4 << "   jyseps2_2 = " << jyseps2_2 << endl;
 }
 
 // ****************************************************************************
@@ -932,6 +984,9 @@ avtBOUTFileFormat::ReadMeshMetaData()
 //   I modified the reader to eliminate the grid above the upper X point
 //   when working with a grid with two X points.
 //
+//   Eric Brugger, Mon Sep 22 16:45:10 PDT 2014
+//   I added more error checks on the data.
+//
 // ****************************************************************************
 
 bool
@@ -949,7 +1004,6 @@ avtBOUTFileFormat::ReadMesh()
     //
     // Read the coordinate information.
     //
-    bool err = false;
     TypeEnum rt = NO_TYPE, zt = NO_TYPE, zshiftt = NO_TYPE;
     int rndims = 0, zndims = 0, zshiftndims = 0;
     int *rdims = 0, *zdims = 0, *zshiftdims = 0;
@@ -962,15 +1016,35 @@ avtBOUTFileFormat::ReadMesh()
         zshiftndims != 2 || zshiftdims == 0)
     {
         if (rndims != 2 || rdims == 0)
-            debug4 << mName << "error reading Rxy" << endl;
+        {
+            debug4 << mName << "Error reading Rxy." << endl;
+        }
         if (zndims != 2 || zdims == 0)
-            debug4 << mName << "error reading Zxy" << endl;
+        {
+            debug4 << mName << "Error reading Zxy." << endl;
+        }
         if (zshiftndims != 2 || zshiftdims == 0)
-            debug4 << mName << "error reading zShift" << endl;
+        {
+            debug4 << mName << "Error reading zShift." << endl;
+        }
 
         if (rdims != 0) delete [] rdims;
         if (zdims != 0) delete [] zdims;
         if (zshiftdims != 0) delete [] zshiftdims;
+
+        std::string msg("\"The grid could not be read.\"");
+        EXCEPTION1(InvalidVariableException, msg);
+    }
+
+    if (rdims[0] != zdims[0] || rdims[1] != zdims[1] ||
+        rdims[0] != zshiftdims[0] || rdims[1] != zshiftdims[1])
+    {
+        debug4 << mName << "Error: The Rxy, Zxy and zShift dimensions were "
+               << "inconsistent." << endl; 
+
+        delete [] rdims;
+        delete [] zdims;
+        delete [] zshiftdims;
 
         std::string msg("\"The grid could not be read.\"");
         EXCEPTION1(InvalidVariableException, msg);
@@ -1230,13 +1304,13 @@ avtBOUTFileFormat::CreateDiverterMesh(Subgrid &grid, int domain,
     //
     // Set the dimensions
     //
-    int istart, iend;
+    //int istart, iend;
     int *ijindex;
     int *inrep;
     int nxIn, nyIn;
     int nxOut;
-    istart  = grid.istart;
-    iend    = grid.iend;
+    //istart  = grid.istart;
+    //iend    = grid.iend;
     ijindex = grid.ijindex;
     inrep   = grid.inrep;
     nxIn    = grid.nxIn;
@@ -1311,13 +1385,13 @@ avtBOUTFileFormat::CreateMesh(Subgrid &grid, int iblock, int ndims,
     //
     // Set the dimensions
     //
-    int *jindex;
+    //int *jindex;
     int *ijindex;
     int *inrep;
     int *jnrep;
     int nxIn, nyIn;
     int nxOut, nyOut;
-    jindex    = grid.jindex;
+    //jindex    = grid.jindex;
     ijindex   = grid.ijindex;
     inrep     = grid.inrep;
     jnrep     = grid.jnrep;
@@ -1467,15 +1541,15 @@ avtBOUTFileFormat::CreateDiverterVar(Subgrid &grid, int domain, float *data,
     //
     // Calculate the block and subgrid indexes.
     //
-    int iblock, isubgrid;
+    int /*iblock,*/ isubgrid;
     if (gridType == oneXGrid)
     {
-        iblock = domain / N_DIVERTER_ONEX_SUB_MESHES;
+        //iblock = domain / N_DIVERTER_ONEX_SUB_MESHES;
         isubgrid = domain % N_DIVERTER_ONEX_SUB_MESHES;
     }
     else
     {
-        iblock = domain / N_DIVERTER_TWOX_SUB_MESHES;
+        //iblock = domain / N_DIVERTER_TWOX_SUB_MESHES;
         isubgrid = domain % N_DIVERTER_TWOX_SUB_MESHES;
     }
 
@@ -1551,23 +1625,23 @@ avtBOUTFileFormat::CreateVar(Subgrid &grid, int iblock, int ndims,
     //
     // Set the dimensions
     //
-    int nb;
-    int istart, iend;
+    //int nb;
+    int istart/*, iend*/;
     int jstart[2], jend[2];
     int *jindex;
-    int *ijindex;
+    //int *ijindex;
     int *inrep;
     int *jnrep;
     int nxIn, nyIn;
     int nxOut, nyOut;
-    nb        = grid.nb;
+    //nb        = grid.nb;
     istart    = grid.istart;
     jstart[0] = grid.jstart[0];
     jstart[1] = grid.jstart[1];
     jend[0]   = grid.jend[0];
     jend[1]   = grid.jend[1];
     jindex    = grid.jindex;
-    ijindex   = grid.ijindex;
+    //ijindex   = grid.ijindex;
     inrep     = grid.inrep;
     jnrep     = grid.jnrep;
     nxIn      = grid.nxIn;
@@ -1840,6 +1914,10 @@ avtBOUTFileFormat::GetMesh(int ts, int domain, const char *var)
 //   I modified the creation of the diverter to include all of the lower
 //   diverter as well as create the upper diverter with a two X point grid.
 //   
+//   Eric Brugger, Mon Sep 22 16:45:10 PDT 2014
+//   I modified the routine to handle ghost zones in the y direction for
+//   3d variables. I also added more error checks on the data.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -1942,24 +2020,55 @@ avtBOUTFileFormat::GetVar(int ts, int domain, const char *var)
         int vndims = 0, *vdims = 0;
         if (varFileObject->InqVariable(var2, &t, &vndims, &vdims))
         {
+            if (varDim == 2 && vndims != 2)
+            {
+                debug4 << mName << "Error: The number of dimensions for " << var
+                       << " was " << vndims << " and it should have been 2."
+                       << endl;
+                delete [] vdims;
+                EXCEPTION1(InvalidVariableException, var);
+            }
+            else if (varDim == 3 && vndims != 4)
+            {
+                debug4 << mName << "Error: The number of dimensions for "
+                       << var << " was " << vndims << " and it should have "
+                       << "been 4." << endl;
+                delete [] vdims;
+                EXCEPTION1(InvalidVariableException, var);
+            }
+
             // Figure out the size of the chunk that we want to read.
             size_t *starts = new size_t[4];
             size_t *counts = new size_t[4];
             debug4 << mName << "var=" << var << " dims={";
-            for (int i = 0; i < 4; ++i)
+            for (int i = 0; i < vndims; ++i)
             {
                 starts[i] = 0;
                 counts[i] = vdims[i];
-                if (i > 0)
+                if (i > 0) {
                     debug4 << ", ";
+                }
                 debug4 << vdims[i];
             }
             debug4 << "}" << endl;
+
+            delete [] vdims;
 
             if (variesOverTime)
             {
                 starts[0] = ts;
                 counts[0] = 1;
+
+                if (nxRaw != counts[1] || nyRaw > counts[2] ||
+                    ((counts[2] - nyRaw) % 2) != 0)
+                {
+                    debug4 << mName << "Error: The size of the 2d grid and "
+                           << "variable were inconsitent." << endl;
+                    EXCEPTION1(InvalidVariableException, var);
+                }
+
+                starts[2] = (counts[2] - nyRaw) / 2;
+                counts[2] = nyRaw;
             }
 
             int varId;
@@ -1970,17 +2079,16 @@ avtBOUTFileFormat::GetVar(int ts, int domain, const char *var)
                 int nValues = nxRaw * nyRaw;
                 data = new float[nValues];
                 int status = nc_get_vara_float(varFileObject->GetFileHandle(),
-                                  varId, starts, counts, data);
+                                  varId, starts, counts, data); (void) status;
             }
             else
             {
                 int nValues = nxRaw * nyRaw * nz;
                 data = new float[nValues];
                 int status = nc_get_vara_float(varFileObject->GetFileHandle(),
-                                  varId, starts, counts, data);
+                                  varId, starts, counts, data); (void) status;
             }
 
-            delete [] vdims;
             delete [] starts;
             delete [] counts;
         }

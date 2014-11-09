@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -206,7 +206,8 @@ CellReconstructor::CreateCentroidPoint(TempCell &old, int interpID,
             if (ptId < nPoints)
             {
                 // it's an original
-                newCoord.weight[old.localids[pt]] += weight;
+                int ptm = pt % MAX_NODES_PER_ZONE; // this makes compilers happy and is a no-op
+                newCoord.weight[old.localids[ptm]] += weight;
             }
             else
             {

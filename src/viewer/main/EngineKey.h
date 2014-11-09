@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,6 +44,7 @@
 #define ENGINE_KEY_H
 
 #include <string>
+#include <ostream>
 
 #include <viewer_exports.h>
 
@@ -165,6 +166,15 @@ class VIEWER_API EngineKey
     static void SetLocalHost(const std::string &lh)
     {
         localhost = lh;
+    }
+
+    void Print(std::ostream &os) const
+    {
+        os << "{origHostName=" << origHostName
+           << ", realHostName=" << realHostName
+           << ", simName=" << simName
+           << ", localhost=" << localhost
+           << "}";
     }
 };
 

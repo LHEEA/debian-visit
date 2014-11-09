@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -84,7 +84,7 @@ ${QT_QTOPENGL_INCLUDE_DIR}
 ${VTK_INCLUDE_DIRS}
 )
 
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS} ${QT_LIBRARY_DIR} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR})
+LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${QT_LIBRARY_DIR} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR})
 
 ADD_LIBRARY(avtqtviswindow ${AVTQTVISWINDOW_SOURCES})
 TARGET_LINK_LIBRARIES(avtqtviswindow visitcommon avtviswindow_ser vtkqt ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY})

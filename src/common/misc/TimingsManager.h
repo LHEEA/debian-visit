@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -143,6 +143,7 @@ class MISC_API TimingsManager
 
     void                       Enable(void);
     void                       Disable(void);
+    void                       NoForcedTiming(bool v=true);
     bool                       Enabled() const {return enabled;};
 
     int                        StartTimer(bool force=false);
@@ -164,6 +165,7 @@ class MISC_API TimingsManager
     bool                       openedFile;
     int                        numCurrentTimings;
     bool                       enabled;
+    bool                       noForcedTiming;
     bool                       withholdOutput;
     bool                       neverOutput;
     bool                       outputAllTimings;

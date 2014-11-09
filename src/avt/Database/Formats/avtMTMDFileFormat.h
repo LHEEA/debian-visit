@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -94,6 +94,9 @@ class     avtIOInformation;
 //    Hank Childs, Tue Apr 10 15:12:58 PDT 2012
 //    Add method SetReadAllCyclesAndTimes.
 //
+//    Brad Whitlock, Thu Jun 19 10:50:25 PDT 2014
+//    Pass mesh name to PopulateIOInformation.
+//
 // ****************************************************************************
 
 class DATABASE_API avtMTMDFileFormat : public avtFileFormat
@@ -116,8 +119,9 @@ class DATABASE_API avtMTMDFileFormat : public avtFileFormat
 
     virtual void           ActivateTimestep(int ts)
                                { avtFileFormat::ActivateTimestep(); };
-    virtual void           PopulateIOInformation(int ts, avtIOInformation& ioInfo)
-                               { avtFileFormat::PopulateIOInformation(ioInfo); };
+    virtual bool           PopulateIOInformation(int ts, const std::string &meshname,
+                                                 avtIOInformation& ioInfo) { return false; }
+
     virtual void           SetDatabaseMetaData(avtDatabaseMetaData *md, int ts = 0);
 
     void                   SetTimeSliceOffset(int ts) { timeSliceOffset = ts; };

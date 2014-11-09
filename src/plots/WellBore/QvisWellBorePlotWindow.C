@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1433,7 +1433,7 @@ QvisWellBorePlotWindow::writeWellBoresButtonPressed()
             const std::vector<string> wellNames = atts->GetWellNames();
 
             fprintf(file, "WELLS\n");
-            for (int i = 0; i < wellNames.size(); i++)
+            for (size_t i = 0; i < wellNames.size(); i++)
             {
                 fprintf(file, "&WELL Name='%s' /\n", wellNames[i].c_str());
 
@@ -1509,7 +1509,7 @@ QvisWellBorePlotWindow::newWellButtonPressed()
     while (!okay)
     {
         sprintf(newName, "unnamed%d", newid);
-        int i = 0; 
+        size_t i = 0; 
         while (i < wellNames.size() && wellNames[i] != string(newName))
         {
             i++;
@@ -1617,7 +1617,7 @@ QvisWellBorePlotWindow::wellNameTextChanged(const QString &text)
         while (!okay)
         {
             sprintf(newName, "unnamed%d", newid);
-            int i = 0; 
+            size_t i = 0; 
             while (i < wellNames.size() && wellNames[i] != string(newName))
             {
                 i++;

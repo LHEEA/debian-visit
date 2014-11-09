@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -285,7 +285,7 @@ avtParallelCoordinatesFilter::ModifyContract(avtContract_p in_contract)
         //
         // THIS IS WHERE WE SET UP THE CONTEXT HISTOGRAMS
         //
-        for (int t = 0 ; t < allTimeIndexes.size() ; t++)
+        for (size_t t = 0 ; t < allTimeIndexes.size() ; t++)
         {
             if (!indexesIShouldProcess[t])
                 continue;
@@ -315,9 +315,9 @@ avtParallelCoordinatesFilter::ModifyContract(avtContract_p in_contract)
             if (!success)
                 break; // out of iterating over time
 
-            int numVars = parCoordsAtts.GetExtentMinima().size();
+            size_t numVars = parCoordsAtts.GetExtentMinima().size();
             bool haveSelection = false;
-            for (int i = 0 ; i < numVars ; i++)
+            for (size_t i = 0 ; i < numVars ; i++)
             {
                 if (parCoordsAtts.GetExtentMinima()[i] > -1e+36)
                 {
@@ -365,7 +365,7 @@ avtParallelCoordinatesFilter::ModifyContract(avtContract_p in_contract)
         int anyoneHadFailure = UnifyMaximumValue(iHadFailure);
         if (anyoneHadFailure)
         {
-            for (int t=0; t<allTimeIndexes.size(); t++)
+            for (size_t t=0; t<allTimeIndexes.size(); t++)
             {
                 delete [] histograms[t];
                 delete [] histogramsForSelectedRegion[t];
@@ -647,12 +647,12 @@ avtParallelCoordinatesFilter::PostExecute(void)
         outAtts.SetYUnits("");
     }
 
-    for (int t=0; t<histograms.size(); t++)
+    for (int t=0; t<(int)histograms.size(); t++)
         DrawContext(t);
 
     if (parCoordsAtts.GetDrawFocusAs()!=ParallelCoordinatesAttributes::IndividualLines)
     {
-        for (int t=0; t<histogramsForSelectedRegion.size(); t++)
+        for (int t=0; t<(int)histogramsForSelectedRegion.size(); t++)
             if (histogramsForSelectedRegion[t] != NULL)
                 DrawFocusHistograms(t);
     }
@@ -668,10 +668,9 @@ avtParallelCoordinatesFilter::PostExecute(void)
 //           curves of a ParallelCoordinates plot.
 //
 //  Arguments:
-//      in_ds  :  The input dataset.
-//      domain :  The domain number of the input dataset.
+//      in_dr  :  The input data representation.
 //
-//  Returns: The output dataset (curves of the ParallelCoordinates plot).
+//  Returns:      The output data tree.
 //
 //  Programmer: Mark Blair
 //  Creation:   Mon Mar 27 18:24:00 PST 2006
@@ -736,8 +735,14 @@ avtParallelCoordinatesFilter::PostExecute(void)
 // ****************************************************************************
 
 avtDataTree_p 
-avtParallelCoordinatesFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, string label)
+avtParallelCoordinatesFilter::ExecuteDataTree(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set and domain number.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+    int domain = in_dr->GetDomain();
+
     // NOTE: we will never enter this function for the case where we have
     // gotten a histogram specification from the database.
 
@@ -790,7 +795,6 @@ avtParallelCoordinatesFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, str
     bool arrayIsCellData, dataBadOrMissing;
     string arrayName;
     vtkDataArray *dataArray;
-    vtkIdList *pointIdList;
     float *arrayValues;
     float valueSum;
     
@@ -856,13 +860,9 @@ avtParallelCoordinatesFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, str
     }
     bool drawContext = parCoordsAtts.GetDrawContext();
 
-    if (plotCellData && (pointArrayCount > 0))
-    {
-        pointIdList = vtkIdList::New();
-    }
-
     if (plotCellData)
     {
+        vtkIdList *pointIdList = vtkIdList::New();
         for (tupleNum = 0; tupleNum < cellCount; tupleNum++)
         {
             for (axisNum = 0; axisNum < axisCount; axisNum++)
@@ -896,13 +896,16 @@ avtParallelCoordinatesFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, str
             
             // TODO: DOESN'T SUPPORT MULTIPLE TIME STEPS; hardcoded to 0
             if (drawLines)
+            {
                 if (parCoordsAtts.GetDrawFocusAs()==ParallelCoordinatesAttributes::IndividualLines)
                     AppendDataTupleFocus(inputTuple);
                 else
                     CountDataTupleFocus(0, inputTuple);
+            }
             if (drawContext)
                 CountDataTupleContext(0, inputTuple);
         }
+        pointIdList->Delete();
     }
     else
     {
@@ -919,18 +922,15 @@ avtParallelCoordinatesFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain, str
             
             // TODO: DOESN'T SUPPORT MULTIPLE TIME STEPS; hardcoded to 0
             if (drawLines)
+            {
                 if (parCoordsAtts.GetDrawFocusAs()==ParallelCoordinatesAttributes::IndividualLines)
                     AppendDataTupleFocus(inputTuple);
                 else
                     CountDataTupleFocus(0, inputTuple);
+            }
             if (drawContext)
                 CountDataTupleContext(0, inputTuple);
         }
-    }
-
-    if (plotCellData && (pointArrayCount > 0))
-    {
-        pointIdList->Delete();
     }
 
     if (drawLines && parCoordsAtts.GetDrawFocusAs()==ParallelCoordinatesAttributes::IndividualLines)
@@ -1154,7 +1154,7 @@ avtParallelCoordinatesFilter::ComputeActualDataExtentsOverAllDomains()
                 if (varDataExtents[2*axisNum + 1] > globalMax)
                     globalMax = varDataExtents[2*axisNum + 1];
             }
-            for (int axisNum = 0; axisNum < axisMinima.size(); axisNum++)
+            for (size_t axisNum = 0; axisNum < axisMinima.size(); axisNum++)
             {
                 varDataExtents[axisNum*2 + 0] = globalMin;
                 varDataExtents[axisNum*2 + 1] = globalMax;
@@ -1166,7 +1166,7 @@ avtParallelCoordinatesFilter::ComputeActualDataExtentsOverAllDomains()
         // Set the internal data members we need to have set
         for (int i=0; i<dim; i++)
         {
-            if (bins.size() > i)
+            if (bins.size() > (size_t)i)
                 axisXPositions[i] = (bins[i]+bins[i+1])/2;
             else
                 axisXPositions[i] = i;
@@ -1249,7 +1249,7 @@ avtParallelCoordinatesFilter::ComputeActualDataExtentsOverAllDomains()
     {
         double globalMin =  DBL_MAX;
         double globalMax = -DBL_MAX;
-        for (int axisNum = 0; axisNum < axisMinima.size(); axisNum++)
+        for (size_t axisNum = 0; axisNum < axisMinima.size(); axisNum++)
         {
             double axisMin = axisMinima[axisNum];
             double axisMax = axisMaxima[axisNum];
@@ -1258,14 +1258,14 @@ avtParallelCoordinatesFilter::ComputeActualDataExtentsOverAllDomains()
             if (axisMax > globalMax)
                 globalMax = axisMax;
         }
-        for (int axisNum = 0; axisNum < axisMinima.size(); axisNum++)
+        for (size_t axisNum = 0; axisNum < axisMinima.size(); axisNum++)
         {
             axisMinima[axisNum] = globalMin;
             axisMaxima[axisNum] = globalMax;
         }
     }
 
-    for (int axisNum = 0; axisNum < axisMinima.size(); axisNum++)
+    for (size_t axisNum = 0; axisNum < axisMinima.size(); axisNum++)
     {
         double &axisMinimum = axisMinima[axisNum];
         double &axisMaximum = axisMaxima[axisNum];
@@ -1685,8 +1685,8 @@ avtParallelCoordinatesFilter::DrawHistogram(int ts, bool focus)
             bounds = &(hist[ts][axisNum].GetBounds()[0]);
         else
             bounds = &(hist[ts][axisNum-1].GetBounds()[1]);
-        int nparts = bounds->size() - 1;
-        for (int part = 0 ; part <= nparts ; part++)
+        size_t nparts = bounds->size() - 1;
+        for (size_t part = 0 ; part <= nparts ; part++)
         {
             double val = (*bounds)[part];
             float pt[3];
@@ -2003,9 +2003,9 @@ avtParallelCoordinatesFilter::InitializeFocusHistograms()
 void
 avtParallelCoordinatesFilter::CleanUpAllHistograms()
 {
-    for (int t=0; t<histograms.size(); t++)
+    for (size_t t=0; t<histograms.size(); t++)
         delete [] histograms[t];
-    for (int t=0; t<histogramsForSelectedRegion.size(); t++)
+    for (size_t t=0; t<histogramsForSelectedRegion.size(); t++)
         delete [] histogramsForSelectedRegion[t];
     histograms.clear();
     histogramsForSelectedRegion.clear();
@@ -2128,7 +2128,7 @@ avtParallelCoordinatesFilter::ConvertNamedSelectionToCondition(void)
 {
     string rv = "";
 
-    for (int i = 0 ; i < namedSelections.size() ; i++)
+    for (size_t i = 0 ; i < namedSelections.size() ; i++)
     {
         avtNamedSelectionManager *nsm = avtNamedSelectionManager::GetInstance();
         avtNamedSelection *ns = nsm->GetNamedSelection(namedSelections[i]);
@@ -2206,11 +2206,9 @@ avtParallelCoordinatesFilter::CreateDBAcceleratedNamedSelection(
         return NULL;
     }
 
-    int  j;
-
     vector<avtDataSelection *> drs;
     stringVector curAxisVarNames = parCoordsAtts.GetScalarAxisNames();
-    for (j = 0 ; j < axisCount ; j++)
+    for (int j = 0 ; j < axisCount ; j++)
     {
         drs.push_back(new avtDataRangeSelection(
                      curAxisVarNames[j],
@@ -2233,7 +2231,7 @@ avtParallelCoordinatesFilter::CreateDBAcceleratedNamedSelection(
     // own this reference.
     // delete ids;
 
-    for (j = 0 ; j < drs.size() ; j++)
+    for (size_t j = 0 ; j < drs.size() ; j++)
         delete drs[j];
 
     return rv;
@@ -2263,8 +2261,6 @@ avtNamedSelection *
 avtParallelCoordinatesFilter::CreateNamedSelectionThroughTraversal(
     avtContract_p c, const string &selName)
 {
-    int  i;
-
     // Get the zone number labels loaded up.
     GetInput()->Update(c);
 
@@ -2275,7 +2271,7 @@ avtParallelCoordinatesFilter::CreateNamedSelectionThroughTraversal(
     int nleaves = 0;
     vtkDataSet **leaves = tree->GetAllLeaves(nleaves);
     stringVector curAxisVarNames = parCoordsAtts.GetScalarAxisNames();
-    for (i = 0 ; i < nleaves ; i++)
+    for (int i = 0 ; i < nleaves ; i++)
     {
         int axisNum;
         int tupleCount, componentCount;
@@ -2352,8 +2348,8 @@ avtParallelCoordinatesFilter::CreateNamedSelectionThroughTraversal(
         }
 
         int ncells = leaves[i]->GetNumberOfCells();
-        int curSize = doms.size();
-        int numMatching = 0;
+        //int curSize = (int)doms.size();
+        //int numMatching = 0;
         for (int j = 0 ; j < ncells ; j++)
         {
             int axisNum;
@@ -2408,12 +2404,12 @@ avtParallelCoordinatesFilter::CreateNamedSelectionThroughTraversal(
     // of the named selections will be small.
     int *numPerProcIn = new int[PAR_Size()];
     int *numPerProc   = new int[PAR_Size()];
-    for (i = 0 ; i < PAR_Size() ; i++)
+    for (int i = 0 ; i < PAR_Size() ; i++)
         numPerProcIn[i] = 0;
     numPerProcIn[PAR_Rank()] = (int)doms.size();
     SumIntArrayAcrossAllProcessors(numPerProcIn, numPerProc, PAR_Size());
     int numTotal = 0;
-    for (i = 0 ; i < PAR_Size() ; i++)
+    for (int i = 0 ; i < PAR_Size() ; i++)
         numTotal += numPerProc[i];
     if (numTotal > 1000000)
     {
@@ -2423,18 +2419,18 @@ avtParallelCoordinatesFilter::CreateNamedSelectionThroughTraversal(
                    "named selection.  Disallowing ... no selection created");
     }
     int myStart = 0;
-    for (i = 0 ; i < PAR_Rank()-1 ; i++)
+    for (int i = 0 ; i < PAR_Rank()-1 ; i++)
         myStart += numPerProc[i];
 
     int *selForDomsIn = new int[numTotal];
     int *selForDoms   = new int[numTotal];
-    for (i = 0 ; i < doms.size() ; i++)
+    for (size_t i = 0 ; i < doms.size() ; i++)
         selForDomsIn[myStart+i] = doms[i];
     SumIntArrayAcrossAllProcessors(selForDomsIn, selForDoms, numTotal);
 
     int *selForZonesIn = new int[numTotal];
     int *selForZones   = new int[numTotal];
-    for (i = 0 ; i < zones.size() ; i++)
+    for (size_t i = 0 ; i < zones.size() ; i++)
         selForZonesIn[myStart+i] = zones[i];
     SumIntArrayAcrossAllProcessors(selForZonesIn, selForZones, numTotal);
 
@@ -2484,7 +2480,7 @@ UpdateLimitsWithAllHSTimeSteps(int axis,
                               const vector<avtHistogramSpecification*> &h,
                               double &varmin, double &varmax)
 {
-    for (int ts = 0; ts < h.size(); ts++)
+    for (size_t ts = 0; ts < h.size(); ts++)
     {
         if (h[ts] == NULL)
             continue;
@@ -2498,7 +2494,7 @@ UpdateLimitsWithAllHSTimeSteps(int axis,
         if ((*bounds)[0] < varmin)
             varmin = (*bounds)[0];
 
-        int nparts = bounds->size() - 1;
+        size_t nparts = bounds->size() - 1;
         if ((*bounds)[nparts] > varmax)
             varmax = (*bounds)[nparts];
     }
@@ -2527,14 +2523,14 @@ void
 CheckHistograms(int axisCount,
                 const vector<avtHistogramSpecification*> &h)
 {
-    for (int ts = 0; ts < h.size(); ts++)
+    for (size_t ts = 0; ts < h.size(); ts++)
     {
         if (!h[ts])
             continue;
 
         for (int axis = 0; axis < axisCount-1; axis++)
         {
-            if (h[ts][axis].GetNumberOfBins()[0]+1 !=
+            if ((size_t)h[ts][axis].GetNumberOfBins()[0]+1 !=
                 h[ts][axis].GetBounds()[0].size())
             {
                 cerr << "ERROR: histograms[time="<<ts<<"][axis="<<axis<<"] "
@@ -2544,7 +2540,7 @@ CheckHistograms(int axisCount,
                      << " and number of bins of "
                      << h[ts][axis].GetNumberOfBins()[0]<<endl;
             }
-            if (h[ts][axis].GetNumberOfBins()[1]+1 !=
+            if ((size_t)h[ts][axis].GetNumberOfBins()[1]+1 !=
                 h[ts][axis].GetBounds()[1].size())
             {
                 cerr << "ERROR: histograms[time="<<ts<<"][axis="<<axis<<"]  "

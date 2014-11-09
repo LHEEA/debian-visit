@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -73,6 +73,7 @@ ENDIF(VISIT_STATIC)
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
 ${VISIT_COMMON_INCLUDES}
+${VTK_INCLUDE_DIRS}
 ${VISIT_SOURCE_DIR}/avt/DBAtts/MetaData
 ${VISIT_SOURCE_DIR}/avt/DBAtts/SIL
 ${VISIT_SOURCE_DIR}/avt/DataBinning
@@ -111,6 +112,7 @@ ${VISIT_SOURCE_DIR}/engine/main
 ${VISIT_SOURCE_DIR}/engine/proxy
 ${VISIT_SOURCE_DIR}/engine/rpc
 ${VISIT_SOURCE_DIR}/sim/V2/lib
+${VISIT_SOURCE_DIR}/visit_vtk/lightweight/
 )
 
 LINK_DIRECTORIES(
@@ -122,9 +124,8 @@ ${ICET_LIBRARY_DIR}
 )
 
 ADD_LIBRARY(simV2runtime_ser ${LIBSIM_RUNTIME_SOURCES} ${LIBSIM_STATIC_SOURCES})
-TARGET_LINK_LIBRARIES(simV2runtime_ser
-    engine_ser
-)
+TARGET_LINK_LIBRARIES(simV2runtime_ser engine_ser)
+
 IF(NOT APPLE)
     SET_TARGET_PROPERTIES(simV2runtime_ser PROPERTIES INSTALL_RPATH "$ORIGIN")
 ENDIF(NOT APPLE)
@@ -133,9 +134,7 @@ VISIT_INSTALL_TARGETS(simV2runtime_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(simV2runtime_par ${LIBSIM_RUNTIME_SOURCES} ${LIBSIM_STATIC_SOURCES})
-    TARGET_LINK_LIBRARIES(simV2runtime_par
-        engine_par
-    )
+    TARGET_LINK_LIBRARIES(simV2runtime_par engine_par)
     IF(NOT APPLE)
         SET_TARGET_PROPERTIES(simV2runtime_par PROPERTIES INSTALL_RPATH "$ORIGIN")
     ENDIF(NOT APPLE)

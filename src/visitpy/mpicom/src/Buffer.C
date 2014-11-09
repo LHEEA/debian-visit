@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -217,7 +217,7 @@ Buffer::Init(int buffer_size)
         Reset();
 
     // Any buffer size smaller than the header is invalid.
-    if(buffer_size >= (2 * sizeof(int) ))
+    if((size_t)buffer_size >= (2 * sizeof(int) ))
     {
         this->size = buffer_size;
         buffer = (void*) new char[this->size];
@@ -420,7 +420,7 @@ Buffer::MPIType()
         return MPI_DOUBLE;
     else if(type_id  == STRING || type_id == OBJECT)
         return MPI_CHAR;
-    return NULL;
+    return MPI_CHAR; ///TODO: check on fix on return warning returned NULL
 }
 
 

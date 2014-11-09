@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,7 +40,7 @@
 #define QVIS_APPLICATION_H
 #include <QApplication>
 
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
 class QEventLoop;
 #endif
 
@@ -79,9 +79,11 @@ signals:
 private slots:
     void exitTheLoop();
 
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
 public:
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     virtual bool macEventFilter(EventHandlerCallRef, EventRef);
+#endif
     bool         needToMakeActive;
     QEventLoop  *eventLoop;
 #endif

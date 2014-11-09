@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -611,7 +611,7 @@ ViewerConfigManager::ImportEntireState(const std::string &filename,
                     }
                     else
                     {
-                        int nSourceIds = sources.size();
+                        int nSourceIds = (int)sources.size();
                         DataNode *vsNode = viewerNode->GetNode("ViewerSubject");
                         DataNode *sourceMapNode = 0;
                         if(vsNode != 0 && 
@@ -629,7 +629,7 @@ ViewerConfigManager::ImportEntireState(const std::string &filename,
                         {
                             char tmp[100];
                             SNPRINTF(tmp, 100, "SOURCE%02d", i);
-                            if(i < sources.size())
+                            if(i < (int)sources.size())
                             {
                                 source = sources[i];
                             }

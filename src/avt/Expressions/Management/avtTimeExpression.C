@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -112,9 +112,9 @@ avtTimeExpression::~avtTimeExpression()
  
 void
 avtTimeExpression::DoOperation(vtkDataArray *, vtkDataArray *out,
-                               int ncomponents, int ntuples)
+                               int /*ncomponents*/, int ntuples)
 {
-    double val;
+    double val = 0;
     switch (mode)
     {
       case MODE_TIME:

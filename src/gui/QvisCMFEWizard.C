@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -303,7 +303,7 @@ QvisCMFEWizard::Exec()
 int
 QvisCMFEWizard::nextId() const
 {
-    int id;
+    int id = -1;
 
     switch(currentId())
     {
@@ -396,9 +396,9 @@ QvisCMFEWizard::validateCurrentPage()
         if( decision_exprtype != EXPRESSION_SIMPLE)
         {
           // Check for multiple donors.
-          if( (decision_donorType == DONOR_SINGLE_DATABASE ||
+          if( ((decision_donorType == DONOR_SINGLE_DATABASE ||
                decision_donorType == DONOR_MULTIPLE_DATABASES) &&
-              donorList->count() > 1 || // Multiple donors
+              donorList->count() > 1) || // Multiple donors
               // One donor in the list and one ready to be added
               (donorList->count() == 1 &&
                decision_donorDatabase != "" && decision_variable != "" ) )
@@ -549,9 +549,9 @@ QvisCMFEWizard::initializePage(int pageId)
         bool singleDonor;
 
         // Multiple donors
-        if( (decision_donorType == DONOR_SINGLE_DATABASE ||
+        if( ((decision_donorType == DONOR_SINGLE_DATABASE ||
              decision_donorType == DONOR_MULTIPLE_DATABASES) &&
-            donorList->count() > 1 || // Multiple donors
+            donorList->count() > 1) || // Multiple donors
             // One donor in the list and one ready to be added
             (donorList->count() == 1 &&
              decision_donorDatabase != "" && decision_variable != "" ) )
@@ -740,7 +740,7 @@ QvisCMFEWizard::CreateDonorAndTargetPage(void)
     targetDatabase = new QComboBox(main_widget);
 
     targetDatabaseOpen = new QPushButton("...", this);
-#ifndef Q_WS_MACX
+#if !(defined(Q_WS_MACX) || defined(Q_OS_MAC))
     targetDatabaseOpen->setMaximumWidth(fontMetrics().boundingRect("...").width() + 6);
 #endif
 
@@ -779,7 +779,7 @@ QvisCMFEWizard::CreateDonorAndTargetPage(void)
     donorDatabaseLabel = new QLabel(tr("Donor Database:"), main_widget);
     donorDatabase = new QComboBox(main_widget);
     donorDatabaseOpen = new QPushButton("...", this);
-#ifndef Q_WS_MACX
+#if !(defined(Q_WS_MACX) || defined(Q_OS_MAC))
     donorDatabaseOpen->setMaximumWidth(fontMetrics().boundingRect("...").width() + 6);
 #endif
 
@@ -1233,7 +1233,7 @@ QvisCMFEWizard::UpdateSourceList()
     int target_index =-1;
     int donor_index  =-1;
     NameSimplifier simplifier;
-    for(int i = 0; i < sources.size(); ++i)
+    for(size_t i = 0; i < sources.size(); ++i)
     {
         if(sources[i] == tsrc)
             target_index = i;
@@ -1251,7 +1251,7 @@ QvisCMFEWizard::UpdateSourceList()
 
     targetDatabase->clear();
     donorDatabase->clear();
-    for(int i = 0; i < shortSources.size(); ++i)
+    for(size_t i = 0; i < shortSources.size(); ++i)
     {
         targetDatabase->addItem(shortSources[i].c_str());
         donorDatabase->addItem(shortSources[i].c_str());
@@ -1485,7 +1485,7 @@ QvisCMFEWizard::GetMeshForTargetDatabase(void)
     std::string filename = qfilename.FullName();
 
     if(filename == "")
-        filename == windowInfo->GetActiveSource();
+        filename = windowInfo->GetActiveSource();
 
     if (filename == "notset")
         return "";
@@ -1830,7 +1830,7 @@ QvisCMFEWizard::targetDatabaseChanged(int val)
         return;
     }
     const stringVector &sources = globalAtts->GetSources();
-    if(val >= 0 && val < sources.size())
+    if(val >= 0 && (size_t)val < sources.size())
     {
         //
         // Make the file that we reopened be the new open file. Since we're
@@ -1875,7 +1875,7 @@ QvisCMFEWizard::donorDatabaseChanged(int val)
         return;
     }
     const stringVector &sources = globalAtts->GetSources();
-    if(val >= 0 && val < sources.size())
+    if(val >= 0 && (size_t)val < sources.size())
     {
         //
         // Make the file that we reopened be the new open file. Since we're
@@ -2159,7 +2159,6 @@ QvisCMFEWizard::nonOverlapTxtChanged(const QString &s)
 void 
 QvisCMFEWizard::nonOverlapVarChanged(const QString &s) 
 {
-    bool okay = false;
     decision_fillvar = s.toStdString();
 }
 
@@ -2216,9 +2215,9 @@ QvisCMFEWizard::exprTypeChanged(int v)
             button(QWizard::FinishButton)->setEnabled(false);
 
         // Single donor or multiple donors
-        if( (decision_donorType == DONOR_SINGLE_DATABASE ||
+        if( ((decision_donorType == DONOR_SINGLE_DATABASE ||
              decision_donorType == DONOR_MULTIPLE_DATABASES) &&
-            donorList->count() > 1 || // Multiple donors
+            donorList->count() > 1) || // Multiple donors
             // One donor in the list and one ready to be added
             (donorList->count() == 1 &&
              decision_donorDatabase != "" && decision_variable != "" ) )
@@ -2417,7 +2416,7 @@ QvisCMFEWizard::addDonor()
   // Do not add a duplicate donor.
   for (int i = 0; i < donorList->count(); i++)
   {
-    if( item = donorList->item(i) )
+    if( (item = donorList->item(i)) )
     {
       if( donor == std::string( item->text().toLatin1().data() ) )
       {

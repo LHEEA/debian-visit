@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -236,7 +236,6 @@ IntegralCurveViewerPluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
 {
     IntegralCurveAttributes *atts_in = (IntegralCurveAttributes *)atts;
 
-    const char numTypes = 11;
     const char *typeString[11] =
       { "None", "Seed Point ID", "Speed", "Vorticity", "Arc Length",
          "Absolute Time", "Relative Time",

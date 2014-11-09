@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -214,9 +214,10 @@ StatisticalTrendsViewerPluginInfo::UpdateOperatorAtts(AttributeSubject *atts,
                                                       const ViewerPlot *plot)
 {
     StatisticalTrendsAttributes *atts_in = (StatisticalTrendsAttributes *)atts;
-    const char numTypes = 5;
-    const char *typeString[5] = { "Sum", "Mean", "Variance",
-                                  "Slope", "Residuals" };
+
+    const char numTypes = 6;
+    const char *typeString[6] = { "Sum", "Mean", "Variance",
+                                  "Std. Dev.", "Slope", "Residuals" };
 
     std::string var = plot->GetVariableName();
 
@@ -269,9 +270,9 @@ StatisticalTrendsViewerPluginInfo::GetOperatorVarDescription(AttributeSubject *a
                                                              const ViewerPlot *plot)
 {
     StatisticalTrendsAttributes *atts_in = (StatisticalTrendsAttributes *)atts;
-    const char numTypes = 5;
-    const char *typeString[5] = { "Sum", "Mean", "Variance",
-                                  "Slope", "Residuals" };
+    const char numTypes = 6;
+    const char *typeString[6] = { "Sum", "Mean", "Variance",
+                                  "Std. Dev.", "Slope", "Residuals" };
 
     std::string var = plot->GetVariableName();
 

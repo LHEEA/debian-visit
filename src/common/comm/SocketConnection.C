@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -532,7 +532,7 @@ SocketConnection::WriteToBuffer(MapNode *mapnode,
 
     stringVector names;
     mapnode->GetEntryNames(names);
-    for(int i = 0; i < names.size(); ++i)
+    for(size_t i = 0; i < names.size(); ++i)
     {
         //std::cout << "** " << names[i] << std::endl;
         std::string& name = names[i];
@@ -874,7 +874,7 @@ SocketConnection::WriteToBuffer(const JSONNode &node,
         const JSONNode::JSONArray& array = node.GetArray();
         const JSONNode::JSONArray& marray = metadata.GetArray();
 
-        for(int i = 0; i < array.size(); ++i)
+        for(size_t i = 0; i < array.size(); ++i)
             WriteToBuffer(array[i],marray[i],
                           write,i,totalLen,totalSize);
     }

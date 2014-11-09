@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -340,11 +340,21 @@ avtClipFilter::ClipAgainstPlanes(vtkDataSet *in, bool nodesCritical,
 //    avtStreamer to an avtSIMODataTreeIterator.  Added pipelined clips to get
 //    accurate cell clips when multiple planes are used.
 //
+//    Eric Brugger, Wed Aug 20 16:09:10 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 avtDataTree_p
-avtClipFilter::ExecuteDataTree(vtkDataSet *inDS, int domain, std::string label)
+avtClipFilter::ExecuteDataTree(avtDataRepresentation *inDR)
 {
+    //
+    // Get the VTK data set, the domain number and the label.
+    //
+    vtkDataSet *inDS = inDR->GetDataVTK();
+    int domain = inDR->GetDomain();
+    std::string label = inDR->GetLabel();
+
     if (inDS == NULL || inDS->GetNumberOfPoints() == 0 || inDS->GetNumberOfCells() == 0)
         return NULL;
 
@@ -463,7 +473,7 @@ avtClipFilter::ComputeAccurateClip(vtkDataSet *inDS, vtkDataSet **outDS,
             inversePlane->SetNormal(n);
             inversePlanes.push_back(inversePlane);
         }
-        int planeCount = planes.size();
+        int planeCount = (int)planes.size();
 
         // Check if we have any work to do.
         if (planeCount == 0)
@@ -580,23 +590,24 @@ avtClipFilter::ComputeAccurateClip(vtkDataSet *inDS, vtkDataSet **outDS,
 //    we now have a way to show dangling bonds (periodic cases is
 //    another example) correctly, so we want to clip normally now.
 //
+//    Brad Whitlock, Mon Jun  2 12:51:24 PDT 2014
+//    Prevent leak of fast clipper (and consequently its input dataset) in
+//    the event that the clip generated no data.    
+//
 // ****************************************************************************
 
 int
 avtClipFilter::ComputeFastClip(vtkDataSet *inDS, vtkDataSet **outDS,
                                ClipAttributes &atts, int domain, std::string label)
 {
-    vtkVisItClipper *fastClipper = vtkVisItClipper::New();
     vtkImplicitBoolean *ifuncs = vtkImplicitBoolean::New();
     vtkDataSet *output = NULL;
  
-    int nDataSets = 0;
     bool inverse = false; 
     bool funcSet = SetUpClipFunctions(ifuncs, inverse);
     if (!funcSet)
     {
         // we have no functions to work with.  Just return the input dataset.
-        fastClipper->Delete();
         ifuncs->Delete();
 
         outDS[0] = inDS;
@@ -626,6 +637,7 @@ avtClipFilter::ComputeFastClip(vtkDataSet *inDS, vtkDataSet **outDS,
     }
     if (doFast)
     {
+        vtkVisItClipper *fastClipper = vtkVisItClipper::New();
         vtkUnstructuredGrid *ug = vtkUnstructuredGrid::New();
         fastClipper->SetInputData(inDS);
         fastClipper->SetOutput(ug);
@@ -633,25 +645,27 @@ avtClipFilter::ComputeFastClip(vtkDataSet *inDS, vtkDataSet **outDS,
         fastClipper->SetInsideOut(inverse);
         fastClipper->SetRemoveWholeCells(nodesAreCritical);
         fastClipper->Update();
+        fastClipper->Delete();
 
         output = ug;
     }
 
     ifuncs->Delete();
 
+    int nds = 1;
     if (output != NULL)
     {
         if (output->GetNumberOfCells() == 0)
         {
             output->Delete();
-            return 0;
+            nds = 0;
         }
     }
-
-    fastClipper->Delete();
+    else
+        nds = 0;
 
     outDS[0] = output;
-    return 1;
+    return nds;
 }
 
 
@@ -760,6 +774,14 @@ avtClipFilter::SetUpClipFunctions(vtkImplicitBoolean *funcs, bool &inv)
 //    Kathleen Bonnell, Fri Apr 28 10:57:21 PDT 2006 
 //    Set OrigElementsRequiredForPick.
 //
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
+//    Kathleen Biagas, Tue Aug 26 12:33:08 PDT 2014
+//    Remove setting of OrigElementsRequiredForPick, seems to be no longer
+//    necessary.
+//
 // ****************************************************************************
 
 void
@@ -767,7 +789,7 @@ avtClipFilter::UpdateDataObjectInfo(void)
 {
     GetOutput()->GetInfo().GetValidity().InvalidateZones();
     GetOutput()->GetInfo().GetValidity().ZonesSplit();
-    GetOutput()->GetInfo().GetAttributes().SetOrigElementsRequiredForPick(true);
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("Clip");
 }
 
 
@@ -780,23 +802,15 @@ avtClipFilter::UpdateDataObjectInfo(void)
 //  Creation:   Apr 28, 2006 
 //
 //  Modifications:
+//    Kathleen Biagas, Tue Aug 26 12:33:08 PDT 2014
+//    Remove turning on of node/zone numbers, seems to be no longer
+//    necessary.
 //
 // ****************************************************************************
 
 avtContract_p
 avtClipFilter::ModifyContract(avtContract_p spec)
 {
- 
-    if (spec->GetDataRequest()->MayRequireZones() ||
-        spec->GetDataRequest()->MayRequireNodes())
-    {
-        avtContract_p ns = new avtContract(spec);
-        // Turn on both Nodes and Zones, to prevent another re-execution if 
-        // user switches between zone and node pick.
-        ns->GetDataRequest()->TurnZoneNumbersOn();
-        ns->GetDataRequest()->TurnNodeNumbersOn();
-        return ns;
-    }
     return spec;
 }
 
@@ -839,8 +853,6 @@ avtClipFilter::Clip1DRGrid(vtkImplicitBoolean *ifuncs, bool inv,
     vtkDataArray *outXC = outGrid->GetXCoordinates();
     vtkDataArray *outVal = inVal->NewInstance();
 
-    int nx = inXC->GetNumberOfTuples();
-
     double lastX = inXC->GetTuple1(0);
     double lastVal = inVal->GetTuple1(0);
     double lastDist = ifuncs->EvaluateFunction(lastX, 0., 0.);
@@ -864,7 +876,7 @@ avtClipFilter::Clip1DRGrid(vtkImplicitBoolean *ifuncs, bool inv,
         if ((dist <= 0 && inv) || (lastDist > 0 && !inv))
             whichCase += 2;
 
-        double x1, x2, d1 = 0., d2 = 1., v1, v2, newX = 0., newVal = 0.;
+        double x1 = 0, x2 = 0, d1 = 0., d2 = 1., v1 = 0, v2 = 0, newX = 0., newVal = 0.;
         switch(whichCase)
         {
             case 1 : 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -258,7 +258,7 @@ int Namescheme::SaveInternalString(Namescheme *ns, char const * const sval)
 /* very simple circular cache for strings returned to caller from GetName */
 char * Namescheme::SaveReturnedString(char const * const retstr)
 {
-    static unsigned int n = 0;
+    static int n = 0;
     int modn = n++ % Namescheme::max_retstrs;
     if (retstr == 0)
     {
@@ -301,7 +301,9 @@ int Namescheme::EvalExprTree(Namescheme *ns, Namescheme::DBexprnode *tree, int n
     }
     else if (tree->left != 0 && tree->right != 0)
     {
-        int vc = 0, vl, vr;
+        int vc = 0;
+        int vl = 0;
+        int vr = 0;
         if (tree->type == '?')
         {
             vc = EvalExprTree(ns, tree->left, n);

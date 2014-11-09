@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -624,6 +624,9 @@ ADIOSFileObject::ReadComplexData(const std::string &nm, int ts,
 //
 // Modifications:
 //
+//   Dave Pugmire, Wed Aug 27 09:43:03 EDT 2014
+//   Added missing return argument.
+//
 //****************************************************************************
 
 vtkDataArray *
@@ -678,6 +681,8 @@ ADIOSFileObject::AllocateTypedArray(ADIOS_VARINFO *avi)
         EXCEPTION1(InvalidVariableException, str);
         break;
     }
+    
+    return array;
 }
 
 //****************************************************************************
@@ -704,7 +709,6 @@ ADIOSFileObject::AllocateScalarArray(ADIOS_VARINFO *avi, ADIOS_SELECTION *sel)
         for (int i = 0; i < sel->u.bb.ndim; i++)
             nt *= sel->u.bb.count[i];
     }
-    
     if (avi->type == adios_complex || avi->type == adios_double_complex)
         array->SetNumberOfComponents(2);
     else
@@ -789,6 +793,9 @@ ADIOSFileObject::GetMeshInfo(ADIOS_VARINFO *avi)
 //
 // Modifications:
 //
+//   Dave Pugmire, Tue Jun 17 13:24:30 EDT 2014
+//   Bug fix to ADIOSFile interface.
+//
 //****************************************************************************
 
 vtkPoints *
@@ -796,7 +803,7 @@ ADIOSFileObject::ReadCoordinates(const std::string &nm, int ts, int dim, int nPt
 {
     Open();
     vtkDataArray *coords = NULL;
-    ReadScalarData(nm, ts, -1, &coords);
+    ReadScalarData(nm, ts, &coords);
 
     vtkPoints *pts = vtkPoints::New();
     pts->SetNumberOfPoints(nPts);

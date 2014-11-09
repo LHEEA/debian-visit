@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -165,6 +165,9 @@ avtCentroidQuery::PreExecute(void)
 //    Cyrus Harrison, Tue Sep 18 13:45:35 PDT 2007
 //    Added support for user settable floating point format string
 //
+//    Kathleen Biagas, Mon Feb 24 15:53:29 PST 2014
+//    Add Xml results.
+//
 // ****************************************************************************
 
 void
@@ -196,6 +199,9 @@ avtCentroidQuery::PostExecute(void)
     for (int i = 0 ; i < 3 ; i++)
         C_vec[i] = C_tmp[i];
     SetResultValues(C_vec);
+    MapNode result_node;
+    result_node["centroid"] = C_vec;
+    SetXmlResult(result_node.ToXML());
 }
 
 // ****************************************************************************

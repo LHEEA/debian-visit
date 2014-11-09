@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -160,7 +160,7 @@ avtNMatsExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
         bool shouldSkip = false;
         if (entry_size == 2)
         {
-            if (ptr[entry_size*i + 0] != currentDomainsIndex)
+            if (ptr[entry_size*i + 0] != (unsigned int)currentDomainsIndex)
             {
                 nmats = 1;
                 shouldSkip = true;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -147,7 +147,7 @@ avtActualZoneCoordsQuery::Execute(vtkDataSet *ds, const int dom)
         unsigned int *cellptr = origCells->GetPointer(0);
         for (int i = comp; i < nels; i+=nc)
         {
-            if (cellptr[i] == pickedZone)
+            if (cellptr[i] == (unsigned int)pickedZone)
             {
                 actualId = i/nc;
                 break;

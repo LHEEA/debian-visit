@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,22 +87,10 @@ class QvisAMRStitchCellWindow : public QvisOperatorWindow
     virtual void GetCurrentValues(int which_widget);
   private slots:
     void CreateCellsOfTypeChanged(int val);
-    void AddCaseNoChanged(bool val);
-    void OnlyProcessListedDomainsChanged(bool val);
-    void DomainsProcessText();
-    void OnlyProcessLevelChanged(bool val);
-    void LevelProcessText();
   private:
     QWidget      *CreateCellsOfType;
     QButtonGroup *CreateCellsOfTypeButtonGroup;
-    QCheckBox *AddCaseNo;
-    QCheckBox *OnlyProcessListedDomains;
-    QLineEdit *Domains;
-    QCheckBox *OnlyProcessLevel;
-    QLineEdit *Level;
     QLabel *CreateCellsOfTypeLabel;
-    QLabel *DomainsLabel;
-    QLabel *LevelLabel;
 
     AMRStitchCellAttributes *atts;
 };

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -61,8 +61,6 @@
 #include <blankwindow.xpm>
 #include <spinon.xpm>
 #include <spinoff.xpm>
-#include <navigatebboxon.xpm>
-#include <navigatebboxoff.xpm>
 #include <layout1x1.xpm>
 #include <layout1x2.xpm>
 #include <layout2x2.xpm>

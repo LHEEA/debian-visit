@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-  <Attribute name="avtDatabaseMetaData" purpose="Contains database metadata attributes" persistent="false" keyframe="false" exportAPI="DBATTS_API" exportInclude="dbatts_exports.h" codefile="avtDatabaseMetaData.code">
+  <Attribute name="avtDatabaseMetaData" purpose="Contains database metadata attributes" persistent="false" keyframe="true" exportAPI="DBATTS_API" exportInclude="dbatts_exports.h" codefile="avtDatabaseMetaData.code">
     <Field name="hasTemporalExtents" label="Has temporal extents" type="bool">
       false
     </Field>
@@ -22,6 +22,9 @@
       true
     </Field>
     <Field name="formatCanDoDomainDecomposition" label="Format can decompose data" type="bool">
+      false
+    </Field>
+    <Field name="formatCanDoMultires" label="Format can provide multiple resolutions of the data" type="bool">
       false
     </Field>
     <Field name="useCatchAllMesh" label="Use catch-all mesh" type="bool">
@@ -86,6 +89,8 @@
     <Function name="SetTemporalExtents" user="true" member="true">
     </Function>
     <Function name="SetFormatCanDoDomainDecomposition" user="false" member="true">
+    </Function>
+    <Function name="SetFormatCanDoMultires" user="false" member="true">
     </Function>
     <Function name="SetCycle" user="true" member="true">
     </Function>
@@ -184,6 +189,8 @@
     <Function name="SetContainsGlobalNodeIds" user="true" member="true">
     </Function>
     <Function name="SetContainsGlobalZoneIds" user="true" member="true">
+    </Function>
+    <Function name="SetZonesWereSplit" user="true" member="true">
     </Function>
     <Function name="AddGroupInformation" user="true" member="true">
     </Function>

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -35,6 +35,9 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Biagas, Tues Oct 1 09:33:47 MST 2013
+#   Removed VISIT_MSVC_VERSION.
+#
 #   Kathleen Biagas, Thu Jan 23 15:21:59 MST 2014
 #   Allow for newer versions (no 'lib' in name).
 #
@@ -48,10 +51,10 @@
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-  if (JPEG_LIBNAME_PREFIX_LIB) 
-      SET_UP_THIRD_PARTY(JPEG lib/${VISIT_MSVC_VERSION} include libjpeg)
+  if (JPEG_LIBNAME_PREFIX_LIB)
+      SET_UP_THIRD_PARTY(JPEG lib include libjpeg)
   else() 
-      SET_UP_THIRD_PARTY(JPEG lib/${VISIT_MSVC_VERSION} include jpeg)
+      SET_UP_THIRD_PARTY(JPEG lib include jpeg)
   endif()
 ENDIF (WIN32)
 

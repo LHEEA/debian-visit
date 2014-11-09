@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -203,7 +203,7 @@ avtLabelsMapper::CustomizeMappers(void)
 
             vtkUserDefinedMapperBridge2 *M =
                (vtkUserDefinedMapperBridge2 *)mappers[i];
-            if(i < labelNames.size())
+            if((size_t)i < labelNames.size())
                 M->SetLabel(labelNames[i]);
             M->SetRendererAction(RENDERER_ACTION_NOTHING);
         }

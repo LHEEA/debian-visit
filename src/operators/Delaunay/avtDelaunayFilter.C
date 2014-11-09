@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -137,20 +137,27 @@ avtDelaunayFilter::Equivalent(const AttributeGroup *a)
 //      Sends the specified input and output through the Delaunay filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      inDR       The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Jeremy Meredith
 //  Creation:   February 25, 2009
 //
+//  Modifications:
+//    Eric Brugger, Wed Jul 23 12:00:27 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtDelaunayFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
+avtDataRepresentation *
+avtDelaunayFilter::ExecuteData(avtDataRepresentation *inDR)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *inDS = inDR->GetDataVTK();
+
     vtkDelaunay2D     *d2   = NULL;
     vtkDelaunay3D     *d3   = NULL;
 
@@ -189,14 +196,15 @@ avtDelaunayFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
                    "dimension data");
     }
 
-    ManageMemory(outDS);
+    avtDataRepresentation *outDR = new avtDataRepresentation(outDS,
+        inDR->GetDomain(), inDR->GetLabel());
 
     if (d2)
         d2->Delete();
     if (d3)
         d3->Delete();
 
-    return outDS;
+    return outDR;
 }
 
 // ****************************************************************************
@@ -210,6 +218,11 @@ avtDelaunayFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
 //
 //  Programmer:  Jeremy Meredith
 //  Creation:    February 23, 2009
+//
+//  Modifications:
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
 //
 // ****************************************************************************
 void
@@ -230,4 +243,5 @@ avtDelaunayFilter::UpdateDataObjectInfo(void)
     }
 
     GetOutput()->GetInfo().GetAttributes().SetTopologicalDimension(dimension);
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("Delaunay");
 }

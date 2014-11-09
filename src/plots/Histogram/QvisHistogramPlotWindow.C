@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -132,15 +132,14 @@ QvisHistogramPlotWindow::~QvisHistogramPlotWindow()
 //    Dave Pugmire, Wed Oct 29 16:00:48 EDT 2008
 //    Swap the min/max in the gui.
 //
+//    Kevin Bensema, Mon Nov 11, 12:54 2013 PST
+//    Normalize/ComputeAsCDF checkboxes added.
+//
 // ****************************************************************************
 
 void
 QvisHistogramPlotWindow::CreateWindowContents()
 {
-    // Figure out the max width that we want to allow for some simple
-    // line edit widgets.
-    int maxWidth = fontMetrics().width("1.0000000000");
-    
     QGridLayout *mainLayout = new QGridLayout();
     topLayout->addLayout(mainLayout);
 
@@ -177,7 +176,6 @@ QvisHistogramPlotWindow::CreateWindowContents()
     QGridLayout *hgLayout = new QGridLayout();
     hgTopLayout->addLayout(hgLayout);
     hgLayout->setColumnStretch(1,10);
-
 
     // Number of bins
     numBinsLabel = new QLabel(tr("Number of Bins"), histGroupBox);
@@ -286,6 +284,31 @@ QvisHistogramPlotWindow::CreateWindowContents()
     connect(weightVariable, SIGNAL(activated(const QString&)),
             this, SLOT(weightVariableChanged(const QString&)));
     weightingLayout->addWidget(weightVariable, 2,1);
+
+    //
+    // Statistics options
+    //
+    QGroupBox* statisticsGroupBox = new QGroupBox(histGroupBox);
+    statisticsGroupBox->setTitle(tr("Statistical Options"));
+    hgTopLayout->addWidget(statisticsGroupBox);
+
+    QHBoxLayout* statsLayout = new QHBoxLayout(statisticsGroupBox);
+    statisticsGroupBox->setLayout(statsLayout);
+
+    // Normalization
+    normalizeHistogram = 
+      new QCheckBox(tr("Normalize Histogram"), statisticsGroupBox);
+    statsLayout->addWidget(normalizeHistogram);
+    
+    connect(normalizeHistogram, SIGNAL(toggled(bool)),
+            this, SLOT(normalizeChanged(bool)));
+   
+    computeCDF = 
+      new QCheckBox(tr("Compute the CDF"), statisticsGroupBox);
+    statsLayout->addWidget(computeCDF);
+
+    connect(computeCDF, SIGNAL(toggled(bool)),
+            this, SLOT(computeCdfChanged(bool)));
 
     // Add data scale
     QGroupBox * dataGroup = new QGroupBox(central);
@@ -454,6 +477,8 @@ QvisHistogramPlotWindow::CreateWindowContents()
             this, SLOT(colorChanged(const QColor&)));
     sgLayout->addWidget(color, 3,1);
 
+
+    // Add normalization option.
 }
 
 
@@ -479,6 +504,9 @@ QvisHistogramPlotWindow::CreateWindowContents()
 //
 //    Cyrus Harrison, Fri Jul 18 14:38:14 PDT 2008
 //    Initial Qt4 Port.
+//
+//    Kevin Bensema, Mon Nov 11 12:55 PST 2013
+//    Added code for ComputeAsCDF and NormalizeHistogram options.
 //
 // ****************************************************************************
 
@@ -708,7 +736,17 @@ QvisHistogramPlotWindow::UpdateWindow(bool doAll)
             binScaleGroup->blockSignals(true);
             binScaleGroup->button(atts->GetBinScale())->setChecked(true);
             binScaleGroup->blockSignals(false);
-            break;        
+            break;
+        case HistogramAttributes::ID_normalizeHistogram:
+            normalizeHistogram->blockSignals(true);
+            normalizeHistogram->setChecked(atts->GetNormalizeHistogram());
+            normalizeHistogram->blockSignals(false);
+            break;
+        case HistogramAttributes::ID_computeAsCDF:
+            computeCDF->blockSignals(true);
+            computeCDF->setChecked(atts->GetComputeAsCDF());
+            computeCDF->blockSignals(false);
+            break;
         }
     }
 }
@@ -1089,4 +1127,20 @@ QvisHistogramPlotWindow::colorChanged(const QColor &color)
     atts->SetColor(temp);
     SetUpdate(false);
     Apply();
+}
+
+void
+QvisHistogramPlotWindow::normalizeChanged(bool val)
+{
+  atts->SetNormalizeHistogram(val);
+  Apply();
+  return;
+}
+
+void
+QvisHistogramPlotWindow::computeCdfChanged(bool val)
+{
+  atts->SetComputeAsCDF(val);
+  Apply();
+  return;
 }

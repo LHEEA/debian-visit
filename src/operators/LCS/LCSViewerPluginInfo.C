@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -236,7 +236,6 @@ LCSViewerPluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
 {
     LCSAttributes *atts_in = (LCSAttributes *)atts;
 
-    const char numTypes = 3;
     const char *typeString[2][3] = { { "FTLE", "FDLE", "FSLE" },
                                      { "Time", "Arc length",
                                        "Ave. dist. from seed" } };

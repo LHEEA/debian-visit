@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -217,7 +217,6 @@ QvisStatisticalTrendsWindow::CreateWindowContents()
     statisticLayout->addWidget(r1, 0, 1);
 
     QRadioButton *r2 = new QRadioButton(tr("Variance"), central);
-    r1->setChecked(true);
     statisticTypeButtonGroup->addButton(r2, StatisticalTrendsAttributes::Variance);
     statisticLayout->addWidget(r2, 0, 2);
 
@@ -228,6 +227,12 @@ QvisStatisticalTrendsWindow::CreateWindowContents()
     QRadioButton *r4 = new QRadioButton(tr("Residuals"), central);
     statisticTypeButtonGroup->addButton(r4, StatisticalTrendsAttributes::Residuals);
     statisticLayout->addWidget(r4, 1, 1);
+
+    QRadioButton *r5 = new QRadioButton(tr("Std. Dev."), central);
+    statisticTypeButtonGroup->addButton(r5, StatisticalTrendsAttributes::StandardDeviation);
+    statisticLayout->addWidget(r5, 1, 2);
+
+    r1->setChecked(true);
 
     connect(statisticTypeButtonGroup, SIGNAL(buttonClicked(int)),
             this, SLOT(statisticTypeChanged(int)));

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -898,7 +898,7 @@ avtStructuredMeshChunker::SplitIntoSubgrids(const int *dims, vtkDataSet *in_ds,
     int t1 = visitTimer->StartTimer();
     CreateUnstructuredGrid(in_ds, d_plus, data, ugrid, dims);
     char str2[1024];
-    sprintf(str2, "Creating a ugrid of size %d", ugrid->GetNumberOfCells());
+    sprintf(str2, "Creating a ugrid of size %lld", ugrid->GetNumberOfCells());
     visitTimer->StopTimer(t1, str2);
 
     return d_plus;
@@ -1172,7 +1172,7 @@ avtStructuredMeshChunker::CreateUnstructuredGrid(vtkDataSet *in_ds,
     newPD->CopyAllocate(origPD, nNewPts);
 
     int *newPtIndex = new int[nOrigPts];
-    int nextIndex = 0;
+
     if (in_ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
     {
         vtkRectilinearGrid *rgrid = vtkRectilinearGrid::SafeDownCast(in_ds);

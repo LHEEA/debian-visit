@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,8 +75,8 @@ static PyObject *NewSubsetAttributes(int);
 std::string
 PySubsetAttributes_ToString(const SubsetAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *colorType_names = "ColorBySingleColor, ColorByMultipleColors, ColorByColorTable";
     switch (atts->GetColorType())
@@ -570,7 +570,7 @@ SubsetAttributes_SetMultiColor(PyObject *self, PyObject *args)
                             {
                                 PyObject *item = PyTuple_GET_ITEM(pyobj, i);
                                 if(PyTuple_Check(item) &&
-                                   PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4)
+                                   (PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4))
                                 {
                                     C[i*4] = 0;
                                     C[i*4+1] = 0;
@@ -614,7 +614,7 @@ SubsetAttributes_SetMultiColor(PyObject *self, PyObject *args)
                             {
                                 PyObject *item = PyList_GET_ITEM(pyobj, i);
                                 if(PyTuple_Check(item) &&
-                                   PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4)
+                                   (PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4))
                                 {
                                     C[i*4] = 0;
                                     C[i*4+1] = 0;
@@ -1413,7 +1413,6 @@ PySubsetAttributes_GetLogString()
 static void
 PySubsetAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    SubsetAttributes *atts = (SubsetAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

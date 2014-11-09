@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,8 +76,8 @@ static PyObject *NewVolumeAttributes(int);
 std::string
 PyVolumeAttributes_ToString(const VolumeAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetLegendFlag())
         SNPRINTF(tmpStr, 1000, "%slegendFlag = 1\n", prefix);
@@ -1223,7 +1223,7 @@ VolumeAttributes_GetTransferFunction2DWidgets(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetTransferFunction2DWidgets().size())
+    if(index < 0 || (size_t)index >= obj->data->GetTransferFunction2DWidgets().size())
     {
         char msg[200];
         if(obj->data->GetTransferFunction2DWidgets().size() == 0)
@@ -1436,6 +1436,7 @@ VolumeAttributes_GetLowGradientLightingClampValue(PyObject *self, PyObject *args
     PyObject *retval = PyFloat_FromDouble(obj->data->GetLowGradientLightingClampValue());
     return retval;
 }
+
 
 /*static*/ PyObject *
 VolumeAttributes_SetMaterialProperties(PyObject *self, PyObject *args)
@@ -1971,7 +1972,6 @@ PyVolumeAttributes_GetLogString()
 static void
 PyVolumeAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    VolumeAttributes *atts = (VolumeAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

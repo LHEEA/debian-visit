@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,6 +58,9 @@ int VisIt_VariableData_getDataI(visit_handle obj, int *owner, int *nComps, int *
 int VisIt_VariableData_getDataF(visit_handle obj, int *owner, int *nComps, int *nTuples, float **);
 int VisIt_VariableData_getDataD(visit_handle obj, int *owner, int *nComps, int *nTuples, double **);
 int VisIt_VariableData_getDataL(visit_handle obj, int *owner, int *nComps, int *nTuples, long **);
+
+int VisIt_VariableData_setData(visit_handle, int, int, int, int, void *);
+int VisIt_VariableData_setDataEx(visit_handle, int, int, int, int, void *, void(*)(void*), void *);
 
 #ifdef __cplusplus
 }

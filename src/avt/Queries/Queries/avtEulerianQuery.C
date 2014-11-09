@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -216,8 +216,7 @@ avtEulerianQuery::Execute(vtkDataSet *in_ds, const int dom)
 
     set<edgepair> edges;
 
-    int i,j;
-    for (i = 0; i < nCells; i++)
+    for (size_t i = 0; i < (size_t)nCells; i++)
     {
         vtkCell *cell=pds->GetCell(i);
         int numCellPoints = cell->GetNumberOfPoints();
@@ -255,7 +254,7 @@ avtEulerianQuery::Execute(vtkDataSet *in_ds, const int dom)
             case VTK_POLYGON:
                 edges.insert(edgepair(cell->GetPointId(0),
                                       cell->GetPointId(numCellPoints-1)));
-                for (j = 1; j < numCellPoints-1; j++)
+                for (size_t j = 1; j < (size_t)numCellPoints-1; j++)
                     edges.insert(edgepair(cell->GetPointId(j),
                                           cell->GetPointId(j+1)));
                 break;
@@ -264,7 +263,7 @@ avtEulerianQuery::Execute(vtkDataSet *in_ds, const int dom)
         //before them, and two after. Since we don't repeat edges,
         //we can just count edges infront of us to get them all
             case VTK_TRIANGLE_STRIP:
-                for (j = 0; j < numCellPoints-2; j++)
+                for (size_t j = 0; j < (size_t)numCellPoints-2; j++)
                 {
                     edges.insert(edgepair(cell->GetPointId(j),
                                           cell->GetPointId(j+1)));
@@ -280,7 +279,7 @@ avtEulerianQuery::Execute(vtkDataSet *in_ds, const int dom)
     }    
 
     int numUsedPoints = 0;
-    for (i = 0; i < pointsUsed.size(); i++)
+    for (size_t i = 0; i < pointsUsed.size(); i++)
         if (pointsUsed[i])
             ++numUsedPoints;
 
@@ -319,6 +318,10 @@ avtEulerianQuery::Execute(vtkDataSet *in_ds, const int dom)
 //
 //    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
 //    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
+//
+//    Kathleen Biagas, Thu Feb 13 15:04:58 PST 2014
+//    Add Xml results.
+//
 // ****************************************************************************
 
 void
@@ -380,9 +383,11 @@ avtEulerianQuery::PostExecute(void)
     char msgBuff[500];
     DomainToEulerMap::iterator iter;
     int blockOrigin = GetInput()->GetInfo().GetAttributes().GetBlockOrigin();
+    MapNode de;
     for (iter = domToEulerMap.begin(); iter != domToEulerMap.end(); iter++)
     {
         string domainName;
+        std::stringstream dns;
         GetInput()->GetQueryableSource()->GetDomainName(
             queryAtts.GetVariables()[0], queryAtts.GetTimeStep(), 
             (*iter).first, domainName);
@@ -390,17 +395,26 @@ avtEulerianQuery::PostExecute(void)
         {
             SNPRINTF(msgBuff, 500, "Eulerian for %s is %d\n", 
                      domainName.c_str(), (*iter).second);
+            dns << domainName;
         }
         else
         {
             SNPRINTF(msgBuff, 500, "Eulerian for domain %d is %d\n", 
                      (*iter).first + blockOrigin, (*iter).second);
+            dns << "domain " << (*iter).first+blockOrigin;
         }
+        de[dns.str()] = (*iter).second;
         msg += msgBuff;
     }
     if (msg.size() == 0)
         msg = "Eulerian could not compute.\n" ;
     SetResultMessage(msg);
+    if (de.GetNumEntries() > 0)
+    {
+        MapNode result_node;
+        result_node["eulerian"] = de;
+        SetXmlResult(result_node.ToXML());
+    }
 }
 
 

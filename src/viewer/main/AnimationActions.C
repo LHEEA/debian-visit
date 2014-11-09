@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -136,7 +136,6 @@ AnimationStopAction::Execute()
     if (DDTManager::isDDTSim(window))
     {
         const EngineKey &key = window->GetPlotList()->GetEngineKey();
-        const avtDatabaseMetaData *md = ViewerEngineManager::Instance()->GetSimulationMetaData(key);
         ViewerEngineManager::Instance()->SendSimulationCommand(key, DDTSIM_CMD_STOP, "");
     }
     else

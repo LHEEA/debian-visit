@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,8 +76,8 @@ static PyObject *NewMultiCurveAttributes(int);
 std::string
 PyMultiCurveAttributes_ToString(const MultiCurveAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     { // new scope
         std::string objPrefix(prefix);
@@ -450,7 +450,7 @@ MultiCurveAttributes_SetMultiColor(PyObject *self, PyObject *args)
                             {
                                 PyObject *item = PyTuple_GET_ITEM(pyobj, i);
                                 if(PyTuple_Check(item) &&
-                                   PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4)
+                                   (PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4))
                                 {
                                     C[i*4] = 0;
                                     C[i*4+1] = 0;
@@ -494,7 +494,7 @@ MultiCurveAttributes_SetMultiColor(PyObject *self, PyObject *args)
                             {
                                 PyObject *item = PyList_GET_ITEM(pyobj, i);
                                 if(PyTuple_Check(item) &&
-                                   PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4)
+                                   (PyTuple_Size(item) == 3 || PyTuple_Size(item) == 4))
                                 {
                                     C[i*4] = 0;
                                     C[i*4+1] = 0;
@@ -1231,7 +1231,6 @@ PyMultiCurveAttributes_GetLogString()
 static void
 PyMultiCurveAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    MultiCurveAttributes *atts = (MultiCurveAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

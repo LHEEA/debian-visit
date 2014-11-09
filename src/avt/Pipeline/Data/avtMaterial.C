@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -512,7 +512,6 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
                          int major_order, const char *domain)
 {
     int timerHandle = visitTimer->StartTimer();
-    int i,j;
     const int notSet = INT_MAX;
     bool haveIssuedWarning = false;
 
@@ -520,7 +519,7 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
     // build material names vector
     //
     vector<string>  matnames;
-    for (i = 0 ; i < nTotMats ; i++)
+    for (size_t i = 0 ; i < (size_t)nTotMats ; i++)
     {
         char name[256];
         if (names == NULL)
@@ -535,7 +534,7 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
     // compute total number of zones and allocate mat list
     //
     int numZones = 1;
-    for (i = 0; i < ndims; i++)
+    for (size_t i = 0; i < (size_t)ndims; i++)
         numZones *= dims[i];
     int *ml = new int[numZones];
 
@@ -543,7 +542,7 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
     // determine one larger than max material number
     //
     int matnoMax = mats[0];
-    for (i = 1; i < nTotMats; i++)
+    for (size_t i = 1; i < (size_t)nTotMats; i++)
     {
         if (mats[i] > matnoMax)
             matnoMax = mats[i]; 
@@ -553,8 +552,8 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
     //
     // determine how big the mix arrays will be
     //
-    int mixl = 0;
-    for (i = 0; i < matMap.size(); i++)
+    size_t mixl = 0;
+    for (size_t i = 0; i < matMap.size(); i++)
         mixl += matMap[i].numMixed;
 
     // set up the mix arrays 
@@ -573,7 +572,7 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
     //
     // fill ml with a value we can recognize as having not been visited
     //
-    for (i = 0; i < numZones; i++)
+    for (size_t i = 0; i < (size_t)numZones; i++)
         ml[i] = notSet;
 
     //
@@ -582,12 +581,12 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
     int mlindex = 0;
     bool usedBadMaterial = false;
     vector<bool> matUsed(nTotMats+1, false);
-    for (i = 0; i < matMap.size(); i++)
+    for (size_t i = 0; i < matMap.size(); i++)
     {
         int matno = matMap[i].matno;
 
         // set associated matUsed flag 
-        for (j = 0; j < nTotMats; j++)
+        for (size_t j = 0; j < (size_t)nTotMats; j++)
         {
             if (matno == mats[j])
             {
@@ -601,7 +600,7 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
         //
         int  nc = matMap[i].numClean;
         int *cz = matMap[i].cleanZones;
-        for (j = 0; j < nc; j++)
+        for (size_t j = 0; j < (size_t)nc; j++)
         {
             int zoneNum = cz[j];
 
@@ -639,7 +638,7 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
         int  nm = matMap[i].numMixed;
         int *mz = matMap[i].mixedZones;
         float *vf = matMap[i].volFracs;
-        for (j = 0; j < nm; j++)
+        for (size_t j = 0; j < (size_t)nm; j++)
         {
             int zoneNum = mz[j];
 
@@ -716,7 +715,7 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
     //
     if (haveIssuedWarning)
     {
-        for (i = 0; i < numZones; i++)
+        for (size_t i = 0; i < (size_t)numZones; i++)
         {
             if (ml[i] == notSet)
             {
@@ -730,9 +729,9 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
     // see if the materials are arbitrarily numbered
     //
     bool arbNumbering = false; 
-    for (i = 0; i < nTotMats; i++)
+    for (size_t i = 0; i < (size_t)nTotMats; i++)
     {
-        if (mats[i] != i)
+        if ((size_t)mats[i] != i)
         {
             arbNumbering = true;
             break;
@@ -761,7 +760,7 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, const char **names,
         int *newmixm = new int[mixl];
         int *newmats = new int[nTotMats+addOne];
         newmats[nTotMats+addOne-1] = matnoMax;
-        for (i = 0; i < nTotMats; i++)
+        for (size_t i = 0; i < (size_t)nTotMats; i++)
             newmats[i] = mats[i];
         vector<bool> newmatUsed(nTotMats+addOne, false);
         RenumberMaterialsZeroToNminusOne(nTotMats+addOne, newmats,

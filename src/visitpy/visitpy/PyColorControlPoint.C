@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewColorControlPoint(int);
 std::string
 PyColorControlPoint_ToString(const ColorControlPoint *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const unsigned char *colors = atts->GetColors();
         SNPRINTF(tmpStr, 1000, "%scolors = (", prefix);
@@ -407,7 +407,6 @@ PyColorControlPoint_GetLogString()
 static void
 PyColorControlPoint_CallLogRoutine(Subject *subj, void *data)
 {
-    ColorControlPoint *atts = (ColorControlPoint *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewViewerRPC(int);
 std::string
 PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *RPCType_names = "CloseRPC, DetachRPC, AddWindowRPC, DeleteWindowRPC, SetWindowLayoutRPC, "
         "SetActiveWindowRPC, ClearWindowRPC, ClearAllWindowsRPC, OpenDatabaseRPC, "
@@ -83,50 +83,50 @@ PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
         "OverlayDatabaseRPC, OpenComputeEngineRPC, CloseComputeEngineRPC, AnimationSetNFramesRPC, "
         "AnimationPlayRPC, AnimationReversePlayRPC, AnimationStopRPC, TimeSliderNextStateRPC, "
         "TimeSliderPreviousStateRPC, SetTimeSliderStateRPC, SetActiveTimeSliderRPC, AddPlotRPC, "
-        "SetPlotFrameRangeRPC, DeletePlotKeyframeRPC, MovePlotKeyframeRPC, DeleteActivePlotsRPC, "
-        "HideActivePlotsRPC, DrawPlotsRPC, DisableRedrawRPC, RedrawRPC, "
-        "SetActivePlotsRPC, ChangeActivePlotsVarRPC, AddOperatorRPC, AddInitializedOperatorRPC, "
-        "PromoteOperatorRPC, DemoteOperatorRPC, RemoveOperatorRPC, RemoveLastOperatorRPC, "
-        "RemoveAllOperatorsRPC, SaveWindowRPC, SetDefaultPlotOptionsRPC, SetPlotOptionsRPC, "
-        "SetDefaultOperatorOptionsRPC, SetOperatorOptionsRPC, WriteConfigFileRPC, ConnectToMetaDataServerRPC, "
-        "IconifyAllWindowsRPC, DeIconifyAllWindowsRPC, ShowAllWindowsRPC, HideAllWindowsRPC, "
-        "UpdateColorTableRPC, SetAnnotationAttributesRPC, SetDefaultAnnotationAttributesRPC, ResetAnnotationAttributesRPC, "
-        "SetKeyframeAttributesRPC, SetPlotSILRestrictionRPC, SetViewAxisArrayRPC, SetViewCurveRPC, "
-        "SetView2DRPC, SetView3DRPC, ResetPlotOptionsRPC, ResetOperatorOptionsRPC, "
-        "SetAppearanceRPC, ProcessExpressionsRPC, SetLightListRPC, SetDefaultLightListRPC, "
-        "ResetLightListRPC, SetAnimationAttributesRPC, SetWindowAreaRPC, PrintWindowRPC, "
-        "ResetViewRPC, RecenterViewRPC, ToggleAllowPopupRPC, ToggleMaintainViewModeRPC, "
-        "ToggleBoundingBoxModeRPC, ToggleCameraViewModeRPC, TogglePerspectiveViewRPC, ToggleSpinModeRPC, "
-        "ToggleLockTimeRPC, ToggleLockToolsRPC, ToggleLockViewModeRPC, ToggleFullFrameRPC, "
-        "UndoViewRPC, RedoViewRPC, InvertBackgroundRPC, ClearPickPointsRPC, "
-        "SetWindowModeRPC, EnableToolRPC, SetToolUpdateModeRPC, CopyViewToWindowRPC, "
-        "CopyLightingToWindowRPC, CopyAnnotationsToWindowRPC, CopyPlotsToWindowRPC, ClearCacheRPC, "
-        "ClearCacheForAllEnginesRPC, SetViewExtentsTypeRPC, ClearRefLinesRPC, SetRenderingAttributesRPC, "
-        "QueryRPC, CloneWindowRPC, SetMaterialAttributesRPC, SetDefaultMaterialAttributesRPC, "
-        "ResetMaterialAttributesRPC, SetPlotDatabaseStateRPC, DeletePlotDatabaseKeyframeRPC, MovePlotDatabaseKeyframeRPC, "
-        "ClearViewKeyframesRPC, DeleteViewKeyframeRPC, MoveViewKeyframeRPC, SetViewKeyframeRPC, "
-        "OpenMDServerRPC, EnableToolbarRPC, HideToolbarsRPC, HideToolbarsForAllWindowsRPC, "
-        "ShowToolbarsRPC, ShowToolbarsForAllWindowsRPC, SetToolbarIconSizeRPC, SaveViewRPC, "
-        "SetGlobalLineoutAttributesRPC, SetPickAttributesRPC, ExportColorTableRPC, ExportEntireStateRPC, "
-        "ImportEntireStateRPC, ImportEntireStateWithDifferentSourcesRPC, ResetPickAttributesRPC, AddAnnotationObjectRPC, "
-        "HideActiveAnnotationObjectsRPC, DeleteActiveAnnotationObjectsRPC, RaiseActiveAnnotationObjectsRPC, LowerActiveAnnotationObjectsRPC, "
-        "SetAnnotationObjectOptionsRPC, SetDefaultAnnotationObjectListRPC, ResetAnnotationObjectListRPC, ResetPickLetterRPC, "
-        "SetDefaultPickAttributesRPC, ChooseCenterOfRotationRPC, SetCenterOfRotationRPC, SetQueryOverTimeAttributesRPC, "
-        "SetDefaultQueryOverTimeAttributesRPC, ResetQueryOverTimeAttributesRPC, ResetLineoutColorRPC, SetInteractorAttributesRPC, "
-        "SetDefaultInteractorAttributesRPC, ResetInteractorAttributesRPC, GetProcInfoRPC, SendSimulationCommandRPC, "
-        "UpdateDBPluginInfoRPC, ExportDBRPC, SetTryHarderCyclesTimesRPC, OpenClientRPC, "
-        "OpenGUIClientRPC, OpenCLIClientRPC, SuppressQueryOutputRPC, SetQueryFloatFormatRPC, "
-        "SetMeshManagementAttributesRPC, SetDefaultMeshManagementAttributesRPC, ResetMeshManagementAttributesRPC, ResizeWindowRPC, "
-        "MoveWindowRPC, MoveAndResizeWindowRPC, SetStateLoggingRPC, ConstructDataBinningRPC, "
-        "RequestMetaDataRPC, SetTreatAllDBsAsTimeVaryingRPC, SetCreateMeshQualityExpressionsRPC, SetCreateTimeDerivativeExpressionsRPC, "
-        "SetCreateVectorMagnitudeExpressionsRPC, SetPrecisionTypeRPC, CopyActivePlotsRPC, SetPlotFollowsTimeRPC, "
-        "TurnOffAllLocksRPC, SetDefaultFileOpenOptionsRPC, SetSuppressMessagesRPC, ApplyNamedSelectionRPC, "
-        "CreateNamedSelectionRPC, DeleteNamedSelectionRPC, LoadNamedSelectionRPC, SaveNamedSelectionRPC, "
-        "SetNamedSelectionAutoApplyRPC, UpdateNamedSelectionRPC, InitializeNamedSelectionVariablesRPC, MenuQuitRPC, "
-        "SetPlotDescriptionRPC, MovePlotOrderTowardFirstRPC, MovePlotOrderTowardLastRPC, SetPlotOrderToFirstRPC, "
-        "SetPlotOrderToLastRPC, RenamePickLabelRPC, GetQueryParametersRPC, DDTConnectRPC, "
-        "DDTFocusRPC, ReleaseToDDTRPC, PlotDDTVispointVariablesRPC, ExportRPC, "
-        "MaxRPC";
+        "AddEmbeddedPlotRPC, SetPlotFrameRangeRPC, DeletePlotKeyframeRPC, MovePlotKeyframeRPC, "
+        "DeleteActivePlotsRPC, HideActivePlotsRPC, DrawPlotsRPC, DisableRedrawRPC, "
+        "RedrawRPC, SetActivePlotsRPC, ChangeActivePlotsVarRPC, AddOperatorRPC, "
+        "AddInitializedOperatorRPC, PromoteOperatorRPC, DemoteOperatorRPC, RemoveOperatorRPC, "
+        "RemoveLastOperatorRPC, RemoveAllOperatorsRPC, SaveWindowRPC, SetDefaultPlotOptionsRPC, "
+        "SetPlotOptionsRPC, SetDefaultOperatorOptionsRPC, SetOperatorOptionsRPC, WriteConfigFileRPC, "
+        "ConnectToMetaDataServerRPC, IconifyAllWindowsRPC, DeIconifyAllWindowsRPC, ShowAllWindowsRPC, "
+        "HideAllWindowsRPC, UpdateColorTableRPC, SetAnnotationAttributesRPC, SetDefaultAnnotationAttributesRPC, "
+        "ResetAnnotationAttributesRPC, SetKeyframeAttributesRPC, SetPlotSILRestrictionRPC, SetViewAxisArrayRPC, "
+        "SetViewCurveRPC, SetView2DRPC, SetView3DRPC, ResetPlotOptionsRPC, "
+        "ResetOperatorOptionsRPC, SetAppearanceRPC, ProcessExpressionsRPC, SetLightListRPC, "
+        "SetDefaultLightListRPC, ResetLightListRPC, SetAnimationAttributesRPC, SetWindowAreaRPC, "
+        "PrintWindowRPC, ResetViewRPC, RecenterViewRPC, ToggleAllowPopupRPC, "
+        "ToggleMaintainViewModeRPC, ToggleBoundingBoxModeRPC, ToggleCameraViewModeRPC, TogglePerspectiveViewRPC, "
+        "ToggleSpinModeRPC, ToggleLockTimeRPC, ToggleLockToolsRPC, ToggleLockViewModeRPC, "
+        "ToggleFullFrameRPC, UndoViewRPC, RedoViewRPC, InvertBackgroundRPC, "
+        "ClearPickPointsRPC, SetWindowModeRPC, EnableToolRPC, SetToolUpdateModeRPC, "
+        "CopyViewToWindowRPC, CopyLightingToWindowRPC, CopyAnnotationsToWindowRPC, CopyPlotsToWindowRPC, "
+        "ClearCacheRPC, ClearCacheForAllEnginesRPC, SetViewExtentsTypeRPC, ClearRefLinesRPC, "
+        "SetRenderingAttributesRPC, QueryRPC, CloneWindowRPC, SetMaterialAttributesRPC, "
+        "SetDefaultMaterialAttributesRPC, ResetMaterialAttributesRPC, SetPlotDatabaseStateRPC, DeletePlotDatabaseKeyframeRPC, "
+        "MovePlotDatabaseKeyframeRPC, ClearViewKeyframesRPC, DeleteViewKeyframeRPC, MoveViewKeyframeRPC, "
+        "SetViewKeyframeRPC, OpenMDServerRPC, EnableToolbarRPC, HideToolbarsRPC, "
+        "HideToolbarsForAllWindowsRPC, ShowToolbarsRPC, ShowToolbarsForAllWindowsRPC, SetToolbarIconSizeRPC, "
+        "SaveViewRPC, SetGlobalLineoutAttributesRPC, SetPickAttributesRPC, ExportColorTableRPC, "
+        "ExportEntireStateRPC, ImportEntireStateRPC, ImportEntireStateWithDifferentSourcesRPC, ResetPickAttributesRPC, "
+        "AddAnnotationObjectRPC, HideActiveAnnotationObjectsRPC, DeleteActiveAnnotationObjectsRPC, RaiseActiveAnnotationObjectsRPC, "
+        "LowerActiveAnnotationObjectsRPC, SetAnnotationObjectOptionsRPC, SetDefaultAnnotationObjectListRPC, ResetAnnotationObjectListRPC, "
+        "ResetPickLetterRPC, SetDefaultPickAttributesRPC, ChooseCenterOfRotationRPC, SetCenterOfRotationRPC, "
+        "SetQueryOverTimeAttributesRPC, SetDefaultQueryOverTimeAttributesRPC, ResetQueryOverTimeAttributesRPC, ResetLineoutColorRPC, "
+        "SetInteractorAttributesRPC, SetDefaultInteractorAttributesRPC, ResetInteractorAttributesRPC, GetProcInfoRPC, "
+        "SendSimulationCommandRPC, UpdateDBPluginInfoRPC, ExportDBRPC, SetTryHarderCyclesTimesRPC, "
+        "OpenClientRPC, OpenGUIClientRPC, OpenCLIClientRPC, SuppressQueryOutputRPC, "
+        "SetQueryFloatFormatRPC, SetMeshManagementAttributesRPC, SetDefaultMeshManagementAttributesRPC, ResetMeshManagementAttributesRPC, "
+        "ResizeWindowRPC, MoveWindowRPC, MoveAndResizeWindowRPC, SetStateLoggingRPC, "
+        "ConstructDataBinningRPC, RequestMetaDataRPC, SetTreatAllDBsAsTimeVaryingRPC, SetCreateMeshQualityExpressionsRPC, "
+        "SetCreateTimeDerivativeExpressionsRPC, SetCreateVectorMagnitudeExpressionsRPC, SetPrecisionTypeRPC, SetBackendTypeRPC, "
+        "CopyActivePlotsRPC, SetPlotFollowsTimeRPC, TurnOffAllLocksRPC, SetDefaultFileOpenOptionsRPC, "
+        "SetSuppressMessagesRPC, ApplyNamedSelectionRPC, CreateNamedSelectionRPC, DeleteNamedSelectionRPC, "
+        "LoadNamedSelectionRPC, SaveNamedSelectionRPC, SetNamedSelectionAutoApplyRPC, UpdateNamedSelectionRPC, "
+        "InitializeNamedSelectionVariablesRPC, MenuQuitRPC, SetPlotDescriptionRPC, MovePlotOrderTowardFirstRPC, "
+        "MovePlotOrderTowardLastRPC, SetPlotOrderToFirstRPC, SetPlotOrderToLastRPC, RenamePickLabelRPC, "
+        "GetQueryParametersRPC, DDTConnectRPC, DDTFocusRPC, ReleaseToDDTRPC, "
+        "PlotDDTVispointVariablesRPC, ExportRPC, MaxRPC";
     switch (atts->GetRPCType())
     {
       case ViewerRPC::CloseRPC:
@@ -243,6 +243,10 @@ PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
           break;
       case ViewerRPC::AddPlotRPC:
           SNPRINTF(tmpStr, 1000, "%sRPCType = %sAddPlotRPC  # %s\n", prefix, prefix, RPCType_names);
+          str += tmpStr;
+          break;
+      case ViewerRPC::AddEmbeddedPlotRPC:
+          SNPRINTF(tmpStr, 1000, "%sRPCType = %sAddEmbeddedPlotRPC  # %s\n", prefix, prefix, RPCType_names);
           str += tmpStr;
           break;
       case ViewerRPC::SetPlotFrameRangeRPC:
@@ -829,6 +833,10 @@ PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
           SNPRINTF(tmpStr, 1000, "%sRPCType = %sSetPrecisionTypeRPC  # %s\n", prefix, prefix, RPCType_names);
           str += tmpStr;
           break;
+      case ViewerRPC::SetBackendTypeRPC:
+          SNPRINTF(tmpStr, 1000, "%sRPCType = %sSetBackendTypeRPC  # %s\n", prefix, prefix, RPCType_names);
+          str += tmpStr;
+          break;
       case ViewerRPC::CopyActivePlotsRPC:
           SNPRINTF(tmpStr, 1000, "%sRPCType = %sCopyActivePlotsRPC  # %s\n", prefix, prefix, RPCType_names);
           str += tmpStr;
@@ -1069,6 +1077,8 @@ PyViewerRPC_ToString(const ViewerRPC *atts, const char *prefix)
     }
     SNPRINTF(tmpStr, 1000, "%stoolId = %d\n", prefix, atts->GetToolId());
     str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%sembeddedPlotId = %d\n", prefix, atts->GetEmbeddedPlotId());
+    str += tmpStr;
     if(atts->GetBoolFlag())
         SNPRINTF(tmpStr, 1000, "%sboolFlag = 1\n", prefix);
     else
@@ -1109,12 +1119,12 @@ ViewerRPC_SetRPCType(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the RPCType in the object.
-    if(ival >= 0 && ival < 202)
+    if(ival >= 0 && ival < 204)
         obj->data->SetRPCType(ViewerRPC::ViewerRPCType(ival));
     else
     {
         fprintf(stderr, "An invalid RPCType value was given. "
-                        "Valid values are in the range of [0,201]. "
+                        "Valid values are in the range of [0,203]. "
                         "You can also use the following names: "
                         "CloseRPC, DetachRPC, AddWindowRPC, DeleteWindowRPC, SetWindowLayoutRPC, "
                         "SetActiveWindowRPC, ClearWindowRPC, ClearAllWindowsRPC, OpenDatabaseRPC, "
@@ -1123,50 +1133,50 @@ ViewerRPC_SetRPCType(PyObject *self, PyObject *args)
                         "OverlayDatabaseRPC, OpenComputeEngineRPC, CloseComputeEngineRPC, AnimationSetNFramesRPC, "
                         "AnimationPlayRPC, AnimationReversePlayRPC, AnimationStopRPC, TimeSliderNextStateRPC, "
                         "TimeSliderPreviousStateRPC, SetTimeSliderStateRPC, SetActiveTimeSliderRPC, AddPlotRPC, "
-                        "SetPlotFrameRangeRPC, DeletePlotKeyframeRPC, MovePlotKeyframeRPC, DeleteActivePlotsRPC, "
-                        "HideActivePlotsRPC, DrawPlotsRPC, DisableRedrawRPC, RedrawRPC, "
-                        "SetActivePlotsRPC, ChangeActivePlotsVarRPC, AddOperatorRPC, AddInitializedOperatorRPC, "
-                        "PromoteOperatorRPC, DemoteOperatorRPC, RemoveOperatorRPC, RemoveLastOperatorRPC, "
-                        "RemoveAllOperatorsRPC, SaveWindowRPC, SetDefaultPlotOptionsRPC, SetPlotOptionsRPC, "
-                        "SetDefaultOperatorOptionsRPC, SetOperatorOptionsRPC, WriteConfigFileRPC, ConnectToMetaDataServerRPC, "
-                        "IconifyAllWindowsRPC, DeIconifyAllWindowsRPC, ShowAllWindowsRPC, HideAllWindowsRPC, "
-                        "UpdateColorTableRPC, SetAnnotationAttributesRPC, SetDefaultAnnotationAttributesRPC, ResetAnnotationAttributesRPC, "
-                        "SetKeyframeAttributesRPC, SetPlotSILRestrictionRPC, SetViewAxisArrayRPC, SetViewCurveRPC, "
-                        "SetView2DRPC, SetView3DRPC, ResetPlotOptionsRPC, ResetOperatorOptionsRPC, "
-                        "SetAppearanceRPC, ProcessExpressionsRPC, SetLightListRPC, SetDefaultLightListRPC, "
-                        "ResetLightListRPC, SetAnimationAttributesRPC, SetWindowAreaRPC, PrintWindowRPC, "
-                        "ResetViewRPC, RecenterViewRPC, ToggleAllowPopupRPC, ToggleMaintainViewModeRPC, "
-                        "ToggleBoundingBoxModeRPC, ToggleCameraViewModeRPC, TogglePerspectiveViewRPC, ToggleSpinModeRPC, "
-                        "ToggleLockTimeRPC, ToggleLockToolsRPC, ToggleLockViewModeRPC, ToggleFullFrameRPC, "
-                        "UndoViewRPC, RedoViewRPC, InvertBackgroundRPC, ClearPickPointsRPC, "
-                        "SetWindowModeRPC, EnableToolRPC, SetToolUpdateModeRPC, CopyViewToWindowRPC, "
-                        "CopyLightingToWindowRPC, CopyAnnotationsToWindowRPC, CopyPlotsToWindowRPC, ClearCacheRPC, "
-                        "ClearCacheForAllEnginesRPC, SetViewExtentsTypeRPC, ClearRefLinesRPC, SetRenderingAttributesRPC, "
-                        "QueryRPC, CloneWindowRPC, SetMaterialAttributesRPC, SetDefaultMaterialAttributesRPC, "
-                        "ResetMaterialAttributesRPC, SetPlotDatabaseStateRPC, DeletePlotDatabaseKeyframeRPC, MovePlotDatabaseKeyframeRPC, "
-                        "ClearViewKeyframesRPC, DeleteViewKeyframeRPC, MoveViewKeyframeRPC, SetViewKeyframeRPC, "
-                        "OpenMDServerRPC, EnableToolbarRPC, HideToolbarsRPC, HideToolbarsForAllWindowsRPC, "
-                        "ShowToolbarsRPC, ShowToolbarsForAllWindowsRPC, SetToolbarIconSizeRPC, SaveViewRPC, "
-                        "SetGlobalLineoutAttributesRPC, SetPickAttributesRPC, ExportColorTableRPC, ExportEntireStateRPC, "
-                        "ImportEntireStateRPC, ImportEntireStateWithDifferentSourcesRPC, ResetPickAttributesRPC, AddAnnotationObjectRPC, "
-                        "HideActiveAnnotationObjectsRPC, DeleteActiveAnnotationObjectsRPC, RaiseActiveAnnotationObjectsRPC, LowerActiveAnnotationObjectsRPC, "
-                        "SetAnnotationObjectOptionsRPC, SetDefaultAnnotationObjectListRPC, ResetAnnotationObjectListRPC, ResetPickLetterRPC, "
-                        "SetDefaultPickAttributesRPC, ChooseCenterOfRotationRPC, SetCenterOfRotationRPC, SetQueryOverTimeAttributesRPC, "
-                        "SetDefaultQueryOverTimeAttributesRPC, ResetQueryOverTimeAttributesRPC, ResetLineoutColorRPC, SetInteractorAttributesRPC, "
-                        "SetDefaultInteractorAttributesRPC, ResetInteractorAttributesRPC, GetProcInfoRPC, SendSimulationCommandRPC, "
-                        "UpdateDBPluginInfoRPC, ExportDBRPC, SetTryHarderCyclesTimesRPC, OpenClientRPC, "
-                        "OpenGUIClientRPC, OpenCLIClientRPC, SuppressQueryOutputRPC, SetQueryFloatFormatRPC, "
-                        "SetMeshManagementAttributesRPC, SetDefaultMeshManagementAttributesRPC, ResetMeshManagementAttributesRPC, ResizeWindowRPC, "
-                        "MoveWindowRPC, MoveAndResizeWindowRPC, SetStateLoggingRPC, ConstructDataBinningRPC, "
-                        "RequestMetaDataRPC, SetTreatAllDBsAsTimeVaryingRPC, SetCreateMeshQualityExpressionsRPC, SetCreateTimeDerivativeExpressionsRPC, "
-                        "SetCreateVectorMagnitudeExpressionsRPC, SetPrecisionTypeRPC, CopyActivePlotsRPC, SetPlotFollowsTimeRPC, "
-                        "TurnOffAllLocksRPC, SetDefaultFileOpenOptionsRPC, SetSuppressMessagesRPC, ApplyNamedSelectionRPC, "
-                        "CreateNamedSelectionRPC, DeleteNamedSelectionRPC, LoadNamedSelectionRPC, SaveNamedSelectionRPC, "
-                        "SetNamedSelectionAutoApplyRPC, UpdateNamedSelectionRPC, InitializeNamedSelectionVariablesRPC, MenuQuitRPC, "
-                        "SetPlotDescriptionRPC, MovePlotOrderTowardFirstRPC, MovePlotOrderTowardLastRPC, SetPlotOrderToFirstRPC, "
-                        "SetPlotOrderToLastRPC, RenamePickLabelRPC, GetQueryParametersRPC, DDTConnectRPC, "
-                        "DDTFocusRPC, ReleaseToDDTRPC, PlotDDTVispointVariablesRPC, ExportRPC, "
-                        "MaxRPC.");
+                        "AddEmbeddedPlotRPC, SetPlotFrameRangeRPC, DeletePlotKeyframeRPC, MovePlotKeyframeRPC, "
+                        "DeleteActivePlotsRPC, HideActivePlotsRPC, DrawPlotsRPC, DisableRedrawRPC, "
+                        "RedrawRPC, SetActivePlotsRPC, ChangeActivePlotsVarRPC, AddOperatorRPC, "
+                        "AddInitializedOperatorRPC, PromoteOperatorRPC, DemoteOperatorRPC, RemoveOperatorRPC, "
+                        "RemoveLastOperatorRPC, RemoveAllOperatorsRPC, SaveWindowRPC, SetDefaultPlotOptionsRPC, "
+                        "SetPlotOptionsRPC, SetDefaultOperatorOptionsRPC, SetOperatorOptionsRPC, WriteConfigFileRPC, "
+                        "ConnectToMetaDataServerRPC, IconifyAllWindowsRPC, DeIconifyAllWindowsRPC, ShowAllWindowsRPC, "
+                        "HideAllWindowsRPC, UpdateColorTableRPC, SetAnnotationAttributesRPC, SetDefaultAnnotationAttributesRPC, "
+                        "ResetAnnotationAttributesRPC, SetKeyframeAttributesRPC, SetPlotSILRestrictionRPC, SetViewAxisArrayRPC, "
+                        "SetViewCurveRPC, SetView2DRPC, SetView3DRPC, ResetPlotOptionsRPC, "
+                        "ResetOperatorOptionsRPC, SetAppearanceRPC, ProcessExpressionsRPC, SetLightListRPC, "
+                        "SetDefaultLightListRPC, ResetLightListRPC, SetAnimationAttributesRPC, SetWindowAreaRPC, "
+                        "PrintWindowRPC, ResetViewRPC, RecenterViewRPC, ToggleAllowPopupRPC, "
+                        "ToggleMaintainViewModeRPC, ToggleBoundingBoxModeRPC, ToggleCameraViewModeRPC, TogglePerspectiveViewRPC, "
+                        "ToggleSpinModeRPC, ToggleLockTimeRPC, ToggleLockToolsRPC, ToggleLockViewModeRPC, "
+                        "ToggleFullFrameRPC, UndoViewRPC, RedoViewRPC, InvertBackgroundRPC, "
+                        "ClearPickPointsRPC, SetWindowModeRPC, EnableToolRPC, SetToolUpdateModeRPC, "
+                        "CopyViewToWindowRPC, CopyLightingToWindowRPC, CopyAnnotationsToWindowRPC, CopyPlotsToWindowRPC, "
+                        "ClearCacheRPC, ClearCacheForAllEnginesRPC, SetViewExtentsTypeRPC, ClearRefLinesRPC, "
+                        "SetRenderingAttributesRPC, QueryRPC, CloneWindowRPC, SetMaterialAttributesRPC, "
+                        "SetDefaultMaterialAttributesRPC, ResetMaterialAttributesRPC, SetPlotDatabaseStateRPC, DeletePlotDatabaseKeyframeRPC, "
+                        "MovePlotDatabaseKeyframeRPC, ClearViewKeyframesRPC, DeleteViewKeyframeRPC, MoveViewKeyframeRPC, "
+                        "SetViewKeyframeRPC, OpenMDServerRPC, EnableToolbarRPC, HideToolbarsRPC, "
+                        "HideToolbarsForAllWindowsRPC, ShowToolbarsRPC, ShowToolbarsForAllWindowsRPC, SetToolbarIconSizeRPC, "
+                        "SaveViewRPC, SetGlobalLineoutAttributesRPC, SetPickAttributesRPC, ExportColorTableRPC, "
+                        "ExportEntireStateRPC, ImportEntireStateRPC, ImportEntireStateWithDifferentSourcesRPC, ResetPickAttributesRPC, "
+                        "AddAnnotationObjectRPC, HideActiveAnnotationObjectsRPC, DeleteActiveAnnotationObjectsRPC, RaiseActiveAnnotationObjectsRPC, "
+                        "LowerActiveAnnotationObjectsRPC, SetAnnotationObjectOptionsRPC, SetDefaultAnnotationObjectListRPC, ResetAnnotationObjectListRPC, "
+                        "ResetPickLetterRPC, SetDefaultPickAttributesRPC, ChooseCenterOfRotationRPC, SetCenterOfRotationRPC, "
+                        "SetQueryOverTimeAttributesRPC, SetDefaultQueryOverTimeAttributesRPC, ResetQueryOverTimeAttributesRPC, ResetLineoutColorRPC, "
+                        "SetInteractorAttributesRPC, SetDefaultInteractorAttributesRPC, ResetInteractorAttributesRPC, GetProcInfoRPC, "
+                        "SendSimulationCommandRPC, UpdateDBPluginInfoRPC, ExportDBRPC, SetTryHarderCyclesTimesRPC, "
+                        "OpenClientRPC, OpenGUIClientRPC, OpenCLIClientRPC, SuppressQueryOutputRPC, "
+                        "SetQueryFloatFormatRPC, SetMeshManagementAttributesRPC, SetDefaultMeshManagementAttributesRPC, ResetMeshManagementAttributesRPC, "
+                        "ResizeWindowRPC, MoveWindowRPC, MoveAndResizeWindowRPC, SetStateLoggingRPC, "
+                        "ConstructDataBinningRPC, RequestMetaDataRPC, SetTreatAllDBsAsTimeVaryingRPC, SetCreateMeshQualityExpressionsRPC, "
+                        "SetCreateTimeDerivativeExpressionsRPC, SetCreateVectorMagnitudeExpressionsRPC, SetPrecisionTypeRPC, SetBackendTypeRPC, "
+                        "CopyActivePlotsRPC, SetPlotFollowsTimeRPC, TurnOffAllLocksRPC, SetDefaultFileOpenOptionsRPC, "
+                        "SetSuppressMessagesRPC, ApplyNamedSelectionRPC, CreateNamedSelectionRPC, DeleteNamedSelectionRPC, "
+                        "LoadNamedSelectionRPC, SaveNamedSelectionRPC, SetNamedSelectionAutoApplyRPC, UpdateNamedSelectionRPC, "
+                        "InitializeNamedSelectionVariablesRPC, MenuQuitRPC, SetPlotDescriptionRPC, MovePlotOrderTowardFirstRPC, "
+                        "MovePlotOrderTowardLastRPC, SetPlotOrderToFirstRPC, SetPlotOrderToLastRPC, RenamePickLabelRPC, "
+                        "GetQueryParametersRPC, DDTConnectRPC, DDTFocusRPC, ReleaseToDDTRPC, "
+                        "PlotDDTVispointVariablesRPC, ExportRPC, MaxRPC.");
         return NULL;
     }
 
@@ -1913,6 +1923,30 @@ ViewerRPC_GetToolId(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
+ViewerRPC_SetEmbeddedPlotId(PyObject *self, PyObject *args)
+{
+    ViewerRPCObject *obj = (ViewerRPCObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the embeddedPlotId in the object.
+    obj->data->SetEmbeddedPlotId((int)ival);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+ViewerRPC_GetEmbeddedPlotId(PyObject *self, PyObject *args)
+{
+    ViewerRPCObject *obj = (ViewerRPCObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetEmbeddedPlotId()));
+    return retval;
+}
+
+/*static*/ PyObject *
 ViewerRPC_SetBoolFlag(PyObject *self, PyObject *args)
 {
     ViewerRPCObject *obj = (ViewerRPCObject *)self;
@@ -2085,6 +2119,7 @@ ViewerRPC_SetQueryParams(PyObject *self, PyObject *args)
 {
     ViewerRPCObject *obj = (ViewerRPCObject *)self;
 
+    (void) obj;
     // NOT IMPLEMENTED!!!
     // name=queryParams, type=MapNode
 
@@ -2096,6 +2131,7 @@ ViewerRPC_SetQueryParams(PyObject *self, PyObject *args)
 ViewerRPC_GetQueryParams(PyObject *self, PyObject *args)
 {
     ViewerRPCObject *obj = (ViewerRPCObject *)self;
+    (void) obj;
     // NOT IMPLEMENTED!!!
     // name=queryParams, type=MapNode
     PyObject *retval = NULL;
@@ -2152,6 +2188,8 @@ PyMethodDef PyViewerRPC_methods[VIEWERRPC_NMETH] = {
     {"GetQueryPoint1", ViewerRPC_GetQueryPoint1, METH_VARARGS},
     {"SetToolId", ViewerRPC_SetToolId, METH_VARARGS},
     {"GetToolId", ViewerRPC_GetToolId, METH_VARARGS},
+    {"SetEmbeddedPlotId", ViewerRPC_SetEmbeddedPlotId, METH_VARARGS},
+    {"GetEmbeddedPlotId", ViewerRPC_GetEmbeddedPlotId, METH_VARARGS},
     {"SetBoolFlag", ViewerRPC_SetBoolFlag, METH_VARARGS},
     {"GetBoolFlag", ViewerRPC_GetBoolFlag, METH_VARARGS},
     {"SetIntArg1", ViewerRPC_SetIntArg1, METH_VARARGS},
@@ -2256,6 +2294,8 @@ PyViewerRPC_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(ViewerRPC::SetActiveTimeSliderRPC));
     if(strcmp(name, "AddPlotRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::AddPlotRPC));
+    if(strcmp(name, "AddEmbeddedPlotRPC") == 0)
+        return PyInt_FromLong(long(ViewerRPC::AddEmbeddedPlotRPC));
     if(strcmp(name, "SetPlotFrameRangeRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::SetPlotFrameRangeRPC));
     if(strcmp(name, "DeletePlotKeyframeRPC") == 0)
@@ -2548,6 +2588,8 @@ PyViewerRPC_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(ViewerRPC::SetCreateVectorMagnitudeExpressionsRPC));
     if(strcmp(name, "SetPrecisionTypeRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::SetPrecisionTypeRPC));
+    if(strcmp(name, "SetBackendTypeRPC") == 0)
+        return PyInt_FromLong(long(ViewerRPC::SetBackendTypeRPC));
     if(strcmp(name, "CopyActivePlotsRPC") == 0)
         return PyInt_FromLong(long(ViewerRPC::CopyActivePlotsRPC));
     if(strcmp(name, "SetPlotFollowsTimeRPC") == 0)
@@ -2647,6 +2689,8 @@ PyViewerRPC_getattr(PyObject *self, char *name)
         return ViewerRPC_GetQueryPoint1(self, NULL);
     if(strcmp(name, "toolId") == 0)
         return ViewerRPC_GetToolId(self, NULL);
+    if(strcmp(name, "embeddedPlotId") == 0)
+        return ViewerRPC_GetEmbeddedPlotId(self, NULL);
     if(strcmp(name, "boolFlag") == 0)
         return ViewerRPC_GetBoolFlag(self, NULL);
     if(strcmp(name, "intArg1") == 0)
@@ -2723,6 +2767,8 @@ PyViewerRPC_setattr(PyObject *self, char *name, PyObject *args)
         obj = ViewerRPC_SetQueryPoint1(self, tuple);
     else if(strcmp(name, "toolId") == 0)
         obj = ViewerRPC_SetToolId(self, tuple);
+    else if(strcmp(name, "embeddedPlotId") == 0)
+        obj = ViewerRPC_SetEmbeddedPlotId(self, tuple);
     else if(strcmp(name, "boolFlag") == 0)
         obj = ViewerRPC_SetBoolFlag(self, tuple);
     else if(strcmp(name, "intArg1") == 0)
@@ -2897,7 +2943,6 @@ PyViewerRPC_GetLogString()
 static void
 PyViewerRPC_CallLogRoutine(Subject *subj, void *data)
 {
-    ViewerRPC *atts = (ViewerRPC *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

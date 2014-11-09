@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewavtMatSpeciesMetaData(int);
 std::string
 PyavtMatSpeciesMetaData_ToString(const avtMatSpeciesMetaData *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%snumSpecies = %d\n", prefix, atts->numSpecies);
     str += tmpStr;
@@ -432,7 +432,6 @@ PyavtMatSpeciesMetaData_GetLogString()
 static void
 PyavtMatSpeciesMetaData_CallLogRoutine(Subject *subj, void *data)
 {
-    avtMatSpeciesMetaData *atts = (avtMatSpeciesMetaData *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

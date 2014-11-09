@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,6 +62,7 @@
 #include <ClientMethod.h>
 #include <ClientInformation.h>
 #include <ClientInformationList.h>
+#include <ColorControlPointList.h>
 #include <ColorTableAttributes.h>
 #include <ConstructDataBinningAttributes.h>
 #include <DatabaseCorrelation.h>
@@ -158,6 +159,7 @@
 #include <QApplication>
 #include <QSocketNotifier>
 #include <QvisColorTableButton.h>
+#include <QvisNoDefaultColorTableButton.h>
 #include <DebugStream.h>
 #include <TimingsManager.h>
 #include <WindowMetrics.h>
@@ -1269,7 +1271,7 @@ ViewerSubject::AddInputToXfer(ViewerClientConnection *client,
         // statusAtts, metaData, silAtts.
         if(subj->GetGuido() >= GetViewerState()->FreelyExchangedState())
         {
-            for(int i = 0; i < clients.size(); ++i)
+            for(size_t i = 0; i < clients.size(); ++i)
             {
                 if(clients[i] != client)
                     clients[i]->BroadcastToClient(subj);
@@ -1331,7 +1333,7 @@ ViewerSubject::DisconnectClient(ViewerClientConnection *client)
         // check to see if all other clients are remote, if they are then quit since
         // all admin clients have quit
         bool adminClient = false;
-        for(int i = 0; i < clients.size(); ++i)
+        for(size_t i = 0; i < clients.size(); ++i)
         {
             if(!clients[i]->GetViewerClientAttributes().GetExternalClient())
             {
@@ -1403,11 +1405,10 @@ ViewerSubject::InitializePluginManagers()
     // not available to the viewer
     //
     bool done = false;
-    int i;
     while (!done)
     {
         done = true;
-        for (i=0; i<pluginAtts->GetId().size(); i++)
+        for (size_t i=0; i<pluginAtts->GetId().size(); i++)
         {
             std::string id = pluginAtts->GetId()[i];
             if ((pluginAtts->GetType()[i] == "plot"     &&
@@ -1427,7 +1428,7 @@ ViewerSubject::InitializePluginManagers()
     // to be disabled in the plugin managers and enable the ones
     // specified to be enabled.
     //
-    for (i=0; i<pluginAtts->GetId().size(); i++)
+    for (size_t i=0; i<pluginAtts->GetId().size(); i++)
     {
         std::string id = pluginAtts->GetId()[i];
         if (pluginAtts->GetEnabled()[i] == false)
@@ -1462,7 +1463,7 @@ ViewerSubject::InitializePluginManagers()
     // Now add those to the atts that are in the manager but not yet listed
     // List them as enabled or disabled by their default state
     //
-    for (i=0; i<pmgr->GetNAllPlugins(); i++)
+    for (int i=0; i<pmgr->GetNAllPlugins(); i++)
     {
         std::string id = pmgr->GetAllID(i);
         if (pluginAtts->GetIndexByID(id) < 0)
@@ -1472,7 +1473,7 @@ ViewerSubject::InitializePluginManagers()
                                   pmgr->PluginEnabled(id));
         }
     }
-    for (i=0; i<omgr->GetNAllPlugins(); i++)
+    for (int i=0; i<omgr->GetNAllPlugins(); i++)
     {
         std::string id = omgr->GetAllID(i);
         if (pluginAtts->GetIndexByID(id) < 0)
@@ -2179,7 +2180,10 @@ ViewerSubject::InitializeWorkArea()
         // If any of the options are missing then use the WindowMetrics
         // class to fill in the blanks.
         //
-        int wmBorder[4], wmShift[2], wmScreen[4];
+        int wmBorder[4] = {0, 0, 0, 0};
+        int wmShift[2] = {0, 0};
+        int wmScreen[4] = {0, 0, 0, 0};
+
         if(GetViewerProperties()->GetWindowBorders().size() == 0 ||
            GetViewerProperties()->GetWindowShift().size() == 0 ||
            GetViewerProperties()->GetWindowPreShift().size() == 0 || 
@@ -3169,9 +3173,9 @@ ViewerSubject::CreateNode(DataNode *parentNode, bool detailed)
     stringVector databases;
     intVector    wIds;
     // Get the ids of the windows that currently exist.
-    int i, nWin, *windowIndices;
+    int nWin, *windowIndices;
     windowIndices = wM->GetWindowIndices(&nWin);
-    for(i = 0; i < nWin; ++i)
+    for(int i = 0; i < nWin; ++i)
         wIds.push_back(windowIndices[i]);
     delete [] windowIndices;
 
@@ -3184,7 +3188,7 @@ ViewerSubject::CreateNode(DataNode *parentNode, bool detailed)
     char keyName[100];
     std::map<std::string, std::string> dbToSource;
     DataNode *sourceMapNode = new DataNode("SourceMap");
-    for(i = 0; i < databases.size(); ++i)
+    for(int i = 0; i < (int)databases.size(); ++i)
     {
         SNPRINTF(keyName, 100, "SOURCE%02d", i);
         std::string key(keyName);
@@ -3197,8 +3201,7 @@ ViewerSubject::CreateNode(DataNode *parentNode, bool detailed)
     wM->CreateNode(vsNode, dbToSource, detailed);
     if(detailed)
         ViewerQueryManager::Instance()->CreateNode(vsNode);
-    if(detailed)
-        ViewerEngineManager::Instance()->CreateNode(vsNode);
+    ViewerEngineManager::Instance()->CreateNode(vsNode, detailed);
 }
 
 // ****************************************************************************
@@ -3563,6 +3566,7 @@ void GetSerializedData(int windowIndex,
 
             element.SetData(QString(data.toBase64()).toStdString());
             element.SetFormat(ViewerClientInformation::Image);
+            element.SetWindowId(vwin->GetWindowId()+1);
             elementList.push_back(element);
         }
         delete [] result;
@@ -3596,6 +3600,7 @@ void GetSerializedData(int windowIndex,
                     ViewerClientInformationElement element;
                     element.SetData(QString(data.toBase64()).toStdString());
                     element.SetFormat(ViewerClientInformation::Image);
+                    element.SetWindowId(vwin->GetWindowId()+1);
                     elementList.push_back(element);
                 }
                 /// free the memory
@@ -3611,6 +3616,7 @@ void GetSerializedData(int windowIndex,
                     ViewerClientInformationElement element;
                     element.SetData(QString(data.toBase64()).toStdString());
                     element.SetFormat(ViewerClientInformation::Data);
+                    element.SetWindowId(vwin->GetWindowId()+1);
                     elementList.push_back(element);
                 }
             }
@@ -3657,7 +3663,7 @@ ViewerSubject::ExportWindow()
 
     int resultId = -1;
     /// Broadcast directly to client..
-    for(int i = 0; i < clients.size(); ++i) {
+    for(int i = 0; i < (int)clients.size(); ++i) {
         ViewerClientAttributes& client = clients[i]->GetViewerClientAttributes();
         if(client.GetId() == clientId) {
             resultId = i;
@@ -3680,12 +3686,12 @@ ViewerSubject::ExportWindow()
 
     qatts->ClearVars();
 
-    for(int i = 0; i < windowIds.size(); ++i)
+    for(int i = 0; i < (int)windowIds.size(); ++i)
     {
         ViewerWindow* vwin = ViewerWindowManager::Instance()->GetWindow(i);
 
         bool match = false;
-        for(int j = 0; j < windowIds.size(); ++j)
+        for(size_t j = 0; j < windowIds.size(); ++j)
         {
             if(windowIds[j] == vwin->GetWindowId()+1)
             {
@@ -3699,7 +3705,7 @@ ViewerSubject::ExportWindow()
         GetSerializedData(i, clatts.GetImageWidth(), clatts.GetImageHeight(), clatts.GetImageResolutionPcnt(), of, elementList);
     }
 
-    for(int i = 0; i < elementList.size(); ++i)
+    for(size_t i = 0; i < elementList.size(); ++i)
         qatts->AddVars(elementList[i]);
 
     client->BroadcastToClient(qatts);
@@ -4000,7 +4006,7 @@ int getVectorTokens(std::string buff, std::vector<std::string> &tokens, int node
         }
     }
 
-    if (tokens.size() != length)
+    if (tokens.size() != (size_t)length)
         tokens.clear();
 
     return (int)tokens.size();
@@ -4033,7 +4039,7 @@ ViewerSubject::CreateAttributesDataNode(const avtDefaultPlotMetaData *dp) const
     float fval;
     double dval;
 
-    for(int i=0; i < dp->plotAttributes.size(); i++) 
+    for(size_t i=0; i < dp->plotAttributes.size(); i++) 
     {
         nodeTypeToken = getToken(dp->plotAttributes[i], true);  
         if(sscanf(nodeTypeToken.c_str(), "%d", &nodeType) != 1)
@@ -5806,6 +5812,44 @@ ViewerSubject::ConstructDataBinning()
 }
 
 // ****************************************************************************
+// Method: GetActivePlotNetworkIds
+//
+// Purpose: 
+//   Gets the network ids for the active plots.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Jul 25 00:03:23 EDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+int
+GetActivePlotNetworkIds(ViewerPlotList *plist, intVector &networkIds, EngineKey &key)
+{
+    intVector plotIDs;
+    networkIds.clear();
+    plist->GetActivePlotIDs(plotIDs);
+    if (plotIDs.empty())
+        return 1;
+    for(size_t i = 0; i < plotIDs.size(); ++i)
+    {
+        const ViewerPlot *plot = plist->GetPlot(plotIDs[i]);
+        const EngineKey &engineKey = plot->GetEngineKey();
+        if(i == 0)
+            key = engineKey;
+        else
+        {
+            if(key != engineKey)
+                return 2;
+        }
+
+        networkIds.push_back(plot->GetNetworkID());
+    }
+    return 0;
+}
+
+// ****************************************************************************
 // Method: ViewerSubject::ExportDatabase
 //
 // Purpose: 
@@ -5821,33 +5865,97 @@ ViewerSubject::ConstructDataBinning()
 //   Brad Whitlock, Wed Apr 30 09:21:22 PDT 2008
 //   Support for internationalization.
 //
+//   Brad Whitlock, Fri Jan 24 16:28:35 PST 2014
+//   Allow more than one plot to be exported.
+//   Work partially supported by DOE Grant SC0007548.
+//
+//   Brad Whitlock, Thu Jul 24 21:52:34 EDT 2014
+//   Add export for all time states.
+//
 // ****************************************************************************
 
 void
 ViewerSubject::ExportDatabase()
 {
     //
-    // Perform the RPC.
+    // Get the network ids and check that they are all on the same engine.
     //
     ViewerWindow *win = ViewerWindowManager::Instance()->GetActiveWindow();
     ViewerPlotList *plist = win->GetPlotList();
-    intVector plotIDs;
-    plist->GetActivePlotIDs(plotIDs);
-    if (plotIDs.size() <= 0)
+    intVector networkIds;
+    EngineKey key;
+    int err = GetActivePlotNetworkIds(plist, networkIds, key);
+    if(err == 1)
     {
         Error(tr("To export a database, you must have an active plot.  No database was saved."));
         return;
     }
-    if (plotIDs.size() > 1)
-        Message(tr("Only one database can be exported at a time.  VisIt is exporting the first active plot."));
+    else if(err == 2)
+    {
+        Error(tr("To export the database for multiple plots, all plots "
+                 "must be processed by the same compute engine."));
+        return;
+    }
 
-    ViewerPlot *plot = plist->GetPlot(plotIDs[0]);
-    const EngineKey   &engineKey = plot->GetEngineKey();
-    int networkId = plot->GetNetworkID();
     TRY
     {
-        if (ViewerEngineManager::Instance()->ExportDatabase(engineKey, 
-                                                            networkId))
+        ExportDBAttributes exportAtts(*ViewerEngineManager::GetExportDBAtts());
+
+        // Do export of all time states.
+        if(!key.IsSimulation() && exportAtts.GetAllTimes() && plist->HasActiveTimeSlider())
+        {
+            // Get the time slider information.
+            int state = 0, nStates = 0;
+            plist->GetTimeSliderStates(plist->GetActiveTimeSlider(), state, nStates);
+
+            // Iterate through time and export the current time state.
+            char digits[10];
+            std::string filename(exportAtts.GetFilename());
+            int status = 0;
+            for(int i = 0; i < nStates && status == 0; ++i)
+            {
+                // Make a new filename for the exported file.
+                if(nStates >= 10000)
+                    SNPRINTF(digits, 10, "%08d", i);
+                else
+                    SNPRINTF(digits, 10, "%04d", i);
+                std::string timeSuffix(digits);
+
+                TRY
+                {
+                    plist->SetTimeSliderState(i);
+                    int err = GetActivePlotNetworkIds(plist, networkIds, key);
+                    if(err == 0)
+                    {
+                        if(ViewerEngineManager::Instance()->ExportDatabases(key, networkIds, exportAtts, timeSuffix))
+                            Message(tr("Exported database time state %1").arg(i));
+                        else
+                            status = 1;
+                    }
+                    else
+                        status = 1;
+
+                    if(status == 1)
+                    {
+                        Error(tr("Unable to export database time "
+                                 "state %1. Stopping export.").arg(i));
+                    }
+                }
+                CATCH2(VisItException,e)
+                {
+                    Error(tr("An unexpected error prevented export of "
+                             "database time state %1. Stopping export. %2").
+                          arg(i).arg(e.Message().c_str()));
+                    status = 2;
+                }
+                ENDTRY
+            }
+
+            // Go back to the original state.
+            plist->SetTimeSliderState(state);
+        }
+        // Do export of current time state.
+        else if (ViewerEngineManager::Instance()->ExportDatabases(key, networkIds, exportAtts, ""))
         {
             Message(tr("Exported database"));
         }
@@ -6469,7 +6577,7 @@ ViewerSubject::WriteConfigFile()
     {
         MachineProfile &pl = hpl->GetMachines(i);
         string s = pl.GetHostNickname();
-        for (int j=0; j<s.length(); j++)
+        for (size_t j=0; j<s.length(); j++)
         {
             if (s[j]>='A' && s[j]<='Z')
                 s[j] += int('a')-int('A');
@@ -7318,7 +7426,7 @@ ViewerSubject::ConnectToMetaDataServer()
            << " to connect to another client." << endl;
     debug1 << "Arguments:" << endl;
     const stringVector &sv = GetViewerState()->GetViewerRPC()->GetProgramOptions();
-    for(int i = 0; i < sv.size(); ++i)
+    for(size_t i = 0; i < sv.size(); ++i)
          debug1 << "\t" << sv[i].c_str() << endl;
 
     //
@@ -8458,6 +8566,9 @@ ViewerSubject::HandleViewerRPC()
 //    Kathleen Biagas, Wed Aug  7 13:00:17 PDT 2013
 //    Added SetPrecisionTypeRPC.
 //
+//    Cameron Christensen, Tuesday, June 10, 2014
+//    Added SetBackendTypeRPC.
+//
 // ****************************************************************************
 
 void
@@ -8826,6 +8937,9 @@ ViewerSubject::HandleViewerRPCEx()
     case ViewerRPC::SetPrecisionTypeRPC:
         SetPrecisionType();
         break;
+    case ViewerRPC::SetBackendTypeRPC:
+        SetBackendType();
+        break;
     case ViewerRPC::SetDefaultFileOpenOptionsRPC:
         SetDefaultFileOpenOptions();
         break;
@@ -8909,7 +9023,7 @@ ViewerSubject::BroadcastAdvanced(AttributeSubject* subj)
     bool shouldBroadCastAdvancedImage = false;
     bool shouldBroadCastAdvancedData = false;
 
-    for(int i = 0; i < clients.size(); ++i)
+    for(size_t i = 0; i < clients.size(); ++i)
     {
         if(clients[i]->GetViewerClientAttributes().GetRenderingType() == ViewerClientAttributes::Image)
             shouldBroadCastAdvancedImage = true;
@@ -8924,7 +9038,7 @@ ViewerSubject::BroadcastAdvanced(AttributeSubject* subj)
 
     ViewerWindowManager* manager = ViewerWindowManager::Instance();
 
-    for(int x = 0; x < clients.size(); ++x)
+    for(size_t x = 0; x < clients.size(); ++x)
     {
         const ViewerClientAttributes& clatts = clients[x]->GetViewerClientAttributes();
 
@@ -8947,7 +9061,7 @@ ViewerSubject::BroadcastAdvanced(AttributeSubject* subj)
                 ViewerWindow* vwin = manager->GetWindow(i);
 
                 bool match = false;
-                for(int j = 0; j < activeWindows.size(); ++j)
+                for(size_t j = 0; j < activeWindows.size(); ++j)
                 {
                     if(activeWindows[j] == vwin->GetWindowId()+1)
                     {
@@ -8985,7 +9099,7 @@ ViewerSubject::BroadcastAdvanced(AttributeSubject* subj)
                 ViewerWindow* vwin = manager->GetWindow(i);
 
                 bool match = false;
-                for(int j = 0; j < activeWindows.size(); ++j)
+                for(size_t j = 0; j < activeWindows.size(); ++j)
                 {
                     if(activeWindows[j] == vwin->GetWindowId()+1)
                     {
@@ -9028,7 +9142,7 @@ ViewerSubject::BroadcastAdvanced(AttributeSubject* subj)
     ViewerClientInformation* qatts = GetViewerState()->GetViewerClientInformation();
 
     /// I am clearing memory through the ClearVars() operations..
-    for(int i = 0; i < clients.size(); ++i)
+    for(size_t i = 0; i < clients.size(); ++i)
     {
         ViewerClientAttributes& clatts = clients[i]->GetViewerClientAttributes();
 
@@ -9055,7 +9169,7 @@ ViewerSubject::BroadcastAdvanced(AttributeSubject* subj)
                 qatts->ClearVars();
 
                 ViewerClientInformationElementList& elementList = geometryElementMap[dimensions];
-                for(int k = 0; k < elementList.size(); ++k) {
+                for(size_t k = 0; k < elementList.size(); ++k) {
                     qatts->AddVars(elementList[k]);
                 }
                 clients[i]->BroadcastToClient(qatts);
@@ -9319,7 +9433,7 @@ ViewerSubject::ProcessSpecialOpcodes(int opcode)
         EngineList *engines = eM->GetEngineList();
         const stringVector &hosts = engines->GetEngineName();
         const stringVector &sims  = engines->GetSimulationName();
-        for(int i = 0; i < hosts.size(); ++i)
+        for(size_t i = 0; i < hosts.size(); ++i)
             eM->InterruptEngine(EngineKey(hosts[i], sims[i]));
     }
     else if(opcode == animationStopOpcode)
@@ -9358,7 +9472,7 @@ ViewerSubject::BroadcastToAllClients(void *data1, Subject *data2)
     if(This != 0)
     {
         AttributeSubject *subj = (AttributeSubject *)data2;
-        for(int i = 0; i < This->clients.size(); ++i)
+        for(size_t i = 0; i < This->clients.size(); ++i)
             This->clients[i]->BroadcastToClient(subj);
 
         This->BroadcastAdvanced(subj);
@@ -9502,7 +9616,7 @@ ViewerSubject::HandleClientInformation()
             debug3 << "client["<< i << "] = " << client.GetClientName().c_str()
                    << endl;
             debug3 << "methods:" << endl;
-            for(int j = 0; j < client.GetMethodNames().size(); ++j)
+            for(int j = 0; j < (int)client.GetMethodNames().size(); ++j)
             {
                 debug3 << "\t" << client.GetMethod(j).c_str() << "("
                        << client.GetMethodPrototype(j).c_str() << ")" << endl;
@@ -9611,7 +9725,7 @@ ViewerSubject::ConnectWindow(ViewerWindow *win)
     TRY
     {
         win->GetActionManager()->EnableActions(ViewerWindowManager::Instance()->GetWindowAtts());
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
         win->Show();
 #endif
     }
@@ -9939,7 +10053,7 @@ ViewerSubject::OpenClient()
         cbData[0] = (void *)this;
         cbData[1] = (void *)dialog;
         stringVector args(clientArguments);
-        for(int i = 0; i < programOptions.size(); ++i)
+        for(size_t i = 0; i < programOptions.size(); ++i)
             args.push_back(programOptions[i]);
         newClient->LaunchClient(program, args, 0, 0, LaunchProgressCB, cbData);
         clients.push_back(newClient);
@@ -10229,6 +10343,10 @@ ViewerSubject::HandleSILAttsUpdated(const string &host,
 //   
 //   Mark C. Miller, Wed Jun 17 17:46:18 PDT 2009
 //   Replaced CATCHALL(...) with CATCHALL
+//
+//   Kathleen Biagas, Mon Aug  4 15:42:48 PDT 2014
+//   Send category name when adding color table.
+//
 // ****************************************************************************
 
 void
@@ -10250,16 +10368,22 @@ ViewerSubject::HandleColorTable()
         {
             // Clear all of the color tables.
             QvisColorTableButton::clearAllColorTables();
+            QvisNoDefaultColorTableButton::clearAllColorTables();
 
-            size_t nNames = colorAtts->GetNames().size();
+            int nNames = colorAtts->GetNumColorTables();
             const stringVector &names = colorAtts->GetNames();
-            for(size_t i = 0; i < nNames; ++i)
+            for(int i = 0; i < nNames; ++i)
             {
-                QvisColorTableButton::addColorTable(names[i].c_str());
+                QvisColorTableButton::addColorTable(names[i].c_str(), 
+                    colorAtts->GetColorTables(i).GetCategoryName().c_str());
+                QvisNoDefaultColorTableButton::addColorTable(names[i].c_str(),
+                    colorAtts->GetColorTables(i).GetCategoryName().c_str());
             }
 
             // Update all of the QvisColorTableButton widgets.
             QvisColorTableButton::updateColorTableButtons();
+            // Update all of the QvisNoDefaultColorTableButton widgets.
+            QvisNoDefaultColorTableButton::updateColorTableButtons();
         }
     }
     CATCHALL
@@ -10451,7 +10575,7 @@ ViewerSubject::HasInterpreter() const
         ++i)
     {
         const ClientInformation &client = GetViewerState()->GetClientInformationList()->GetClients(i);
-        for(int j = 0; j < client.GetMethodNames().size() && !hasInterpreter; ++j)
+        for(int j = 0; j < (int)client.GetMethodNames().size() && !hasInterpreter; ++j)
             hasInterpreter = client.GetMethod(j) == "Interpret" &&
                              client.GetMethodPrototype(j) == "s";
     }
@@ -10770,6 +10894,25 @@ ViewerSubject::SetPrecisionType()
 }
 
 // ****************************************************************************
+//  Method:  ViewerSubject::SetBackendType
+//
+//  Purpose: Handle a SetBackendType RPC
+//
+//  Programmer:  Cameron Christensen
+//  Creation:    June 10, 2014
+//
+//  Modifications:
+// ****************************************************************************
+
+void
+ViewerSubject::SetBackendType()
+{
+    ViewerWindowManager *wM = ViewerWindowManager::Instance();
+    wM->SetBackendType(
+        GetViewerState()->GetViewerRPC()->GetIntArg1());
+}
+
+// ****************************************************************************
 //  Method:  ViewerSubject::ApplyNamedSelection()
 //
 //  Purpose: Handle a ApplyNamedSelection RPC
@@ -10861,7 +11004,7 @@ ViewerSubject::ApplyNamedSelection()
     //
     TRY
     {
-        for(int i = 0; i < ePlotIDs.size(); ++i)
+        for(size_t i = 0; i < ePlotIDs.size(); ++i)
         {
             ViewerPlot *plot = plist->GetPlot(ePlotIDs[i]);
             plot->SetNamedSelection(selName);
@@ -11921,8 +12064,6 @@ ViewerSubject::OpenWithEngine(const std::string &remoteHost,
 
 void ViewerSubject::DDTConnect()
 {
-    const bool connect = (bool) GetViewerState()->GetViewerRPC()->GetIntArg1();
-
     DDTManager* manager = DDTManager::getInstance();
     DDTSession* ddt = manager->getSessionNC();
     if (ddt!=NULL && ddt->connected())

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -76,7 +76,6 @@ ELSE(VISIT_DBIO_ONLY OR VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
     ADD_SUBDIRECTORY(annotations)
     ADD_SUBDIRECTORY(convert)
     ADD_SUBDIRECTORY(embedviewer)
-    ADD_SUBDIRECTORY(synthetic_diagnostic)
     ADD_SUBDIRECTORY(imagetools)
     IF(MILI_FOUND AND NOT WIN32)
         ADD_SUBDIRECTORY(makemili)

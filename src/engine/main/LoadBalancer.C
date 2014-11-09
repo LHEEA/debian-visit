@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -416,6 +416,48 @@ LoadBalancer::CheckDynamicLoadBalancing(avtContract_p input)
     return true;
 }
 
+// ****************************************************************************
+// Method: LoadBalancer::GetMeshName
+//
+// Purpose:
+//   Get the mesh name for the variable in the pipeline.
+//
+// Arguments:
+//   input      : The input contract
+//   stateIndex : The time state (since it may not yet be valid in the contract).
+//
+// Returns:    The name of the mesh.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jun 19 12:57:27 PDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+std::string
+LoadBalancer::GetMeshName(avtContract_p input, int stateIndex)
+{
+    const LBInfo &lbinfo = pipelineInfo[input->GetPipelineIndex()];
+    avtDatabase *db = dbMap[lbinfo.db];
+
+    avtDataRequest_p data = input->GetDataRequest();
+    avtDatabaseMetaData *md = db->GetMetaData(stateIndex);
+    string meshName;
+
+    TRY
+    {
+        meshName = md->MeshForVar(data->GetVariable());
+    }
+    CATCHALL
+    {
+    }
+    ENDTRY
+
+    return meshName;
+}
 
 // ****************************************************************************
 //  Method: LoadBalancer::DetermineAppropriateScheme
@@ -602,7 +644,12 @@ LoadBalancer::Reduce(avtContract_p input)
     // we will unset the Boolean now and reset it in the case we actually do
     // data replication.
     //
+
+#ifdef PARALLEL
+    // only used in parallel
     bool dataReplicationRequested = input->ReplicateSingleDomainOnAllProcessors();
+#endif
+
     input->SetReplicateSingleDomainOnAllProcessors(false);
 
     //
@@ -649,7 +696,7 @@ LoadBalancer::Reduce(avtContract_p input)
             UpdateProgress(pipelineInfo[input->GetPipelineIndex()].current,
                            (int)list.size());
             pipelineInfo[input->GetPipelineIndex()].current++;
-            if (pipelineInfo[input->GetPipelineIndex()].current == list.size())
+            if (pipelineInfo[input->GetPipelineIndex()].current == (int)list.size())
                 pipelineInfo[input->GetPipelineIndex()].complete = true;
             return new_data;
         }
@@ -665,6 +712,11 @@ LoadBalancer::Reduce(avtContract_p input)
     // set up MPI message tags
     static int lastDomDoneMsg = GetUniqueMessageTag();
     static int newDomToDoMsg = GetUniqueMessageTag();
+
+    // Make sure that we have domain to file mapping available.
+    LBInfo &lbInfo(pipelineInfo[input->GetPipelineIndex()]);
+    std::string meshName = GetMeshName(input, dbState[lbInfo.db]);
+    GetIOInformation(lbInfo.db, dbState[lbInfo.db], meshName);
 
     if (scheme == LOAD_BALANCE_STREAM)
     {
@@ -707,7 +759,7 @@ LoadBalancer::Reduce(avtContract_p input)
         UpdateProgress(pipelineInfo[input->GetPipelineIndex()].current,
                        domainListForStreaming.size());
         pipelineInfo[input->GetPipelineIndex()].current++;
-        if (pipelineInfo[input->GetPipelineIndex()].current == domainListForStreaming.size())
+        if (pipelineInfo[input->GetPipelineIndex()].current == (int)domainListForStreaming.size())
         {
             pipelineInfo[input->GetPipelineIndex()].complete = true;
             domainListForStreaming.clear();
@@ -762,15 +814,15 @@ LoadBalancer::Reduce(avtContract_p input)
         }
         else if (theScheme == LOAD_BALANCE_STRIDE_ACROSS_BLOCKS)
         {
-            for (int j = 0 ; j < list.size() ; j++)
+            for (size_t j = 0 ; j < list.size() ; j++)
             {
-                if (j % nProcs == rank)
+                if (j % nProcs == (size_t)rank)
                     mylist.push_back(list[j]);
             }
         }
         else if (theScheme == LOAD_BALANCE_ABSOLUTE)
         {
-            for (int j = 0 ; j < list.size() ; j++)
+            for (size_t j = 0 ; j < list.size() ; j++)
             {
                 if (list[j] % nProcs == rank)
                     mylist.push_back(list[j]);
@@ -782,9 +834,9 @@ LoadBalancer::Reduce(avtContract_p input)
             IOInfo &ioInfo(ioMap[lbInfo.db]);
             const HintList &hints(ioInfo.ioInfo.GetHints());
 
-            for (int j = 0 ; j < list.size() ; j++)
+            for (size_t j = 0 ; j < list.size() ; j++)
             {
-                if (hints.size() >= rank)
+                if (hints.size() >= (size_t)rank)
                 {
                     const vector<int> &doms = hints[rank];
                     int ndoms = doms.size();
@@ -804,7 +856,7 @@ LoadBalancer::Reduce(avtContract_p input)
             // all procs randomly jumble the list of domain ids
             // all procs compute same jumbled list due to same seed
             // [ which won't be true on a heterogeneous platform ]
-            int j;
+            size_t j;
             vector<int> jumbledList = list;
             srand(0xDeadBeef);
             for (j = 0 ; j < list.size() * 5; j++)
@@ -818,7 +870,7 @@ LoadBalancer::Reduce(avtContract_p input)
             // now, do round-robin assignment from the jumbled list
             for (j = 0 ; j < list.size() ; j++)
             {
-                if (j % nProcs == rank)
+                if (j % nProcs == (size_t)rank)
                     mylist.push_back(jumbledList[j]);
             }
         }
@@ -854,7 +906,7 @@ LoadBalancer::Reduce(avtContract_p input)
             trav.GetDomainList(domainList);
 
             // Make a work list and a completed list
-            int         totaldomains = domainList.size();
+            size_t         totaldomains = domainList.size();
             deque<int>  incomplete(domainList.begin(), domainList.end());
             vector<int> complete;
 
@@ -934,7 +986,7 @@ LoadBalancer::Reduce(avtContract_p input)
                         // count the number of processors which have
                         // this file opened
                         int nopen = 0;
-                        for (int j=0; j<ioInfo.files.size(); j++)
+                        for (size_t j=0; j<ioInfo.files.size(); j++)
                             if (ioInfo.files[j].count(fileno) > 0)
                                 nopen++;
                         if (nopen < minopen)
@@ -1039,12 +1091,11 @@ LoadBalancer::Reduce(avtContract_p input)
 //      that should be used when balancing a load.
 //
 //  Arguments:
-//      name     The name of the database.
-//      ioinfo   Information about which domains should be grouped together on
-//               the same processor.
+//    db        : The name of the database.
+//    db_ptr    : The pointer to the database.
+//    timeState : The time state that we want to read.
 //
-//  Notes:  This will need to expand to support IO restrictions for
-//          clustered (non-global) file systems.
+//  Notes:  
 //
 //  Programmer:  Jeremy Meredith
 //  Creation:    July 26, 2001
@@ -1068,34 +1119,86 @@ LoadBalancer::Reduce(avtContract_p input)
 //    Make the decision to do DBPLUGIN_DYNAMIC load balancing on a per
 //    input basis.
 //
+//    Brad Whitlock, Thu Jun 19 12:03:31 PDT 2014
+//    Only store the database pointer. IO information processing was moved.
+//
 // ****************************************************************************
 
 void
-LoadBalancer::AddDatabase(const string &db, avtDatabase *db_ptr, int time)
+LoadBalancer::AddDatabase(const string &db, avtDatabase *db_ptr, int timeState)
 {
-    const avtIOInformation& io = db_ptr->GetIOInformation(time);
-
     dbMap[db] = db_ptr;
-    ioMap[db].ioInfo = io;
-    ioMap[db].fileMap.resize(io.GetNDomains());
+    dbState[db] = timeState;
+}
 
-    debug4 << "LoadBalancer::AddDatabase - db=" << db.c_str() << endl;
+// ****************************************************************************
+// Method: LoadBalancer::GetIOInformation
+//
+// Purpose:
+//   Gets the I/O information that should be used when balancing a load.
+//
+// Arguments:
+//   db       : The database name
+//   time     : The time step
+//   meshname : The name of the mesh whose IO information we're requesting.
+//
+// Returns:    True on success; False on failure.
+//
+// Note:       This code was moved from AddDatabase.
+//             This will need to expand to support IO restrictions for
+//             clustered (non-global) file systems.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Jun 19 12:18:26 PDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+LoadBalancer::GetIOInformation(const string &db, int time, const string &meshname)
+{
+    const char *mName = "LoadBalancer::GetIOInformation: ";
+
+    // Get the cached database pointer.
+    bool retval = false;
+    std::map<std::string, avtDatabase *>::iterator it = dbMap.find(db);
+    if(it == dbMap.end())
+        return retval;
+
+    // Get the IOInformation for that database. Nearly all formats will ignore
+    // the meshname and return the same domain to file mapping over and over.
+    // Certain formats will use the mesh name to return a new domain to file
+    // mapping. This comes up mainly in simulations that provide different
+    // multimeshes.
+    debug4 << mName << "Calling plugin's GetIOInformation: time=" << time
+           << ", meshname=" << meshname << endl;
+    avtIOInformation io;
+    retval = it->second->GetIOInformation(time, meshname, io);
+    ioMap[db].ioInfo = io;
+
+    // Populate the domain to file map.
+    ioMap[db].fileMap.resize(io.GetNDomains());
+    debug4 << mName << "db=" << db.c_str() << endl;
     debug4 << "    iohints=[";
     const HintList &hints = io.GetHints();
-    for (int i=0; i<hints.size(); i++)
+    for (size_t i=0; i<hints.size(); i++)
     {
         debug4 << " {";
-        for (int j=0; j<hints[i].size(); j++)
+        for (size_t j=0; j<hints[i].size(); j++)
         {
             ioMap[db].fileMap[hints[i][j]] = i;
             debug4 << hints[i][j];
-            if (j<hints[i].size()-1) debug4 << ",";
+            if (j<hints[i].size()-1) { debug4 << ","; }
         }
         debug4 << "}";
-        if (i<hints.size()-1)
+        if (i<hints.size()-1) {
             debug4 << "\n             ";
+        }
     }
     debug4 << "]  " << endl;
+
+    return retval;
 }
 
 // ****************************************************************************
@@ -1141,7 +1244,7 @@ LoadBalancer::AddPipeline(const string &db)
 void
 LoadBalancer::ResetPipeline(int index)
 {
-    if (index < 0 || index >= pipelineInfo.size())
+    if (index < 0 || (size_t)index >= pipelineInfo.size())
     {
         debug1 << "Given an invalid pipeline index to reset (" << index << ")."
                << endl;

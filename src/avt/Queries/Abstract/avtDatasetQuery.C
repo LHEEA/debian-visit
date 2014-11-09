@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -366,8 +366,6 @@ avtDatasetQuery::ApplyFilters(avtDataObject_p dob)
     }
     else 
     {
-        int ii;
-        
         avtContract_p orig_contract = dob->GetOriginatingSource()->
             GetGeneralContract();
         
@@ -381,7 +379,7 @@ avtDatasetQuery::ApplyFilters(avtDataObject_p dob)
             newDS->SetTimestep(queryAtts.GetTimeStep());
         }
 
-        for (ii = 0 ; ii < secondaryVars.size() ; ii++)
+        for (size_t ii = 0 ; ii < secondaryVars.size() ; ii++)
         {
             newDS->AddSecondaryVariable( secondaryVars[ii].c_str() );
         }

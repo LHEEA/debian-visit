@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -356,7 +356,7 @@ QvisPlotListBox::clickHandler(const QPoint &clickLocation, bool rightClick,
     QPoint itemClickLocation(clickLocation);
     int action = -1, opId = -1;
     bool bs = signalsBlocked();
-    bool emitted = true;
+
     QvisPlotListBoxItem *actionItem = 0;
 
     // Walk through all of the items, checking if we've clicked in each one.
@@ -437,8 +437,6 @@ QvisPlotListBox::clickHandler(const QPoint &clickLocation, bool rightClick,
         {
             emit itemSelectionChanged();
         }
-        else
-            emitted = false;
         break;
     }
 }
@@ -576,7 +574,7 @@ QvisPlotListBox::NeedsToBeRegenerated(const PlotList *pl,
 {
     bool retval = true;
 
-    if(pl->GetNumPlots() == count() && prefixes.size() == count())
+    if(pl->GetNumPlots() == count() && prefixes.size() == (size_t)count())
     {
         for(int i = 0; i < pl->GetNumPlots(); ++i)
         {

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -361,7 +361,7 @@ VisWinPathTracker::UpdatePaths()
             spath = itr->second.GetFileName();
         else
         {
-            if (path_common_size < itr->second.GetPath().size())
+            if ((size_t)path_common_size < itr->second.GetPath().size())
                 spath = itr->second.GetPath().substr(path_common_size+1);
             else
                 spath = itr->second.GetPath();
@@ -377,7 +377,7 @@ VisWinPathTracker::UpdatePaths()
             sdir = dir_common.substr(FindLastSlash(dir_common)+1);
         else
         {
-            if (dir_common_size < itr->second.GetDirectory().size())
+            if ((size_t)dir_common_size < itr->second.GetDirectory().size())
                 sdir = itr->second.GetDirectory().substr(dir_common_size+1);
             else
                 sdir = itr->second.GetDirectory();
@@ -453,7 +453,6 @@ std::string VisWinPathTracker::GetCommonPath(stringVector &paths)
 
     // loop indices
     int i = 0;
-    int j = 0;
     // get # of paths
     int npaths = paths.size();
     
@@ -540,7 +539,7 @@ VisWinPathTracker::Entry::Entry(const std::string &path)
     fileName  = path;
     
     int idx = FindLastSlash(directory);
-    if(idx != string::npos)
+    if((size_t)idx != string::npos)
     {
         fileName  = directory.substr(idx+1);
         directory = directory.substr(0,idx);

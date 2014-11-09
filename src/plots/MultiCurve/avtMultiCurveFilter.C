@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -163,7 +163,7 @@ avtMultiCurveFilter::PostExecute(void)
     //
     std::vector<std::string> labels;
     outAtts.GetLabels(labels);
-    int nCurves = labels.size();
+    int nCurves = (int)labels.size();
 
     outAtts.GetOriginalSpatialExtents()->Clear();
     outAtts.GetThisProcsOriginalSpatialExtents()->Clear();
@@ -515,7 +515,7 @@ avtMultiCurveFilter::Execute(void)
         //
         // Create the label.
         //
-        if(inLabels.size() != ny)
+        if(inLabels.size() != (size_t)ny)
         {
             char label[80];
         

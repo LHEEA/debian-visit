@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1515,7 +1515,7 @@ class AttsGeneratorAttribute : public GeneratorBase
         fields.clear();
     }
 
-    virtual void Print(QTextStream &out)
+    virtual void Print(QTextStream &out) const
     {
         out << "    Attribute: " << name << " (" << purpose << ")" << Endl;
         out << "        exportAPI=" << exportAPI << Endl;

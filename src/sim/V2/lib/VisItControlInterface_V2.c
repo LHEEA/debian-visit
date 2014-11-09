@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,7 +41,6 @@
 #include "SimV2Tracing.h"
 #include "DeclareDataCallbacks.h"
 #include "SimUI.h"
-
 
 #ifdef _WIN32
 #if _MSC_VER < 1600
@@ -1584,16 +1583,13 @@ LIBSIM_MESSAGE1("Error: %x", GetLastError());
 * Author: Cyrus Harrison
 *
 * Modifications:
+*   Burlen Loring, Sat May  3 10:52:13 PDT 2014
+*   fix bug, return a value. report if the env var is not found
 *
 *******************************************************************************/
 int Preload_OSMesaGL(void)
 {
-/* load library */
-#ifdef __APPLE__
-    const char *extension = "dylib";
-#else
-    const char *extension = "so";
-#endif
+    /* load library */
     void *gl_dl_handle = NULL;
     if(getenv("VISIT_MESA_LIB") != NULL)
     {
@@ -1604,8 +1600,12 @@ int Preload_OSMesaGL(void)
         {
             LIBSIM_MESSAGE1("dlopen error: %s", dlerror());
             LIBSIM_MESSAGE1("failed to preload osmesa from VISIT_MESA_LIB: %s",osmesa_lib_path);
+            return -1;
         }
+        return 0;
     }
+    LIBSIM_MESSAGE("Not preloading osmesa, VISIT_MESA_LIB was not set");
+    return -1;
 }
 
 static int LoadVisItLibrary_UNIX(void)
@@ -3002,7 +3002,7 @@ VisItGetSockets(VISIT_SOCKET *lSocket, VISIT_SOCKET *cSocket)
 *******************************************************************************/
 int VisItAttemptToCompleteConnection(void)
 {
-    VISIT_SOCKET socket;
+    VISIT_SOCKET socket = -1; //TODO: verify initialization is safe
 
     LIBSIM_API_ENTER(VisItAttemptToCompleteConnection);
 
@@ -3800,25 +3800,22 @@ VisItAddPlot(const char *plotType, const char *var, int *plotID)
 
     if(plotType == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the plot type.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddPlot,
+                         "VisItAddPlot: NULL was passed for the plot type.");
         return VISIT_ERROR;
     }
 
     if(var == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the variable.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddPlot,
+                         "VisItAddPlot: NULL was passed for the variable.");
         return VISIT_ERROR;
     }
 
     if(plotID == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the plotID pointer.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddPlot,
+                         "VisItAddPlot: NULL was passed for the plotID pointer.");
         return VISIT_ERROR;
     }
 
@@ -3864,17 +3861,15 @@ VisItAddOperator(int plotID, const char *operatorType, int *operatorID)
 
     if(operatorType == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddOperator,
-                         "VisItAddOperator: NULL was passed for the operator type.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddOperator,
+                         "VisItAddOperator: NULL was passed for the operator type.");
         return VISIT_ERROR;
     }
 
     if(operatorID == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddOperator,
-                         "VisItAddOperator: NULL was passed for the operatorID pointer.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddOperator,
+                         "VisItAddOperator: NULL was passed for the operatorID pointer.");
         return VISIT_ERROR;
     }
 
@@ -3937,7 +3932,6 @@ VisItGetMemory(double *m_size, double *m_rss)
 {
   int retval = VISIT_ERROR;
     
-    unsigned long tmp1, tmp2;
     LIBSIM_API_ENTER(VisItGetMemory);
     /* Make sure the function exists before using it. - not sure if this is required, need to talk to
      Brad */
@@ -3955,6 +3949,7 @@ VisItGetMemory(double *m_size, double *m_rss)
     *m_rss = (unsigned long)m.bytes_total; // not quite accurate but this should be the total
                                            // amount allocated by malloc.
 #elif !defined(_WIN32)
+    unsigned long tmp1, tmp2;
     FILE *file = fopen("/proc/self/statm", "r");
     if (file == NULL)
     {

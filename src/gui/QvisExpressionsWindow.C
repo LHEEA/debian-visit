@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -189,6 +189,9 @@
 //
 //    Matthew Wheeler, Mon May 20 12:00:00 GMT 2013
 //    Added min_corner_area and min_sin_corner
+//
+//    Kevin Griffin, Tue Aug 5 15:01:27 PDT 2014
+//    Added q_criterion and lambda2
 //
 // ****************************************************************************
 
@@ -380,12 +383,14 @@ const char *expr_misc[] = {
     "ij_gradient",
     "ijk_gradient",
     "isnan",
+    "lambda2",
     "Laplacian",
     "map",
     "mean_curvature",
     "nodal_constant",
     "point_constant",
     "procid",
+    "q_criterion",
     "recenter",
     "resample",
     "resrad",
@@ -1965,7 +1970,7 @@ QvisExpressionsWindow::QuoteVariable(const QString &var)
 
     for (int i=0; i<var.length(); i++)
     {
-        char c = var[i].toAscii();
+        char c = var[i].toLatin1();
         if ((c < 'A' || c > 'Z') &&
             (c < 'a' || c > 'z') &&
             (c < '0' || c > '9') &&

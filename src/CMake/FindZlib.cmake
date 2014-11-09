@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -48,6 +48,9 @@
 #   IF this file finds zlib, set HAVE_ZLIB_H. CHECK_INCLUDE_FILES might not 
 #   find it, especially on windows.
 #
+#   Kathleen Biagas, Tues Oct 1 09:33:47 MST 2013
+#   Removed VISIT_MSVC_VERSION from windows handling.
+#
 #****************************************************************************/
 
 # Use the ZLIB_DIR hint from the config-site .cmake file 
@@ -55,7 +58,11 @@
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-    SET_UP_THIRD_PARTY(ZLIB lib/${VISIT_MSVC_VERSION} include zlib1)
+    IF(ZLIB_LIB_NAME)
+        SET_UP_THIRD_PARTY(ZLIB lib include ${ZLIB_LIB_NAME})
+    ELSE()
+        SET_UP_THIRD_PARTY(ZLIB lib include zlib1)
+    ENDIF()
     IF (ZLIB_FOUND)
         # use full path here, instead of just lib file.
         SET(ZLIB_LIBRARY "${ZLIB_LIB}" CACHE STRING "zlib library" FORCE)

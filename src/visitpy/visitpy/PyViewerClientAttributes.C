@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewViewerClientAttributes(int);
 std::string
 PyViewerClientAttributes_ToString(const ViewerClientAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *renderingType_names = "None, Image, Data";
     switch (atts->GetRenderingType())
@@ -639,7 +639,6 @@ PyViewerClientAttributes_GetLogString()
 static void
 PyViewerClientAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ViewerClientAttributes *atts = (ViewerClientAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

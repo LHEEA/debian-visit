@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -71,8 +71,6 @@
     // Look for the original cell number array.
     //
     vtkUnsignedIntArray  *originalCells = 0;
-    vtkDataArray         *subsetLabel = 0;
-    vtkDataArray         *materialLabels = 0;
     vtkDataArray *data = input->GetCellData()->GetArray("LabelFilterOriginalCellNumbers");
     if(data == 0 && atts.GetVarType() == LabelAttributes::LABEL_VT_VECTOR_VAR)
     {
@@ -112,6 +110,7 @@
     }
     else if(data != 0)
     {
+
         int numElements = data->GetNumberOfTuples();
 
         if(numElements != nCells)
@@ -122,8 +121,9 @@
 
         if(treatAsASCII)
         {
-            debug3 << "Labelling cells with label data" << endl;
             int labelLength = data->GetNumberOfComponents();
+
+            debug3 << "Labelling cells with label data using labelLength of " << labelLength << endl;
 
             if(labelLength == 1)  // handle the single char case
             {
@@ -135,7 +135,7 @@
                     END_LABEL
                 }
             }
-            else if(data->IsA("vtkUnsignedCharArray"))
+            else if(data->IsA("vtkUnsignedCharArray") || data->IsA("vtkCharArray"))
             {
                 unsigned char *label = (unsigned char *)data->GetVoidPointer(0);
                 for(vtkIdType id = 0; id < nCells; id += skipIncrement)
@@ -269,7 +269,7 @@
                 BEGIN_LABEL
                     labelString[0] = '\0';
                     double *vals = data->GetTuple(id);
-                    bool atStart = true;
+
                     for (int comp = 0 ; comp < nComps ; comp++)
                     {
                         char *formatString = NULL;

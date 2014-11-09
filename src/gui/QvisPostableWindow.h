@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -121,7 +121,8 @@ public slots:
     virtual void raise();
     virtual void show();
     virtual void hide();
-    virtual void post(bool avoid_scroll=false);
+    virtual void post() { post(false); } ///TODO: check on this fix for overloaded function
+    virtual void post(bool avoid_scroll);
     virtual void unpost();
     virtual void help();
 protected:

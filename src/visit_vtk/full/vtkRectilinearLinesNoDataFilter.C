@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -215,7 +215,6 @@ vtkRectilinearLinesNoDataFilter::RequestData(
     // Set up some objects that we will be using throughout the process.
     //
     vtkPolyData        *outPD        = vtkPolyData::New();
-    vtkCellData        *inCellData   = input->GetCellData();
     vtkPointData       *inPointData  = input->GetPointData();
     vtkCellData        *outCellData  = outPD->GetCellData();
     vtkPointData       *outPointData = outPD->GetPointData();

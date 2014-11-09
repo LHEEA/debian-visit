@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -121,8 +121,14 @@ using namespace StringHelpers;
 // Storage for static data elements.
 //
 avtQueryFactory *avtQueryFactory::instance=0;
-
-
+void avtQueryFactory::DeleteInstance()
+{
+    if (instance)
+    {
+        delete instance;
+        instance = 0;
+    }
+}
 
 // ****************************************************************************
 //  Method: avtQueryFactory constructor
@@ -166,6 +172,12 @@ avtQueryFactory::~avtQueryFactory()
 //  Programmer: Kathleen Bonnell 
 //  Creation:   March 30, 2004 
 //
+//  Modifications:
+//
+//    Burlen Loring, Thu May  1 17:55:28 PDT 2014
+//    don't leak the instance, following the pattern of using
+//    exit handler established by David Camp
+//
 // ****************************************************************************
 
 avtQueryFactory *
@@ -177,8 +189,10 @@ avtQueryFactory::Instance()
     if (instance == 0)
     {
         instance = new avtQueryFactory;
+#if defined(DEBUG_MEMORY_LEAKS)
+        atexit(avtQueryFactory::DeleteInstance);
+#endif
     }
-
     return instance;
 }
 

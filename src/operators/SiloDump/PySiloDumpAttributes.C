@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewSiloDumpAttributes(int);
 std::string
 PySiloDumpAttributes_ToString(const SiloDumpAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sfilename = \"%s\"\n", prefix, atts->GetFilename().c_str());
     str += tmpStr;
@@ -361,7 +361,6 @@ PySiloDumpAttributes_GetLogString()
 static void
 PySiloDumpAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    SiloDumpAttributes *atts = (SiloDumpAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

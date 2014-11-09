@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2575,18 +2575,33 @@ PseudocolorAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 bool
 PseudocolorAttributes::ChangesRequireRecalculation(const PseudocolorAttributes &obj) const
 {
-   bool needSecondaryVar = obj.pointSizeVarEnabled &&
-                           pointSizeVar != obj.pointSizeVar &&
-                           obj.pointSizeVar != "default" && 
-                           obj.pointSizeVar != "" &&
-                           obj.pointSizeVar != "\0"; 
+   bool needSecondaryVar = (obj.pointType != Point &&
+                            obj.pointType != Sphere &&
+                            obj.pointSizeVarEnabled &&
+                            pointSizeVar != obj.pointSizeVar &&
+                            obj.pointSizeVar != "default" && 
+                            obj.pointSizeVar != "" &&
+                            obj.pointSizeVar != "\0") ||
+
+                           (obj.lineType == Tube &&
+                            obj.varyTubeRadius &&
+                            varyTubeRadiusVariable != obj.varyTubeRadiusVariable &&
+                            obj.varyTubeRadiusVariable != "default" && 
+                            obj.varyTubeRadiusVariable != "" &&
+                            obj.varyTubeRadiusVariable != "\0") ||
+
+                           (obj.opacityType == VariableRange &&
+                            opacityVariable != obj.opacityVariable &&
+                            obj.opacityVariable != "default" && 
+                            obj.opacityVariable != "" &&
+                            obj.opacityVariable != "\0");
 
     return (centering != obj.centering ||
             needSecondaryVar ||
             smoothingLevel != obj.smoothingLevel ||
-            renderSurfaces != obj.renderSurfaces ||
-            renderWireframe != obj.renderWireframe ||
-            renderPoints != obj.renderPoints ||
+//            renderSurfaces != obj.renderSurfaces ||
+//            renderWireframe != obj.renderWireframe ||
+//            renderPoints != obj.renderPoints ||
             0);
 
 }
@@ -2650,9 +2665,15 @@ PseudocolorAttributes::Print(ostream &out, bool selected_only) const
 // Creation:   Fri Mar 12 09:33:52 PST 2010
 //
 // Modifications:
+//     Burlen Loring, Wed Jul 23 12:53:09 PDT 2014
+//     fix a typing bug in patch r21912 dealing with new OpacityType
+//     enumeration values added for version 2.7.0. That patch assumed
+//     opacityType is stored as an integer when in reality it is stored
+//     as a std::string.
 //
 // ****************************************************************************
 #include <Utility.h>
+#include <DebugStream.h>
 void
 PseudocolorAttributes::ProcessOldVersions(DataNode *parentNode,
     const char *configVersion)
@@ -2708,21 +2729,39 @@ PseudocolorAttributes::ProcessOldVersions(DataNode *parentNode,
         // does not rely on the opacity value.
 
         // Assume Explicit is really Fully Opaque for now
-        PseudocolorAttributes::OpacityType val =
-          k->AsInt() ? FullyOpaque : ColorTable;        
-        
-        if( val == FullyOpaque )
+        PseudocolorAttributes::OpacityType val = FullyOpaque;
+
+        std::string strVal = k->AsString();
+        if (strVal == "Explicit")
         {
-          // If the opacity value is set and valid change to constant
-          DataNode *op = 0;
-          if((op = searchNode->GetNode("opacity")) != 0)
-          {
-            double opacity = op->AsDouble();
-            if( 0.0 <= opacity && opacity < 1.0 )
-              val = Constant;
-          }
+            // If the opacity value is set and valid change to constant
+            DataNode *op = 0;
+            if((op = searchNode->GetNode("opacity")) != 0)
+            {
+                double opacity = op->AsDouble();
+                if ((0.0 <= opacity) && (opacity < 1.0))
+                {
+                    val = Constant;
+                }
+            }
+            else
+            {
+                val = FullyOpaque;
+            }
         }
-      
+        else
+        if (strVal == "ColorTable")
+        {
+            val = ColorTable;
+        }
+        else
+        {
+            debug1 <<
+              "PseudocolorAttributes::ProcessOldVersions "
+              "2.0.0 < configVersion < 2.7.0 bad value for "
+              "opacityType detected " << strVal << endl;
+        }
+
         // Update the opacityType to the new value.
         searchNode->RemoveNode(k, true);
         searchNode->AddNode(new DataNode("opacityType",
@@ -2734,8 +2773,6 @@ PseudocolorAttributes::ProcessOldVersions(DataNode *parentNode,
       else if((k = searchNode->GetNode("opacity")) != 0)
       {
         double opacity = k->AsDouble();
-        
-        PseudocolorAttributes::OpacityType val;
         
         // If the opacity value is set and valid set the opacityType
         // to constant and a new node for it.

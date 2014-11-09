@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -82,13 +82,14 @@ avtStatisticalTrendsFilter::avtStatisticalTrendsFilter() :
     intercept_ds = 0;
     out_ds       = 0;
 
-    numTypes = 5;
+    numTypes = 6;
 
     strcpy( typeString[0], "Sum" );
     strcpy( typeString[1], "Mean" );
     strcpy( typeString[2], "Variance" );
-    strcpy( typeString[3], "Slope" );
-    strcpy( typeString[4], "Residuals" );
+    strcpy( typeString[3], "Standard Deviation" );
+    strcpy( typeString[4], "Slope" );
+    strcpy( typeString[5], "Residuals" );
 }
 
 
@@ -106,7 +107,7 @@ avtStatisticalTrendsFilter::~avtStatisticalTrendsFilter()
 {
   if( trend_ds.size() )
   {
-    for( int i=0; i<trend_ds.size(); ++i )
+    for(size_t i=0; i<trend_ds.size(); ++i )
       trend_ds[i]->Delete();
 
     trend_ds.clear();
@@ -243,7 +244,7 @@ avtStatisticalTrendsFilter::ModifyContract(avtContract_p in_contract)
 
 
 // ****************************************************************************
-//  Method: avtFTLEFilter::UpdateDataObjectInfo
+//  Method: avtStatisticalTrendsFilter::UpdateDataObjectInfo
 //
 //  Purpose:
 //      Tells output that we have a new variable.
@@ -263,7 +264,7 @@ avtStatisticalTrendsFilter::UpdateDataObjectInfo(void)
     {
       std::string fullVarName = outVarName + " " +
         std::string( typeString[(int) atts.GetStatisticType()] );
-      
+
       out_atts.RemoveVariable(in_atts.GetVariableName());
       
       if( !out_atts.ValidVariable(fullVarName) )
@@ -294,13 +295,13 @@ avtStatisticalTrendsFilter::UpdateDataObjectInfo(void)
 void
 avtStatisticalTrendsFilter::InitializeTimeLoop(void)
 {
-  std:: cerr << __FILE__ << "  " << __LINE__ << std::endl;
-  
     if( atts.GetStatisticType() == StatisticalTrendsAttributes::Sum)
       SetNumberOfIterations(1);
     else if( atts.GetStatisticType() == StatisticalTrendsAttributes::Mean)
       SetNumberOfIterations(1);
     else if( atts.GetStatisticType() == StatisticalTrendsAttributes::Variance)
+      SetNumberOfIterations(2);
+    else if( atts.GetStatisticType() == StatisticalTrendsAttributes::StandardDeviation)
       SetNumberOfIterations(2);
     else if( atts.GetStatisticType() == StatisticalTrendsAttributes::Slope)
       SetNumberOfIterations(1);
@@ -369,14 +370,10 @@ avtStatisticalTrendsFilter::InitializeTimeLoop(void)
     SetEndFrame(stopTimeSlice);
     SetStride( atts.GetStride() );
 
-    std::cerr << "start " << startTimeSlice << "  "
-              << "stop " << stopTimeSlice << "  "
-              << atts.GetStride() << std::endl;
-
     // Clean-up the current output dataset if necessary
     if( trend_ds.size() )
     {
-      for( int i=0; i<trend_ds.size(); ++i )
+      for(size_t i=0; i<trend_ds.size(); ++i )
         trend_ds[i]->Delete();
       
       trend_ds.clear();
@@ -479,7 +476,8 @@ avtStatisticalTrendsFilter::Execute(void)
 
           out_ds = trend_ds[0];
         }
-        else if( atts.GetStatisticType() == StatisticalTrendsAttributes::Variance)
+        else if( atts.GetStatisticType() == StatisticalTrendsAttributes::Variance ||
+                 atts.GetStatisticType() == StatisticalTrendsAttributes::StandardDeviation )
         {
           trend_ds.push_back ( curr_ds->NewInstance() );
           trend_ds[0]->DeepCopy( curr_ds );       
@@ -535,8 +533,8 @@ avtStatisticalTrendsFilter::Execute(void)
         // Zero out the sums.
         if( curr_ds->GetPointData()->GetScalars() )
         {
-          int tPoints = trend_ds[0]->GetNumberOfPoints();
-          int nPoints = curr_ds->GetNumberOfPoints();
+          unsigned int tPoints = trend_ds[0]->GetNumberOfPoints();
+          unsigned int nPoints = curr_ds->GetNumberOfPoints();
           
           if( nPoints && nPoints == tPoints )
           {
@@ -574,8 +572,8 @@ avtStatisticalTrendsFilter::Execute(void)
 
         if( curr_ds->GetCellData()->GetScalars() )
         {
-          int tCells = trend_ds[0]->GetNumberOfCells();
-          int nCells = curr_ds->GetNumberOfCells();
+          unsigned int tCells = trend_ds[0]->GetNumberOfCells();
+          unsigned int nCells = curr_ds->GetNumberOfCells();
           
           if( nCells && nCells == tCells )
           {
@@ -612,8 +610,6 @@ avtStatisticalTrendsFilter::Execute(void)
         }
       }
 
-      vtkDataSet *sum_ds = trend_ds[0];
-
       if( curr_ds->GetPointData()->GetScalars() )
       {
         int tPoints = trend_ds[0]->GetNumberOfPoints();
@@ -627,7 +623,7 @@ avtStatisticalTrendsFilter::Execute(void)
           double val;
 
           // Traverse all point data
-          for( unsigned int i=0; i<nPoints; ++i )
+          for( unsigned int i=0; i< (unsigned int)nPoints; ++i )
           {
             if( sumX_ds )
             {
@@ -681,7 +677,7 @@ avtStatisticalTrendsFilter::Execute(void)
           double val;
 
           // Traverse all cell data
-          for( unsigned int i=0; i<nCells; ++i )
+          for( unsigned int i=0; i< (unsigned int)nCells; ++i )
           {
             if( sumX_ds )
             {
@@ -732,8 +728,8 @@ avtStatisticalTrendsFilter::Execute(void)
         // Calculate the average.
         if( curr_ds->GetPointData()->GetScalars() )
         {
-          int tPoints = trend_ds[0]->GetNumberOfPoints();
-          int nPoints = curr_ds->GetNumberOfPoints();
+          unsigned int tPoints = trend_ds[0]->GetNumberOfPoints();
+          unsigned int nPoints = curr_ds->GetNumberOfPoints();
           
           if( nPoints && nPoints == tPoints )
           {
@@ -741,7 +737,9 @@ avtStatisticalTrendsFilter::Execute(void)
             for( unsigned int i=0; i<tPoints; ++i )
             {         
               if( atts.GetStatisticType() ==
-                  StatisticalTrendsAttributes::Variance)
+                  StatisticalTrendsAttributes::Variance ||
+                  atts.GetStatisticType() ==
+                  StatisticalTrendsAttributes::StandardDeviation )
               {
                 double val =
                   *(sumY_ds->GetPointData()->GetScalars()->GetTuple(i));
@@ -787,8 +785,8 @@ avtStatisticalTrendsFilter::Execute(void)
 
         if( curr_ds->GetCellData()->GetScalars() )
         {
-          int tCells = trend_ds[0]->GetNumberOfCells();
-          int nCells = curr_ds->GetNumberOfCells();
+          unsigned int tCells = trend_ds[0]->GetNumberOfCells();
+          unsigned int nCells = curr_ds->GetNumberOfCells();
           
           if( nCells && nCells == tCells )
           {
@@ -796,7 +794,9 @@ avtStatisticalTrendsFilter::Execute(void)
             for( unsigned int i=0; i<tCells; ++i )
             {
               if( atts.GetStatisticType() ==
-                  StatisticalTrendsAttributes::Variance)
+                  StatisticalTrendsAttributes::Variance ||
+                  atts.GetStatisticType() ==
+                  StatisticalTrendsAttributes::StandardDeviation )
               {
                 double val =
                   *(sumY_ds->GetCellData()->GetScalars()->GetTuple(i));
@@ -846,18 +846,20 @@ avtStatisticalTrendsFilter::Execute(void)
       if( out_ds->GetPointData()->GetScalars() &&
           curr_ds->GetPointData()->GetScalars() )
       {
-        int tPoints = trend_ds[0]->GetNumberOfPoints();
-        int nPoints = curr_ds->GetNumberOfPoints();
+        unsigned int tPoints = trend_ds[0]->GetNumberOfPoints();
+        unsigned int nPoints = curr_ds->GetNumberOfPoints();
         
         if( nPoints && nPoints == tPoints )
         {
           // Traverse all point data
           for( unsigned int i=0; i<nPoints; ++i )
           {
-            double val;
+            double val = 0.;
 
             if( atts.GetStatisticType() ==
-                StatisticalTrendsAttributes::Variance)
+                StatisticalTrendsAttributes::Variance ||
+                atts.GetStatisticType() ==
+                StatisticalTrendsAttributes::StandardDeviation )
             {
               val = *(curr_ds->GetPointData()->GetScalars()->GetTuple(i)) -
                 *(sumY_ds->GetPointData()->GetScalars()->GetTuple(i));
@@ -882,18 +884,20 @@ avtStatisticalTrendsFilter::Execute(void)
       if( out_ds->GetCellData()->GetScalars() &&
           curr_ds->GetCellData()->GetScalars() )
       {
-        int tCells = trend_ds[0]->GetNumberOfCells();
-        int nCells = curr_ds->GetNumberOfCells();
+        unsigned int tCells = trend_ds[0]->GetNumberOfCells();
+        unsigned int nCells = curr_ds->GetNumberOfCells();
         
         if( nCells && nCells == tCells )
         {
           // Traverse all cell data
           for( unsigned int i=0; i<nCells; ++i )
           {
-            double val;
+            double val = 0.;
 
             if( atts.GetStatisticType() ==
-                StatisticalTrendsAttributes::Variance)
+                StatisticalTrendsAttributes::Variance ||
+                atts.GetStatisticType() ==
+                StatisticalTrendsAttributes::StandardDeviation )
             {
               val = *(curr_ds->GetPointData()->GetScalars()->GetTuple(i)) -
                 *(sumY_ds->GetPointData()->GetScalars()->GetTuple(i));
@@ -978,12 +982,13 @@ avtStatisticalTrendsFilter::CreateFinalOutput(void)
   {
     if( atts.GetStatisticType() == StatisticalTrendsAttributes::Mean ||
         atts.GetStatisticType() == StatisticalTrendsAttributes::Variance ||
+        atts.GetStatisticType() == StatisticalTrendsAttributes::StandardDeviation ||
         atts.GetStatisticType() == StatisticalTrendsAttributes::Residuals)
     {
       // Calculate the average or variance.
       if( out_ds->GetPointData()->GetScalars() )
       {
-        int tPoints = out_ds->GetNumberOfPoints();
+        unsigned int tPoints = out_ds->GetNumberOfPoints();
         
         if( tPoints )
         {
@@ -994,6 +999,10 @@ avtStatisticalTrendsFilter::CreateFinalOutput(void)
           for( unsigned int i=0; i<tPoints; ++i )
           {
             double val = *(out_scalars->GetTuple(i)) / (double) GetNFrames();
+
+            if( atts.GetStatisticType() == StatisticalTrendsAttributes::StandardDeviation )
+              val = sqrt( val );
+
             out_scalars->SetTuple(i, &val);
           }
         }
@@ -1001,7 +1010,7 @@ avtStatisticalTrendsFilter::CreateFinalOutput(void)
         
       if( out_ds->GetCellData()->GetScalars() )
       {
-        int tCells = out_ds->GetNumberOfCells();
+        unsigned int tCells = out_ds->GetNumberOfCells();
         
         if( tCells )
         {
@@ -1029,7 +1038,7 @@ avtStatisticalTrendsFilter::CreateFinalOutput(void)
 
       if( sumX_ds->GetPointData()->GetScalars() )
       {
-        int tPoints = sumX_ds->GetNumberOfPoints();
+        unsigned int tPoints = sumX_ds->GetNumberOfPoints();
         
         if( tPoints )
         {
@@ -1055,7 +1064,7 @@ avtStatisticalTrendsFilter::CreateFinalOutput(void)
 
       if( sumX_ds->GetCellData()->GetScalars() )
       {
-        int tCells = sumX_ds->GetNumberOfCells();
+        unsigned int tCells = sumX_ds->GetNumberOfCells();
         
         if( tCells )
         {
@@ -1083,7 +1092,6 @@ avtStatisticalTrendsFilter::CreateFinalOutput(void)
     std::string newPipelineVariable =
       outVarName + " " + std::string( typeString[(int) atts.GetStatisticType()] );
 
-    avtDataAttributes &inAtts = GetInput()->GetInfo().GetAttributes();
     avtDataAttributes &outAtts = GetOutput()->GetInfo().GetAttributes();
 
     // Set the new data range.

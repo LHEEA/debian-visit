@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -356,6 +356,9 @@
 #    Kathleen Biagas, Tue Sep  3 11:06:51 PDT 2013
 #    Turn off SLIVR if we aren't using GLEW.
 #
+#   Kathleen Biagas, Tues Oct 1 09:33:47 MST 2013
+#   Handle reorganization of windowsbuild directory.
+#
 #    Cyrus Harrison, on Oct 28 14:39:05 PDT 2013
 #    Fix exported VTK targets for VTK-6. Fix VTK-6 include dirs 
 #    for make install / package.
@@ -371,12 +374,18 @@
 #    I added -DMPI_NO_CPPBIND to the VISIT_PARALLEL_CFLAGS and
 #    VISIT_PARALLEL_CXXFLAGS.
 #
+#    Kathleen Biagas, Mon May 12 12:58:02 PDT 2014
+#    Add VISIT_SELECTED_PLUGIN_ERROR macro.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
 
 IF (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
+    IF(WIN32 AND VISIT_QT5)
+        cmake_policy(SET CMP0020 OLD)
+    ENDIF()
 ENDIF (COMMAND cmake_policy)
 
 #
@@ -468,6 +477,32 @@ FUNCTION(VISIT_OPTION_DEFAULT var)
 ENDFUNCTION(VISIT_OPTION_DEFAULT var)
 
 INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMake/SetupITAPS.cmake)
+
+SET(VTK_MINIMUM_VERSION "6.0.0" CACHE INTERNAL "minimum version of vtk that VisIt can use")
+
+FUNCTION(SETUP_VTK_VERSION  ver)
+  IF(${ver} VERSION_LESS ${VTK_MINIMUM_VERSION})
+      MESSAGE(FATAL_ERROR "VTK version must be at least ${VTK_MINIMUM_VERSION}")
+  ENDIF()
+  STRING( REGEX REPLACE "([0-9]+).[0-9]+.[0-9]+" "\\1" vmaj ${ver} )
+  STRING( REGEX REPLACE "[0-9]+.([0-9]+).[0-9]+" "\\1" vmin ${ver} )
+  SET(VTK_VERSION "${ver}"  CACHE INTERNAL "")
+  SET(VTK_MAJOR_VERSION   "${vmaj}" CACHE INTERNAL "")
+  SET(VTK_MINOR_VERSION   "${vmin}" CACHE INTERNAL "")
+ENDFUNCTION()
+
+# Setup a default VTK version of 6.1.0.  Config-site files can override this
+IF(NOT VTK_VERSION)
+  IF(VISIT_VTK_VERSION)
+      IF(${VISIT_VTK_VERSION} VERSION_LESS ${VTK_MINIMUM_VERSION})
+          MESSAGE(FATAL_ERROR "VTK version must be at least ${VTK_MINIMUM_VERSION}")
+      ENDIF()
+      SETUP_VTK_VERSION(${VISIT_VTK_VERSION})
+  ELSE()
+      MESSAGE(STATUS "VISIT_VTK_VERSION NOT FOUND assuming 6.1.0")
+      SETUP_VTK_VERSION(6.1.0)
+  ENDIF()
+ENDIF()
 
 #-----------------------------------------------------------------------------
 # Include this computer's config-site if one exists
@@ -638,6 +673,8 @@ OPTION(VISIT_USE_BOOST "Use system boost library." ON)
 
 OPTION(VISIT_THREAD "Build VisIt with thread support." OFF)
 
+OPTION(VISIT_ENABLE_XDB "Enable Intelligent Light XDB database plugin." OFF) # OFF for now
+
 SET(VISIT_INSTALL_PROFILES_TO_HOSTS "" CACHE STRING "Install specified host profiles (no action if empty)." )
 
 MACRO(VISIT_3RDPARTY_VAR libvar comment)
@@ -695,7 +732,6 @@ ENDIF(WIN32)
 #       needs to link but not to compile). Use the plugin's .xml file for
 #       libs a plugin is DIRECTLY dependent on (e.g. needs to both compile
 #       and link).
-VISIT_3RDPARTY_VAR(PYSIDE_DIR    "Path containing the PySide installation")
 VISIT_3RDPARTY_VAR(ADIOS_DIR     "Path containing the ADIOS library's include and lib")
 VISIT_3RDPARTY_VAR(ADVIO_DIR     "Path containing the AdvIO library's include and lib")
 VISIT_3RDPARTY_VAR(BOXLIB_DIR    "Path containing the Boxlib library's include and lib")
@@ -703,28 +739,32 @@ VISIT_3RDPARTY_VAR(CCMIO_DIR     "Path containing the CCMIO library's include an
 VISIT_3RDPARTY_VAR(CFITSIO_DIR   "Path containing the CFITSIO library's include and lib")
 VISIT_3RDPARTY_VAR(CGNS_DIR      "Path containing the CGNS library's include and lib")
 VISIT_3RDPARTY_DEP(CGNS_LIBDEP   "CGNS library dependencies")
+VISIT_3RDPARTY_VAR(EAVL_DIR      "Path containing the eavl library's include and lib")
 VISIT_3RDPARTY_VAR(FASTBIT_DIR   "Path containing the Fastbit library's include and lib")
 VISIT_3RDPARTY_VAR(GDAL_DIR      "Path containing the GDAL library's include and lib")
+VISIT_3RDPARTY_VAR(GFORTRAN_DIR  "Path containing the GFortran library's include and lib")
 VISIT_3RDPARTY_VAR(HDF4_DIR      "Path containing the HDF4 library's include and lib")
 VISIT_3RDPARTY_DEP(HDF4_LIBDEP   "HDF4 library dependencies")
 VISIT_3RDPARTY_VAR(HDF5_DIR      "Path containing the HDF5 library's include and lib")
 VISIT_3RDPARTY_DEP(HDF5_LIBDEP   "HDF5 library dependencies")
 VISIT_3RDPARTY_VAR(H5PART_DIR    "Path containing the H5Part library's include and lib")
 VISIT_3RDPARTY_DEP(H5PART_LIBDEP "H5Part library dependencies")
+VISIT_3RDPARTY_VAR(MFEM_DIR      "Path containing the mfem library's include and lib")
 VISIT_3RDPARTY_VAR(MILI_DIR      "Path containing the Mili library's include and lib")
 VISIT_3RDPARTY_VAR(OPENGL_DIR    "Path containing the OpenGL library's include and lib")
 VISIT_3RDPARTY_VAR(NETCDF_DIR    "Path containing the NETCDF library's include and lib")
 VISIT_3RDPARTY_DEP(NETCDF_LIBDEP "NETCDF library dependencies")
+VISIT_3RDPARTY_VAR(PYSIDE_DIR    "Path containing the PySide installation")
 VISIT_3RDPARTY_VAR(R_DIR         "Path containing the R library's include and lib")
 VISIT_3RDPARTY_VAR(SILO_DIR      "Path containing the Silo library's include and lib")
 VISIT_3RDPARTY_DEP(SILO_LIBDEP   "Silo library dependencies")
+VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include and lib")
+VISIT_3RDPARTY_VAR(VISUS_DIR     "Path containing the Visus library's include and lib")
 VISIT_3RDPARTY_VAR(XDMF_DIR      "Path containing the Xdmf library's include and lib")
 VISIT_3RDPARTY_DEP(XDMF_LIBDEP   "Xdmf library dependencies")
 VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include and lib")
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
 VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
-VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include and lib")
-VISIT_3RDPARTY_VAR(GFORTRAN_DIR  "Path containing the GFortran library's include and lib")
 
 #-----------------------------------------------------------------------------
 # Read the version
@@ -827,6 +867,44 @@ VISIT_INSTALLED_VERSION_PLUGINS
 VISIT_INSTALLED_VERSION_ARCHIVES
 VISIT_INSTALLED_VERSION_INCLUDE
 )
+
+# experimental!!
+# ctest/cdash testing support
+SET(BUILD_TESTING OFF CACHE BOOL "Enable ctest hooks into VisIt's regression suite")
+IF(BUILD_TESTING)
+    # enable native cmake testing
+    INCLUDE(CTest)
+    CONFIGURE_FILE(
+        "${CMAKE_CURRENT_SOURCE_DIR}/CTestCustom.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/CTestCustom.cmake"
+        @ONLY)
+    # notes:
+    # * visit test sources aren't in the source tree
+    # * and baseline images are currently with test sources
+    # * test data is generated from a set of programs
+    #   that need to be built, also not in the source tree,
+    #   but configured by this cmake lists file
+    SET(VISIT_TEST_DIR "${VISIT_SOURCE_DIR}/../test"
+        CACHE PATH "Path to VisIt's regression suite")
+    SET(VISIT_BASELINE_DIR "${VISIT_SOURCE_DIR}/../test/baseline"
+        CACHE PATH "Path to baseline images used by VisIt's regression suite")
+    SET(VISIT_DATA_DIR "${CMAKE_BINARY_DIR}/data"
+        CACHE PATH "Path to data used by VisIt's regression suite")
+    # make it obvous if we do not have any of these, as
+    # this will likely be a source of confusion for the
+    # uninitiated
+    IF ((NOT EXISTS ${VISIT_TEST_DIR}) OR (NOT EXISTS ${VISIT_BASELINE_DIR})
+       OR ((NOT EXISTS ${VISIT_DATA_DIR}) AND (NOT EXISTS "${VISIT_SOURCE_DIR}/../data")))
+        MESSAGE(FATAL_ERROR
+           "CTest based testing requires a checkout of trunk/test and trunk/data")
+    ENDIF()
+    # add a phony target to be sure that data for tests is
+    # generated/updated during the build
+    ADD_CUSTOM_TARGET(testing ALL)
+    ADD_DEPENDENCIES(testing testdata)
+    # configure tests
+    SUBDIRS(${VISIT_TEST_DIR})
+ENDIF()
 
 MACRO(VISIT_INSTALL_TARGETS_RELATIVE dest_dir)
     IF(VISIT_STATIC)
@@ -1073,22 +1151,25 @@ ENDIF(VISIT_PYTHON_FILTERS AND VISIT_DBIO_ONLY)
 
 # Configure Qt4 support.
 IF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
-    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt4.cmake)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItQt.cmake)
 ENDIF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Configure PySide Support
-IF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
-                          AND NOT VISIT_DBIO_ONLY
-                          AND NOT VISIT_ENGINE_ONLY
-                          AND NOT VISIT_SERVER_COMPONENTS_ONLY)
-    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPySide.cmake)
-    IF(PYSIDE_FOUND)
-        SET(HAVE_PYSIDE 1)
-    ENDIF(PYSIDE_FOUND)
-ENDIF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
-                             AND NOT VISIT_DBIO_ONLY
-                             AND NOT VISIT_ENGINE_ONLY
-                             AND NOT VISIT_SERVER_COMPONENTS_ONLY)
+# But not for Qt5 yet..
+IF(NOT DEFINED VISIT_QT5)
+    IF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
+                              AND NOT VISIT_DBIO_ONLY
+                              AND NOT VISIT_ENGINE_ONLY
+                              AND NOT VISIT_SERVER_COMPONENTS_ONLY)
+        INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPySide.cmake)
+        IF(PYSIDE_FOUND)
+            SET(HAVE_PYSIDE 1)
+        ENDIF(PYSIDE_FOUND)
+    ENDIF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
+                                 AND NOT VISIT_DBIO_ONLY
+                                 AND NOT VISIT_ENGINE_ONLY
+                                 AND NOT VISIT_SERVER_COMPONENTS_ONLY)
+ENDIF(NOT DEFINED VISIT_QT5)
 
 # Treat GLEW as a 3rd party builtin.
 IF(VISIT_USE_GLEW)
@@ -1155,7 +1236,7 @@ IF(CMAKE_HOST_UNIX)
   ADD_DEFINITIONS(-D_LARGEFILE64_SOURCE)
 ENDIF(CMAKE_HOST_UNIX)
 
-IF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
+IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
     # Configure HDF5 support. 
     # Do it before the other libraries since many can depend on it.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindHDF5.cmake)
@@ -1199,6 +1280,12 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
         SET(HAVE_LIBCGNS 1)
     ENDIF(CGNS_FOUND)
 
+    # Configure eavl support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindEAVL.cmake)
+    IF(EAVL_FOUND)
+        SET(HAVE_LIBEAVL 1)
+    ENDIF(EAVL_FOUND)
+
     # Configure Fastbit support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindFastBit.cmake)
     IF(FASTBIT_FOUND)
@@ -1231,6 +1318,12 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
 
     # Configure ITAPS support -- it's treated specially.
     CONFIGURE_ITAPS()
+
+    # Configure mfem support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMFEM.cmake)
+    IF(MFEM_FOUND)
+        SET(HAVE_LIBMFEM 1)
+    ENDIF(MFEM_FOUND)
 
     # Configure Mili support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindMili.cmake)
@@ -1268,12 +1361,18 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
         SET(HAVE_LIBUINTAH 1)
     ENDIF(UINTAH_FOUND)
 
+    # Configure Visus support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisus.cmake)
+    IF(VISUS_FOUND)
+        SET(HAVE_LIBVISUS 1)
+    ENDIF(VISUS_FOUND)
+
     # Configure GFortran support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindGFortran.cmake)
     IF(GFORTRAN_FOUND)
         SET(HAVE_LIBGFORTRAN 1)
     ENDIF(GFORTRAN_FOUND)
-ENDIF(NOT VISIT_BUILD_MINIMAL_PLUGINS)
+ENDIF()
 
 # Configure Manta support.
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindManta.cmake)
@@ -1347,9 +1446,9 @@ ENDFUNCTION(DETECT_MPI_SETTINGS)
 
 IF(VISIT_PARALLEL)
     IF(WIN32)
-        SET(VPFLAGS "PARALLEL MPICH_IGNORE_CXX_SEEK OMPI_SKIP_MPICXX MPICH_SKIP_MPICXX MPI_NO_CPPBIND")
+        SET(VPFLAGS "PARALLEL MPICH_IGNORE_CXX_SEEK MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX MPI_NO_CPPBIND")
     ELSE(WIN32)
-        SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK -DOMPI_SKIP_MPICXX -DMPICH_SKIP_MPICXX -DMPI_NO_CPPBIND")
+        SET(VPFLAGS "-DPARALLEL -DMPICH_IGNORE_CXX_SEEK -DMPICH_SKIP_MPICXX -DOMPI_SKIP_MPICXX -DMPI_NO_CPPBIND")
     ENDIF(WIN32)
     IF(VISIT_MPI_COMPILER)
         MESSAGE(STATUS "Setting up MPI using compiler wrapper")
@@ -1669,6 +1768,9 @@ SET(VISIT_COMMON_INCLUDES
 # Windows-specific settings
 IF (WIN32)
   ADD_DEFINITIONS(-D_USE_MATH_DEFINES)
+  IF(VISIT_QT5)
+    ADD_DEFINITIONS(-DNOMINMAX)
+  ENDIF()
   # we want GTE 1400
   IF (MSVC_VERSION GREATER 1399)
       ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
@@ -1758,12 +1860,12 @@ ENDIF(EXISTS SVN_REVISION)
 # Set up resource files for Windows applications.
 #-----------------------------------------------------------------------------
 IF (WIN32)
-    IF(EXISTS ${VISIT_WINDOWS_DIR}/resources/visit.rc)
-        SET(RESOURCEDIR resources)
+    IF(EXISTS ${VISIT_WINDOWS_DIR}/distribution/resources/visit.rc)
+        SET(RESOURCEDIR distribution/resources)
     ELSEIF(EXISTS ${VISIT_WINDOWS_DIR}/visitresources/visit.rc)
         SET(RESOURCEDIR visitresources)
     ELSE()
-        MESSAGE(FATAL_ERROR "Cannot find visit.rc in either ${VISIT_WINDOWS_DIR}/resources or ${VISIT_WINDOWS_DIR}/visitresources")
+        MESSAGE(FATAL_ERROR "Cannot find visit.rc in either ${VISIT_WINDOWS_DIR}/distribution/resources or ${VISIT_WINDOWS_DIR}/visitresources")
     ENDIF()
 
     SET(VISIT_VISIT_RESOURCE_FILE      ${VISIT_WINDOWS_DIR}/${RESOURCEDIR}/visit.rc)
@@ -1783,7 +1885,7 @@ IF (WIN32)
     STRING(REPLACE "." "," filteredver2 "${filteredver1}")
     SET(VER_FILEVERSION "${filteredver2},0")
     SET(VER_PRODUCTVERSION "${filteredver2},0")
-    CONFIGURE_FILE(${VISIT_WINDOWS_DIR}/resources/versionvars.rc.in
+    CONFIGURE_FILE(${VISIT_WINDOWS_DIR}/distribution/resources/versionvars.rc.in
                    ${VISIT_BINARY_DIR}/include/versionvars.rc @ONLY IMMEDIATE)
 ENDIF (WIN32)
 
@@ -1831,22 +1933,22 @@ ELSE(UNIX AND NOT APPLE)
 ENDIF(UNIX AND NOT APPLE)
 
 # Check for type sizes, endian
-SET(SIZEOF_BOOLEAN              ${CMAKE_SIZEOF_BOOLEAN})
-SET(SIZEOF_CHAR                 ${CMAKE_SIZEOF_CHAR})
-SET(SIZEOF_DOUBLE               ${CMAKE_SIZEOF_DOUBLE})
-SET(SIZEOF_FLOAT                ${CMAKE_SIZEOF_FLOAT})
-SET(SIZEOF_INT                  ${CMAKE_SIZEOF_INT})
-SET(SIZEOF_LONG                 ${CMAKE_SIZEOF_LONG})
-SET(SIZEOF_LONG_DOUBLE          ${CMAKE_SIZEOF_LONG_DOUBLE})
-SET(SIZEOF_LONG_FLOAT           ${CMAKE_SIZEOF_LONG_FLOAT})
-SET(SIZEOF_LONG_LONG            ${CMAKE_SIZEOF_LONG_LONG})
-SET(SIZEOF_SHORT                ${CMAKE_SIZEOF_SHORT})
-SET(SIZEOF_UNSIGNED_CHAR        ${CMAKE_SIZEOF_UNSIGNED_CHAR})
-SET(SIZEOF_UNSIGNED_INT         ${CMAKE_SIZEOF_UNSIGNED_INT})
-SET(SIZEOF_UNSIGNED_LONG        ${CMAKE_SIZEOF_UNSIGNED_LONG})
-SET(SIZEOF_UNSIGNED_LONG_LONG   ${CMAKE_SIZEOF_UNSIGNED_LONG_LONG})
-SET(SIZEOF_UNSIGNED_SHORT       ${CMAKE_SIZEOF_UNSIGNED_SHORT})
-SET(SIZEOF_VOID_P               ${CMAKE_SIZEOF_VOID_P})
+CHECK_TYPE_SIZE(bool                 SIZEOF_BOOLEAN)            # ${CMAKE_SIZEOF_BOOLEAN})
+CHECK_TYPE_SIZE(char                 SIZEOF_CHAR)               # ${CMAKE_SIZEOF_CHAR})
+CHECK_TYPE_SIZE(double               SIZEOF_DOUBLE)             # ${CMAKE_SIZEOF_DOUBLE})
+CHECK_TYPE_SIZE(float                SIZEOF_FLOAT)              # ${CMAKE_SIZEOF_FLOAT})
+CHECK_TYPE_SIZE(int                  SIZEOF_INT)                # ${CMAKE_SIZEOF_INT})
+CHECK_TYPE_SIZE(long                 SIZEOF_LONG)               # ${CMAKE_SIZEOF_LONG})
+CHECK_TYPE_SIZE("long double"        SIZEOF_LONG_DOUBLE)        # ${CMAKE_SIZEOF_LONG_DOUBLE})
+CHECK_TYPE_SIZE("long float"         SIZEOF_LONG_FLOAT)         # ${CMAKE_SIZEOF_LONG_FLOAT})
+CHECK_TYPE_SIZE("long long"          SIZEOF_LONG_LONG)          # ${CMAKE_SIZEOF_LONG_LONG})
+CHECK_TYPE_SIZE(short                SIZEOF_SHORT)              # ${CMAKE_SIZEOF_SHORT})
+CHECK_TYPE_SIZE("unsigned char"      SIZEOF_UNSIGNED_CHAR)      # ${CMAKE_SIZEOF_UNSIGNED_CHAR})
+CHECK_TYPE_SIZE("unsigned int"       SIZEOF_UNSIGNED_INT)       # ${CMAKE_SIZEOF_UNSIGNED_INT})
+CHECK_TYPE_SIZE("unsigned long"      SIZEOF_UNSIGNED_LONG)      # ${CMAKE_SIZEOF_UNSIGNED_LONG})
+CHECK_TYPE_SIZE("unsigned long long" SIZEOF_UNSIGNED_LONG_LONG) # ${CMAKE_SIZEOF_UNSIGNED_LONG_LONG})
+CHECK_TYPE_SIZE("unsigned short"     SIZEOF_UNSIGNED_SHORT)     # ${CMAKE_SIZEOF_UNSIGNED_SHORT})
+CHECK_TYPE_SIZE(void*                SIZEOF_VOID_P)             # ${CMAKE_SIZEOF_VOID_P})
 SET(CMAKE_REQUIRED_DEFINITIONS -D_LARGEFILE64_SOURCE)
 CHECK_TYPE_SIZE("off64_t" SIZEOF_OFF64_T)
 TEST_BIG_ENDIAN(WORDS_BIGENDIAN)
@@ -2250,6 +2352,17 @@ FUNCTION(ADD_TARGET_LINK_FLAGS target)
     ADD_TARGET_XXX_FLAGS(${target} LINK_FLAGS ${ARGN})
 ENDFUNCTION(ADD_TARGET_LINK_FLAGS target)
 
+macro(VISIT_SELECTED_PLUGIN_ERROR type plist msg)
+  if(DEFINED VISIT_SELECTED_${type}_PLUGINS)
+    foreach(plug ${plist})
+      list(FIND VISIT_SELECTED_${type}_PLUGINS ${plug} foundPlug)
+      if(NOT foundPlug EQUAL -1)
+        message(FATAL_ERROR "Cannot build selected plugin (${plug}): ${msg}")
+      endif()
+    endforeach()
+  endif()
+endmacro()
+
 IF(NOT VISIT_DBIO_ONLY)
    ADD_SUBDIRECTORY(plots)
    ADD_SUBDIRECTORY(operators)
@@ -2307,15 +2420,20 @@ ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
 #-----------------------------------------------------------------------------
 # Add the "test" directory if it exists
 #-----------------------------------------------------------------------------
-IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
-    IF(VISIT_OUT_OF_SOURCE_BUILD)
-        ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../test
-                         ${CMAKE_CURRENT_BINARY_DIR}/test)
-    ELSE(VISIT_OUT_OF_SOURCE_BUILD)
-        ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../test
-                         ${VISIT_SOURCE_DIR}/../test)
-    ENDIF(VISIT_OUT_OF_SOURCE_BUILD)
-ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
+# I'm trying to make the new tetsing work hramoniously with the old testing
+# while it's evaluated. if the new testing were ever made permanent then
+# this code would be removed.
+IF (NOT BUILD_TESTING)
+    IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
+        IF(VISIT_OUT_OF_SOURCE_BUILD)
+            ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../test
+                             ${CMAKE_CURRENT_BINARY_DIR}/test)
+        ELSE(VISIT_OUT_OF_SOURCE_BUILD)
+            ADD_SUBDIRECTORY(${VISIT_SOURCE_DIR}/../test
+                             ${VISIT_SOURCE_DIR}/../test)
+        ENDIF(VISIT_OUT_OF_SOURCE_BUILD)
+    ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
+ENDIF()
 
 
 #-----------------------------------------------------------------------------
@@ -2515,7 +2633,7 @@ ELSE (NOT WIN32)
                     /DINSTALL_PREFIX=${CIP_NATIVE}
                     /DBIN_DIR=${CBD_NATIVE}
                     /DCL_64=${CMAKE_CL_64}
-                    ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
+                    ${VISIT_WINDOWS_DIR}/distribution/installation/CreateDBSections.nsi
             COMMAND ${MAKENSIS}
                     /DVisItVersion=${VISIT_VERSION}
                     /DCOMPILER=${VISIT_MSVC_VERSION}
@@ -2523,9 +2641,9 @@ ELSE (NOT WIN32)
                     /DINSTALL_PREFIX=${CIP_NATIVE}
                     /DBIN_DIR=${CBD_NATIVE}
                     /DCL_64=${CMAKE_CL_64}
-                    ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
-            DEPENDS ${VISIT_WINDOWS_DIR}/installation/CreateDBSections.nsi
-                    ${VISIT_WINDOWS_DIR}/installation/binaryinstallation.nsi
+                    ${VISIT_WINDOWS_DIR}/distribution/installation/binaryinstallation.nsi
+            DEPENDS ${VISIT_WINDOWS_DIR}/distribution/installation/CreateDBSections.nsi
+                    ${VISIT_WINDOWS_DIR}/distribution/installation/binaryinstallation.nsi
         )
         ADD_CUSTOM_TARGET(_PACKAGE ALL DEPENDS visit${VISIT_VERSION}.exe)
         ADD_CUSTOM_COMMAND(TARGET _PACKAGE PRE_BUILD
@@ -2543,8 +2661,8 @@ ELSE (NOT WIN32)
                     /DVisItVersion=${VISIT_VERSION}
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE}
                     /DINSTALLER_LOCATION=${VISIT_BINARY_DIR}
-                     ${VISIT_WINDOWS_DIR}/installation/sourceinstallation.nsi
-            DEPENDS ${VISIT_WINDOWS_DIR}/installation/sourceinstallation.nsi
+                     ${VISIT_WINDOWS_DIR}/distribution/installation/sourceinstallation.nsi
+            DEPENDS ${VISIT_WINDOWS_DIR}/distribution/installation/sourceinstallation.nsi
         )
         ADD_CUSTOM_TARGET(_SRC_PACKAGE ALL DEPENDS visitdev${VISIT_VERSION}.exe)
         SET_TARGET_PROPERTIES(_SRC_PACKAGE PROPERTIES EXCLUDE_FROM_DEFAULT_BUILD 1)

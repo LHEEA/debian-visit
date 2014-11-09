@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -350,11 +350,10 @@ class IVP_API avtStreamlineFilter : virtual public avtPICSFilter
     void GenerateSeedPointsFromPointList(std::vector<avtVector> &pts);
     void GenerateSeedPointsFromSelection(std::vector<avtVector> &pts);
 
-    unsigned char GenerateAttributeFields() const;
+    unsigned int GenerateAttributeFields() const;
 
     virtual std::vector<avtVector> GetInitialLocations(void);
     virtual std::vector<avtVector> GetInitialVelocities(void);
     virtual CommunicationPattern   GetCommunicationPattern(void);
 };
-
 #endif

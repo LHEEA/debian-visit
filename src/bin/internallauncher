@@ -95,6 +95,10 @@ class JobSubmitter_mpirun(JobSubmitter):
             parcmd = parcmd + self.parallel.launchargs
         if self.parallel.np != None:
             parcmd = parcmd + ["-np", self.parallel.np]
+            nodes = self.parallel.nn
+            if nodes != None:
+                ppn = str(int(math.ceil(float(self.parallel.np) / float(nodes))))
+                parcmd = parcmd + ["-ppn", ppn]
         if self.parallel.partition != None:
             parcmd = parcmd + ["-p", self.parallel.partition]
         if self.parallel.machinefile != None:
@@ -122,6 +126,9 @@ class JobSubmitter_mpirun(JobSubmitter):
 #   Cyrus Harrison, Fri Feb  1 17:02:02 PST 2013
 #   Use mpiexe on OSX 10.6 and beyond.
 #
+#   David Camp, Tue Mar 11 10:17:48 PDT 2014
+#   Added the -ppn (process per node) option to the mpiexec.
+#
 ################################################################################
 
 class JobSubmitter_mpiexec(JobSubmitter):
@@ -145,6 +152,10 @@ class JobSubmitter_mpiexec(JobSubmitter):
             parcmd = parcmd + self.parallel.launchargs
         if self.parallel.np != None:
             parcmd = parcmd + ["-n", self.parallel.np]
+            nodes = self.parallel.nn
+            if nodes != None:
+                ppn = str(int(math.ceil(float(self.parallel.np) / float(nodes))))
+                parcmd = parcmd + ["-ppn", ppn]
         if self.parallel.partition != None:
             parcmd = parcmd + ["-p", self.parallel.partition]
         if self.parallel.machinefile != None:
@@ -649,6 +660,12 @@ class JobSubmitter_yod(JobSubmitter):
 # Date:       Thu May 17 14:22:04 PDT 2012
 #
 # Modifications:
+#   David Camp, Tue Mar 11 10:17:48 PDT 2014
+#   Added the -ppn (process per node) option to the mpirun and mpiexec.
+#
+#   Eric Brugger, Fri Aug 15 11:06:59 PDT 2014
+#   I modified AddEnvironment to pass the HOST environment variable to the
+#   parallel runtime environment.
 #
 ###############################################################################
 
@@ -690,6 +707,10 @@ class JobSubmitter_qsub(JobSubmitter):
             mpicmd = mpicmd + self.parallel.sublaunchargs
         if self.parallel.np != None:
             mpicmd = mpicmd + ["-n", self.parallel.np]
+            nodes = self.parallel.nn
+            if nodes != None:
+                ppn = str(int(math.ceil(float(self.parallel.np) / float(nodes))))
+                mpicmd = mpicmd + ["-ppn", ppn]
         if self.parallel.machinefile != None:
             mpicmd = mpicmd + ["-machinefile", self.parallel.machinefile]
         mpicmd = mpicmd + self.VisItExecutable() + args
@@ -704,6 +725,10 @@ class JobSubmitter_qsub(JobSubmitter):
             mpicmd = mpicmd + self.parallel.sublaunchargs
         if self.parallel.np != None:
             mpicmd = mpicmd + ["-np", self.parallel.np]
+            nodes = self.parallel.nn
+            if nodes != None:
+                ppn = str(int(math.ceil(float(self.parallel.np) / float(nodes))))
+                mpicmd = mpicmd + ["-ppn", ppn]
         if self.parallel.machinefile != None:
             mpicmd = mpicmd + ["-machinefile", self.parallel.machinefile]
         mpicmd = mpicmd + self.VisItExecutable()
@@ -762,7 +787,8 @@ output streams.
 
     def AddEnvironment(self):
         env = ""
-        env = env + "LIBPATH=" + GETENV("LIBPATH")
+        env = env + "HOME=" + GETENV("HOME")
+        env = env + ",LIBPATH=" + GETENV("LIBPATH")
         env = env + ",LD_LIBRARY_PATH=" + GETENV("LD_LIBRARY_PATH")
         env = env + ",VISITHOME=" + GETENV("VISITHOME")
         env = env + ",VISITARCHHOME=" + GETENV("VISITARCHHOME")
@@ -1023,6 +1049,31 @@ class GDBDebugger(Debugger):
         else:
             self.launcher.error("Could not create GDB command file: %s. Running VisIt normally." % self.filename)
         return args
+
+###############################################################################
+# Class: LLDBDebugger
+#
+# Purpose:    Launch a VisIt component under lldb.
+#
+# Programmer: Cyrus Harrison
+# Date:       Fri Jul 25 15:55:19 PDT 2014
+#
+# Modifications:
+#
+###############################################################################
+
+class LLDBDebugger(Debugger):
+    def __init__(self, launcher):
+        super(LLDBDebugger, self).__init__(launcher)
+
+    def Executable(self):
+        return ["lldb"]
+
+    def CreateCommand(self, args):
+        #lldb_args = ["process","launch","--tty","--"]
+        lldb_args = ["--"]
+        return self.Executable() + lldb_args + [args[0]] + self.DebuggerArguments() + args[1:]
+
 
 ###############################################################################
 # Class: TotalviewDebugger
@@ -1323,7 +1374,7 @@ class GeneralArguments(object):
         elif args[i] == "-threads":
             # Number of threads. Some launchers want to know this number, ie depth.
             self.threads = args[i+1]
-            self.arguments = self.arguments + [args[i]]
+            self.arguments = self.arguments + [args[i]] + [args[i+1]]
             n = 2
         else:
             self.arguments = self.arguments + [args[i]]
@@ -2298,8 +2349,8 @@ class MainLauncher(object):
     #   Don't use mesa if  hw-accel is requested for the engine.
     #
     #   David Camp, Tue Mar 11 10:17:48 PDT 2014
-    #   The osmesa option would fail to work because the osmesa path was at the
-    #   end of the LD_LIBRARY_PATH and the code would load the system version.
+    #   The osmesa option would fail to work because the osmesa path was at the 
+    #   end of the LD_LIBRARY_PATH and the code would load the system version. 
     #   So I moved the osmesa path to the first path and everything works.
     #
     ############################################################################
@@ -2370,7 +2421,7 @@ class MainLauncher(object):
 
         # If we're using VisIt's Python, set PYTHONHOME
         visitlibdir_python = os.path.join(self.visitlibdir, "python")
-        if self.generalArgs.exe_name == "cli":
+        if (self.generalArgs.exe_name == "cli") and os.path.isdir(visitlibdir_python):
             SETENV("PYTHONHOME", visitlibdir_python)
 
         # Unset QT_PLUGIN_PATH
@@ -2580,7 +2631,7 @@ class MainLauncher(object):
                     self.warning("""
 VisIt does not recognize your terminal application so it will ignore the -newconsole argument.""")
             else:
-                args = self.xterm + ["-title", title, "-e"] + [string.join(newcmd, " ")]
+                args = self.xterm + ["-geometry", "120x40", "-title", title, "-e"] + [string.join(newcmd, " ")]
         return args
 
     ############################################################################
@@ -2598,6 +2649,9 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
     #   Cyrus Harrison, Fri May 10 15:55:49 PDT 2013
     #   Added ddt.
     #
+    #   Cyrus Harrison, Fri Jul 25 15:59:02 PDT 2014
+    #   Added lldb.
+    #
     ############################################################################
     def Debuggers(self):
         return ["gdb",
@@ -2606,7 +2660,8 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
                 "strace",
                 "apitrace",
                 "debug-malloc",
-                "ddt"]
+                "ddt",
+                "lldb"]
 
     ############################################################################
     # Method: DebuggerFactory
@@ -2622,6 +2677,9 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
     # Modifications:
     #   Kathleen Biagas, Mon Apr  8 14:19:36 PDT 2013
     #   Added apitrace.
+    #
+    #   Cyrus Harrison, Fri Jul 25 15:59:02 PDT 2014
+    #   Added lldb.
     #
     ############################################################################
 
@@ -2640,6 +2698,8 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
             return DebugMallocDebugger(self)
         elif debugger == "ddt":
             return DDTDebugger(self)
+        elif debugger == "lldb":
+            return LLDBDebugger(self)
         # Return a debugger that does not do anything.
         return Debugger(self)
 

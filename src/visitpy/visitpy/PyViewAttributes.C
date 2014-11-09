@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewViewAttributes(int);
 std::string
 PyViewAttributes_ToString(const ViewAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const double *viewNormal = atts->GetViewNormal();
         SNPRINTF(tmpStr, 1000, "%sviewNormal = (", prefix);
@@ -1012,7 +1012,6 @@ PyViewAttributes_GetLogString()
 static void
 PyViewAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    ViewAttributes *atts = (ViewAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

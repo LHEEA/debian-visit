@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,8 +76,8 @@ static PyObject *NewAxisAttributes(int);
 std::string
 PyAxisAttributes_ToString(const AxisAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     { // new scope
         std::string objPrefix(prefix);
@@ -473,7 +473,6 @@ PyAxisAttributes_GetLogString()
 static void
 PyAxisAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    AxisAttributes *atts = (AxisAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

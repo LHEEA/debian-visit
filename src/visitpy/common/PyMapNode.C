@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -128,7 +128,6 @@ PyDict_To_MapNode(PyObject *obj, MapNode &mn)
     if (!PyDict_Check(obj))
         return false;
 
-    bool success = true;
     Py_ssize_t pos = 0;
     PyObject *key = NULL;
     PyObject *value = NULL;

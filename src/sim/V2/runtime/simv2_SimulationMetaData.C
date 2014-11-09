@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -251,7 +251,7 @@ FUNC2(visit_handle h, int i, visit_handle &val) \
     VisIt_SimulationMetaData *obj = GetObject(h, #FUNC2); \
     if(obj != NULL) \
     { \
-        if(i < 0 || i >= obj->VEC.size()) \
+        if(i < 0 || i >= static_cast<int>(obj->VEC.size())) \
         { \
             VisItError("An invalid index was provided"); \
             return VISIT_ERROR; \

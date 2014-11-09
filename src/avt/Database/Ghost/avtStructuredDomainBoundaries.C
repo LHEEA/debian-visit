@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -80,7 +80,7 @@ using   std::sort;
 //                            static data members
 // ----------------------------------------------------------------------------
 
-bool avtStructuredDomainBoundaries::createGhostsForTIntersections = false;
+bool avtStructuredDomainBoundaries::createGhostsForTIntersections = true;
 
 // ----------------------------------------------------------------------------
 //                            private helper methods
@@ -381,6 +381,7 @@ BoundaryHelperFunctions<T>::FillRectilinearBoundaryData(int      d1,
 //    bnddata        the temporary boundary data
 //    bndmixmat      the temporary boundary material numbers
 //    bndmixzone     the temporary boundary zone numbers
+//    bndmixnext     the temporary boundary zone next index
 //    bndmixlen      the temporary boundary mixlen
 //
 //  Programmer:  Jeremy Meredith
@@ -396,6 +397,15 @@ BoundaryHelperFunctions<T>::FillRectilinearBoundaryData(int      d1,
 //    way, use the "match", which is already pre-computed by the client for
 //    this purpose.
 //
+//    Jeremy Meredith, Thu Aug 14 10:24:12 EDT 2014
+//    Added ability to fill values from the 'mixnext' array for mixed
+//    boundary data.  We can't reliably use any other information (like a
+//    change in zone ID) to determine when a segment of mix data has ended.
+//
+//    Jeremy Meredith, Thu Aug 14 10:26:56 EDT 2014
+//    Skip generating neighbor data for a donor relationship.  It won't
+//    get used anyway.
+//
 // ****************************************************************************
 template <class T>
 void
@@ -405,6 +415,7 @@ BoundaryHelperFunctions<T>::FillMixedBoundaryData(int          d1,
                                                      T         ***bnddata,
                                                      int       ***bndmixmat,
                                                      int       ***bndmixzone,
+                                                     int       ***bndmixnext,
                                                      vector<int> &bndmixlen)
 {
     Boundary *bi = &sdb->boundary[d1];
@@ -414,6 +425,11 @@ BoundaryHelperFunctions<T>::FillMixedBoundaryData(int          d1,
     {
         Neighbor *n1 = &bi->neighbors[n];
         int d2 = n1->domain;
+        if (n1->neighbor_rel == DONOR_NEIGHBOR)
+        {
+            // d2 is a donor to d1.  Don't send it our data.
+            continue;
+        }
         int mi = n1->match;
         Neighbor *n2 = &(sdb->boundary[d2].neighbors[mi]);
         int *n2extents = n2->zextents;
@@ -445,6 +461,8 @@ BoundaryHelperFunctions<T>::FillMixedBoundaryData(int          d1,
             bndmixmat[d1][n]  = new int[bndmixlen[n]];
         if (bndmixzone)
             bndmixzone[d1][n] = new int[bndmixlen[n]];
+        if (bndmixnext)
+            bndmixnext[d1][n] = new int[bndmixlen[n]];
 
         int bndindex = 0;
         for (k=n2extents[4]; k<=n2extents[5]; k++)
@@ -467,6 +485,8 @@ BoundaryHelperFunctions<T>::FillMixedBoundaryData(int          d1,
                                 bndmixmat[d1][n][bndindex]  = oldmat->GetMixMat()[oldmixindex];
                             if (bndmixzone)
                                 bndmixzone[d1][n][bndindex] = oldmat->GetMixZone()[oldmixindex];
+                            if (bndmixnext)
+                                bndmixnext[d1][n][bndindex] = oldmat->GetMixNext()[oldmixindex];
                             oldmixindex = oldmat->GetMixNext()[oldmixindex] - 1;
                             bndindex++;
                         }
@@ -534,8 +554,6 @@ BoundaryHelperFunctions<T>::CommunicateBoundaryData(const vector<int> &domain2pr
 #ifdef PARALLEL
     MPI_Datatype mpi_datatype = GetMPIDataType<T>();
 
-    int mpiMsgTag = GetUniqueMessageTag();
-
     int rank;
     MPI_Comm_rank(VISIT_MPI_COMM, &rank);
 
@@ -551,12 +569,12 @@ BoundaryHelperFunctions<T>::CommunicateBoundaryData(const vector<int> &domain2pr
         recvcount[i] = 0;
     }
 
-    for (int d1 = 0; d1 < sdb->boundary.size(); d1++)
+    for (size_t d1 = 0; d1 < sdb->boundary.size(); d1++)
     {
         Boundary *bi = &sdb->boundary[d1];
 
         // find matching neighbors
-        for (int n=0; n<bi->neighbors.size(); n++)
+        for (size_t n=0; n<bi->neighbors.size(); n++)
         {
             Neighbor *n1 = &bi->neighbors[n];
             int d2 = n1->domain;
@@ -596,12 +614,12 @@ BoundaryHelperFunctions<T>::CommunicateBoundaryData(const vector<int> &domain2pr
     T **tmp_ptr = new T*[nprocs];
     for (i = 0 ; i < nprocs ; i++)
         tmp_ptr[i] = sendbuff + senddisp[i];
-    for (int d1 = 0; d1 < sdb->boundary.size(); d1++)
+    for (size_t d1 = 0; d1 < sdb->boundary.size(); d1++)
     {
         Boundary *bi = &sdb->boundary[d1];
 
         // find matching neighbors
-        for (int n=0; n<bi->neighbors.size(); n++)
+        for (size_t n=0; n<bi->neighbors.size(); n++)
         {
             Neighbor *n1 = &bi->neighbors[n];
             int d2 = n1->domain;
@@ -624,14 +642,14 @@ BoundaryHelperFunctions<T>::CommunicateBoundaryData(const vector<int> &domain2pr
                   recvbuff, recvcount, recvdisp, mpi_datatype,
                   VISIT_MPI_COMM);
 
-    for (i = 0 ; i < nprocs ; i++)
+    for (i = 0 ; i < (size_t)nprocs ; i++)
         tmp_ptr[i] = recvbuff + recvdisp[i];
-    for (int d1 = 0; d1 < sdb->boundary.size(); d1++)
+    for (size_t d1 = 0; d1 < sdb->boundary.size(); d1++)
     {
         Boundary *bi = &sdb->boundary[d1];
 
         // find matching neighbors
-        for (int n=0; n<bi->neighbors.size(); n++)
+        for (size_t n=0; n<bi->neighbors.size(); n++)
         {
             Neighbor *n1 = &bi->neighbors[n];
             int d2 = n1->domain;
@@ -692,6 +710,7 @@ BoundaryHelperFunctions<T>::CommunicateBoundaryData(const vector<int> &domain2pr
 //    bnddata        the temporary boundary data
 //    bndmixmat      the temporary boundary material numbers
 //    bndmixzone     the temporary boundary zone numbers
+//    bndmixnext     the temporary boundary next index
 //    bndmixlen      the temporary boundary mixlen
 //
 //  Programmer:  Jeremy Meredith
@@ -715,6 +734,12 @@ BoundaryHelperFunctions<T>::CommunicateBoundaryData(const vector<int> &domain2pr
 //
 //    Mark C. Miller, Mon Jan 22 22:09:01 PST 2007
 //    Changed MPI_COMM_WORLD to VISIT_MPI_COMM
+//
+//    Jeremy Meredith, Thu Aug 14 10:24:12 EDT 2014
+//    Added ability to communicate values from the 'mixnext' array for mixed
+//    boundary data.  We can't reliably use any other information (like a
+//    change in zone ID) to determine when a segment of mix data has ended.
+//
 // ****************************************************************************
 template <class T>
 void
@@ -722,6 +747,7 @@ BoundaryHelperFunctions<T>::CommunicateMixedBoundaryData(const vector<int> &doma
                                                             T     ***bnddata,
                                                             int   ***bndmixmat,
                                                             int   ***bndmixzone,
+                                                            int   ***bndmixnext,
                                                             vector< vector<int> > &bndmixlen)
 {
 #ifdef PARALLEL
@@ -734,16 +760,15 @@ BoundaryHelperFunctions<T>::CommunicateMixedBoundaryData(const vector<int> &doma
 
     int mpiMsgTag = GetUniqueMessageTag();
 
-    for (int d1 = 0; d1 < sdb->boundary.size(); d1++)
+    for (size_t d1 = 0; d1 < sdb->boundary.size(); d1++)
     {
         Boundary *bi = &sdb->boundary[d1];
 
         // find matching neighbors
-        for (int n=0; n<bi->neighbors.size(); n++)
+        for (size_t n=0; n<bi->neighbors.size(); n++)
         {
             Neighbor *n1 = &bi->neighbors[n];
             int d2 = n1->domain;
-            int mi = n1->match;
 
             if (domain2proc[d1] != domain2proc[d2])
             {
@@ -764,17 +789,17 @@ BoundaryHelperFunctions<T>::CommunicateMixedBoundaryData(const vector<int> &doma
     int mpiBndDataTag    = GetUniqueMessageTag();
     int mpiBndMixMatTag  = GetUniqueMessageTag();
     int mpiBndMixZoneTag = GetUniqueMessageTag();
+    int mpiBndMixNextTag = GetUniqueMessageTag();
 
-    for (int d1 = 0; d1 < sdb->boundary.size(); d1++)
+    for (size_t d1 = 0; d1 < sdb->boundary.size(); d1++)
     {
         Boundary *bi = &sdb->boundary[d1];
 
         // find matching neighbors
-        for (int n=0; n<bi->neighbors.size(); n++)
+        for (size_t n=0; n<bi->neighbors.size(); n++)
         {
             Neighbor *n1 = &bi->neighbors[n];
             int d2 = n1->domain;
-            int mi = n1->match;
             int size = bndmixlen[d1][n];
 
             if (domain2proc[d1] != domain2proc[d2])
@@ -791,6 +816,9 @@ BoundaryHelperFunctions<T>::CommunicateMixedBoundaryData(const vector<int> &doma
                     if (bndmixzone)
                         MPI_Send(bndmixzone[d1][n], size, MPI_INT,
                                  domain2proc[d2], mpiBndMixZoneTag, VISIT_MPI_COMM);
+                    if (bndmixnext)
+                        MPI_Send(bndmixnext[d1][n], size, MPI_INT,
+                                 domain2proc[d2], mpiBndMixNextTag, VISIT_MPI_COMM);
                 }
                 else if (domain2proc[d2] == rank)
                 {
@@ -811,6 +839,12 @@ BoundaryHelperFunctions<T>::CommunicateMixedBoundaryData(const vector<int> &doma
                         bndmixzone[d1][n] = new int[size];
                         MPI_Recv(bndmixzone[d1][n], size, MPI_INT,
                                  domain2proc[d1], mpiBndMixZoneTag, VISIT_MPI_COMM, &stat);
+                    }
+                    if (bndmixnext)
+                    {
+                        bndmixnext[d1][n] = new int[size];
+                        MPI_Recv(bndmixnext[d1][n], size, MPI_INT,
+                                 domain2proc[d1], mpiBndMixNextTag, VISIT_MPI_COMM, &stat);
                     }
                 }
             }
@@ -852,7 +886,7 @@ BoundaryHelperFunctions<T>::CopyOldValues(int      d1,
 {
     Boundary *bi = &sdb->boundary[d1];
     int *biextents = (isPointData ? bi->oldnextents : bi->oldzextents);
-    //int *biextents = (isPointData ? bi->newnextents : bi->newzextents);
+
     for (int k = biextents[4]; k <= biextents[5]; k++)
     {
         for (int j = biextents[2]; j <= biextents[3]; j++)
@@ -1215,6 +1249,7 @@ BoundaryHelperFunctions<T>::SetNewRectilinearBoundaryData(int d1,
 //    bnddata        the temporary boundary data
 //    bndmixmat      the temporary boundary material numbers
 //    bndmixzone     the temporary boundary zone numbers
+//    bndmixnext     the temporary boundary next index
 //    newmatlist     the new mesh-sized array which holds the matlist
 //    newdata        the new mixed array which holds the data
 //    newmixmat      the new mixed array which holds the material numbers
@@ -1245,6 +1280,14 @@ BoundaryHelperFunctions<T>::SetNewRectilinearBoundaryData(int d1,
 //    Like other SetNew functions, don't worry about setting new data if
 //    the neighbor relationship is recipient.
 //
+//    Jeremy Meredith, Thu Aug 14 10:24:12 EDT 2014
+//    Use a "mixnext" array to determine when the segment of mixed data
+//    has terminated.  The old way used clues like a zone number changing,
+//    but this fails if we have one zone donating mixed data to multiple
+//    to recipient zones (e.g. in the case of ghosts being communicated
+//    from a coarse to fine refinement level).  By using the mixnext array,
+//    we know directly if the segment of mixed data has ended.
+//
 // ****************************************************************************
 template <class T>
 void
@@ -1255,6 +1298,7 @@ BoundaryHelperFunctions<T>::SetNewMixedBoundaryData(int       d1,
                                                        T      ***bnddata,
                                                        int    ***bndmixmat,
                                                        int    ***bndmixzone,
+                                                       int    ***bndmixnext,
                                                        int      *newmatlist,
                                                        T        *newdata,
                                                        int      *newmixmat,
@@ -1295,10 +1339,10 @@ BoundaryHelperFunctions<T>::SetNewMixedBoundaryData(int       d1,
                     {
                         newmatlist[newindex] = -newmixindex - 1;
 
-                        int oldzone = bndmixzone[d2][mi][bndmixindex];
-                        while (bndmixindex < bndmixlen[d2][mi] &&
-                               bndmixzone[d2][mi][bndmixindex] == oldzone)
+                        bool finalMixedEntry = false;
+                        while (!finalMixedEntry)
                         {
+                            finalMixedEntry = (bndmixnext[d2][mi][bndmixindex] == 0);
                             if (newdata)
                                 newdata[newmixindex]    = bnddata[d2][mi][bndmixindex];
                             if (newmixmat)
@@ -1306,12 +1350,11 @@ BoundaryHelperFunctions<T>::SetNewMixedBoundaryData(int       d1,
                             if (newmixzone)
                                 newmixzone[newmixindex] = newindex; // +1 ???
                             if (newmixnext)
-                                newmixnext[newmixindex] = (newmixindex+1)+1;
+                                newmixnext[newmixindex] = (finalMixedEntry ? 0 : (newmixindex+1)+1);
+
                             bndmixindex++;
                             newmixindex++;
                         }
-                        if (newmixnext)
-                            newmixnext[newmixindex-1] = 0;
                     }
                     bndindex++;
                 }
@@ -1534,10 +1577,10 @@ avtStructuredDomainBoundaries::SetNumDomains(int nd)
 void
 avtStructuredDomainBoundaries::SetExtents(int domain, int e[6])
 {
-    if (domain >= wholeBoundary.size())
+    if ((size_t)domain >= wholeBoundary.size())
         EXCEPTION1(VisItException,
                    "avtStructuredDomainBoundaries: "
-                   "targetted domain more than number of domains");
+                   "targeted domain more than number of domains");
 
     wholeBoundary[domain].domain = domain;
     wholeBoundary[domain].SetExtents(e);
@@ -1577,10 +1620,10 @@ avtStructuredDomainBoundaries::AddNeighbor(int domain, int d, int mi, int o[3],
                                            const std::vector<int>& ref_ratio,
                                            NeighborRelationship nr)
 {
-    if (domain >= wholeBoundary.size())
+    if ((size_t)domain >= wholeBoundary.size())
         EXCEPTION1(VisItException,
                    "avtStructuredDomainBoundaries: "
-                   "targetted domain more than number of domains");
+                   "targeted domain more than number of domains");
 
     wholeBoundary[domain].AddNeighbor(d, mi, o, e, rr, ref_ratio, nr);
 }
@@ -1601,10 +1644,10 @@ avtStructuredDomainBoundaries::AddNeighbor(int domain, int d, int mi, int o[3],
 void
 avtStructuredDomainBoundaries::Finish(int domain)
 {
-    if (domain >= wholeBoundary.size())
+    if ((size_t)domain >= wholeBoundary.size())
         EXCEPTION1(VisItException,
                    "avtStructuredDomainBoundaries: "
-                   "targetted domain more than number of domains");
+                   "targeted domain more than number of domains");
 
     wholeBoundary[domain].Finish();
 }
@@ -2345,6 +2388,11 @@ avtStructuredDomainBoundaries::ExchangeIntVector(vector<int>        domainNum,
 //    Jeremy Meredith, Thu Apr 12 18:00:17 EDT 2012
 //    Added timings for each phase of ghost zone communication.
 //
+//    Jeremy Meredith, Thu Aug 14 10:24:12 EDT 2014
+//    Communicate values from the 'mixnext' array for mixed boundary
+//    data.  We can't reliably use any other information (like a change
+//    in zone ID) to determine when a segment of mix data has ended.
+//
 // ****************************************************************************
 vector<avtMaterial*>
 avtStructuredDomainBoundaries::ExchangeMaterial(vector<int>          domainNum,
@@ -2367,6 +2415,7 @@ avtStructuredDomainBoundaries::ExchangeMaterial(vector<int>          domainNum,
     int   ***matlist = bhf_int->InitializeBoundaryData();
     int   ***mixmat  = bhf_int->InitializeBoundaryData();
     int   ***mixzone = bhf_int->InitializeBoundaryData();
+    int   ***mixnext = bhf_int->InitializeBoundaryData();
     float ***mixvf   = bhf_float->InitializeBoundaryData();
     vector<vector<int> > mixlen(boundary.size());
     for (size_t b = 0; b < boundary.size(); b++)
@@ -2381,12 +2430,12 @@ avtStructuredDomainBoundaries::ExchangeMaterial(vector<int>          domainNum,
     for (size_t d = 0; d < mats.size(); d++)
     {
         bhf_float->FillMixedBoundaryData(domainNum[d], mats[d], mats[d]->GetMixVF(),
-                              mixvf, mixmat, mixzone, mixlen[domainNum[d]]);
+                              mixvf, mixmat, mixzone, mixnext, mixlen[domainNum[d]]);
     }
     visitTimer->StopTimer(timer_PackData, "Ghost Zone Generation phase 2: Pack Data (in mat version)");
 
     bhf_int->CommunicateBoundaryData(domain2proc, matlist, false);
-    bhf_float->CommunicateMixedBoundaryData(domain2proc, mixvf, mixmat, mixzone, mixlen);
+    bhf_float->CommunicateMixedBoundaryData(domain2proc, mixvf, mixmat, mixzone, mixnext, mixlen);
 
     int timer_UnpackData = visitTimer->StartTimer();
     for (size_t d = 0; d < mats.size(); d++)
@@ -2432,7 +2481,7 @@ avtStructuredDomainBoundaries::ExchangeMaterial(vector<int>          domainNum,
         if (newmixlen > 0)
         {
             bhf_float->SetNewMixedBoundaryData(domainNum[d], oldmat, mixlen,
-                                   matlist, mixvf, mixmat, mixzone, newmatlist,
+                                   matlist, mixvf, mixmat, mixzone, mixnext, newmatlist,
                                    newmixvf, newmixmat, newmixzone, newmixnext,
                                    newmixlen);
         }
@@ -2462,6 +2511,7 @@ avtStructuredDomainBoundaries::ExchangeMaterial(vector<int>          domainNum,
     bhf_float->FreeBoundaryData(mixvf);
     bhf_int->FreeBoundaryData(mixmat);
     bhf_int->FreeBoundaryData(mixzone);
+    bhf_int->FreeBoundaryData(mixnext);
 
     return out;
 }
@@ -2508,6 +2558,11 @@ avtStructuredDomainBoundaries::ExchangeMaterial(vector<int>          domainNum,
 //
 //    Jeremy Meredith, Thu Apr 12 18:00:17 EDT 2012
 //    Added timings for each phase of ghost zone communication.
+//
+//    Jeremy Meredith, Thu Aug 14 10:24:12 EDT 2014
+//    Communicate values from the 'mixnext' array for mixed boundary
+//    data.  We can't reliably use any other information (like a change
+//    in zone ID) to determine when a segment of mix data has ended.
 //
 // ****************************************************************************
 vector<avtMixedVariable*>
@@ -2570,6 +2625,7 @@ avtStructuredDomainBoundaries::ExchangeMixVar(vector<int>            domainNum,
     //
     int   ***matlist = bhf_int->InitializeBoundaryData();
     int   ***mixzone = bhf_int->InitializeBoundaryData();
+    int   ***mixnext = bhf_int->InitializeBoundaryData();
     float ***mixvals = bhf_float->InitializeBoundaryData();
     vector<vector<int> > mixlen(boundary.size());
     for (size_t  b = 0; b < boundary.size(); b++)
@@ -2585,12 +2641,12 @@ avtStructuredDomainBoundaries::ExchangeMixVar(vector<int>            domainNum,
     {
         const float *oldmixvals = (mixvars[d] ? mixvars[d]->GetBuffer() : NULL);
         bhf_float->FillMixedBoundaryData(domainNum[d], mats[d], oldmixvals,
-                              mixvals, NULL, mixzone, mixlen[domainNum[d]]);
+                              mixvals, NULL, mixzone, mixnext, mixlen[domainNum[d]]);
     }
     visitTimer->StopTimer(timer_PackData, "Ghost Zone Generation phase 2: Pack Data (in mixvar version)");
 
     bhf_int->CommunicateBoundaryData(domain2proc, matlist, false);
-    bhf_float->CommunicateMixedBoundaryData(domain2proc, mixvals, NULL, mixzone, mixlen);
+    bhf_float->CommunicateMixedBoundaryData(domain2proc, mixvals, NULL, mixzone, mixnext, mixlen);
 
     int timer_UnpackData = visitTimer->StartTimer();
     for (size_t d = 0; d < mats.size(); d++)
@@ -2624,7 +2680,7 @@ avtStructuredDomainBoundaries::ExchangeMixVar(vector<int>            domainNum,
         bhf_int->SetNewBoundaryData(domainNum[d], matlist, newmatlist, false);
         if (newmixlen != 0)
             bhf_float->SetNewMixedBoundaryData(domainNum[d], oldmat, mixlen,
-                                    matlist, mixvals, NULL, mixzone,
+                                    matlist, mixvals, NULL, mixzone, mixnext,
                                     newmatlist, newmixvals, NULL, NULL, NULL,
                                     newmixlen);
 
@@ -2641,6 +2697,7 @@ avtStructuredDomainBoundaries::ExchangeMixVar(vector<int>            domainNum,
     bhf_int->FreeBoundaryData(matlist);
     bhf_float->FreeBoundaryData(mixvals);
     bhf_int->FreeBoundaryData(mixzone);
+    bhf_int->FreeBoundaryData(mixnext);
 
     if (mvname != NULL)
     {
@@ -2703,7 +2760,7 @@ avtStructuredDomainBoundaries::ConfirmMesh(vector<int>         domainNum,
 {
     for (size_t i = 0 ; i < domainNum.size() ; i++)
     {
-        if (domainNum[i] < 0 || domainNum[i] >= wholeBoundary.size())
+        if (domainNum[i] < 0 || (size_t)domainNum[i] >= wholeBoundary.size())
         {
             //
             // This mesh is referencing a domain that is not valid for the
@@ -2851,9 +2908,7 @@ avtStructuredDomainBoundaries::CreateGhostZones(vtkDataSet *outMesh,
 
     outMesh->GetCellData()->AddArray(ghostCells);
     ghostCells->Delete();
-    // FIX_ME_VTK6.0, ESB, is this correct?
     vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(outMesh->GetInformation(), 0);
-    //outMesh->SetUpdateGhostLevel(0);
 
     //
     //  Create a field-data array indicating the extents of real zones.
@@ -3281,6 +3336,16 @@ avtRectilinearDomainBoundaries::ExchangeMesh(vector<int>         domainNum,
 //    Brad Whitlock, Tue May 10 15:08:21 PST 2005
 //    Fixed for win32.
 //
+//    Gunther H. Weber, Mon Jul 28 17:39:51 PDT 2014
+//    Improve neighbor detection determining whether a face needs to be
+//    ghosted out: (i) Support partially ghosted out faces (for AMR
+//    data set where a patch may only share a partial face with a
+//    neighboring patch (fixes bug encountered by LBNL ANAG); (ii)
+//    Skip neighbors in coarser refinement levels since only faces shared
+//    by neighbors in the same level need to be ghosted out (fixes one
+//    regression test failure when selection the new ghost zone generation
+//    mechanism for crack free isosurfaces).
+//
 // ****************************************************************************
 
 void
@@ -3326,61 +3391,67 @@ avtStructuredDomainBoundaries::CreateGhostNodes(vector<int>         domainNum,
         dims[1] = bi->oldnextents[3] - bi->oldnextents[2] + 1;
         dims[2] = bi->oldnextents[5] - bi->oldnextents[4] + 1;
 
-        if (bi->newnextents[0] < bi->oldnextents[0])
+        for (std::vector<Neighbor>::const_iterator it = bi->neighbors.begin(); it != bi->neighbors.end(); ++it)
         {
-            for (int k = 0 ; k < dims[2] ; k++)
-                for (int j = 0 ; j < dims[1] ; j++)
-                {
-                    int idx = 0 + j*dims[0] + k*dims[0]*dims[1];
-                    avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
-                }
-        }
-        if (bi->newnextents[1] > bi->oldnextents[1])
-        {
-            for (int k = 0 ; k < dims[2] ; k++)
-                for (int j = 0 ; j < dims[1] ; j++)
-                {
-                    int idx = dims[0]-1 + j*dims[0] + k*dims[0]*dims[1];
-                    avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
-                }
-        }
-        if (bi->newnextents[2] < bi->oldnextents[2])
-        {
-            for (int k = 0 ; k < dims[2] ; k++)
-                    for (int i = 0 ; i < dims[0] ; i++)
-                {
-                    int idx = i + 0*dims[0] + k*dims[0]*dims[1];
-                    avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
-                }
-        }
-        if (bi->newnextents[3] > bi->oldnextents[3])
-        {
-            for (int k = 0 ; k < dims[2] ; k++)
-                for (int i = 0 ; i < dims[0] ; i++)
-                {
-                    int idx = i + (dims[1]-1)*dims[0] + k*dims[0]*dims[1];
-                    avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
-                }
-        }
-        if (bi->newnextents[4] < bi->oldnextents[4])
-        {
-            for (int j = 0 ; j < dims[1] ; j++)
-                for (int i = 0 ; i < dims[0] ; i++)
-                {
+            if (it->refinement_rel != SAME_REFINEMENT_LEVEL)
+                continue;
+
+            if (it->type == Boundary::IMIN)
+            {
+                for (int k = it->nextents[4] - 1 ; k < it->nextents[5] ; k++)
+                    for (int j = it->nextents[2] - 1; j < it->nextents[3]; j++)
+                    {
+                        int idx = 0 + j*dims[0] + k*dims[0]*dims[1];
+                        avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
+                    }
+            }
+            else if (it->type == Boundary::IMAX)
+            {
+                for (int k = it->nextents[4] - 1 ; k < it->nextents[5] ; k++)
+                    for (int j = it->nextents[2] - 1 ; j < it->nextents[3] ; j++)
+                    {
+                        int idx = dims[0]-1 + j*dims[0] + k*dims[0]*dims[1];
+                        avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
+                    }
+            }
+            else if (it->type == Boundary::JMIN)
+            {
+                for (int k = it->nextents[4] - 1 ; k < it->nextents[5] ; k++)
+                    for (int i = it->nextents[0] - 1 ; i < it->nextents[1] ; i++)
+                    {
+                        int idx = i + 0*dims[0] + k*dims[0]*dims[1];
+                        avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
+                    }
+            }
+            else if (it->type == Boundary::JMAX)
+            {
+                for (int k = it->nextents[4]-1 ; k < it->nextents[5] ; k++)
+                    for (int i = it->nextents[0] - 1 ; i < it->nextents[1] ; i++)
+                    {
+                        int idx = i + (dims[1]-1)*dims[0] + k*dims[0]*dims[1];
+                        avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
+                    }
+            }
+            else if (it->type == Boundary::KMIN)
+            {
+                for (int j = it->nextents[2] - 1; j < it->nextents[3]; j++)
+                    for (int i = it->nextents[0] - 1 ; i < it->nextents[1] ; i++)
+                    {
                         int idx = i + j*dims[0] + 0*dims[0]*dims[1];
-                    avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
-                }
+                        avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
+                    }
+            }
+            else if (it->type == Boundary::KMAX)
+            {
+                for (int j = it->nextents[2] - 1; j < it->nextents[3]; j++)
+                    for (int i = it->nextents[0] - 1 ; i < it->nextents[1] ; i++)
+                    {
+                        int idx = i + j*dims[0] + (dims[2]-1)*dims[0]*dims[1];
+                        avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
+                    }
+            }
         }
-        if (bi->newnextents[5] > bi->oldnextents[5])
-        {
-                for (int j = 0 ; j < dims[1] ; j++)
-                for (int i = 0 ; i < dims[0] ; i++)
-                {
-                    int idx = i + j*dims[0] + (dims[2]-1)*dims[0]*dims[1];
-                    avtGhostData::AddGhostNodeType(gnp[idx], DUPLICATED_NODE);
-                }
-        }
-    
+
         ds->GetPointData()->AddArray(gn);
         gn->Delete();
 
@@ -3478,10 +3549,10 @@ avtStructuredDomainBoundaries::SetIndicesForAMRPatch(int domain,
                    "computation of neighbors from index extents");
     }
 
-    if (domain >= levels.size())
+    if ((size_t)domain >= levels.size())
         EXCEPTION1(VisItException,
                    "avtStructuredDomainBoundaries: "
-                   "targetted domain more than number of domains");
+                   "targeted domain more than number of domains");
 
     levels[domain] = level;
     maxAMRLevel = (maxAMRLevel > level+1 ? maxAMRLevel : level+1);
@@ -3571,7 +3642,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
         int t0 = visitTimer->StartTimer();
 
-        int i, j, l;
+        size_t i, j, l;
 
         if (!shouldComputeNeighborsFromExtents)
         {
@@ -3581,7 +3652,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                     "computation of neighbors from index extents");
         }
 
-        for (l = 0 ; l < maxAMRLevel ; l++)
+        for (l = 0 ; l < (size_t)maxAMRLevel ; l++)
         {
             vector<int> doms_at_this_level;
             int ndoms;
@@ -3595,10 +3666,10 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
             {
                 renumberForEachAMRLevel = true;
 
-                int totalNDoms = levels.size();
+                size_t totalNDoms = levels.size();
                 for (i = 0 ; i < totalNDoms ; i++)
                 {
-                    if (levels[i] == l)
+                    if ((size_t)levels[i] == l)
                         doms_at_this_level.push_back(i);
                 }
                 ndoms = doms_at_this_level.size();
@@ -3606,7 +3677,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
             avtIntervalTree itree(ndoms, 3);
             double extf[6];
-            for (i = 0 ; i < ndoms ; i++)
+            for (i = 0 ; i < (size_t)ndoms ; i++)
             {
                 for (j = 0 ; j < 6 ; j++)
                 {
@@ -3618,7 +3689,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
             itree.Calculate(true);
 
             vector<int> neighbors(ndoms, 0);
-            for (i = 0 ; i < ndoms ; i++)
+            for (i = 0 ; i < (size_t)ndoms ; i++)
             {
                 double min_vec[3], max_vec[3];
                 int dom = (renumberForEachAMRLevel ? doms_at_this_level[i] : i);
@@ -3639,7 +3710,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
                 for (size_t j = 0 ; j < list.size() ; j++)
                 {
-                    if (i == list[j])
+                    if (i == (size_t)list[j])
                         continue; // Not interested in self-intersection.
 
                     int orientation[3] = { 1, 2, 3 }; // this doesn't really
@@ -3695,7 +3766,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
         int totalNumDomains = wholeBoundary.size();
         vector<int> numNeighbors(totalNumDomains, 0);
 
-        int i, j, l;
+        size_t i, j, l;
 
         if (!shouldComputeNeighborsFromExtents)
         {
@@ -3714,31 +3785,32 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
         //
         for (int iteration = 0 ; iteration < 2 ; iteration++)
         {
-            bool wellFormedAMR = ref_ratios.size() > 0 && ref_ratios.size() == maxAMRLevel-1;
+            bool wellFormedAMR = ref_ratios.size() > 0 && ref_ratios.size() == (size_t)maxAMRLevel-1;
             if (iteration == 0 && !wellFormedAMR)
                 continue;
 
             int maxLevel = (iteration == 0 ? maxAMRLevel-1 : maxAMRLevel);
-            for (l = 0 ; l < maxLevel ; l++)
+            for (l = 0 ; l < (size_t)maxLevel ; l++)
             {
                 std::vector<int> refrat(3, 1);
                 if (iteration == 0)
-                    for (int d = 0; d < std::min(ref_ratios[l].size(), size_t(3)); ++d)
+                    for (size_t d = 0; d < std::min(ref_ratios[l].size(), size_t(3)); ++d)
                         refrat[d] = ref_ratios[l][d];
+
                 vector<int> doms;
-                int totalNDoms = levels.size();
+                size_t totalNDoms = levels.size();
                 for (i = 0 ; i < totalNDoms ; i++)
                 {
                     if (iteration == 0)
                     {
-                        if (levels[i] == l || levels[i] == l+1)
+                        if ((size_t)levels[i] == l || (size_t)levels[i] == l+1)
                         {
                             doms.push_back(i);
                         }
                     }
                     else
                     {
-                        if (levels[i] == l)
+                        if ((size_t)levels[i] == l)
                         {
                             doms.push_back(i);
                         }
@@ -3748,13 +3820,13 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
                 avtIntervalTree itree(ndoms, 3);
                 double extf[6];
-                for (i = 0 ; i < ndoms ; i++)
+                for (i = 0 ; i < (size_t)ndoms ; i++)
                 {
 
                     for (j = 0 ; j < 6 ; j++)
                     {
                         int dom = doms[i];
-                        if (levels[dom] == l)
+                        if ((size_t)levels[dom] == l)
                             extf[j] = (double) (refrat[j/2]*extents[6*dom+j]);
                         else
                             extf[j] = (double) extents[6*dom+j];
@@ -3763,10 +3835,10 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                 }
                 itree.Calculate(true);
 
-                for (i = 0 ; i < ndoms ; i++)
+                for (i = 0 ; i < (size_t)ndoms ; i++)
                 {
                     int d1 = doms[i];
-                    if (levels[d1] != l) // next refinement level.  We'll get this later
+                    if ((size_t)levels[d1] != l) // next refinement level.  We'll get this later
                         continue;
 
                     double min_vec[3], max_vec[3];
@@ -3791,7 +3863,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
                     for (size_t j = 0 ; j < list.size() ; j++)
                     {
-                        if (i == list[j])
+                        if (i == (size_t)list[j])
                             continue; // Not interested in self-intersection.
 
                         int orientation[3] = { 1, 2, 3 }; // this doesn't really
@@ -3805,7 +3877,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                         }
                         else
                         {
-                            if (levels[d2] != (l)) // at different refinement level
+                            if ((size_t)levels[d2] != (l)) // at different refinement level
                                 // and we want the same
                                 continue;
                         }
@@ -3893,7 +3965,6 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
                                     int bnd1[6];
                                     int bnd2[6];
-                                    string dgbtxt = "";
                                     bool usedTJunc = false;
                                     for (int axis = 0; axis < 3; axis++)
                                     {
@@ -3903,7 +3974,6 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                                         int extD2Start = 6*d2;
                                         if (axisOffset[axis]==-1 && minFace[axis])
                                         {
-                                            dgbtxt += string("min") + string(1,'I'+axis);
                                             bnd1[extAxMin] = 1;
                                             bnd1[extAxMax] = 1;
 
@@ -3917,7 +3987,6 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                                         }
                                         else if (axisOffset[axis]==+1 && maxFace[axis])
                                         {
-                                            dgbtxt += string("max") + string(1,'I'+axis);
                                             bnd1[extAxMin] = extents[extD2Start+extAxMax] - extents[extD2Start+extAxMin]+1;
                                             bnd1[extAxMax] = bnd1[extAxMin];
 
@@ -3997,10 +4066,10 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 void
 avtStructuredDomainBoundaries::GetExtents(int domain, int e[6])
 {
-    if (domain >= wholeBoundary.size())
+    if ((size_t)domain >= wholeBoundary.size())
         EXCEPTION1(VisItException,
                    "avtStructuredDomainBoundaries: "
-                   "targetted domain more than number of domains");
+                   "targeted domain more than number of domains");
 
     e[0] = wholeBoundary[domain].oldnextents[0];
     e[1] = wholeBoundary[domain].oldnextents[1];
@@ -4039,6 +4108,9 @@ avtStructuredDomainBoundaries::GetNeighborPresence(int domain, bool *b,
          b[i] = false;
     for (size_t i = 0 ; i < wbi.neighbors.size() ; i++)
     {
+        if  (wbi.neighbors[i].refinement_rel != SAME_REFINEMENT_LEVEL)
+            continue;
+
         int neighbor = wbi.neighbors[i].domain;
 
         bool foundIt = false;

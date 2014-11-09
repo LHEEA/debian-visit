@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -201,11 +201,11 @@ avtTimeIteratorExpression::ProcessArguments(ArgsExpr *args,
 void
 avtTimeIteratorExpression::AddInputVariableName(const char *v)
 {
-    if (varnames.size() < NumberOfVariables())
+    if (varnames.size() < (size_t)NumberOfVariables())
         varnames.push_back(v);
     else
     {
-        if (varnames.size() == NumberOfVariables() && cmfeType == POS_CMFE)
+        if (varnames.size() == (size_t)NumberOfVariables() && cmfeType == POS_CMFE)
         {
             // Need to remove quotes around the variable (if any), since that 
             // won't be parsed well.
@@ -469,6 +469,11 @@ avtTimeIteratorExpression::ConstructContractWithVarnames(void)
 //  Programmer:   Hank Childs
 //  Creation:     February 14, 2009
 //
+//  Modifications:
+//    Burlen Loring, Mon Jul 14 15:31:15 PDT 2014
+//    fix out-of-bounds index into cycles/times arrays (in execute method)
+//    by clamping to the last available cycle/time.
+//
 // ****************************************************************************
 
 void
@@ -494,21 +499,19 @@ avtTimeIteratorExpression::FinalizeTimeLoop()
         msg += ".\n";
         EXCEPTION1(ImproperUseException, msg);
     }
-
-    numTimeSlicesToProcess = (lastTimeSlice-firstTimeSlice)/timeStride+1;
-
     if (lastTimeSlice >= numStates)
     {
         std::string msg(GetType());
         msg += ":  Clamping end time to number of available timesteps.";
         avtCallback::IssueWarning(msg.c_str());
+        lastTimeSlice = numStates - 1;
     }
 
-    //
+    numTimeSlicesToProcess = (lastTimeSlice-firstTimeSlice)/timeStride+1;
+    actualLastTimeSlice = firstTimeSlice + (numTimeSlicesToProcess-1)*timeStride;
+
     // Ensure that the specified lastTimeSlice is included,
     // regardless of the timeStride.
-    //
-    actualLastTimeSlice = firstTimeSlice + (numTimeSlicesToProcess-1)*timeStride;
     if (actualLastTimeSlice < lastTimeSlice)
     {
         numTimeSlicesToProcess++;
@@ -536,7 +539,7 @@ avtTimeIteratorExpression::IsPointVariable(void)
     avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
     bool hasNodal = false;
     bool hasZonal = false;
-    for (int i = 0 ; i < varnames.size() ; i++)
+    for (size_t i = 0 ; i < varnames.size() ; i++)
     {
         if (!atts.ValidVariable(varnames[i]))
             return avtExpressionFilter::IsPointVariable();

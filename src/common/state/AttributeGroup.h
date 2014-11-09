@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -151,6 +151,12 @@ public:
         FieldType_MapNode
     };
 
+    enum {
+        AttributeGroupType = MapNode::ID__LAST,
+        AttributeGroupListType,
+        AttributeGroupVectorType,
+        ID__LAST
+    } AttributeGroupEnumType;
     // This type is used only by code-generated state objects
     // which are themselves derived from other code-generated
     // state objects. We define this (silly) type to prevent

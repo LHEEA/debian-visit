@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -147,7 +147,6 @@ avtMinSinCorner::GetMinSinCorner(vtkCell *cell)
         // Counter-ClockWise ordering:
         for (vtkIdType i = 0 ; i < nPts ; i++)
         {
-            vtkIdType ID = cell->GetPointId(i);
             cell->GetPoints()->GetPoint(i, ptV);
             ptX[i] = ptV[0];
             ptY[i] = ptV[1];
@@ -156,7 +155,6 @@ avtMinSinCorner::GetMinSinCorner(vtkCell *cell)
         // ClockWise ordering:
         for (vtkIdType i = 0 ; i < nPts ; i++)
         {
-            vtkIdType ID = cell->GetPointId(i);
             cell->GetPoints()->GetPoint((3-i), ptV);
             ptX[i] = ptV[0];
             ptY[i] = ptV[1];
