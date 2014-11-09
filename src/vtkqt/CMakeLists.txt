@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -64,9 +64,9 @@ ADD_LIBRARY(vtkqt ${VTKQT_SOURCES})
 
 # Specify the libraries to link against on Windows & Mac
 IF(HAVE_LIB_R)
-    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
+    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
 ELSE(HAVE_LIB_R)
-    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
+    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
 ENDIF(HAVE_LIB_R)
 # Add vtk definitions
 ADD_TARGET_DEFINITIONS(vtkqt "${VTK_DEFINITIONS}")

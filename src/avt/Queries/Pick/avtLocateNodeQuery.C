@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -421,7 +421,7 @@ avtLocateNodeQuery::FindClosestPoint(vtkDataSet *ds, const int isectedCell,
     vtkIdList *nodesFromCells = vtkIdList::New();
     vtkIdList *cellPts = vtkIdList::New();
 
-    for (int i = 0; i < cells.size(); i++)
+    for (size_t i = 0; i < cells.size(); i++)
     {
         ds->GetCellPoints(cells[i], cellPts);
         for (int j = 0; j < cellPts->GetNumberOfIds(); j++)

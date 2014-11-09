@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -196,7 +196,7 @@ MemStream::CheckSize(size_t sz)
 
 //Tokens for vtkDataSet.
 static unsigned char RECTILINEAR_GRID = 0;
-static unsigned char STRUCTURED_GRID  = 1;
+//static unsigned char STRUCTURED_GRID  = 1;
 static unsigned char FIELD_DATA       = 2;
 static unsigned char CELL_DATA        = 3;
 static unsigned char POINT_DATA       = 4;
@@ -617,12 +617,21 @@ MemStream::LoadFile( const char *filename )
 
     if( fp )
     {
+        int res = 0;
         ClearMemStream();
 
-        fread( &_len, sizeof(_len), 1, fp );
-        CheckSize( _len );
-        fread( _data, sizeof(_data[0]), _len, fp );
+        res = fread( &_len, sizeof(_len), 1, fp );
+        if (res != sizeof(_len))
+        {
+            debug1 << "Bad read of MemStream from " << filename << endl;
+        }
 
+        CheckSize( _len );
+        res = fread( _data, sizeof(_data[0]), _len, fp );
+        if (res != sizeof(_data[0])*_len)
+        {
+            debug1 << "Bad read of MemStream from " << filename << endl;
+        }
         fclose( fp );
     }
 }

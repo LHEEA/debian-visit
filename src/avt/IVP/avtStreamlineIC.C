@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,7 +76,7 @@ avtStreamlineIC::avtStreamlineIC(
     double maxDistance_,
     bool doTime_,
     double maxTime_,
-    unsigned char mask,
+    unsigned int mask,
     const avtIVPSolver* model, 
     Direction dir,
     const double& t_start,

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -93,6 +93,9 @@
 using std::vector;
 using std::map;
 
+#if defined (_MSC_VER) && !defined(round)
+inline double round(double x) {return (x-floor(x)) > 0.5 ? ceil(x) : floor(x);}
+#endif
 
 // ****************************************************************************
 //  Function: GetArrayTypeName 
@@ -226,7 +229,7 @@ PrecisionInBytes(vtkDataArray *var)
 static bool
 IsAdmissibleDataType(const vector<int>& admissibleTypes, const int type)
 {
-    for (int i = 0; i < admissibleTypes.size(); i++)
+    for (size_t i = 0; i < admissibleTypes.size(); i++)
     {
         if (admissibleTypes[i] == type)
             return true;
@@ -308,8 +311,10 @@ ConvertDataArrayToFloat(vtkDataArray *oldArr)
         void *oldBuf = oldArr->GetVoidPointer(0);
 
         debug1 << "avtTransformManager: Converting vktDataArray, ";
-        if (oldArr->GetName() != NULL)
+        if (oldArr->GetName() != NULL) 
+        {
                debug1 << "\"" << oldArr->GetName() << "\", ";
+        }
         debug1 << "with " << numTuples << " tuples and "
                << numComponents << " components from type \""
                << DataArrayTypeName(oldArr) << "\" to \"float\"" << endl;
@@ -368,7 +373,8 @@ ConvertDataArrayToFloat(vtkDataArray *oldArr)
         newArr->SetName(oldArr->GetName());
 
     vtkInformation* info = oldArr->GetInformation();
-    if (info && info->Has(avtVariableCache::OFFSET_3())) {
+    if (info && info->Has(avtVariableCache::OFFSET_3())) 
+    {
         double* vals = info->Get(avtVariableCache::OFFSET_3());
         vtkInformation* newInfo = newArr->GetInformation();
         newInfo->Set(avtVariableCache::OFFSET_3(), vals[0], vals[1], vals[2]);
@@ -412,8 +418,10 @@ ConvertDataArrayToDouble(vtkDataArray *oldArr)
         void *oldBuf = oldArr->GetVoidPointer(0);
 
         debug1 << "avtTransformManager: Converting vktDataArray, ";
-        if (oldArr->GetName() != NULL)
+        if (oldArr->GetName() != NULL) 
+        {
                debug1 << "\"" << oldArr->GetName() << "\", ";
+        }
         debug1 << "with " << numTuples << " tuples and "
                << numComponents << " components from type \""
                << DataArrayTypeName(oldArr) << "\" to \"double\"" << endl;
@@ -472,7 +480,8 @@ ConvertDataArrayToDouble(vtkDataArray *oldArr)
         newArr->SetName(oldArr->GetName());
   
     vtkInformation* info = oldArr->GetInformation();
-    if (info && info->Has(avtVariableCache::OFFSET_3())) {
+    if (info && info->Has(avtVariableCache::OFFSET_3())) 
+    {
         double* vals = info->Get(avtVariableCache::OFFSET_3());
         vtkInformation* newInfo = newArr->GetInformation();
         newInfo->Set(avtVariableCache::OFFSET_3(), vals[0], vals[1], vals[2]);
@@ -790,9 +799,11 @@ ShouldIgnoreVariableForConversions(vtkDataArray *da,
             ignoreIt = true;
     }
 
-    if (ignoreIt)
+    if (ignoreIt) 
+    {
         debug4 << "Ignoring variable/array \"" << da->GetName()
                << "\" for type conversions" << endl;
+    }
 
     return ignoreIt;
 }
@@ -872,7 +883,7 @@ avtTransformManager::CoordinatesHaveExcessPrecision(vtkDataSet *ds,
         // to lose some precision.
         excessPrecision = !needNativePrecision  &&
             pType != AVT_PRECISION_NATIVE &&
-            (PrecisionInBytes(GetCoordDataType(ds)) > sizeof(float));
+            ((size_t)PrecisionInBytes(GetCoordDataType(ds)) > sizeof(float));
     }
 
     return excessPrecision;
@@ -916,7 +927,7 @@ avtTransformManager::CoordinatesHaveInsufficientPrecision(vtkDataSet *ds,
         // to increase precision.
         insufficientPrecision = !needNativePrecision &&
             pType != AVT_PRECISION_NATIVE  &&
-            (PrecisionInBytes(GetCoordDataType(ds)) < sizeof(double));
+            ((size_t)PrecisionInBytes(GetCoordDataType(ds)) < sizeof(double));
     }
 
     return insufficientPrecision;
@@ -962,7 +973,7 @@ avtTransformManager::DataHasExcessPrecision(vtkDataArray *da,
         // to lose some precision.
         excessPrecision = !needNativePrecision && 
             pType != AVT_PRECISION_NATIVE &&
-            (PrecisionInBytes(da) > sizeof(float));
+            ((size_t)PrecisionInBytes(da) > sizeof(float));
     }
 
     return excessPrecision;
@@ -1005,7 +1016,7 @@ avtTransformManager::DataHasInsufficientPrecision(vtkDataArray *da,
         // to lose some precision.
         insufficientPrecision = !needNativePrecision &&
              pType != AVT_PRECISION_NATIVE &&
-            (PrecisionInBytes(da) < sizeof(double));
+            ((size_t)PrecisionInBytes(da) < sizeof(double));
     }
 
     return insufficientPrecision;
@@ -1238,8 +1249,10 @@ avtTransformManager::NativeToFloat(const avtDatabaseMetaData *const md,
             {
                 avtVarType vt = md->DetermineVarType(da->GetName());
                 ignore = (vt == AVT_MATERIAL || vt == AVT_MATSPECIES);
-                if (ignore)
+                if (ignore) 
+                {
                     debug4 << "Conversion to double ignored for " << "da->GetName()" << endl;
+                }
             }
             if(!ignore && (disallowedType || excessPrecision || insufficientPrecision))
             {
@@ -1571,8 +1584,18 @@ double ComputeCellSize(double tol,
 //    in which case we fall back to the Uniform algorithm.
 //
 //    Eric Brugger, Wed Jul 25 09:02:59 PDT 2012
-//    I modified the multi-pass discretizion of CSG meshes to only process
+//    I modified the multi-pass discretization of CSG meshes to only process
 //    a portion of the mesh on each processor instead of the entire mesh.
+//
+//    Eric Brugger, Wed Apr  2 12:12:49 PDT 2014
+//    I modified the multi-pass discretization of CSG meshes to process
+//    each domain independently if the number total number of boundary
+//    surfaces is above the internal limit.
+//
+//    Eric Brugger, Wed Aug 20 14:17:49 PDT 2014
+//    I corrected a bug in the calculation of the subregion index extents
+//    where it would calculate degenerate regions when the number of elements
+//    per block was small.
 //
 // ****************************************************************************
 vtkDataSet *
@@ -1655,7 +1678,6 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
         int nY = (int) ((maxY - minY) / tol);
         int nZ = (int) ((maxZ - minZ) / tol);
 
-        int nDims = (nZ < 1) ? 2 : 3;
         int dims[3] = {nX, nY, nZ};
 
         if (nZ < 1)
@@ -1666,6 +1688,7 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
         //
         int nXBlocks, nYBlocks, nZBlocks;
 #ifdef PARALLEL
+        int nDims = (nZ < 1) ? 2 : 3;
         if (nDims == 2)
         {
             //
@@ -1686,25 +1709,29 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
         nZBlocks = 1;
 #endif
 
-        int nBlocks = nXBlocks * nYBlocks * nZBlocks;
-
-        int deltaX = (nX + nXBlocks - 1) / nXBlocks;
-        int deltaY = (nY + nYBlocks - 1) / nYBlocks;
-        int deltaZ = (nZ + nZBlocks - 1) / nZBlocks;
+        double deltaX = double(nX) / double(nXBlocks);
+        double deltaY = double(nY) / double(nYBlocks);
+        double deltaZ = double(nZ) / double(nZBlocks);
 
         int iBlock = rank;
         int iXBlock = iBlock / (nYBlocks * nZBlocks);
-        int iMin = iXBlock == 0 ? 0 : iXBlock * deltaX - 1;
-        int iMax = (iXBlock + 1) * deltaX + 1 < nX ? (iXBlock + 1) * deltaX + 1 : nX;
+        int iMin = int(round(deltaX * double(iXBlock))) - 1;
+        iMin = iMin >= 0 ? iMin : 0;
+        int iMax = int(round(deltaX * double(iXBlock + 1))) + 1;
+        iMax = iMax < nX ? iMax : nX;
 
         iBlock = iBlock % (nYBlocks * nZBlocks);
         int iYBlock = iBlock / nZBlocks;
-        int jMin = iYBlock == 0 ? 0 : iYBlock * deltaY - 1;
-        int jMax = (iYBlock + 1) * deltaY + 1 < nY ? (iYBlock + 1) * deltaY + 1 : nY;
+        int jMin = int(round(deltaY * double(iYBlock))) - 1;
+        jMin = jMin >= 0 ? jMin : 0;
+        int jMax = int(round(deltaY * double(iYBlock + 1))) + 1;
+        jMax = jMax < nY ? jMax : nY;
 
         int iZBlock = iBlock % nZBlocks;
-        int kMin = iZBlock == 0 ? 0 : iZBlock * deltaZ - 1;
-        int kMax = (iZBlock + 1) * deltaZ + 1 < nZ ? (iZBlock + 1) * deltaZ + 1 : nZ;
+        int kMin = int(round(deltaZ * double(iZBlock))) - 1;
+        kMin = kMin >= 0 ? kMin : 0;
+        int kMax = int(round(deltaZ * double(iZBlock + 1))) + 1;
+        kMax = kMax < nZ ? kMax : nZ;
 
         int subRegion[6];
         subRegion[0] = iMin; subRegion[1] = iMax;
@@ -1756,55 +1783,18 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
                 }
             }
 
-            // If we didn't find a mesh, process it now.
-            vtkCSGGrid *csgmesh = NULL;
-            bool success = true;
-            if (!processed)
-            {
-                csgmesh = vtkCSGGrid::SafeDownCast(ds);
-                const double *bnds = csgmesh->GetBounds();
-                success = csgmesh->DiscretizeSpaceMultiPass(
-                                               bnds, dims, subRegion);
-                if (success)
-                {
-                    processed = ds;
-                    cache.CacheVTKObject(vname, type, -1, -1, mat, csgmesh);
-                    avtDataRequest *newdataRequest = new avtDataRequest(dataRequest);
-                    const void_ref_ptr vr = void_ref_ptr(newdataRequest, DestructDspec);
-                    cache.CacheVoidRef(vname, avtVariableCache::DATA_SPECIFICATION,
-                                       -1, -1, vr);
-                }
-                else
-                {
-                    // clear out any old one
-                    cache.CacheVTKObject(vname, type, -1, -1, mat, NULL);
-                }
-            }
-            else
-            {
+            if (processed)
                 csgmesh = vtkCSGGrid::SafeDownCast(processed);
-            }
 
-            // On failure, revert to Uniform mode.
-            if (success)
-            {
-                dgrid = csgmesh->GetMultiPassDiscretization(csgreg);
-            }
-            else
-            {
-                debug1 << "Something failed in the CSG multipass "
-                       << "algorithm; reverting to uniform\n";
-                dgrid = csgmesh->DiscretizeSpace(csgreg,
-                                                 dataRequest->DiscTol(),
-                                                 bnds[0], bnds[1], bnds[2],
-                                                 bnds[3], bnds[4], bnds[5]);
-            }
+            dgrid = csgmesh->DiscretizeSpaceMultiPass(csgreg,
+                bnds, dims, subRegion);
 
+            cache.CacheVTKObject(vname, type, -1, -1, mat, csgmesh);
+            avtDataRequest *newdataRequest = new avtDataRequest(dataRequest);
+            const void_ref_ptr vr = void_ref_ptr(newdataRequest, DestructDspec);
+            cache.CacheVoidRef(vname, avtVariableCache::DATA_SPECIFICATION,
+                               -1, -1, vr);
         }
-        // FIX_ME_VTK6.0, ESB, I assume this needs to be done for VTK based
-        // readers. Can we eliminate this or do we need to move it somewhere
-        // else. All the tests pass with this commented out.
-        // dgrid->Update();
 
         //
         // Cache the discretized mesh for this timestep
@@ -1918,6 +1908,10 @@ avtTransformManager::CSGToDiscrete(avtDatabaseMetaData *md,
 //
 //    Mark C. Miller, Wed Aug 22 09:01:36 PDT 2012
 //    Fixed leak of matnames
+//
+//    Burlen Loring, Mon Jul 14 15:52:49 PDT 2014
+//    fix alloc-dealloc-mismatch (operator new [] vs free) of matnames
+//
 // ****************************************************************************
 bool
 avtTransformManager::TransformMaterialDataset(avtDatabaseMetaData *md,
@@ -2009,7 +2003,7 @@ avtTransformManager::TransformMaterialDataset(avtDatabaseMetaData *md,
 
             delete [] matnos;
             for (j = 0; j < nmats; j++)
-                free(matnames[j]);
+                delete [] matnames[j];
             delete [] matnames;
 
             if (newmat)
@@ -2227,8 +2221,8 @@ vtkDataSet *ds, int dom)
         return ds;
 
     // Rule out any datasets that cannot possibly be curves.
-    int xvalsType;
-    vtkDataArray *xvals;
+    int xvalsType = 0;
+    vtkDataArray *xvals = NULL;
     switch (doType)
     {
         case VTK_POLY_DATA:

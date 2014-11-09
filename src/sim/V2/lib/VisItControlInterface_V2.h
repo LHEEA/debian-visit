@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -83,7 +83,7 @@ extern "C" {
  *
  * ****************************************************************************/
 /* DEPRECATED */
-void  VisItSetBroadcastIntFunction(int (*)(int *, int));
+void  VisItSetBroadcastIntFunction(int (*bicb)(int *, int));
 
 /******************************************************************************
  * Function: VisItSetBroadcastIntFunction2
@@ -110,7 +110,7 @@ void  VisItSetBroadcastIntFunction(int (*)(int *, int));
  *             }
  *
  * ****************************************************************************/
-void  VisItSetBroadcastIntFunction2(int (*)(int *, int, void *), void *);
+void  VisItSetBroadcastIntFunction2(int (*cb)(int *, int, void *), void *);
 
 /******************************************************************************
  * Function: VisItSetBroadcastStringFunction
@@ -136,7 +136,7 @@ void  VisItSetBroadcastIntFunction2(int (*)(int *, int, void *), void *);
  *
  * ****************************************************************************/
 /* DEPRECATED */
-void  VisItSetBroadcastStringFunction(int (*)(char *, int, int));
+void  VisItSetBroadcastStringFunction(int (*bscb)(char *, int, int));
 
 /******************************************************************************
  * Function: VisItSetBroadcastStringFunction2
@@ -163,7 +163,7 @@ void  VisItSetBroadcastStringFunction(int (*)(char *, int, int));
  *             }      
  *
  * ****************************************************************************/
-void  VisItSetBroadcastStringFunction2(int (*)(char *, int, int, void *), void *);
+void  VisItSetBroadcastStringFunction2(int (*cb)(char *, int, int, void *), void *);
 
 /******************************************************************************
  * Function: VisItSetParallel
@@ -473,7 +473,7 @@ int VisItReadConsole(int maxlen, char *buffer);
  *
  * Purpose: 
  *   Set the callback function used to inform slave processes that they should
- *   call VisItProcessEngineCommand. The provided callback function is used 
+ *   call VisItfor ProcessEngineCommand. The provided callback function is used 
  *   internally in libsim
  *   
  *
@@ -493,7 +493,7 @@ int VisItReadConsole(int maxlen, char *buffer);
  *                 }
  *
  * ****************************************************************************/
-void  VisItSetSlaveProcessCallback(void(*)(void));
+void  VisItSetSlaveProcessCallback(void(*spcb)(void));
 
 /******************************************************************************
  * Function: VisItSetSlaveProcessCallback2
@@ -522,7 +522,7 @@ void  VisItSetSlaveProcessCallback(void(*)(void));
  *                 }
  *
  * ****************************************************************************/
-void  VisItSetSlaveProcessCallback2(void(*)(void *), void *);
+void  VisItSetSlaveProcessCallback2(void(*cb)(void *), void *);
 
 /******************************************************************************
  * Function: VisItSetCommandCallback
@@ -546,7 +546,7 @@ void  VisItSetSlaveProcessCallback2(void(*)(void *), void *);
  *             VisItAttemptToCompleteConnection returns successfully.
  *
  * ****************************************************************************/
-void  VisItSetCommandCallback(void(*)(const char*,const char*,void*), void *cbdata);
+void  VisItSetCommandCallback(void(*cb)(const char*,const char*,void*), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItProcessEngineCommand
@@ -598,7 +598,17 @@ void  VisItTimeStepChanged(void);
  *
  * Returns:   None
  *
- * Note:      All processors must call this function.
+ * Note:      This function has no effect when called by non-master
+ *            processes. When VisIt is connected to the simulation, calling 
+ *            this function on the master process will send commands to process
+ *            to VisIt's viewer. The sim will then process VisIt commands in
+ *            a synchronization loop if synchronization is enabled. In that case,
+ *            ALL processors must call this function. During the synchronization
+ *            loop, VisIt commands will be handled via the normal simulation
+ *            callback functions. Once synchronization is complete, the function
+ *            returns. If synchronization is not enabled then this function
+ *            returns immediately and relies on the simulation's main loop
+ *            for processing VisIt commands that result from the update.
  *
  * ****************************************************************************/
 void  VisItUpdatePlots(void);
@@ -619,7 +629,17 @@ void  VisItUpdatePlots(void);
  * Note:      And example call to this function could look like:
  *            VisItExecuteCommand("AddPlot(\"Pseudocolor\", \"zonal\")\n");
  *
- *            Only the root processor should call this function.
+ *            This function has no effect when called by non-master
+ *            processes. When VisIt is connected to the simulation, calling 
+ *            this function on the master process will send commands to process
+ *            to VisIt's viewer. The sim will then process VisIt commands in
+ *            a synchronization loop if synchronization is enabled. In that case,
+ *            ALL processors must call this function. During the synchronization
+ *            loop, VisIt commands will be handled via the normal simulation
+ *            callback functions. Once synchronization is complete, the function
+ *            returns. If synchronization is not enabled then this function
+ *            returns immediately and relies on the simulation's main loop
+ *            for processing VisIt commands that result from the command.
  *
  * ****************************************************************************/
 void  VisItExecuteCommand(const char *);
@@ -815,7 +835,7 @@ int VisItSetMPICommunicator(void *mpicom);
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  * Returns:   VISIT_OKAY on success; otherwise VISIT_ERROR
  *
@@ -823,7 +843,7 @@ int VisItSetMPICommunicator(void *mpicom);
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetActivateTimestep(int (*cb)(void *), void *cbdata);
+int VisItSetActivateTimestep(int (*cb)(void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetMetaData
@@ -833,7 +853,7 @@ int VisItSetActivateTimestep(int (*cb)(void *), void *cbdata);
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               void* : User-supplied callback data.
@@ -844,7 +864,7 @@ int VisItSetActivateTimestep(int (*cb)(void *), void *cbdata);
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetMetaData(visit_handle (*cb)(void *), void *cbdata);
+int VisItSetGetMetaData(visit_handle (*cb)(void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetMesh
@@ -854,7 +874,7 @@ int VisItSetGetMetaData(visit_handle (*cb)(void *), void *cbdata);
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               int         : The domain number
@@ -867,7 +887,7 @@ int VisItSetGetMetaData(visit_handle (*cb)(void *), void *cbdata);
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetMesh(visit_handle (*cb)(int, const char *, void *), void *cbdata);
+int VisItSetGetMesh(visit_handle (*cb)(int, const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetMaterial
@@ -877,7 +897,7 @@ int VisItSetGetMesh(visit_handle (*cb)(int, const char *, void *), void *cbdata)
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               int         : The domain number
@@ -890,7 +910,7 @@ int VisItSetGetMesh(visit_handle (*cb)(int, const char *, void *), void *cbdata)
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetMaterial(visit_handle (*cb)(int, const char *, void *), void *cbdata);
+int VisItSetGetMaterial(visit_handle (*cb)(int, const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetSpecies
@@ -900,7 +920,7 @@ int VisItSetGetMaterial(visit_handle (*cb)(int, const char *, void *), void *cbd
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               int         : The domain number
@@ -913,7 +933,7 @@ int VisItSetGetMaterial(visit_handle (*cb)(int, const char *, void *), void *cbd
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetSpecies(visit_handle (*cb)(int, const char *, void *), void *cbdata);
+int VisItSetGetSpecies(visit_handle (*cb)(int, const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetVariable
@@ -923,7 +943,7 @@ int VisItSetGetSpecies(visit_handle (*cb)(int, const char *, void *), void *cbda
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               int         : The domain number
@@ -936,7 +956,7 @@ int VisItSetGetSpecies(visit_handle (*cb)(int, const char *, void *), void *cbda
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetVariable(visit_handle (*cb)(int, const char *, void *), void *cbdata);
+int VisItSetGetVariable(visit_handle (*cb)(int, const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetMixedVariable
@@ -946,7 +966,7 @@ int VisItSetGetVariable(visit_handle (*cb)(int, const char *, void *), void *cbd
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               int         : The domain number
@@ -959,7 +979,7 @@ int VisItSetGetVariable(visit_handle (*cb)(int, const char *, void *), void *cbd
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetMixedVariable(visit_handle (*cb)(int, const char *, void *), void *cbdata);
+int VisItSetGetMixedVariable(visit_handle (*cb)(int, const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetCurve
@@ -969,7 +989,7 @@ int VisItSetGetMixedVariable(visit_handle (*cb)(int, const char *, void *), void
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               const char* : name of curve
@@ -980,7 +1000,7 @@ int VisItSetGetMixedVariable(visit_handle (*cb)(int, const char *, void *), void
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetCurve(visit_handle (*cb)(const char *, void *), void *cbdata);
+int VisItSetGetCurve(visit_handle (*cb)(const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetDomainList
@@ -990,7 +1010,7 @@ int VisItSetGetCurve(visit_handle (*cb)(const char *, void *), void *cbdata);
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               const char* : name of mesh for domain list (reserved)
@@ -1005,7 +1025,7 @@ int VisItSetGetCurve(visit_handle (*cb)(const char *, void *), void *cbdata);
  *            for a parallel simulation to work.
  *
  * ****************************************************************************/
-int VisItSetGetDomainList(visit_handle (*cb)(const char *, void *), void *cbdata);
+int VisItSetGetDomainList(visit_handle (*cb)(const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetDomainBoundaries
@@ -1017,7 +1037,7 @@ int VisItSetGetDomainList(visit_handle (*cb)(const char *, void *), void *cbdata
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               int         : The domain number
@@ -1030,7 +1050,7 @@ int VisItSetGetDomainList(visit_handle (*cb)(const char *, void *), void *cbdata
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetDomainBoundaries(visit_handle (*cb)(const char *, void *), void *cbdata);
+int VisItSetGetDomainBoundaries(visit_handle (*cb)(const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetGetDomainNesting
@@ -1041,7 +1061,7 @@ int VisItSetGetDomainBoundaries(visit_handle (*cb)(const char *, void *), void *
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               int         : The domain number
@@ -1054,7 +1074,7 @@ int VisItSetGetDomainBoundaries(visit_handle (*cb)(const char *, void *), void *
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetGetDomainNesting(visit_handle (*cb)(const char *, void *), void *cbdata);
+int VisItSetGetDomainNesting(visit_handle (*cb)(const char *, void *), void *cbdata1);
 
 /* Functions that install data writer callback functions */
 
@@ -1067,7 +1087,7 @@ int VisItSetGetDomainNesting(visit_handle (*cb)(const char *, void *), void *cbd
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               const char* : name of mesh
@@ -1079,7 +1099,7 @@ int VisItSetGetDomainNesting(visit_handle (*cb)(const char *, void *), void *cbd
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetWriteBegin(int (*cb)(const char *, void *), void *cbdata);
+int VisItSetWriteBegin(int (*cb)(const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetWriteEnd
@@ -1090,7 +1110,7 @@ int VisItSetWriteBegin(int (*cb)(const char *, void *), void *cbdata);
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               const char* : name of mesh
@@ -1102,7 +1122,7 @@ int VisItSetWriteBegin(int (*cb)(const char *, void *), void *cbdata);
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetWriteEnd(int (*cb)(const char *, void *), void *cbdata);
+int VisItSetWriteEnd(int (*cb)(const char *, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetWriteMesh
@@ -1113,7 +1133,7 @@ int VisItSetWriteEnd(int (*cb)(const char *, void *), void *cbdata);
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               const char*  : name of mesh
@@ -1129,7 +1149,7 @@ int VisItSetWriteEnd(int (*cb)(const char *, void *), void *cbdata);
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetWriteMesh(int (*cb)(const char *, int, int, visit_handle, visit_handle, void *), void *cbdata);
+int VisItSetWriteMesh(int (*cb)(const char *, int, int, visit_handle, visit_handle, void *), void *cbdata1);
 
 /******************************************************************************
  * Function: VisItSetWriteVariable
@@ -1140,7 +1160,7 @@ int VisItSetWriteMesh(int (*cb)(const char *, int, int, visit_handle, visit_hand
  *
  * Arguments:
  *   cb     : The callback function
- *   cbdata : A pointer to data to pass to the callback function.
+ *   cbdata1 : A pointer to data to pass to the callback function.
  *
  *            The callback function arguments are:
  *               const char*  : name of mesh
@@ -1156,13 +1176,13 @@ int VisItSetWriteMesh(int (*cb)(const char *, int, int, visit_handle, visit_hand
  *            call to VisItAttemptToCompleteConnection
  *
  * ****************************************************************************/
-int VisItSetWriteVariable(int (*cb)(const char *, const char *, int, visit_handle, visit_handle, void *), void *cbdata);
+int VisItSetWriteVariable(int (*cb)(const char *, const char *, int, visit_handle, visit_handle, void *), void *cbdata1);
 
 
 /* UI-related functions */
-int VisItUI_clicked(const char *name, void (*cb)(void*), void *cbdata);
-int VisItUI_stateChanged(const char *name, void (*cb)(int,void*), void *cbdata);
-int VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata);
+int VisItUI_clicked(const char *name, void (*cb)(void*), void *cbdata2);
+int VisItUI_stateChanged(const char *name, void (*cb)(int,void*), void *cbdata2);
+int VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata2);
 
 int VisItUI_setValueI(const char *name, int value, int enabled);
 int VisItUI_setValueS(const char *name, const char *value, int enabled);

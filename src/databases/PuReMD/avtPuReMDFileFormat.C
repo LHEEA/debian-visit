@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -163,7 +163,7 @@ avtPuReMDFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int ts)
                                                3, 0,
                                                AVT_POINT_MESH);
     mmd->nodesAreCritical = true;
-    if (unitCell.size() > ts)
+    if (unitCell.size() > (size_t)ts)
     {
         for (int i=0; i<9; i++)
         {
@@ -175,7 +175,7 @@ avtPuReMDFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int ts)
     avtMeshMetaData *mmd_bbox = new avtMeshMetaData("unitCell", 1, 0,0,0,
                                                     3, 1,
                                                     AVT_UNSTRUCTURED_MESH);
-    if (unitCell.size() > ts)
+    if (unitCell.size() > (size_t)ts)
     {
         for (int i=0; i<9; i++)
         {

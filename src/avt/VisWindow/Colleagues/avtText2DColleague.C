@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -122,28 +122,17 @@ avtText2DColleague::avtText2DColleague(VisWindowColleagueProxy &m)
 // Creation:   Wed Nov 5 14:18:31 PST 2003
 //
 // Modifications:
-//   
+//    Burlen Loring, Mon Jul 14 14:04:31 PDT 2014
+//    fix alloc-dealloc-mismatch (operator new [] vs operator delete)
+//
 // ****************************************************************************
 
 avtText2DColleague::~avtText2DColleague()
 {
-    if (textActor != NULL)
-    {
+    if (textActor)
         textActor->Delete();
-        textActor = NULL;
-    }
-
-    if (textString != NULL)
-    {
-        delete [] textString;
-        textString = NULL;
-    }
-
-    if(textFormatString != NULL)
-    {
-        delete textFormatString;
-        textFormatString = NULL;
-    }
+    delete [] textString;
+    delete [] textFormatString;
 }
 
 // ****************************************************************************

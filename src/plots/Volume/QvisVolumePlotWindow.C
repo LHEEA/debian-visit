@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1294,8 +1294,8 @@ QvisVolumePlotWindow::CreateRendererOptionsGroup(int maxWidth)
 #endif
 #ifdef HAVE_LIBSLIVR
     rendererTypesComboBox->addItem(tr("SLIVR"));
+    rendererTypesComboBox->addItem(tr("Ray casting: SLIVR"));
 #endif
-    //rendererTypesComboBox->addItem(tr("Ray casting: SLIVR"));
     connect(rendererTypesComboBox, SIGNAL(activated(int)),
             this, SLOT(rendererTypeChanged(int)));
 
@@ -1601,7 +1601,6 @@ QvisVolumePlotWindow::UpdateWindow(bool doAll)
 {
     QString temp;
     double *mat;
-    bool matEnabled = false;
 
     // If the plot info atts changed then update the histogram.
     if(doAll || SelectedSubject() == GetViewerState()->GetPlotInformation(plotType))

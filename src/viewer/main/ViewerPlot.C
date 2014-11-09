@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -218,11 +218,6 @@ ViewerPlot::ViewerPlot(const int type_,ViewerPlotPluginInfo *viewerPluginInfo_,
         variableName(variableName_)
 {
     //
-    // Make sure the state is not negative.
-    //
-    int state = (plotState < 0) ? 0 : plotState;
-
-    //
     // Initialize some values.
     //
     type                = type_;
@@ -233,6 +228,7 @@ ViewerPlot::ViewerPlot(const int type_,ViewerPlotPluginInfo *viewerPluginInfo_,
     expandedFlag        = GetViewerState()->GetGlobalAttributes()->GetExpandNewPlots();
     errorFlag           = false;
     networkID           = -1;
+    embeddedPlotId      = -1;
     clonedNetworkId     = -1;
     queryAtts           = 0;               
     viewerPlotList      = NULL;
@@ -525,6 +521,7 @@ ViewerPlot::CopyHelper(const ViewerPlot &obj)
     variableDescription = obj.variableDescription;
     errorFlag           = false;
     networkID           = -1;
+    embeddedPlotId      = -1;
     clonedNetworkId     = -1;
     queryAtts           = (obj.queryAtts != 0) ?
         new PlotQueryInfo(*(obj.queryAtts)) : 0;
@@ -1610,6 +1607,9 @@ ViewerPlot::GetExpressions() const
 //    Hank Childs, Thu Dec 30 12:56:21 PST 2010
 //    Add support for operator expressions from scalars, vectors, tensors, etc.
 //
+//    Kathleen Biagas, Wed Nov 20 13:28:44 PST 2013
+//    Delete the operator created expression list.
+//
 // ****************************************************************************
 
 bool
@@ -1667,7 +1667,7 @@ ViewerPlot::SetVariableName(const std::string &name)
                     avtSILRestriction_p new_sil = 
                                                new avtSILRestriction(silr);
                     int topSet = 0;
-                    for (int i = 0; i < new_sil->GetWholes().size(); i++)
+                    for (size_t i = 0; i < new_sil->GetWholes().size(); i++)
                     {
                         current = 
                                new_sil->GetSILSet(new_sil->GetWholes()[i]);
@@ -1739,7 +1739,6 @@ ViewerPlot::SetVariableName(const std::string &name)
     OperatorPluginManager *oPM = GetOperatorPluginManager();
     for (int j = 0; j < oPM->GetNEnabledPlugins(); j++)
     {
-        const std::string &mesh = GetMeshName();
         std::string id = oPM->GetEnabledID(j);
         CommonOperatorPluginInfo *info = oPM->GetCommonPluginInfo(id);
         const avtDatabaseMetaData *md = GetMetaData();
@@ -1778,6 +1777,7 @@ ViewerPlot::SetVariableName(const std::string &name)
                     }
                 }
             }
+            delete exprs;
         }
     }
 
@@ -4374,6 +4374,43 @@ ViewerPlot::SetNetworkID(int id)
 }
 
 // ****************************************************************************
+//  Method: ViewerPlot::GetEmbeddedPlotId
+//
+//  Purpose:
+//    Return the embedded plot id for the plot.
+//
+//  Returns:    The embedded plot id for the plot.
+//
+//  Programmer: Marc Durant
+//  Creation:   June 19, 2011
+//
+// Modifications:
+// ****************************************************************************
+
+int
+ViewerPlot::GetEmbeddedPlotId() const
+{
+  return embeddedPlotId;
+}
+
+// ****************************************************************************
+//  Method:  ViewerPlot::SetEmbeddedPlotId
+//
+//  Purpose:
+//    Sets the embedded plot Id of the current plot.
+//
+//  Programmer: Marc Durant
+//  Creation:   June 19, 2011
+//
+// ****************************************************************************
+
+void
+ViewerPlot::SetEmbeddedPlotId(int id)
+{
+  this->embeddedPlotId = id;
+}
+
+// ****************************************************************************
 // Method: ViewerPlot::SetActiveOperatorIndex
 //
 // Purpose: 
@@ -5275,6 +5312,7 @@ ViewerPlot::InitializePlot(Plot &plot) const
     plot.SetBeginFrame(beginCacheIndex);
     plot.SetEndFrame(endCacheIndex);
     plot.SetIsFromSimulation(engineKey.IsSimulation());
+    plot.SetEmbeddedPlotId(embeddedPlotId);
  
     // Set the keyframe indices.
     int j, nIndices;

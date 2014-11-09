@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -740,6 +740,7 @@ const char *residue_names[KNOWN_AMINO_ACIDS] = {
     "GLX"  // 22   GLU/GLN ambiguous   Z
 };
 
+#if 0
 const char residue_abbrs[KNOWN_AMINO_ACIDS] = {
     '?', // UNK  Unknown
     'A', // ALA  Alanine
@@ -765,7 +766,7 @@ const char residue_abbrs[KNOWN_AMINO_ACIDS] = {
     'Y', // TYR  Tyrosine
     'Z', // GLX  GLU/GLN ambiguous
 };
-
+#endif 
 static void
 InitializeResidueNameToAbbrMap()
 {
@@ -985,7 +986,6 @@ InitializeElementNameToAtomicNumberMap()
     elementname_to_atomicnumber["Mt"] = 109;
 }
 
-static void PrintColorTablesFor_avtColorTables();
 
 static bool maps_initialized = false;
 void
@@ -1469,6 +1469,7 @@ int ResidueLongnameMaxlen()
 //    which means "unknown", and hydrogen now starts at 1.  This 
 //    also means we don't have to correct for 1-origin atomic numbers.
 //
+/*
 static void PrintColorTablesFor_avtColorTables()
 {
     cout << "static const float ct_shapely_colors[] = {\n";
@@ -1571,4 +1572,4 @@ static void PrintColorTablesFor_avtColorTables()
     }
     cout << "};\n";
 }
-
+*/

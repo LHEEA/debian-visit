@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define LCSATTRIBUTES_NMETH 82
+#define LCSATTRIBUTES_NMETH 88
 void           PyLCSAttributes_StartUp(LCSAttributes *subj, void *data);
 void           PyLCSAttributes_CloseDown();
 PyMethodDef *  PyLCSAttributes_GetMethodTable(int *nMethods);

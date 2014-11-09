@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -161,6 +161,9 @@ struct IOInfo
 //    Remove unused method for checking whether we are doing dynamic load
 //    balancing.
 //
+//    Brad Whitlock, Thu Jun 19 12:17:48 PDT 2014
+//    Added GetIOInformation method.
+//
 // ****************************************************************************
 
 class ENGINE_MAIN_API LoadBalancer
@@ -196,6 +199,11 @@ class ENGINE_MAIN_API LoadBalancer
   protected:
     bool                          CheckAbort(bool);
     void                          UpdateProgress(int, int);
+    bool                          GetIOInformation(const std::string &db,
+                                                   int time,
+                                                   const std::string &meshname);
+    std::string                   GetMeshName(avtContract_p input, int stateIndex);
+
     static ParAbortCallback           abortCallback;
     static void                      *abortCallbackArgs;
     static ProgressCallback           progressCallback;
@@ -210,6 +218,7 @@ class ENGINE_MAIN_API LoadBalancer
     std::map<std::string, IOInfo>     ioMap;
     std::vector<LBInfo>               pipelineInfo;
     std::map<std::string, avtDatabase *>  dbMap;
+    std::map<std::string, int>            dbState;
 
     // Special data member for -lb-stream option.
     std::vector<int>                  domainListForStreaming;

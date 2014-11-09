@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -328,6 +328,9 @@ avtCompactnessQuery::MidExecute(void)
 //    Hank Childs, Fri Oct  6 09:39:54 PDT 2006
 //    Made the compactness query return an array for Python.
 //
+//    Kathleen Biagas, Thu Feb 13 15:04:58 PST 2014
+//    Add Xml results.
+//
 // ****************************************************************************
 
 void
@@ -398,6 +401,14 @@ avtCompactnessQuery::PostExecute(void)
     values.push_back(distBound_dv_vol);
     values.push_back(distOrigin_da);
 
+    MapNode result_node;
+    result_node["XSA"] = totalXSectArea;
+    result_node["VOL"] = totalRotVolume;
+    result_node["dist_bound_da_xsa"] = distBound_da_xsa;
+    result_node["dist_bound_da_vol"] = distBound_da_vol;
+    result_node["dist_bound_dv_xsa"] = distBound_dv_xsa;
+    result_node["dist_bound_dv_vol"] = distBound_dv_vol;
+    result_node["dist_origin_da"] = distOrigin_da;
 
     // If we have a density variable available
     if (!densityValid)
@@ -438,9 +449,15 @@ avtCompactnessQuery::PostExecute(void)
         values.push_back(centMassY);
         values.push_back(distBound_dv_den_vol);
         values.push_back(distCMass_dv_den_vol);
+        result_node["MASS"] = totalRotMass;
+        result_node["center_mass_x"] = centMassX;
+        result_node["center_mass_y"] = centMassY;
+        result_node["distBound_dv_den_vol"] = distBound_dv_den_vol;
+        result_node["distCMass_dv_den_vol"] = distCMass_dv_den_vol;
     }
 
     SetResultValues(values);
+    SetXmlResult(result_node.ToXML());
 }
 
 // ****************************************************************************
@@ -477,6 +494,9 @@ avtCompactnessQuery::PostExecute(void)
 //    Kathleen Biagas, Fri Jan 25 16:32:38 PST 2013
 //    Call Update on filter, not data object.
 //
+//    Kathleen Biagas, Tue Apr 22 07:46:17 MST 2014
+//    Use double instead of float.
+//
 // ****************************************************************************
 
 void
@@ -499,10 +519,10 @@ avtCompactnessQuery::Execute1(vtkDataSet *ds, const int dom)
     // Create the area, volume and centroid arrays
     //
     int ncells2d = ds_2d_nogz->GetNumberOfCells();
-    float *cellArea = new float[ncells2d];
-    float *cellVol  = new float[ncells2d];
-    float *cellCentX = new float[ncells2d];
-    float *cellCentY = new float[ncells2d];
+    double *cellArea = new double[ncells2d];
+    double *cellVol  = new double[ncells2d];
+    double *cellCentX = new double[ncells2d];
+    double *cellCentY = new double[ncells2d];
     for (i = 0 ; i < ncells2d ; i++)
     {
         vtkCell *cell = ds_2d_nogz->GetCell(i);
@@ -533,7 +553,7 @@ avtCompactnessQuery::Execute1(vtkDataSet *ds, const int dom)
         // calculate the whole mass
         for (i = 0 ; i < ncells2d ; i++)
         {
-            float d = den->GetTuple1(i);
+            double d = den->GetTuple1(i);
             totalRotMass += d * cellVol[i];
             centMassX += d * cellCentX[i] * cellVol[i];
             centMassY += d * cellCentY[i] * cellVol[i];
@@ -560,13 +580,7 @@ avtCompactnessQuery::Execute1(vtkDataSet *ds, const int dom)
 
     geomFilter->SetInputData(ds);
     boundaryFilter->SetInputConnection(geomFilter->GetOutputPort());
-    // FIX_ME_VTK6.0, ESB, is this correct?
     vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(boundaryFilter->GetInformation(), 2);
-    //boundaryFilter->GetOutput()->SetUpdateGhostLevel(2);
-    //boundaryFilter->Update();
-
-    //vtkPolyData *allLines = boundaryFilter->GetOutput();
-    //allLines->SetSource(NULL);
 
     gzFilter1->SetInputConnection(boundaryFilter->GetOutputPort());
     gzFilter1->Update();
@@ -657,6 +671,9 @@ avtCompactnessQuery::Execute1(vtkDataSet *ds, const int dom)
 //    Kathleen Biagas, Fri Jan 25 16:32:38 PST 2013
 //    Call Update on filter, not data object.
 //
+//    Kathleen Biagas, Tue Apr 22 07:46:17 MST 2014
+//    Use double instead of float.
+//
 // ****************************************************************************
 
 void
@@ -677,10 +694,10 @@ avtCompactnessQuery::Execute2(vtkDataSet *ds, const int dom)
     // Create the area, volume and centroid arrays
     //
     int ncells2d = ds_2d_nogz->GetNumberOfCells();
-    float *cellArea = new float[ncells2d];
-    float *cellVol  = new float[ncells2d];
-    float *cellCentX = new float[ncells2d];
-    float *cellCentY = new float[ncells2d];
+    double *cellArea = new double[ncells2d];
+    double *cellVol  = new double[ncells2d];
+    double *cellCentX = new double[ncells2d];
+    double *cellCentY = new double[ncells2d];
     for (i = 0 ; i < ncells2d ; i++)
     {
         vtkCell *cell = ds_2d_nogz->GetCell(i);
@@ -692,8 +709,8 @@ avtCompactnessQuery::Execute2(vtkDataSet *ds, const int dom)
     //
     // Calculate the distance to the boundary and origin
     //
-    float *distOrigin   = new float[ncells2d];
-    float *distBoundary = new float[ncells2d];
+    double *distOrigin   = new double[ncells2d];
+    double *distBoundary = new double[ncells2d];
     int npts1d = xBound.size();
     for (i = 0 ; i < ncells2d ; i++)
     {
@@ -701,7 +718,7 @@ avtCompactnessQuery::Execute2(vtkDataSet *ds, const int dom)
         distOrigin[i] = sqrt(cellCentX[i]*cellCentX[i] +
                              cellCentY[i]*cellCentY[i]);
 
-        distBoundary[i] = FLT_MAX;
+        distBoundary[i] = DBL_MAX;
         for (j = 0 ; j < npts1d ; j++)
         {
             // semi-hack: ignore points along the y=0 line,
@@ -712,9 +729,9 @@ avtCompactnessQuery::Execute2(vtkDataSet *ds, const int dom)
             if (yBound[j] < 0.00001)
                 continue;
 
-            float dx = cellCentX[i] - xBound[j];
-            float dy = cellCentY[i] - yBound[j];
-            float dist2 = dx*dx + dy*dy;
+            double dx = cellCentX[i] - xBound[j];
+            double dy = cellCentY[i] - yBound[j];
+            double dist2 = dx*dx + dy*dy;
             if (dist2 < distBoundary[i])
                 distBoundary[i] = dist2;
         }
@@ -746,11 +763,11 @@ avtCompactnessQuery::Execute2(vtkDataSet *ds, const int dom)
         // calculate the two density-based queries
         for (i = 0 ; i < ncells2d ; i++)
         {
-            float d = den->GetTuple1(i);
+            double d = den->GetTuple1(i);
             
-            float dx = cellCentX[i] - centMassX;
-            float dy = cellCentY[i] - centMassY;
-            float distCentMass = sqrt(dx*dx + dy*dy);
+            double dx = cellCentX[i] - centMassX;
+            double dy = cellCentY[i] - centMassY;
+            double distCentMass = sqrt(dx*dx + dy*dy);
 
             distBound_dv_den_vol += cellVol[i] * distBoundary[i] * d;
             distCMass_dv_den_vol += cellVol[i] * distCentMass    * d;
@@ -782,13 +799,17 @@ avtCompactnessQuery::Execute2(vtkDataSet *ds, const int dom)
 //    Gets the area of a triangle.
 //
 //  Arguments:
-//    p0,p1,p2   three two-float arrays
+//    p0,p1,p2   three two-double arrays
 //
 //  Programmer:  Jeremy Meredith
 //  Creation:    April 12, 2003
 //
+//  Modifications:
+//    Kathleen Biagas, Tue Apr 22 07:48:16 MST 2014
+//    Return double instead of float.
+//
 // ****************************************************************************
-float
+double
 avtCompactnessQuery::Get2DTriangleArea(double *p0, double *p1, double *p2)
 {
     double vx1 = p1[0]-p0[0];
@@ -811,11 +832,15 @@ avtCompactnessQuery::Get2DTriangleArea(double *p0, double *p1, double *p2)
 //  Programmer:  Jeremy Meredith
 //  Creation:    April 12, 2003
 //
+//  Modifications:
+//    Kathleen Biagas, Tue Apr 22 07:48:16 MST 2014
+//    Return double instead of float.
+//
 // ****************************************************************************
-float
+double
 avtCompactnessQuery::Get2DCellArea(vtkCell *cell)
 {
-    float area = 0;
+    double area = 0;
 
     vtkPoints *pts = cell->GetPoints();
     int npts = cell->GetNumberOfPoints();
@@ -865,10 +890,14 @@ avtCompactnessQuery::Get2DCellArea(vtkCell *cell)
 //  Programmer:  Jeremy Meredith
 //  Creation:    April 12, 2003
 //
+//  Modifications:
+//    Kathleen Biagas, Tue Apr 22 07:49:21 MST 2014
+//    Use double instead of float.
+//
 // ****************************************************************************
 void
 avtCompactnessQuery::Get2DCellCentroid(vtkCell *cell,
-                                       float &xCent, float &yCent)
+                                       double &xCent, double &yCent)
 {
     xCent=0.;
     yCent=0.;
@@ -884,6 +913,6 @@ avtCompactnessQuery::Get2DCellCentroid(vtkCell *cell,
         yCent += pt[1];
     }
 
-    xCent /= float(npts);
-    yCent /= float(npts);
+    xCent /= double(npts);
+    yCent /= double(npts);
 }

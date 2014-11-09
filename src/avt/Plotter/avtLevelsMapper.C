@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -213,7 +213,7 @@ avtLevelsMapper::CustomizeMappers(void)
             //
             //  Use labels for mapping to a color.
             //
-            if (labelsForColorMapping.size() <= i)
+            if (labelsForColorMapping.size() <= (size_t)i)
             {
                 EXCEPTION1(VisItException, "An internal error occurred.  One common "
                            "way to get to this state is if you are resampling a "
@@ -512,7 +512,7 @@ avtLevelsMapper::SetColors(const ColorAttributeList &c)
     {
         if (mappers[i] != NULL)
         {
-            if (labelsForColorMapping.size() <= i)
+            if (labelsForColorMapping.size() <= (size_t)i)
             {
                 EXCEPTION1(VisItException, "An internal error occurred.  One common "
                            "way to get to this state is if you are resampling a "
@@ -596,7 +596,7 @@ avtLevelsMapper::GetLevelColor(const string &name, double col[4])
         //  Find the correct index into the ColorAttributeList by comparing
         //  name against the levelNames.
         //
-        for (int i = 0; i < levelNames.size(); i++)
+        for (size_t i = 0; i < levelNames.size(); i++)
         {
             if (name == levelNames[i])
             {

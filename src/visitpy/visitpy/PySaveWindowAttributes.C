@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewSaveWindowAttributes(int);
 std::string
 PySaveWindowAttributes_ToString(const SaveWindowAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetOutputToCurrentDirectory())
         SNPRINTF(tmpStr, 1000, "%soutputToCurrentDirectory = 1\n", prefix);
@@ -1091,7 +1091,6 @@ PySaveWindowAttributes_GetLogString()
 static void
 PySaveWindowAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    SaveWindowAttributes *atts = (SaveWindowAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

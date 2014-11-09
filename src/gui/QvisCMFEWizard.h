@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -143,7 +143,7 @@ private:
         Page_DonorAndTargetSpecification, // page1
         Page_TimeSpecification,           // page2
         Page_InterpSelection,             // page3
-        Page_ActivityDescription,         // page4
+        Page_ActivityDescription          // page4
     };
 
     void CreateDonorTypePage();          // page0

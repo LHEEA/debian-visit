@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -41,6 +41,16 @@
 #   target's output location on windows to the exe dir, explanation for this
 #   is within the code below.  Change gen_pathsep on windows to "\;".
 #
+#   Gunther H. Weber, Thu Nov 21 18:28:56 PST 2013
+#   Allow user to set Shiboken_FOUND and PySide_FOUND to set up relevant
+#   CMake variables manually (necessary for MacPorts PySide install).
+#   Use ${PYSIDE_PYTHONPATH} instead of ${VISIT_PYSIDE_DIR}/lib/site-packages
+#   to support using system PySide.
+#
+#   Kathleen Biagas, Wed Dec 18 08:05:38 PST 2013
+#   Exclude '.svn' from INSTALL command, probably a rare case, but a
+#   developer did run into an issue.
+#
 #****************************************************************************/
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
@@ -51,8 +61,12 @@ IF(VISIT_PYSIDE_DIR)
     set(CMAKE_PREFIX_PATH ${VISIT_PYSIDE_DIR}/lib/cmake/ ${CMAKE_PREFIX_PATH})
     set(CMAKE_LIBRARY_PATH ${VISIT_PYSIDE_DIR}/lib ${CMAKE_LIBRARY_PATH})
 
-    find_package(Shiboken 1.1.1)
-    find_package(PySide 1.1.1)
+    if(NOT Shiboken_FOUND)
+        find_package(Shiboken 1.1.1)
+    endif(NOT Shiboken_FOUND)
+    if (NOT PySide_FOUND)
+        find_package(PySide 1.1.1)
+    endif(NOT PySide_FOUND)
     IF(Shiboken_FOUND)
         SET(GENERATORRUNNER_BINARY ${SHIBOKEN_BINARY})
     ENDIF(Shiboken_FOUND)
@@ -68,17 +82,16 @@ ENDIF (NOT PySide_FOUND OR NOT Shiboken_FOUND)
 
 
 IF(PySide_FOUND)
-    SET_UP_THIRD_PARTY(PYSIDE lib include 
+    SET_UP_THIRD_PARTY(PYSIDE lib include
           pyside-python${PYTHON_VERSION} shiboken-python${PYTHON_VERSION})
     # The PySide module is symlinked into the python install VisIt uses for 
     # dev builds.  For 'make install' and 'make package' we need to actually 
     # install the PySide SOs.
+    SET(PYSIDE_MODULE_SRC  ${PYSIDE_PYTHONPATH}/PySide/)
     IF(UNIX)
-        SET(PYSIDE_MODULE_SRC  ${VISIT_PYSIDE_DIR}/lib/python${PYTHON_VERSION}/site-packages/PySide/)
         #SET(PYSIDE_MODULE_INSTALLED_DIR ${VISIT_INSTALLED_VERSION_LIB}/python/lib/python${PYTHON_VERSION}/site-packages/PySide/)
         SET(PYSIDE_MODULE_INSTALLED_DIR ${VISIT_INSTALLED_VERSION_LIB}/site-packages/PySide/)
     ELSE(UNIX)
-        SET(PYSIDE_MODULE_SRC  ${VISIT_PYSIDE_DIR}/lib/site-packages/PySide/)
         #SET(PYSIDE_MODULE_INSTALLED_DIR ${VISIT_INSTALLED_VERSION_LIB}/python/Lib/site-packages/PySide/)
         SET(PYSIDE_MODULE_INSTALLED_DIR ${VISIT_INSTALLED_VERSION_LIB}/site-packages/PySide/)
     ENDIF(UNIX)
@@ -89,7 +102,8 @@ IF(PySide_FOUND)
             PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE 
                         GROUP_READ GROUP_WRITE GROUP_EXECUTE 
                         WORLD_READ WORLD_EXECUTE
-            CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+            CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
+            PATTERN ".svn" EXCLUDE
             )
 ENDIF(PySide_FOUND)
 
@@ -215,7 +229,8 @@ ENDFUNCTION(PYSIDE_ADD_HYBRID_MODULE)
 FUNCTION(PYSIDE_ADD_GENERATOR_TARGET 
             target_name gen_sources gen_include_paths gen_global gen_typesystem)
 
-set(PYSIDE_GENERATOR_EXTRA_FLAGS --generator-set=shiboken 
+set(PYSIDE_GENERATOR_EXTRA_FLAGS --silent 
+                                 --generator-set=shiboken 
                                  --enable-parent-ctor-heuristic 
                                  --enable-return-value-heuristic 
                                  --avoid-protected-hack)

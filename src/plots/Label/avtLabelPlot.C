@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -443,8 +443,10 @@ avtLabelPlot::CustomizeBehavior(void)
     debug4 << "avtLabelPlot::CustomizeBehavior: Labels = " << endl;
     std::vector<std::string> labels;
     behavior->GetInfo().GetAttributes().GetLabels(labels);
-    for(int i = 0; i < labels.size(); ++i)
+    for(size_t i = 0; i < labels.size(); ++i)
+    {
         debug4 << "\tlabel["<<i<<"] = " << labels[i].c_str() << endl;
+    }
     debug4 << endl;
 }
 

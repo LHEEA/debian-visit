@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,6 +86,7 @@
 #include <RenderRPC.h>
 #include <SetEFileOpenOptionsRPC.h>
 #include <SetPrecisionTypeRPC.h>
+#include <SetBackendTypeRPC.h>
 #include <SetWinAnnotAttsRPC.h>
 #include <SimulationCommandRPC.h>
 #include <StartPickRPC.h>
@@ -1409,7 +1410,7 @@ RPCExecutor<DefineVirtualDatabaseRPC>::Execute(DefineVirtualDatabaseRPC *rpc)
            << ", time=" << rpc->GetTime()
            << ", numStates=" << rpc->GetDatabaseFiles().size()
            << endl;
-    for (int i = 0; i < rpc->GetDatabaseFiles().size(); ++i)
+    for (size_t i = 0; i < rpc->GetDatabaseFiles().size(); ++i)
         debug5 << "file["<<i<<"]="<<rpc->GetDatabaseFiles()[i].c_str() << endl;
 
     TRY
@@ -1495,7 +1496,7 @@ RPCExecutor<RenderRPC>::Execute(RenderRPC *rpc)
 
     debug2 << "Executing RenderRPC for the following plots" << endl;
     debug2 << "   ";
-    for (int i = 0; i < rpc->GetIDs().size(); i++)
+    for (size_t i = 0; i < rpc->GetIDs().size(); i++)
        debug2 << rpc->GetIDs()[i] << ", ";
     debug2 << endl;
 
@@ -1772,6 +1773,11 @@ RPCExecutor<ConstructDataBinningRPC>::Execute(ConstructDataBinningRPC *rpc)
 //  Programmer:  Hank Childs
 //  Creation:    May 26, 2005
 //
+//  Modifications:
+//    Brad Whitlock, Mon Apr  7 15:37:46 PDT 2014
+//    Support multiple plots.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 template<>
 void
@@ -1788,7 +1794,7 @@ RPCExecutor<ExportDatabaseRPC>::Execute(ExportDatabaseRPC *rpc)
     avtCallback::RegisterWarningCallback(Engine::EngineWarningCallback, (void*)rpc);
     TRY
     {
-        netmgr->ExportDatabase(rpc->GetID(), rpc->GetExportDBAtts());
+        netmgr->ExportDatabases(rpc->GetIDs(), rpc->GetExportDBAtts(), rpc->GetTimeSuffix());
         rpc->SendReply();
     }
     CATCH2(VisItException, e)
@@ -1833,7 +1839,6 @@ RPCExecutor<SetEFileOpenOptionsRPC>::Execute(SetEFileOpenOptionsRPC *rpc)
 //  Purpose:
 //    Set the new precision type in the database factory.
 //
-//
 //  Programmer:  Kathleen Biagas
 //  Creation:    August 1, 2013
 //
@@ -1843,6 +1848,25 @@ void
 RPCExecutor<SetPrecisionTypeRPC>::Execute(SetPrecisionTypeRPC *rpc)
 {
     avtDatabaseFactory::SetPrecisionType(rpc->GetPrecisionType());
+    rpc->SendReply();
+}
+
+// ****************************************************************************
+//  Method:  RPCExecutor<SetBackendTypeRPC>::Execute
+//
+//  Purpose:
+//    Set the new backend type.
+//
+//  Programmer:  Cameron Christensen
+//  Creation:    June 10, 2014
+//
+// ****************************************************************************
+template<>
+void
+RPCExecutor<SetBackendTypeRPC>::Execute(SetBackendTypeRPC *rpc)
+{
+    avtDatabaseFactory::SetBackendType(rpc->GetBackendType());
+    avtCallback::SetBackendType((GlobalAttributes::BackendType)rpc->GetBackendType());
     rpc->SendReply();
 }
 

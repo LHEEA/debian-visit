@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -379,7 +379,6 @@ avtShapeletDecompositionQuery::ComputeError(vtkRectilinearGrid *a,
     if(!a_arr || !b_arr)
         return 1.0;
     int a_len = a_arr->GetNumberOfTuples();
-    int b_len = b_arr->GetNumberOfTuples();
     
     if(!a_arr || !b_arr)
         return 1.0;

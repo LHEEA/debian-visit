@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -193,7 +193,7 @@ QvisSessionSourceChanger::updateControls(int ci)
 
     useList->clear();
 
-    if(ci >= 0 && ci < sources.size())
+    if(ci >= 0 && (size_t)ci < sources.size())
     {
         if(sources.size() > 0)
             fileLineEdit->setText(sources[ci].c_str());

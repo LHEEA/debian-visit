@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -343,6 +343,43 @@ LCSAttributes::OperationType_FromString(const std::string &s, LCSAttributes::Ope
 }
 
 //
+// Enum conversion methods for LCSAttributes::OperatorType
+//
+
+static const char *OperatorType_strings[] = {
+"BaseValue", "Gradient"};
+
+std::string
+LCSAttributes::OperatorType_ToString(LCSAttributes::OperatorType t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return OperatorType_strings[index];
+}
+
+std::string
+LCSAttributes::OperatorType_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return OperatorType_strings[index];
+}
+
+bool
+LCSAttributes::OperatorType_FromString(const std::string &s, LCSAttributes::OperatorType &val)
+{
+    val = LCSAttributes::BaseValue;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == OperatorType_strings[i])
+        {
+            val = (OperatorType)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for LCSAttributes::TerminationType
 //
 
@@ -449,6 +486,7 @@ void LCSAttributes::Init()
     integrationDirection = Forward;
     maxSteps = 1000;
     operationType = Lyapunov;
+    operatorType = BaseValue;
     terminationType = Time;
     terminateBySize = false;
     termSize = 10;
@@ -469,6 +507,7 @@ void LCSAttributes::Init()
     velocitySource[1] = 0;
     velocitySource[2] = 0;
     integrationType = DormandPrince;
+    clampLogValues = true;
     parallelizationAlgorithmType = VisItSelects;
     maxProcessCount = 10;
     maxDomainCacheSize = 3;
@@ -476,6 +515,7 @@ void LCSAttributes::Init()
     pathlines = false;
     pathlinesOverrideStartingTimeFlag = false;
     pathlinesOverrideStartingTime = 0;
+    pathlinesPeriod = 0;
     pathlinesCMFE = POS_CMFE;
     forceNodeCenteredData = false;
     issueTerminationWarnings = true;
@@ -521,6 +561,7 @@ void LCSAttributes::Copy(const LCSAttributes &obj)
     integrationDirection = obj.integrationDirection;
     maxSteps = obj.maxSteps;
     operationType = obj.operationType;
+    operatorType = obj.operatorType;
     terminationType = obj.terminationType;
     terminateBySize = obj.terminateBySize;
     termSize = obj.termSize;
@@ -542,6 +583,7 @@ void LCSAttributes::Copy(const LCSAttributes &obj)
     velocitySource[2] = obj.velocitySource[2];
 
     integrationType = obj.integrationType;
+    clampLogValues = obj.clampLogValues;
     parallelizationAlgorithmType = obj.parallelizationAlgorithmType;
     maxProcessCount = obj.maxProcessCount;
     maxDomainCacheSize = obj.maxDomainCacheSize;
@@ -549,6 +591,7 @@ void LCSAttributes::Copy(const LCSAttributes &obj)
     pathlines = obj.pathlines;
     pathlinesOverrideStartingTimeFlag = obj.pathlinesOverrideStartingTimeFlag;
     pathlinesOverrideStartingTime = obj.pathlinesOverrideStartingTime;
+    pathlinesPeriod = obj.pathlinesPeriod;
     pathlinesCMFE = obj.pathlinesCMFE;
     forceNodeCenteredData = obj.forceNodeCenteredData;
     issueTerminationWarnings = obj.issueTerminationWarnings;
@@ -741,6 +784,7 @@ LCSAttributes::operator == (const LCSAttributes &obj) const
             (integrationDirection == obj.integrationDirection) &&
             (maxSteps == obj.maxSteps) &&
             (operationType == obj.operationType) &&
+            (operatorType == obj.operatorType) &&
             (terminationType == obj.terminationType) &&
             (terminateBySize == obj.terminateBySize) &&
             (termSize == obj.termSize) &&
@@ -759,6 +803,7 @@ LCSAttributes::operator == (const LCSAttributes &obj) const
             (fieldConstant == obj.fieldConstant) &&
             velocitySource_equal &&
             (integrationType == obj.integrationType) &&
+            (clampLogValues == obj.clampLogValues) &&
             (parallelizationAlgorithmType == obj.parallelizationAlgorithmType) &&
             (maxProcessCount == obj.maxProcessCount) &&
             (maxDomainCacheSize == obj.maxDomainCacheSize) &&
@@ -766,6 +811,7 @@ LCSAttributes::operator == (const LCSAttributes &obj) const
             (pathlines == obj.pathlines) &&
             (pathlinesOverrideStartingTimeFlag == obj.pathlinesOverrideStartingTimeFlag) &&
             (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime) &&
+            (pathlinesPeriod == obj.pathlinesPeriod) &&
             (pathlinesCMFE == obj.pathlinesCMFE) &&
             (forceNodeCenteredData == obj.forceNodeCenteredData) &&
             (issueTerminationWarnings == obj.issueTerminationWarnings) &&
@@ -938,6 +984,7 @@ LCSAttributes::SelectAll()
     Select(ID_integrationDirection,              (void *)&integrationDirection);
     Select(ID_maxSteps,                          (void *)&maxSteps);
     Select(ID_operationType,                     (void *)&operationType);
+    Select(ID_operatorType,                      (void *)&operatorType);
     Select(ID_terminationType,                   (void *)&terminationType);
     Select(ID_terminateBySize,                   (void *)&terminateBySize);
     Select(ID_termSize,                          (void *)&termSize);
@@ -956,6 +1003,7 @@ LCSAttributes::SelectAll()
     Select(ID_fieldConstant,                     (void *)&fieldConstant);
     Select(ID_velocitySource,                    (void *)velocitySource, 3);
     Select(ID_integrationType,                   (void *)&integrationType);
+    Select(ID_clampLogValues,                    (void *)&clampLogValues);
     Select(ID_parallelizationAlgorithmType,      (void *)&parallelizationAlgorithmType);
     Select(ID_maxProcessCount,                   (void *)&maxProcessCount);
     Select(ID_maxDomainCacheSize,                (void *)&maxDomainCacheSize);
@@ -963,6 +1011,7 @@ LCSAttributes::SelectAll()
     Select(ID_pathlines,                         (void *)&pathlines);
     Select(ID_pathlinesOverrideStartingTimeFlag, (void *)&pathlinesOverrideStartingTimeFlag);
     Select(ID_pathlinesOverrideStartingTime,     (void *)&pathlinesOverrideStartingTime);
+    Select(ID_pathlinesPeriod,                   (void *)&pathlinesPeriod);
     Select(ID_pathlinesCMFE,                     (void *)&pathlinesCMFE);
     Select(ID_forceNodeCenteredData,             (void *)&forceNodeCenteredData);
     Select(ID_issueTerminationWarnings,          (void *)&issueTerminationWarnings);
@@ -1053,6 +1102,12 @@ LCSAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAdd
     {
         addToParent = true;
         node->AddNode(new DataNode("operationType", OperationType_ToString(operationType)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_operatorType, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("operatorType", OperatorType_ToString(operatorType)));
     }
 
     if(completeSave || !FieldsEqual(ID_terminationType, &defaultObject))
@@ -1163,6 +1218,12 @@ LCSAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAdd
         node->AddNode(new DataNode("integrationType", IntegrationType_ToString(integrationType)));
     }
 
+    if(completeSave || !FieldsEqual(ID_clampLogValues, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("clampLogValues", clampLogValues));
+    }
+
     if(completeSave || !FieldsEqual(ID_parallelizationAlgorithmType, &defaultObject))
     {
         addToParent = true;
@@ -1203,6 +1264,12 @@ LCSAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAdd
     {
         addToParent = true;
         node->AddNode(new DataNode("pathlinesOverrideStartingTime", pathlinesOverrideStartingTime));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pathlinesPeriod, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pathlinesPeriod", pathlinesPeriod));
     }
 
     if(completeSave || !FieldsEqual(ID_pathlinesCMFE, &defaultObject))
@@ -1365,6 +1432,22 @@ LCSAttributes::SetFromNode(DataNode *parentNode)
                 SetOperationType(value);
         }
     }
+    if((node = searchNode->GetNode("operatorType")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetOperatorType(OperatorType(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            OperatorType value;
+            if(OperatorType_FromString(node->AsString(), value))
+                SetOperatorType(value);
+        }
+    }
     if((node = searchNode->GetNode("terminationType")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1457,6 +1540,8 @@ LCSAttributes::SetFromNode(DataNode *parentNode)
                 SetIntegrationType(value);
         }
     }
+    if((node = searchNode->GetNode("clampLogValues")) != 0)
+        SetClampLogValues(node->AsBool());
     if((node = searchNode->GetNode("parallelizationAlgorithmType")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1485,6 +1570,8 @@ LCSAttributes::SetFromNode(DataNode *parentNode)
         SetPathlinesOverrideStartingTimeFlag(node->AsBool());
     if((node = searchNode->GetNode("pathlinesOverrideStartingTime")) != 0)
         SetPathlinesOverrideStartingTime(node->AsDouble());
+    if((node = searchNode->GetNode("pathlinesPeriod")) != 0)
+        SetPathlinesPeriod(node->AsDouble());
     if((node = searchNode->GetNode("pathlinesCMFE")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1584,6 +1671,13 @@ LCSAttributes::SetOperationType(LCSAttributes::OperationType operationType_)
 {
     operationType = operationType_;
     Select(ID_operationType, (void *)&operationType);
+}
+
+void
+LCSAttributes::SetOperatorType(LCSAttributes::OperatorType operatorType_)
+{
+    operatorType = operatorType_;
+    Select(ID_operatorType, (void *)&operatorType);
 }
 
 void
@@ -1715,6 +1809,13 @@ LCSAttributes::SetIntegrationType(LCSAttributes::IntegrationType integrationType
 }
 
 void
+LCSAttributes::SetClampLogValues(bool clampLogValues_)
+{
+    clampLogValues = clampLogValues_;
+    Select(ID_clampLogValues, (void *)&clampLogValues);
+}
+
+void
 LCSAttributes::SetParallelizationAlgorithmType(LCSAttributes::ParallelizationAlgorithmType parallelizationAlgorithmType_)
 {
     parallelizationAlgorithmType = parallelizationAlgorithmType_;
@@ -1761,6 +1862,13 @@ LCSAttributes::SetPathlinesOverrideStartingTime(double pathlinesOverrideStarting
 {
     pathlinesOverrideStartingTime = pathlinesOverrideStartingTime_;
     Select(ID_pathlinesOverrideStartingTime, (void *)&pathlinesOverrideStartingTime);
+}
+
+void
+LCSAttributes::SetPathlinesPeriod(double pathlinesPeriod_)
+{
+    pathlinesPeriod = pathlinesPeriod_;
+    Select(ID_pathlinesPeriod, (void *)&pathlinesPeriod);
 }
 
 void
@@ -1881,6 +1989,12 @@ LCSAttributes::GetOperationType() const
     return OperationType(operationType);
 }
 
+LCSAttributes::OperatorType
+LCSAttributes::GetOperatorType() const
+{
+    return OperatorType(operatorType);
+}
+
 LCSAttributes::TerminationType
 LCSAttributes::GetTerminationType() const
 {
@@ -1995,6 +2109,12 @@ LCSAttributes::GetIntegrationType() const
     return IntegrationType(integrationType);
 }
 
+bool
+LCSAttributes::GetClampLogValues() const
+{
+    return clampLogValues;
+}
+
 LCSAttributes::ParallelizationAlgorithmType
 LCSAttributes::GetParallelizationAlgorithmType() const
 {
@@ -2035,6 +2155,12 @@ double
 LCSAttributes::GetPathlinesOverrideStartingTime() const
 {
     return pathlinesOverrideStartingTime;
+}
+
+double
+LCSAttributes::GetPathlinesPeriod() const
+{
+    return pathlinesPeriod;
 }
 
 LCSAttributes::PathlinesCMFE
@@ -2134,6 +2260,7 @@ LCSAttributes::GetFieldName(int index) const
     case ID_integrationDirection:              return "integrationDirection";
     case ID_maxSteps:                          return "maxSteps";
     case ID_operationType:                     return "operationType";
+    case ID_operatorType:                      return "operatorType";
     case ID_terminationType:                   return "terminationType";
     case ID_terminateBySize:                   return "terminateBySize";
     case ID_termSize:                          return "termSize";
@@ -2152,6 +2279,7 @@ LCSAttributes::GetFieldName(int index) const
     case ID_fieldConstant:                     return "fieldConstant";
     case ID_velocitySource:                    return "velocitySource";
     case ID_integrationType:                   return "integrationType";
+    case ID_clampLogValues:                    return "clampLogValues";
     case ID_parallelizationAlgorithmType:      return "parallelizationAlgorithmType";
     case ID_maxProcessCount:                   return "maxProcessCount";
     case ID_maxDomainCacheSize:                return "maxDomainCacheSize";
@@ -2159,6 +2287,7 @@ LCSAttributes::GetFieldName(int index) const
     case ID_pathlines:                         return "pathlines";
     case ID_pathlinesOverrideStartingTimeFlag: return "pathlinesOverrideStartingTimeFlag";
     case ID_pathlinesOverrideStartingTime:     return "pathlinesOverrideStartingTime";
+    case ID_pathlinesPeriod:                   return "pathlinesPeriod";
     case ID_pathlinesCMFE:                     return "pathlinesCMFE";
     case ID_forceNodeCenteredData:             return "forceNodeCenteredData";
     case ID_issueTerminationWarnings:          return "issueTerminationWarnings";
@@ -2198,6 +2327,7 @@ LCSAttributes::GetFieldType(int index) const
     case ID_integrationDirection:              return FieldType_enum;
     case ID_maxSteps:                          return FieldType_int;
     case ID_operationType:                     return FieldType_enum;
+    case ID_operatorType:                      return FieldType_enum;
     case ID_terminationType:                   return FieldType_enum;
     case ID_terminateBySize:                   return FieldType_bool;
     case ID_termSize:                          return FieldType_double;
@@ -2216,6 +2346,7 @@ LCSAttributes::GetFieldType(int index) const
     case ID_fieldConstant:                     return FieldType_double;
     case ID_velocitySource:                    return FieldType_doubleArray;
     case ID_integrationType:                   return FieldType_enum;
+    case ID_clampLogValues:                    return FieldType_bool;
     case ID_parallelizationAlgorithmType:      return FieldType_enum;
     case ID_maxProcessCount:                   return FieldType_int;
     case ID_maxDomainCacheSize:                return FieldType_int;
@@ -2223,6 +2354,7 @@ LCSAttributes::GetFieldType(int index) const
     case ID_pathlines:                         return FieldType_bool;
     case ID_pathlinesOverrideStartingTimeFlag: return FieldType_bool;
     case ID_pathlinesOverrideStartingTime:     return FieldType_double;
+    case ID_pathlinesPeriod:                   return FieldType_double;
     case ID_pathlinesCMFE:                     return FieldType_enum;
     case ID_forceNodeCenteredData:             return FieldType_bool;
     case ID_issueTerminationWarnings:          return FieldType_bool;
@@ -2262,6 +2394,7 @@ LCSAttributes::GetFieldTypeName(int index) const
     case ID_integrationDirection:              return "enum";
     case ID_maxSteps:                          return "int";
     case ID_operationType:                     return "enum";
+    case ID_operatorType:                      return "enum";
     case ID_terminationType:                   return "enum";
     case ID_terminateBySize:                   return "bool";
     case ID_termSize:                          return "double";
@@ -2280,6 +2413,7 @@ LCSAttributes::GetFieldTypeName(int index) const
     case ID_fieldConstant:                     return "double";
     case ID_velocitySource:                    return "doubleArray";
     case ID_integrationType:                   return "enum";
+    case ID_clampLogValues:                    return "bool";
     case ID_parallelizationAlgorithmType:      return "enum";
     case ID_maxProcessCount:                   return "int";
     case ID_maxDomainCacheSize:                return "int";
@@ -2287,6 +2421,7 @@ LCSAttributes::GetFieldTypeName(int index) const
     case ID_pathlines:                         return "bool";
     case ID_pathlinesOverrideStartingTimeFlag: return "bool";
     case ID_pathlinesOverrideStartingTime:     return "double";
+    case ID_pathlinesPeriod:                   return "double";
     case ID_pathlinesCMFE:                     return "enum";
     case ID_forceNodeCenteredData:             return "bool";
     case ID_issueTerminationWarnings:          return "bool";
@@ -2377,6 +2512,11 @@ LCSAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_operationType:
         {  // new scope
         retval = (operationType == obj.operationType);
+        }
+        break;
+    case ID_operatorType:
+        {  // new scope
+        retval = (operatorType == obj.operatorType);
         }
         break;
     case ID_terminationType:
@@ -2474,6 +2614,11 @@ LCSAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (integrationType == obj.integrationType);
         }
         break;
+    case ID_clampLogValues:
+        {  // new scope
+        retval = (clampLogValues == obj.clampLogValues);
+        }
+        break;
     case ID_parallelizationAlgorithmType:
         {  // new scope
         retval = (parallelizationAlgorithmType == obj.parallelizationAlgorithmType);
@@ -2507,6 +2652,11 @@ LCSAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_pathlinesOverrideStartingTime:
         {  // new scope
         retval = (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime);
+        }
+        break;
+    case ID_pathlinesPeriod:
+        {  // new scope
+        retval = (pathlinesPeriod == obj.pathlinesPeriod);
         }
         break;
     case ID_pathlinesCMFE:
@@ -2657,14 +2807,14 @@ LCSAttributes::ChangesRequireRecalculation(const LCSAttributes &obj) const
     }
 
     if ((sourceType == RegularGrid) &&
-         UseDataSetStart == true &&
+         UseDataSetStart == Subset &&
          POINT_DIFFERS(StartPosition, obj.StartPosition))
     {
         return true;
     }
 
     if ((sourceType == RegularGrid) &&
-         UseDataSetEnd == true &&
+         UseDataSetEnd == Subset &&
          POINT_DIFFERS(EndPosition, obj.EndPosition))
     {
         return true;

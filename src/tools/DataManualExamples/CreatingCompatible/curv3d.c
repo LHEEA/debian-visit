@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,7 +57,8 @@ write_curv3d(DBfile *dbfile)
     };
     int dims[] = {4, 3, 2};
     int ndims = 3;
-    float *coords[] = {(float*)x, (float*)y, (float*)z};
+    float *coords[3];
+    coords[0] = (float*)x; coords[1] = (float*)y; coords[2] = (float*)z;
     DBPutQuadmesh(dbfile, "quadmesh", NULL, coords, dims, ndims,
                   DB_FLOAT, DB_NONCOLLINEAR, NULL);
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -69,6 +69,7 @@ public:
         _name(n), _parent(p), _id(i), _delegateType(dt)
     {
     }
+    virtual ~RowInfo() {}
 
     QString name() const             { return _name;   }
     int     parent() const           { return _parent; }
@@ -250,8 +251,9 @@ KeyframeDataModel::SubjectRemoved(Subject *subj)
 void
 KeyframeDataModel::Update(Subject *)
 {
+    beginResetModel();
     RebuildRowInfo();
-    reset();
+    endResetModel();
 }
 
 // ****************************************************************************
@@ -438,7 +440,7 @@ KeyframeDataModel::PlotIcon(int plotType) const
     GUIPlotPluginInfo *GUIInfo = plotPluginManager->GetGUIPluginInfo(
         plotPluginManager->GetEnabledID(plotType));
     if(GUIInfo != 0 && GUIInfo->XPMIconData() != 0)
-        retval = QIcon(GUIInfo->XPMIconData());
+        retval = QIcon(QPixmap(GUIInfo->XPMIconData()));
     return retval;
 }
 
@@ -550,7 +552,7 @@ int
 KeyframeDataModel::currentIndex() const
 {
     int curIndex = -1;
-    for(int i = 0; i < windowInfo->GetTimeSliders().size(); ++i)
+    for(size_t i = 0; i < windowInfo->GetTimeSliders().size(); ++i)
     {
         if(windowInfo->GetTimeSliders()[i] == KF_TIME_SLIDER)
         {
@@ -712,7 +714,7 @@ bool
 KeyframeDataModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     bool retval = false;
-    if (qVariantCanConvert<PlotRangeData>(value))
+    if (value.canConvert<PlotRangeData>())
     {
         PlotRangeData s = value.value<PlotRangeData>();
         GetViewerMethods()->SetPlotFrameRange(s.id,
@@ -720,7 +722,7 @@ KeyframeDataModel::setData(const QModelIndex &index, const QVariant &value, int 
                                               qMax(s.start, s.end));
         retval = true;
     }
-    else if (qVariantCanConvert<KeyframePoints>(value))
+    else if (value.canConvert<KeyframePoints>())
     {
         KeyframePoints s = value.value<KeyframePoints>();
         int id = (int)index.internalId();

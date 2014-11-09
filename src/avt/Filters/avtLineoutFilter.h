@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,6 @@
 #include <filters_exports.h>
 
 #include <avtPluginDataTreeIterator.h>
-
 
 class vtkDataSet;
 class vtkIdList;
@@ -95,6 +94,9 @@ class vtkRectilinearGrid;
 //    Kathleen Bonnell, Thu Mar  6 09:07:33 PST 2008 
 //    Add AVT_FILTERS_API for build on windows.
 //
+//    Eric Brugger, Mon Jul 21 14:08:32 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtLineoutFilter : public avtDataTreeIterator
@@ -123,7 +125,7 @@ class AVTFILTERS_API avtLineoutFilter : public avtDataTreeIterator
     bool                     samplingOn;
     int                      numberOfSamplePoints;
 
-    virtual vtkDataSet       *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     virtual void              PostExecute(void);
     virtual void              VerifyInput(void);
     virtual void              UpdateDataObjectInfo(void);

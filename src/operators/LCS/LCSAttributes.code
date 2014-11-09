@@ -186,14 +186,14 @@ LCSAttributes::ChangesRequireRecalculation(const LCSAttributes &obj) const
     }
 
     if ((sourceType == RegularGrid) &&
-         UseDataSetStart == true &&
+         UseDataSetStart == Subset &&
          POINT_DIFFERS(StartPosition, obj.StartPosition))
     {
         return true;
     }
 
     if ((sourceType == RegularGrid) &&
-         UseDataSetEnd == true &&
+         UseDataSetEnd == Subset &&
          POINT_DIFFERS(EndPosition, obj.EndPosition))
     {
         return true;
@@ -225,12 +225,15 @@ Definition:
 
 std::string
 LCSViewerPluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
-                                                const ViewerPlot *plot)
+                                               const ViewerPlot *plot)
 {
     LCSAttributes *atts_in = (LCSAttributes *)atts;
 
-    const char numTypes = 3;
-    const char *typeString[3] = { "FTLE", "FDLE", "FSLE" };
+    const char *typeString[2][3] = { { "FTLE", "FDLE", "FSLE" },
+                                     { "Time", "Arc length",
+                                       "Ave. dist. from seed" } };
+
+    const char *operatorString[4] = { "Base", "Gradient", "Jacobian", "Ratio" };
 
     std::string var = plot->GetVariableName();
 
@@ -241,9 +244,26 @@ LCSViewerPluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
 
       var = justTheVar;
     }
-    
-    var += std::string(" - ") +
-        std::string(typeString[atts_in->GetTerminationType()]);
+
+    int i, j, k;
+
+    if( atts_in->GetOperationType() == LCSAttributes::Lyapunov )
+    {
+        i = 0;
+        j = atts_in->GetTerminationType();
+
+        var += std::string(" - ") + std::string(typeString[i][j]);
+    }
+    else
+    {
+        i = 1;
+        j = atts_in->GetOperationType() - 1;
+        k = atts_in->GetOperatorType();
+
+        var += std::string(" - ") + std::string(typeString[i][j]) +
+               std::string(" - ") + std::string(operatorString[k]);
+
+    }
 
     return var;
 }

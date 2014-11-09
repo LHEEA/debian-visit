@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,8 +47,6 @@
 
 #include <avtDataTreeIterator.h>
 
-class vtkDataSet;
-
 
 // ****************************************************************************
 //  Class: avtDisplaceFilter
@@ -76,6 +74,9 @@ class vtkDataSet;
 //    Changed the inheritance, since this is no longer a plugin filter.
 //    (This filter was moved from /operators/Displace.)
 //
+//    Eric Brugger, Mon Jul 21 10:37:53 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtDisplaceFilter : public avtDataTreeIterator
@@ -95,7 +96,7 @@ class AVTFILTERS_API avtDisplaceFilter : public avtDataTreeIterator
     double                factor;
     std::string           variable;
 
-    virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     virtual void          PreExecute(void);
     virtual void          PostExecute(void);
 

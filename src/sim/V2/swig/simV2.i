@@ -5,9 +5,9 @@
  * Date:       Thu Mar 24 14:29:25 PDT 2011
  *
  * Notes: To regenerate the Python bindings, run swig and copy the resulting
- *        .c and .py files into the python directory.
+ *        .cxx and .py files into the python directory.
  *
- *        swig -python -I../lib simV2.i
+ *        swig -c++ -python -I../lib simV2.i
  *
  * Modifications:
  *
@@ -15,8 +15,19 @@
 
 %module simV2
 %{
+#define SWIG_FILE_WITH_INIT
 #include <VisItControlInterface_V2.h>
 #include <VisItDataInterface_V2.h>
+#include <stdio.h>
+#include <simV2_python_config.h>
+#include <simV2_PyObject.h>
+#include <simV2_custom.h>
+%}
+
+%init %{
+#ifdef SIMV2_USE_NUMPY
+import_array();
+#endif
 %}
 
 #ifdef SWIGPYTHON

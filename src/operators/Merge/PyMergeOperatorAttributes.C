@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewMergeOperatorAttributes(int);
 std::string
 PyMergeOperatorAttributes_ToString(const MergeOperatorAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetParallelMerge())
         SNPRINTF(tmpStr, 1000, "%sparallelMerge = 1\n", prefix);
@@ -361,7 +361,6 @@ PyMergeOperatorAttributes_GetLogString()
 static void
 PyMergeOperatorAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    MergeOperatorAttributes *atts = (MergeOperatorAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

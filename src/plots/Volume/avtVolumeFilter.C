@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -420,7 +420,7 @@ avtVolumeFilter::RenderImageRaycastingSLIVR(avtImage_p opaque_image,
 
     int primIndex = -1;
     int opacIndex = -1;
-    int gradIndex = -1;
+
     int count = 0;
     char gradName[128];
     const char *gradvar = atts.GetOpacityVariable().c_str();
@@ -490,7 +490,6 @@ avtVolumeFilter::RenderImageRaycastingSLIVR(avtImage_p opaque_image,
     //
     avtFlatLighting fl;
     avtLightingModel *lm = &fl;
-    double gradMax = 0.0, lightingPower = 1.0;
 
     if (atts.GetLightingFlag())
         software->SetLighting(true);
@@ -1178,6 +1177,9 @@ CreateViewInfoFromViewAttributes(avtViewInfo &vi, const View3DAttributes &view)
 //    Simplify setup of log/skew variables for ease of reference in rest of
 //    volume plot.
 //
+//    Kathleen Biagas, Thu Mar 20 14:58:49 PDT 2014
+//    Surround var with '<>' when used in expression. (Log and Skew scaling).
+//
 // ****************************************************************************
 
 avtContract_p
@@ -1215,11 +1217,11 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
         {
             char m[16];
             SNPRINTF(m, 16, "%f", atts.GetColorVarMin());
-            SNPRINTF(exprDef, 128, "log10withmin(%s, %s)", var, m);
+            SNPRINTF(exprDef, 128, "log10withmin(<%s>, %s)", var, m);
         }
         else
         {
-            SNPRINTF(exprDef, 128, "log10(%s)", var);
+            SNPRINTF(exprDef, 128, "log10(<%s>)", var);
         }
         avtDataRequest_p nds = new avtDataRequest(exprName.c_str(),
                                ds->GetTimestep(), ds->GetRestriction());
@@ -1236,7 +1238,7 @@ avtVolumeFilter::ModifyContract(avtContract_p contract)
     else // VolumeAttributes::Skew)
     {
         setupExpr = true;
-        SNPRINTF(exprDef, 128, "var_skew(%s, %f)", var,
+        SNPRINTF(exprDef, 128, "var_skew(<%s>, %f)", var,
                  atts.GetSkewFactor());
         avtDataRequest_p nds =
             new avtDataRequest(exprName.c_str(),

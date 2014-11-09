@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,10 +41,12 @@
 #include <QApplication>
 #include <QDesktopWidget>
 
-#if defined(Q_WS_WIN)
+#if defined(Q_WS_WIN) || defined(Q_OS_WIN)
 #include <windows.h>
-#elif defined(Q_WS_X11)
+#elif defined(Q_WS_X11) || defined(Q_OS_LINUX)
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
 #include <QX11Info>
+#endif
 #include <X11/Xlib.h>
 static Window GetParent(Display *dpy, Window win, Window *root_ret=NULL);
 #endif
@@ -132,7 +134,9 @@ WindowMetrics::Instance()
 // ****************************************************************************
 bool WindowMetrics::embedded = false;
 WindowMetrics::WindowMetrics()
+#if defined(Q_WS_X11) || defined(Q_OS_LINUX)
 : testWindow(0)
+#endif
 {
     //
     // Default values
@@ -187,7 +191,7 @@ WindowMetrics::CalculateScreen(QWidget *win,
     else
         rect = qApp->desktop()->availableGeometry();
     screenX = rect.x();
-#ifdef Q_WS_MACX
+#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
     screenY = 0;
 #else
     screenY = rect.y();
@@ -221,7 +225,8 @@ WindowMetrics::CalculateScreen(QWidget *win,
 void
 WindowMetrics::MeasureScreen(bool waitForWM)
 {
-#ifdef Q_WS_X11
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
+#if defined(Q_WS_X11) || defined(Q_OS_LINUX)
     //
     // Create the test window
     //
@@ -299,9 +304,10 @@ WindowMetrics::MeasureScreen(bool waitForWM)
     //
     CalculateBorders(0, borderT, borderB, borderL, borderR);
 
-#if defined(Q_WS_WIN)
+#if defined(Q_WS_WIN) || defined(Q_OS_WIN)
     preshiftX = shiftX = borderL;
     preshiftY = shiftY = borderT;
+#endif
 #endif
 #endif
 }
@@ -312,7 +318,7 @@ WindowMetrics::MeasureScreen(bool waitForWM)
 //                           PLATFORM SPECIFIC CODE
 // ****************************************************************************
 // ****************************************************************************
-#if defined(Q_WS_WIN)
+#if defined(Q_WS_WIN) || defined(Q_OS_WIN)
 
 //
 // Win32 coding
@@ -378,7 +384,7 @@ WindowMetrics::CalculateTopLeft(QWidget *w, int &X, int &Y)
     Y = w->y();
 }
 
-#elif defined(Q_WS_MACX)
+#elif defined(Q_WS_MACX) || defined(Q_OS_MAC)
 #include <QDesktopWidget>
 
 //
@@ -448,7 +454,7 @@ WindowMetrics::CalculateTopLeft(QWidget *w, int &X, int &Y)
     Y = w->y();
 }
 
-#elif defined(Q_WS_X11)
+#elif defined(Q_WS_X11) || defined(Q_OS_LINUX)
 
 //
 // X11 coding
@@ -485,6 +491,7 @@ WindowMetrics::CalculateBorders(QWidget *win,
                                 int &borderT, int &borderB,
                                 int &borderL, int &borderR)
 {
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
     unsigned int nchildren;
     Window root, parent_window, *children=NULL;
     XWindowAttributes leaf_attributes;
@@ -522,7 +529,7 @@ WindowMetrics::CalculateBorders(QWidget *win,
     int height = leaf_attributes.height;
     int width  = leaf_attributes.width;
     int border_width = leaf_attributes.border_width;
-    int big_height, big_width;
+    int big_height = 0, big_width = 0;
 
     int desktop_width  = qApp->desktop()->width();
     int desktop_height = qApp->desktop()->height();
@@ -591,6 +598,7 @@ WindowMetrics::CalculateBorders(QWidget *win,
         if (borderL < 0) borderL = 0;
         if (borderR < 0) borderR = 0;
     }
+#endif
 }
 
 // ****************************************************************************
@@ -616,7 +624,7 @@ void
 WindowMetrics::WaitForWindowManagerToGrabWindow(QWidget *win)
 {
     if(embedded) return;
-
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
     XFlush(QX11Info::display());
     XEvent ev;
     while (!XCheckTypedWindowEvent(QX11Info::display(), win->winId(),
@@ -627,6 +635,7 @@ WindowMetrics::WaitForWindowManagerToGrabWindow(QWidget *win)
             break; 
     } 
     qApp->x11ProcessEvent(&ev);
+#endif
 }
 
 // ****************************************************************************
@@ -650,7 +659,7 @@ void
 WindowMetrics::WaitForWindowManagerToMoveWindow(QWidget *win)
 {
     if(embedded) return;
-
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
     XFlush(QX11Info::display());
     XEvent ev;
     while (!XCheckTypedWindowEvent(QX11Info::display(), win->winId(),
@@ -659,6 +668,7 @@ WindowMetrics::WaitForWindowManagerToMoveWindow(QWidget *win)
         // just keep polling
     } 
     qApp->x11ProcessEvent(&ev);
+#endif
 }
 
 // ****************************************************************************
@@ -678,6 +688,7 @@ WindowMetrics::WaitForWindowManagerToMoveWindow(QWidget *win)
 void
 WindowMetrics::CalculateTopLeft(QWidget *wid, int &X, int &Y)
 {
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
     Window root, parent;
     XWindowAttributes atts;
 
@@ -703,6 +714,7 @@ WindowMetrics::CalculateTopLeft(QWidget *wid, int &X, int &Y)
     XGetWindowAttributes(dpy, window, &atts);
     X = atts.x;
     Y = atts.y;
+#endif
 }
 
 // ****************************************************************************

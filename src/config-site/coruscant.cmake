@@ -1,27 +1,24 @@
-#/home/brad/Development/thirdparty_shared/2.7.0/cmake/2.8.10.2/linux-x86_64_gcc-4.6/bin/cmake
+#/home/brad/Development/thirdparty_shared/2.8.0/cmake/2.8.10.2/linux-x86_64_gcc-4.6/bin/cmake
 ##
 ## ./build_visit generated host.cmake
-## created: Fri Jun  7 18:54:30 PDT 2013
-## system: Linux coruscant 3.2.0-26-generic #41-Ubuntu SMP Thu Jun 14 17:49:24 UTC 2012 x86_64 x86_64 x86_64 GNU/Linux
+## created: Mon Apr  7 19:32:43 PDT 2014
+## system: Linux coruscant 3.2.0-51-generic #77-Ubuntu SMP Wed Jul 24 20:18:19 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
 ## by: brad
-##
-## ./build_visit --console --no-visit --thirdparty-path ~/Development/thirdparty_shared/2.7.0 --vtk --mesa --python --pyside --qt --silo --netcdf --hdf5 --szip --h5part --gdal --cgns --icet --parallel --makeflags -j12 --xdmf --hdf4
-##
 
+IF(WIN32)
+   INCLUDE(${VISIT_SOURCE_DIR}/config-site/windows.cmake)
+
+   VISIT_OPTION_DEFAULT(VISIT_INSTALL_THIRD_PARTY ON TYPE BOOL)
+   VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)
+
+   SET(CMAKE_SUPPRESS_REGENERATION TRUE)
+   SET(CMAKE_SKIP_INSTALL_ALL_DEPENDENCY TRUE)
+ELSE(WIN32)
 ##
 ## Setup VISITHOME & VISITARCH variables.
 ##
+SET(VISITHOME /home/brad/Development/thirdparty_shared/2.8.0)
 SET(VISITARCH linux-x86_64_gcc-4.6)
-IF(VISIT_STATIC)
-    SET(VISITHOME /home/brad/Development/thirdparty_static/2.7.0)
-ELSE(VISIT_STATIC)
-    SET(VISITHOME /home/brad/Development/thirdparty_shared/2.7.0)
-
-    ##
-    ## PySide
-    ##
-    VISIT_OPTION_DEFAULT(VISIT_PYSIDE_DIR ${VISITHOME}/pyside/1.1.1/${VISITARCH}/)
-ENDIF(VISIT_STATIC)
 
 ## Compiler flags.
 ##
@@ -59,7 +56,7 @@ VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)
 ##
 ## Python
 ##
-VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.7.3/${VISITARCH})
+VISIT_OPTION_DEFAULT(VISIT_PYTHON_DIR ${VISITHOME}/python/2.7.5/${VISITARCH})
 
 ##
 ## Qt
@@ -69,7 +66,8 @@ VISIT_OPTION_DEFAULT(VISIT_QT_BIN ${VISITHOME}/qt/4.8.3/${VISITARCH}/bin)
 ##
 ## VTK
 ##
-VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/6.0.0/${VISITARCH})
+SETUP_VTK_VERSION(6.1.0)
+VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/${VTK_VERSION}/${VISITARCH})
 
 ##
 ## SZIP
@@ -103,7 +101,7 @@ VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBD
 ## HDF4
 ##
 VISIT_OPTION_DEFAULT(VISIT_HDF4_DIR ${VISITHOME}/hdf4/4.2.5/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz ${VISITHOME}/vtk/6.0.0/${VISITARCH}/lib vtkjpeg-6.0 TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_HDF4_LIBDEP ${VISITHOME}/szip/2.1/${VISITARCH}/lib sz ${VISITHOME}/vtk/${VTK_VERSION}/${VISITARCH}/lib vtkjpeg-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION} TYPE STRING)
 
 ##
 ## Ice-T
@@ -126,5 +124,6 @@ VISIT_OPTION_DEFAULT(VISIT_SILO_LIBDEP HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP
 ## Xdmf
 ##
 VISIT_OPTION_DEFAULT(VISIT_XDMF_DIR ${VISITHOME}/Xdmf/2.1.1/${VISITARCH})
-VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5  VTK_LIBRARY_DIRS vtklibxml2-6.0  TYPE STRING)
+VISIT_OPTION_DEFAULT(VISIT_XDMF_LIBDEP HDF5_LIBRARY_DIR hdf5  VTK_LIBRARY_DIRS vtklibxml2-${VTK_MAJOR_VERSION}.${VTK_MINOR_VERSION}  TYPE STRING)
 
+ENDIF(WIN32)

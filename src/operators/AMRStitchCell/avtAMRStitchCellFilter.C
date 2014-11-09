@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -286,10 +286,10 @@ avtAMRStitchCellFilter::PreExecute(void)
     for (size_t l=1; l<nLevels; ++l)
     {
         const std::vector<int>& refRatio = domainNesting->GetLevelRefinementRatios((int)l);
-        if (refRatio.size() != topologicalDimension)
+        if (refRatio.size() != (size_t)topologicalDimension)
             EXCEPTION1(ImproperUseException,
                     "Refinement ratio provided by database via domain nesting is invalid. "
-                    "Expected a vector of length three.");
+                    "Expected a vector of length equal to topological dataset dimension.");
 
         logicalDomainBoundingBox[l].resize(6);
         logicalDomainBoundingBox[l][0] = refRatio[0] * logicalDomainBoundingBox[l-1][0];
@@ -319,7 +319,7 @@ avtAMRStitchCellFilter::PreExecute(void)
     for (size_t l=0; l<nLevels; ++l)
     {
         cellSize[l] = domainNesting->GetLevelCellSizes((int)l);
-        if (cellSize[l].size() != spatialDimension)
+        if (cellSize[l].size() != (size_t)spatialDimension)
         {
             EXCEPTION1(ImproperUseException,
                     "Database plugin did not properly set level cell sizes using "
@@ -335,42 +335,37 @@ avtAMRStitchCellFilter::PreExecute(void)
 //      Create dual grid and stitch cell data sets and add them to a data tree
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      domain     The domain number.
-//      <unused>   The label.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Gunther H. Weber
 //  Creation:   Thu Jul 8 15:14:01 PST 2010
 //
+//  Modifications:
+//    Eric Brugger, Tue Jul 22 17:02:41 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-avtDataTree_p 
-avtAMRStitchCellFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
-        std::string str)
+avtDataTree_p
+avtAMRStitchCellFilter::ExecuteDataTree(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set, the domain number and the label.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+    int domain = in_dr->GetDomain();
+    std::string label = in_dr->GetLabel();
+
     // Diagnostic output
     debug5 << "avtAMRStitchCellFilter::ExecuteDataTree(): Processing domain ";
-    debug5 << domain << " (" << str << ")" << std::endl;
+    debug5 << domain << " (" << label << ")" << std::endl;
 
     // Obtain level
     const int level = domainNesting->GetDomainLevel(domain);
     debug5 << "avtAMRStitchCellFilter::ExecuteDataTree(): Patch is in level ";
     debug5 << level << std::endl;
-
-    // Debugging via attributes: Support restricting stitch cell generation to one
-    // level or a set of patches/domains.
-    if ((atts.GetOnlyProcessLevel() && level != atts.GetLevel()) ||
-        (atts.GetOnlyProcessListedDomains() &&
-         std::find(atts.GetDomains().begin(), atts.GetDomains().end(), domain) ==
-             atts.GetDomains().end()))
-    {
-        // Return an empty data set for levels or patches that are disabled for
-        // debugging.
-        vtkDataSet *ods[2] = { 0, 0 };
-        return new avtDataTree(2, ods, domain, str);
-    }
 
     // Ensure that we are working on rectilinear grid
     vtkRectilinearGrid *rgrid = dynamic_cast<vtkRectilinearGrid*>(in_ds);
@@ -494,17 +489,6 @@ avtAMRStitchCellFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
                 continue;
             }
 
-#if 0
-            std::cout << "Neighbor " << it->domain << " in same refinement level is of type ";
-            std::cout << (it->type & Boundary::IMIN ? "(IMIN)" : "");
-            std::cout << (it->type & Boundary::IMAX ? "(IMAX)" : "");
-            std::cout << (it->type & Boundary::JMIN ? "(JMIN)" : "");
-            std::cout <<( it->type & Boundary::JMAX ? "(JMAX)" : "");
-            le = domainNesting->GetDomainLogicalExtents(it->domain);
-            std::cout << " le = { " << le[0] << ", " << le[1] << ", " << le[2] << ", "
-                << le[3] << ", " << le[4] << ", " << le[5] << " } " << std::endl; 
-#endif
-
             switch(it->type)
             {
                 case Boundary::IMIN:
@@ -570,18 +554,7 @@ avtAMRStitchCellFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
                 debug5 << "Skipping neighbor " << it->domain << " with different refinement level." << std::endl;
                 continue;
             }
-#if 0
-            std::cout << "Neighbor " << it->domain << " in same refinement level is of type ";
-            std::cout << (it->type & Boundary::IMIN ? "(IMIN)" : "");
-            std::cout << (it->type & Boundary::IMAX ? "(IMAX)" : "");
-            std::cout << (it->type & Boundary::JMIN ? "(JMIN)" : "");
-            std::cout << (it->type & Boundary::JMAX ? "(JMAX)" : "");
-            std::cout << (it->type & Boundary::KMIN ? "(KMIN)" : "");
-            std::cout << (it->type & Boundary::KMAX ? "(KMAX)" : "");
-            le = domainNesting->GetDomainLogicalExtents(it->domain);
-            std::cout << " le = { " << le[0] << ", " << le[1] << ", " << le[2] << ", "
-                << le[3] << ", " << le[4] << ", " << le[5] << " } " << std::endl; 
-#endif
+
             switch(it->type)
             {
                 case Boundary::IMIN:
@@ -769,65 +742,6 @@ avtAMRStitchCellFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
             }
         }
 
-#if 0 
-        // Debug output:
-        std::cout << "IDs of neighboring domains on KMIN:" << std::endl;
-        for (int i=0; i<dims[0]; ++i)
-        {
-            for (int j=0; j<dims[1]; ++j)
-            {
-                std::cout << std::setw(3) << refinedInSameLevelDomain[LOC(i, j, 0)] << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << "IDs of neighboring domains on KMAX:" << std::endl;
-        for (int i=0; i<dims[0]; ++i)
-        {
-            for (int j=0; j<dims[1]; ++j)
-            {
-                std::cout << std::setw(3) << refinedInSameLevelDomain[LOC(i, j, dims[2]-1)] << " ";
-            }
-            std::cout << std::endl;
-        }
-
-        std::cout << "IDs of neighboring domains on JMIN:" << std::endl;
-        for (int i=0; i<dims[0]; ++i)
-        {
-            for (int k=0; k<dims[2]; ++k)
-            {
-                std::cout << std::setw(3) << refinedInSameLevelDomain[LOC(i, 0, k)] << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << "IDs of neighboring domains on JMAX:" << std::endl;
-        for (int i=0; i<dims[0]; ++i)
-        {
-            for (int k=0; k<dims[2]; ++k)
-            {
-                std::cout << std::setw(3) << refinedInSameLevelDomain[LOC(i, dims[1]-1, k)] << " ";
-            }
-            std::cout << std::endl;
-        }
-
-        std::cout << "IDs of neighboring domains on IMIN:" << std::endl;
-        for (int j=0; j<dims[1]; ++j)
-        {
-            for (int k=0; k<dims[2]; ++k)
-            {
-                std::cout << std::setw(3) << refinedInSameLevelDomain[LOC(0, j, k)] << " ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << "IDs of neighboring domains on IMAX:" << std::endl;
-        for (int j=0; j<dims[1]; ++j)
-        {
-            for (int k=0; k<dims[2]; ++k)
-            {
-                std::cout << std::setw(3) << refinedInSameLevelDomain[LOC(dims[0]-1, j, k)] << " ";
-            }
-            std::cout << std::endl;
-        }
-#endif
 #undef LOC
     }
 
@@ -875,7 +789,7 @@ avtAMRStitchCellFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
     delete[] refinedInSameLevelDomain;
 
     // Create data tree
-    avtDataTree_p rv = new avtDataTree(2, out_ds, domain, str);
+    avtDataTree_p rv = new avtDataTree(2, out_ds, domain, label);
 
     // Clean-up intermediate results
     for (int dsNo=0; dsNo<2; ++dsNo)
@@ -898,6 +812,10 @@ avtAMRStitchCellFilter::ExecuteDataTree(vtkDataSet *in_ds, int domain,
 //    Gunther H. Weber, Wed Jul 10 14:54:09 PDT 2013
 //    Add updating centering
 //
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 
 void
@@ -914,6 +832,8 @@ avtAMRStitchCellFilter::UpdateDataObjectInfo(void)
             out_atts.SetCentering(AVT_NODECENT, varname.c_str());
     }
     //GetOutput()->GetInfo().GetAttributes().SetCentering(AVT_NODECENT);
+
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("AMRStitchCell");
 }
  
 // ****************************************************************************
@@ -945,7 +865,6 @@ avtAMRStitchCellFilter::CreateStitchCells(vtkRectilinearGrid *rgrid,
 {
     // Create unstructured grid for stitch cells
     vtkPoints *stitchCellPts = vtkVisItUtility::NewPoints(rgrid);
-    vtkUnstructuredGrid *stitchCellGrid = vtkUnstructuredGrid::New();
     vtkUnstructuredGrid *ugrid = vtkUnstructuredGrid::New();
     ugrid->SetPoints(stitchCellPts);
     stitchCellPts->Delete();
@@ -958,36 +877,6 @@ avtAMRStitchCellFilter::CreateStitchCells(vtkRectilinearGrid *rgrid,
     // the original mesh to the stitch mesh.
     std::list<vtkIdType> originalDataIds;
     std::list<vtkIdList*> interpolatedDataIds;
-
-    // The following array maps cases to their base case. It is only used for
-    // debugging, i.e., annotating stitch cells with the base case they were
-    // generated from.
-    int baseCaseForCase[256] = {
-        0, 1, 1, 2, 1, 3, 2, 4, 1, 2, 3, 4, 2, 4, 4, 5, 1, 2, 3, 4, 6, 7, 7, 8, 3, 4,
-        9, 10, 7, 11, 12, 13, 1, 3, 2, 4, 3, 9, 4, 10, 6, 7, 7, 11, 7, 12, 8, 13, 2,
-        4, 4, 5, 7, 12, 11, 13, 7, 8, 12, 13, 14, 15, 15, 16, 1, 6, 3, 7, 2, 7, 4,
-        11, 3, 7, 9, 12, 4, 8, 10, 13, 3, 7, 9, 12, 7, 14, 12, 15, 9, 12, 17, 18, 12,
-        15, 18, 19, 2, 7, 4, 8, 4, 12, 5, 13, 7, 14, 12, 15, 11, 15, 13, 16, 4, 11,
-        10, 13, 8, 15, 13, 16, 12, 15, 18, 19, 15, 20, 19, 21, 1, 3, 6, 7, 3, 9, 7,
-        12, 2, 4, 7, 8, 4, 10, 11, 13, 2, 4, 7, 11, 7, 12, 14, 15, 4, 5, 12, 13, 8,
-        13, 15, 16, 3, 9, 7, 12, 9, 17, 12, 18, 7, 12, 14, 15, 12, 18, 15, 19, 4, 10,
-        8, 13, 12, 18, 15, 19, 11, 13, 15, 16, 15, 19, 20, 21, 2, 7, 7, 14, 4, 12, 8,
-        15, 4, 11, 12, 15, 5, 13, 13, 16, 4, 8, 12, 15, 11, 15, 15, 20, 10, 13, 18,
-        19, 13, 16, 19, 21, 4, 12, 11, 15, 10, 18, 13, 19, 8, 15, 15, 20, 13, 19, 16,
-        21, 5, 13, 13, 16, 13, 19, 16, 21, 13, 16, 19, 21, 16, 21, 21, 22
-    };
-
-    // This array stores the case number for each stitch cell. This array clobbers
-    // the scalar data when the debugging option "Add Case Number" is set in
-    // AMRStitchCellFilter attributes. Note that we add this information only for
-    // the 3D case.
-    vtkFloatArray *caseArray = 0;
-    if (atts.GetAddCaseNo())
-    {
-        caseArray = vtkFloatArray::New();
-        caseArray->SetName("CaseNo");
-    }
-
 
     vtkIdType *pointIds = new vtkIdType[dims[0]*dims[1]*dims[2]]; // FIXME: More memory efficient storage
     for (int i=0; i < dims[0]*dims[1]*dims[2]; ++i)
@@ -1205,16 +1094,6 @@ avtAMRStitchCellFilter::CreateStitchCells(vtkRectilinearGrid *rgrid,
                 }
             }
         }
-#if 0
-        // Debug output
-        std::cout << "IDs of computed vertices:" << std::endl;
-        for (int i=0; i<dims[0]*dims[1]; ++i)
-        {
-            std::cout << std::setw(4) <<  pointIds[i];
-            if (i%dims[0]==dims[0]-1) std::cout << std::endl; else std::cout << " ";;
-        }
-        std::cout << std::endl;
-#endif
     }
     else
     {
@@ -1490,27 +1369,17 @@ avtAMRStitchCellFilter::CreateStitchCells(vtkRectilinearGrid *rgrid,
                                 vPtId[vtxNo] = pointIds[LOC(vI, vJ, vK)];
                             }
 
-#if 0
-                            for (int x=0; x<numVtcs; ++x) std::cout << vPtId[x] << " ";
-                            std::cout << std::endl;
-#endif
                             if (numVtcs == 4)
                             {
                                 ugrid->InsertNextCell(VTK_TETRA, 4, &vPtId[0]);
-                                if (atts.GetAddCaseNo())
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
                             }
                             else if (numVtcs == 5)
                             {
                                 ugrid->InsertNextCell(VTK_PYRAMID, 5, &vPtId[0]);
-                                if (atts.GetAddCaseNo())
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
                             }
                             else if (numVtcs == 6)
                             {
                                 ugrid->InsertNextCell(VTK_WEDGE, 6, &vPtId[0]);
-                                if (atts.GetAddCaseNo())
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
                             }
                             else if (numVtcs == 7)
                             {
@@ -1551,25 +1420,10 @@ avtAMRStitchCellFilter::CreateStitchCells(vtkRectilinearGrid *rgrid,
                                 ugrid->InsertNextCell(VTK_TETRA, 4, c4);
                                 ugrid->InsertNextCell(VTK_TETRA, 4, c5);
                                 ugrid->InsertNextCell(VTK_TETRA, 4, c6);
-
-                                if (atts.GetAddCaseNo())
-                                {
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
-                                }
                             }
                             else if (numVtcs == 8)
                             {
                                 ugrid->InsertNextCell(VTK_HEXAHEDRON, 8, &vPtId[0]);
-                                if (atts.GetAddCaseNo())
-                                {
-                                    caseArray->InsertNextValue(baseCaseForCase[caseNo]);
-                                }
                             }
                             else
                                 EXCEPTION1(VisItException, "Invalid cell type (internal error).");
@@ -1580,55 +1434,38 @@ avtAMRStitchCellFilter::CreateStitchCells(vtkRectilinearGrid *rgrid,
         }
     }
 
-    if ((topologicalDimension == 3) && atts.GetAddCaseNo())
-    {
-        // For debug purposes.
-        ugrid->GetCellData()->SetScalars(caseArray);
-        ugrid->GetCellData()->SetActiveScalars("CaseNo");
-        caseArray->Delete();
-    }
-    else
-    {
-        // Copy attributes
-        ugrid->GetPointData()->InterpolateAllocate(rgrid->GetCellData(), originalDataIds.size());
-        int idx = 0;
-        std::list<vtkIdList*>::const_iterator iVLIt = interpolatedDataIds.begin();
-        vtkIdList *oneIdList = vtkIdList::New();
-        oneIdList->SetNumberOfIds(1);
-        double oneWeight[1] = { 1.0 };
-        double sevenWeights[7] = { 1./7., 1./7., 1./7., 1./7., 1./7., 1./7., 1./7. };
 
-        // FIXME: Possibly use combination of Copy and Interpolate point to improve performance.
-        // However, VTK does not seem to support mixing these calls.
-        for (std::list<vtkIdType>::const_iterator it = originalDataIds.begin();
-                it != originalDataIds.end(); ++it)
+    // Copy attributes
+    ugrid->GetPointData()->InterpolateAllocate(rgrid->GetCellData(), originalDataIds.size());
+    int idx = 0;
+    std::list<vtkIdList*>::const_iterator iVLIt = interpolatedDataIds.begin();
+    vtkIdList *oneIdList = vtkIdList::New();
+    oneIdList->SetNumberOfIds(1);
+    double oneWeight[1] = { 1.0 };
+    double sevenWeights[7] = { 1./7., 1./7., 1./7., 1./7., 1./7., 1./7., 1./7. };
+
+    // FIXME: Possibly use combination of Copy and Interpolate point to improve performance.
+    // However, VTK does not seem to support mixing these calls.
+    for (std::list<vtkIdType>::const_iterator it = originalDataIds.begin();
+            it != originalDataIds.end(); ++it)
+    {
+        if (*it != -1)
         {
-            if (*it != -1)
-            {
-                //std::cout << idx << ": Copying point with ID: " << *it << std::endl;
-                oneIdList->SetId(0, *it);
-                ugrid->GetPointData()->InterpolatePoint(rgrid->GetCellData(), idx, oneIdList, oneWeight);
-            }
-            else
-            {
-#if 0
-                std::cout << idx << ": Interpolating between IDs: ";
-                for (int i=0; i<(*iVLIt)->GetNumberOfIds(); ++i)
-                {
-                    std::cout << (*iVLIt)->GetId(i) << " (w=" << sevenWeights[i] << ") ";
-                }
-                std::cout << std::endl;
-#endif
-                ugrid->GetPointData()->InterpolatePoint(rgrid->GetCellData(), idx, *iVLIt, sevenWeights);
-                (*iVLIt)->Delete();
-                ++iVLIt;
-            }
-            ++idx;
+            //std::cout << idx << ": Copying point with ID: " << *it << std::endl;
+            oneIdList->SetId(0, *it);
+            ugrid->GetPointData()->InterpolatePoint(rgrid->GetCellData(), idx, oneIdList, oneWeight);
         }
-
-        // Clean-up
-        oneIdList->Delete(); // FIXME: Move to regular clean-up after debugging is done
+        else
+        {
+            ugrid->GetPointData()->InterpolatePoint(rgrid->GetCellData(), idx, *iVLIt, sevenWeights);
+            (*iVLIt)->Delete();
+            ++iVLIt;
+        }
+        ++idx;
     }
+
+    // Clean-up
+    oneIdList->Delete(); // FIXME: Move to regular clean-up after debugging is done
 
     // Clean-up
     delete[] pointIds;
@@ -1695,23 +1532,6 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
         zCoords->Delete();
     }
 
-#if 0
-    // This is the original dual mesh coordinate calculation code. It leads to
-    // numerical accuracy issues.
-    vtkDataArray *res_x_coords = ContractDual(rgrid->GetXCoordinates());
-    result->SetXCoordinates(res_x_coords);
-    res_x_coords->Delete();
-    vtkDataArray *res_y_coords = ContractDual(rgrid->GetYCoordinates());
-    result->SetYCoordinates(res_y_coords);
-    res_y_coords->Delete();
-    if (topologicalDimension == 3)
-    {
-        vtkDataArray *res_z_coords = ContractDual(rgrid->GetZCoordinates());
-        result->SetZCoordinates(res_z_coords);
-        res_z_coords->Delete();
-    }
-#endif
-
     // Shallow copy the field data
     result->GetFieldData()->ShallowCopy(rgrid->GetFieldData());
 
@@ -1736,22 +1556,6 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
 
     if (topologicalDimension == 2)
     {
-#if 0
-        std::cout << "VisIt ghost information:" << std::endl;
-        for (int i=0; i<dims[0]*dims[1]; ++i)
-        {
-            std::cout << std::setw(4) << int(inputGhostZones->GetValue(i));
-            if (i%dims[0]==dims[0]-1) std::cout << std::endl;
-        }
-#endif
-#if 0 
-        std::cout << "IDs of neighboring domains:" << std::endl;
-        for (int i=0; i<dims[0]*dims[1]; ++i)
-        {
-            std::cout << std::setw(3) << refinedInSameLevelDomain[i];
-            if (i%dims[0]==dims[0]-1) std::cout << std::endl; else std::cout << " ";;
-        }
-#endif
         outputGhostZones->SetNumberOfTuples((dims[0]-1)*(dims[1]-1));
 
         // 2D
@@ -1767,7 +1571,6 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
                 ghostInfo |= IGV(i,   j+1);
                 ghostInfo |= IGV(i+1, j+1);
 #undef IGV
-
 
 #ifdef IS_REMOVE_GHOST_SAMPLE
 #undef IS_REMOVE_GHOST_SAMPLE
@@ -1794,16 +1597,6 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
 
                 outputGhostZones->SetValue(j*(dims[0]-1)+i, ghostInfo);
             }
-#ifdef ENABLE_UNGHOST_CELL_OPTIMIZATION
-#if 0
-        std::cout << "Dual VisIt ghost information:" << std::endl;
-        for (int i=0; i<(dims[0]-1)*(dims[1]-1); ++i)
-        {
-            std::cout << std::setw(4) << int(outputGhostZones->GetValue(i));
-            if (i%(dims[0]-1)==(dims[0]-2)) std::cout << std::endl;
-        }
-#endif
-#endif
     }
     else
     {
@@ -1864,38 +1657,3 @@ avtAMRStitchCellFilter::CreateDualGrid(vtkRectilinearGrid  *rgrid, int domain,
 
     return result;
 }
-
-#if 0
-
-// ****************************************************************************
-//  Method: avtAMRStitchCellFilter::ContractDual
-//
-//  Purpose:
-//      Calculate the new coordiantes in one dimension for nodal to zonal
-//      dual mesh conversion.
-//
-//  Arguments:
-//      coords    Input coordinate array.
-//
-//  Returns:      The new coordiante array.
-//
-//  Programmer: harrison37 -- generated by xml2avt
-//  Creation:   Wed May 7 15:59:34 PST 2008
-//
-// ****************************************************************************
-
-vtkDataArray *
-avtAMRStitchCellFilter::ContractDual(vtkDataArray *coords)
-{
-    vtkDataArray *res_coords = coords->NewInstance();
-
-    int npoints = coords->GetNumberOfTuples();
-    for(int i=0;i< npoints - 1;i++)
-    {
-        double curr = (coords->GetTuple1(i+1) + coords->GetTuple1(i)) / 2.0;
-        res_coords->InsertNextTuple1(curr);
-    }
-    return res_coords;
-}
-
-#endif

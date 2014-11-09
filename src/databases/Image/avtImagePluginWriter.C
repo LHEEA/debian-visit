@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -299,7 +299,7 @@ WriteImage(int format, int compression, int quality,
 {
     bool is3D = dims[2] > 1;
 
-    vtkImageWriter *writer;
+    vtkImageWriter *writer = NULL; //TODO: check fix for uninitialized pointer
     string ext;
     switch (format)
     {
@@ -341,6 +341,12 @@ WriteImage(int format, int compression, int quality,
         {
             writer = vtkPNMWriter::New();
             ext = ".pnm";
+            break;
+        }
+        default: ///TODO: or throw error
+        {
+            writer = vtkPNGWriter::New();
+            ext = ".png";
             break;
         }
     }

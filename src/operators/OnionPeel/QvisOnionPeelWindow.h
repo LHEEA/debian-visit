@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,7 @@
 class OnionPeelAttributes;
 class QButtonGroup;
 class QCheckBox;
+class QComboBox;
 class QLineEdit;
 class QSpinBox;
 class QvisSILSetSelector;
@@ -75,6 +76,9 @@ class QvisSILSetSelector;
 //   Replaced widgets/slots/var associated with Category/Set with
 //   QvisSILSetSelector and its slots.
 //
+//   Kathleen Biagas, Tue Jul 22 19:32:57 MST 2014
+//   Added honorOriginalMesh comboBox.
+//
 // ****************************************************************************
 
 class QvisOnionPeelWindow : public QvisOperatorWindow
@@ -99,6 +103,7 @@ class QvisOnionPeelWindow : public QvisOperatorWindow
     void indexChanged();
     void useGlobalIdToggled(bool val);
     void requestedLayerChanged(int val);
+    void honorOriginalMeshChanged(int);
     void delayedApply();
   private:
     QButtonGroup *adjacencyType;
@@ -108,6 +113,7 @@ class QvisOnionPeelWindow : public QvisOperatorWindow
     QLineEdit *index;
     QSpinBox  *requestedLayer;
     QCheckBox *useGlobalId;
+    QComboBox *honorOriginalMesh;
 
     OnionPeelAttributes *atts;
 };

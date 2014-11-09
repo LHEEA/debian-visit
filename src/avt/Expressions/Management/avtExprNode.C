@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,7 @@
 #include <avtArrayComposeExpression.h>
 #include <avtArrayComposeWithBinsExpression.h>
 #include <avtArrayDecomposeExpression.h>
+#include <avtArraySumExpression.h>
 #include <avtBinExpression.h>
 #include <avtBinaryAddExpression.h>
 #include <avtBinaryAndExpression.h>
@@ -78,12 +79,14 @@
 #include <avtHSVColorComposeExpression.h>
 #include <avtIsNaNExpression.h>
 #include <avtKeyAggregatorExpression.h>
+#include <avtLambda2Expression.h>
 #include <avtLaplacianExpression.h>
 #include <avtLocalizedCompactnessExpression.h>
 #include <avtMinMaxExpression.h>
 #include <avtPerformColorTableLookupExpression.h>
 #include <avtProcessorIdExpression.h>
 #include <avtThreadIdExpression.h>
+#include <avtQCriterionExpression.h>
 #include <avtRecenterExpression.h>
 #include <avtRectilinearLaplacianExpression.h>
 #include <avtRelativeDifferenceExpression.h>
@@ -491,6 +494,15 @@ avtVectorExpr::CreateFilters(ExprPipelineState *state)
 //    Brad Whitlock, Wed Sep 12 17:15:18 PDT 2012
 //    Added bin expression.
 //
+//    Gunther H. Weber, Tue May 13 10:42:05 PDT 2014
+//    Added array_sum expression.
+//
+//    Kevin Griffin, Mon Jul 28 17:25:56 PDT 2014
+//    Added q_criterion expression.
+//
+//    Kevin Griffin, Tue Aug 5 15:01:27 PDT 2014
+//    Added lambda2 expression.
+//
 // ****************************************************************************
 
 avtExpressionFilter *
@@ -526,6 +538,8 @@ avtFunctionExpr::CreateFilters(string functionName)
         return new avtArrayComposeWithBinsExpression();
     if (functionName == "array_decompose")
         return new avtArrayDecomposeExpression();
+    if (functionName == "array_sum")
+        return new avtArraySumExpression();
     if (functionName == "localized_compactness")
         return new avtLocalizedCompactnessExpression();
     if (functionName == "recenter")
@@ -638,6 +652,10 @@ avtFunctionExpr::CreateFilters(string functionName)
         return new avtBinExpression();
     if (functionName =="isnan")
         return new avtIsNaNExpression();
+    if (functionName == "q_criterion" || functionName == "q_crit")
+        return new avtQCriterionExpression();
+    if (functionName == "lambda2")
+       return new avtLambda2Expression();
 
     return NULL;
 }

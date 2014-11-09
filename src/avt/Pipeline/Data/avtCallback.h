@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,6 +49,7 @@
 
 #include <avtDataObject.h>
 #include <avtDatabase.h>
+#include <GlobalAttributes.h>
 
 class    AttributeSubject;
 
@@ -106,6 +107,9 @@ typedef   void  (*ResetTimeoutCallback)(void *, int);
 //
 //    Hank Childs, Tue Jan 18 07:38:18 PST 2011
 //    Add auxsessionkey support for UCHC folks.
+//
+//    Cameron Christensen, Thursday, July 3, 2014
+//    Add backend type callback.
 //
 // ****************************************************************************
 
@@ -173,6 +177,9 @@ class PIPELINE_API avtCallback
     static void                  SetAuxSessionKey(const std::string &k)
                                                   { auxSessionKey = k; };
 
+    static void                  SetBackendType(GlobalAttributes::BackendType type);
+    static GlobalAttributes::BackendType GetBackendType();
+
   protected:
     static WarningCallback       warningCallback;
     static void                 *warningCallbackArgs;
@@ -187,6 +194,8 @@ class PIPELINE_API avtCallback
     static bool                  swRendering;
     static bool                  useManta;
     static bool                  safeMode;
+
+    static GlobalAttributes::BackendType backendType;
 
     static std::string           auxSessionKey;
 

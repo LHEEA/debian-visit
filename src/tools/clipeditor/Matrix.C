@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -416,7 +416,7 @@ ludcmp(Matrix *a, int *indx, float *d)
 {
     float vv[4];               /* implicit scale for each row */
     float big, dum, sum, tmp;
-    int   i, imax, j, k;
+    int   i, imax = 0, j, k; /// TODO: check on fix for uninitialized imax var
 
     *d = 1.0f;
     for (i=0; i<4; i++) {

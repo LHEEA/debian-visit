@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -117,14 +117,14 @@ struct ThreadCallbackDataStruct
 //
 // Static data
 //
-void (*RemoteProcess::getAuthentication)(const char *, const char *, int) = NULL;
+void (*RemoteProcess::getAuthentication)(const char *, const char *, const char *, int) = NULL;
 bool (*RemoteProcess::changeUsername)(const std::string &, std::string&) = NULL;
 bool RemoteProcess::disablePTY = false;
 Connection* (*RemoteProcess::customConnectionCallback)(int,void*) = NULL;
 void* RemoteProcess::customConnectionCallbackData = NULL;
 
 using std::map;
-static map<int, bool> childDied;
+static map<int, bool> childDied=std::map<int, bool>();
 
 #if !defined(_WIN32)
 // ****************************************************************************
@@ -921,10 +921,13 @@ RemoteProcess::MultiThreadedAcceptSocket()
         pthread_attr_getstacksize(&thread_atts, &stack_size);
         if (stack_size > sixty_four_MB)
         {
-            debug1 << "Users stack size set bigger than 64MB, which can "
-                   << "cause problems on some systems." << endl;
-            debug1 << "Resetting limit to 64MB" << endl;
-            debug1 << "Old stack size was " << stack_size << endl;
+            if(DebugStream::Level1())
+            {
+                debug1 << "Users stack size set bigger than 64MB, which can "
+                       << "cause problems on some systems." << endl;
+                debug1 << "Resetting limit to 64MB" << endl;
+                debug1 << "Old stack size was " << stack_size << endl;
+            }
             pthread_attr_setstacksize(&thread_atts, sixty_four_MB);
         }
 
@@ -1126,13 +1129,15 @@ RemoteProcess::Open(const MachineProfile &profile, int numRead, int numWrite,
 {
     // Write the arguments to the debug log.
     const char *mName = "RemoteProcess::Open: ";
-    debug5 << mName << "Called with (profile";
-    debug5 << ", numRead=" << numRead;
-    debug5 << ", numWrite=" << numWrite;
-    debug5 << ", createAsThoughLocal=" << (createAsThoughLocal?"true":"false");
-    debug5 << ") where profile is:" << endl;
     if(DebugStream::Level5())
+    {
+        debug5 << mName << "Called with (profile";
+        debug5 << ", numRead=" << numRead;
+        debug5 << ", numWrite=" << numWrite;
+        debug5 << ", createAsThoughLocal=" << (createAsThoughLocal?"true":"false");
+        debug5 << ") where profile is:" << endl;
         profile.Print(DebugStream::Stream5());
+    }
     std::string host(profile.GetHost());
     if(profile.GetUseGateway())
         host = profile.GetGatewayHost();
@@ -1147,8 +1152,8 @@ RemoteProcess::Open(const MachineProfile &profile, int numRead, int numWrite,
     // Start making the connections and start listening.
     if(!StartMakingConnection(host, numRead, numWrite))
     {
-        debug5 << "StartMakingConnection(" << numRead << ", " << numWrite
-               << ") failed. Returning." << endl;
+        debug5 << "StartMakingConnection(" << host << ", " << numRead
+               << ", " << numWrite << ") failed. Returning." << endl;
         return false;
     }
 
@@ -1160,10 +1165,13 @@ RemoteProcess::Open(const MachineProfile &profile, int numRead, int numWrite,
     }
     CreateCommandLine(commandLine, profile, numRead, numWrite);
 
-    debug5 << mName << "The command line to use: (" << endl;
-    for(size_t i = 0; i < commandLine.size(); ++i)
-        debug5 << "\t" << commandLine[i] << endl;
-    debug5 << ")" << endl;
+    if(DebugStream::Level5())
+    {
+        debug5 << mName << "The command line to use: (" << endl;
+        for(size_t i = 0; i < commandLine.size(); ++i)
+            debug5 << "\t" << commandLine[i] << endl;
+        debug5 << ")" << endl;
+    }
 
     //
     // Launch the remote process.
@@ -1176,7 +1184,7 @@ RemoteProcess::Open(const MachineProfile &profile, int numRead, int numWrite,
     else
     {
         debug5 << mName << "Calling LaunchRemote" << endl;
-        LaunchRemote(host, profile.UserName(), commandLine);
+        LaunchRemote(host, profile.GetPassword(), profile.UserName(), commandLine);
     }
 
     childDied[GetProcessId()] = false;
@@ -1292,9 +1300,12 @@ RemoteProcess::StartMakingConnection(const std::string &remoteHost,
     int numRead, int numWrite)
 {
     const char *mName = "RemoteProcess::StartMakingConnection: ";
-    debug5 << mName << "Called with args (";
-    debug5 << "numRead=" << numRead;
-    debug5 << ", numWrite=" << numWrite << ")" << endl;
+    if(DebugStream::Level5())
+    {
+        debug5 << mName << "Called with args (";
+        debug5 << "numRead=" << numRead;
+        debug5 << ", numWrite=" << numWrite << ")" << endl;
+    }
 
     //
     // If there are no sockets to be opened, get out since that seems
@@ -1318,9 +1329,12 @@ RemoteProcess::StartMakingConnection(const std::string &remoteHost,
         // throw a BadHostException.
         EXCEPTION1(BadHostException, localHostStr);
     }
-    debug5 << localHostStr << endl;
-    debug5 << mName << "Looking up the host using gethostbyname(\""
-           << localHostStr << "\"): ";
+    if(DebugStream::Level5())
+    {
+        debug5 << localHostStr << endl;
+        debug5 << mName << "Looking up the host using gethostbyname(\""
+               << localHostStr << "\"): ";
+    }
     struct hostent *localHostEnt = gethostbyname(localHostStr);
     if (localHostEnt == NULL)
     {
@@ -2092,14 +2106,17 @@ RemoteProcess::CreateCommandLine(stringVector &args, const MachineProfile &profi
 
         if (portTunnelMap.count(listenPortNum)<=0)
         {
-            debug5 << "Error finding tunnel for port "<<listenPortNum<<endl;
-            debug5 << "Port Tunnel Map = {" << endl;
-            for(std::map<int,int>::const_iterator pos = portTunnelMap.begin();
-                pos != portTunnelMap.end(); ++pos)
+            if(DebugStream::Level5())
             {
-                debug5 << "\t" << pos->first << "->" << pos->second << endl;
+                debug5 << "Error finding tunnel for port "<<listenPortNum<<endl;
+                debug5 << "Port Tunnel Map = {" << endl;
+                for(std::map<int,int>::const_iterator pos = portTunnelMap.begin();
+                    pos != portTunnelMap.end(); ++pos)
+                {
+                    debug5 << "\t" << pos->first << "->" << pos->second << endl;
+                }
+                debug5 << "}" << endl;
             }
-            debug5 << "}" << endl;
             EXCEPTION1(VisItException, "Launcher needed to tunnel to a local "
                        "port that wasn't in the port map.  The number of "
                        "tunneled ports may need to be increased.");
@@ -2225,7 +2242,7 @@ RemoteProcess::CreateCommandLine(stringVector &args, const MachineProfile &profi
 // ****************************************************************************
 
 void
-RemoteProcess::LaunchRemote(const std::string &host, const std::string &remoteUserName,
+RemoteProcess::LaunchRemote(const std::string &host, const std::string &password, const std::string &remoteUserName,
     const stringVector &args)
 {
     const char *mName = "RemoteProcess::LaunchRemote: ";
@@ -2246,16 +2263,19 @@ RemoteProcess::LaunchRemote(const std::string &host, const std::string &remoteUs
     if (prog[0] == '\"')
        prog = prog.substr( 1, prog.size()-2);
     const char *program = prog.c_str();
-    debug5 << mName << "Starting child process using _spawnvp.\n\tprogram=" << program<< endl;
-    debug5 << " args={";
-    for(int i = 0; i < argc; ++i)
+    if (DebugStream::Level5())
     {
-        if(argv[i] != NULL)
+        debug5 << mName << "Starting child process using _spawnvp.\n\tprogram=" << program<< endl;
+        debug5 << " args={";
+        for(int i = 0; i < argc; ++i)
         {
-            debug5 << "\t" << argv[i] << endl;
+            if(argv[i] != NULL)
+            {
+                debug5 << "\t" << argv[i] << endl;
+            }
         }
+        debug5 << "}" << endl;
     }
-    debug5 << "}" << endl;
     // Start the program using the WIN32 _spawnvp function.
     remoteProgramPid = _spawnvp(_P_NOWAIT, program, argv);
 #else
@@ -2306,7 +2326,7 @@ RemoteProcess::LaunchRemote(const std::string &host, const std::string &remoteUs
     {
         TRY
         {
-            (*getAuthentication)(remoteUserName.c_str(), host.c_str(),
+            (*getAuthentication)(remoteUserName.c_str(), password.c_str(), host.c_str(),
                                  ptyFileDescriptor);
         }
         CATCH(ChangeUsernameException)
@@ -2339,7 +2359,7 @@ RemoteProcess::LaunchRemote(const std::string &host, const std::string &remoteUs
                 stringVector args2;
                 args2.reserve( args.size() + 2 ); //one more
 
-                for(int i = 0; i < args.size(); ++i)
+                for(size_t i = 0; i < args.size(); ++i)
                 {
                     //replace..
                     std::string var = args[i];
@@ -2367,7 +2387,7 @@ RemoteProcess::LaunchRemote(const std::string &host, const std::string &remoteUs
                 }
 
                 //recursively call connection..
-                LaunchRemote(host, newUserName, args2);
+                LaunchRemote(host, password, newUserName, args2);
                 return; //unnecessary
             }
             else
@@ -2694,7 +2714,7 @@ RemoteProcess::StrDup(const std::string &str) const
 // ****************************************************************************
 
 void
-RemoteProcess::SetAuthenticationCallback(void (*callback)(const char *, const char *, int))
+RemoteProcess::SetAuthenticationCallback(void (*callback)(const char *, const char *, const char *, int))
 {
     getAuthentication = callback;
 }

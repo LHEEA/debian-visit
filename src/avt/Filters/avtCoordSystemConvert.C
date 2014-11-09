@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,7 @@
 #include <vtkStructuredGrid.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkDoubleArray.h>
+#include <vtkAppendFilter.h>
 
 #include <vtkVisItUtility.h>
 #include <vtkIdList.h>
@@ -81,6 +82,7 @@ avtCoordSystemConvert::avtCoordSystemConvert()
 {
     inputSys  = CARTESIAN;
     outputSys = CARTESIAN;
+    continuousPhi = false;
     vectorTransformMethod = AsDirection;
 }
 
@@ -165,7 +167,7 @@ CartesianToCylindricalPoint(double *newpt, const double *pt)
     newpt[0] = sqrt(pt[0]*pt[0] + pt[1]*pt[1]);
     newpt[1] = atan2(pt[1], pt[0]);
     if (newpt[1] < 0.)
-      newpt[1] += 2*vtkMath::Pi();
+      newpt[1] += 2.0 * M_PI;
     newpt[2] = pt[2];
 }
 
@@ -188,7 +190,7 @@ CartesianToSphericalPoint(double *newpt, const double *pt)
     newpt[1] = acos ( pt[2]/newpt[0] );
     newpt[2] = atan2( pt[1], pt[0]);
     if (newpt[2] < 0.)
-        newpt[2] += 2*vtkMath::Pi();
+        newpt[2] += 2.0 * M_PI;
 }
 
 // ****************************************************************************
@@ -234,7 +236,7 @@ CylindricalToSphericalPoint(double *newpt, const double *pt)
     newpt[0] = sqrt(pt[0]*pt[0] + pt[2]*pt[2]);
     newpt[1] = atan2(pt[0], pt[2]);            
     if (newpt[1] < 0.)
-        newpt[1] += 2*vtkMath::Pi();
+        newpt[1] += 2.0 * M_PI;
     newpt[2] = pt[1];                          
 }
 
@@ -350,6 +352,7 @@ TransformSingleVector(avtCoordSystemConvert::VectorTransformMethod method,
 
 static vtkDataSet *
 Transform(vtkDataSet *in_ds,
+          bool continuousPhi,
           avtCoordSystemConvert::VectorTransformMethod vectorTransformMethod,
           xformFunc xf)
 {
@@ -362,13 +365,66 @@ Transform(vtkDataSet *in_ds,
     vtkPoints *pts = vtkVisItUtility::GetPoints(in_ds);
     vtkPoints *newPts = vtkPoints::New(pts->GetDataType());
     newPts->SetNumberOfPoints(numPts);
-    for (int i = 0 ; i < numPts ; i++)
+
+    // When converting from cartesian to cylindrical with a continuous
+    // phi the points must be converted using the points ids so to be
+    // contiguous. If the points are not part of a VTK_POLY_LINE just
+    // convert the points.
+    if( continuousPhi )
     {
-        double pt[3], newpt[3];
-        pts->GetPoint(i, pt);
-        xf(newpt, pt);
-        newPts->SetPoint(i, newpt);
+        // Set the wrap value for +/- pi at 75% which accounts for
+        // large steps but avoids the "wrap" at 0.
+        double pi_low  = 0.25 * M_PI;
+        double pi_high = 1.75 * M_PI;
+
+        for (int c=0; c<in_ds->GetNumberOfCells(); ++c)
+        {
+            vtkIdList *idlist = vtkIdList::New();
+            in_ds->GetCellPoints(c, idlist);
+            
+            double lastPhi = 0, angle = 0;
+            
+            for (int j=0; j<idlist->GetNumberOfIds(); ++j)
+            {
+                double pt[3], newpt[3];
+                pts->GetPoint(idlist->GetId(j), pt);
+                xf(newpt, pt);
+                
+                if( in_ds->GetCellType(c) == VTK_POLY_LINE )
+                {
+                    // Check for a wrapped-around from -pi radians to pi
+                    // radians.
+                    if( lastPhi < pi_low && pi_high < newpt[1] )
+                    {
+                        angle -= 2.0 * M_PI;
+                    }
+                    else if( newpt[1] < pi_low && pi_high < lastPhi )
+                    {
+                        angle += 2.0 * M_PI;
+                    }
+                    
+                    lastPhi = newpt[1];
+                    
+                    newpt[1] += angle;
+                }
+                
+                newPts->SetPoint(idlist->GetId(j), newpt);
+            }
+
+            idlist->Delete();
+        }
     }
+    else
+    {
+        for (int i=0; i<numPts; ++i)
+        {
+            double pt[3], newpt[3];
+            pts->GetPoint(i, pt);
+            xf(newpt, pt);
+            newPts->SetPoint(i, newpt);
+        }
+    }
+
     vtkDataSet *rv = CreateNewDataset(in_ds, newPts);
 
     //
@@ -534,124 +590,147 @@ Transform(vtkDataSet *in_ds,
 static vtkDataSet *
 FixWraparounds(vtkDataSet *in_ds, int comp_idx)
 {
-    int   i, j;
-
-    vtkUnstructuredGrid *ugrid = NULL;
-    bool needDelete = false;
-    if (in_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
-    {
-        ugrid = (vtkUnstructuredGrid *) in_ds;
-    }
-    else if (in_ds->GetDataObjectType() == VTK_POLY_DATA)
-    {
-        vtkPolyData *pd = (vtkPolyData *) in_ds;
-        ugrid = vtkUnstructuredGrid::New();
-        needDelete = true;
-        ugrid->SetPoints(pd->GetPoints());
-        ugrid->GetPointData()->ShallowCopy(pd->GetPointData());
-        ugrid->GetCellData()->ShallowCopy(pd->GetCellData());
-        ugrid->GetFieldData()->ShallowCopy(pd->GetFieldData());
-        int mSize = pd->GetLines()->GetSize() + 
-                    pd->GetVerts()->GetSize() + 
-                    pd->GetPolys()->GetSize() + 
-                    pd->GetStrips()->GetSize();
-        ugrid->Allocate(mSize);
-        vtkIdList *idlist = vtkIdList::New();
-        for (int i = 0 ; i < pd->GetNumberOfCells() ; i++)
-        {
-            pd->GetCellPoints(i, idlist);
-            ugrid->InsertNextCell(pd->GetCellType(i), idlist);
-        }
-        idlist->Delete();
-    }
-    else
+    if (in_ds->GetDataObjectType() != VTK_UNSTRUCTURED_GRID &&
+        in_ds->GetDataObjectType() != VTK_POLY_DATA)
     {
         in_ds->Register(NULL);
         return in_ds;
     }
 
-    vtkPoints *pts = ugrid->GetPoints();
+    vtkDataSet *out_ds = NULL;
+
+    int ncells = in_ds->GetNumberOfCells();
+
+    vtkPoints *pts = vtkVisItUtility::GetPoints(in_ds);
     int npts = pts->GetNumberOfPoints();
 
     vtkPoints *new_pts = vtkPoints::New(pts->GetDataType());
     new_pts->SetNumberOfPoints(2*npts);
-    vtkUnstructuredGrid *new_grid = vtkUnstructuredGrid::New();
-    new_grid->SetPoints(new_pts);
-    vtkPointData *out_pd = new_grid->GetPointData();
-    vtkPointData *in_pd  = in_ds->GetPointData();
+
+    if (in_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
+    {
+        vtkUnstructuredGrid *new_grid = vtkUnstructuredGrid::New();
+        new_grid->SetPoints(new_pts);
+        new_grid->Allocate(2*ncells);
+        out_ds = new_grid;
+    }
+    else if (in_ds->GetDataObjectType() == VTK_POLY_DATA)
+    {
+        vtkPolyData *new_polydata = vtkPolyData::New();
+        new_polydata->SetPoints(new_pts);
+        new_polydata->Allocate(2*ncells);
+        out_ds = new_polydata;
+    }
+
+    vtkPointData *in_pd  =  in_ds->GetPointData();
+    vtkPointData *out_pd = out_ds->GetPointData();
     out_pd->CopyAllocate(in_pd, 2*npts);
    
-    for (i = 0 ; i < npts ; i++)
+    for (int i = 0 ; i < npts ; i++)
     {
         double pt[3];
         pts->GetPoint(i, pt);
+
         new_pts->SetPoint(2*i, pt);
-        if (pt[comp_idx] > vtkMath::Pi())
-            pt[comp_idx] -= 2*vtkMath::Pi();
+
+        if (pt[comp_idx] > M_PI)
+            pt[comp_idx] -= 2.0 * M_PI;
         else
-            pt[comp_idx] += 2*vtkMath::Pi();
+            pt[comp_idx] += 2.0 * M_PI;
+
         new_pts->SetPoint(2*i+1, pt);
         out_pd->CopyData(in_pd, i, 2*i);
         out_pd->CopyData(in_pd, i, 2*i+1);
     }
+ 
+    int cellCnt = 0;
 
-    int ncells = ugrid->GetNumberOfCells();
-    new_grid->Allocate(2*ncells*8);
-    vtkCellData *out_cd = new_grid->GetCellData();
+    vtkCellData *out_cd = out_ds->GetCellData();
     vtkCellData *in_cd  = in_ds->GetCellData();
     out_cd->CopyAllocate(in_cd, 2*ncells);
    
-    float pi = vtkMath::Pi();
-    float twoPiCutoff = 1.75*vtkMath::Pi();
-    float zeroPiCutoff = 0.25*vtkMath::Pi();
-    int cellCnt = 0;
-    for (i = 0 ; i < ncells ; i++)
+    float zeroPiCutoff = 0.25 * M_PI;
+    float twoPiCutoff  = 1.75 * M_PI;
+
+    for (int i = 0 ; i < ncells ; i++)
     {
-        vtkIdType *ids, cellNPts;
-        ugrid->GetCellPoints(i, cellNPts, ids);
+        vtkIdList *idlist = vtkIdList::New();
+        in_ds->GetCellPoints(i, idlist);
+        int numCellPts = idlist->GetNumberOfIds();
+
         bool closeToZero = false;
         bool closeToTwoPi = false;
-        bool closeToLow[8];
-        for (j = 0 ; j < cellNPts ; j++)
+        bool *closeToLow = new bool[numCellPts];
+
+        vtkIdType *new_ids = new vtkIdType[numCellPts];
+
+        for (int j = 0 ; j < numCellPts ; j++)
         {
             double pt[3];
-            pts->GetPoint(ids[j], pt);
+            pts->GetPoint(idlist->GetId(j), pt);
+
             if (pt[comp_idx] > twoPiCutoff)
                 closeToTwoPi = true;
             if (pt[comp_idx] < zeroPiCutoff)
                 closeToZero  = true;
-            closeToLow[j] = (pt[comp_idx] < pi ? false : true);
+
+            closeToLow[j] = (pt[comp_idx] < M_PI ? false : true);
         }
+
         if (closeToTwoPi && closeToZero)
         {
             // Make two cells -- start with the one close to 0 radians.
-            vtkIdType low_ids[8];
-            for (j = 0 ; j < cellNPts ; j++)
-                low_ids[j] = (closeToLow[j] ? 2*ids[j] : 2*ids[j]+1);
-            new_grid->InsertNextCell(ugrid->GetCellType(i), cellNPts, low_ids);
+            for (int j = 0 ; j < numCellPts ; j++)
+                new_ids[j] = (closeToLow[j] ? 2*idlist->GetId(j) :
+                                              2*idlist->GetId(j)+1);
+
+            if (in_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
+              ((vtkUnstructuredGrid*) out_ds)->
+                InsertNextCell(in_ds->GetCellType(i), numCellPts, new_ids);
+            else // if (in_ds->GetDataObjectType() == VTK_POLY_DATA)
+              ((vtkPolyData*) out_ds)->
+                InsertNextCell(in_ds->GetCellType(i), numCellPts, new_ids);
+
             out_cd->CopyData(in_cd, i, cellCnt++);
             
-            vtkIdType hi_ids[8];
-            for (j = 0 ; j < cellNPts ; j++)
-                hi_ids[j] = (!closeToLow[j] ? 2*ids[j] : 2*ids[j]+1);
-            new_grid->InsertNextCell(ugrid->GetCellType(i), cellNPts, hi_ids);
+            // Make the second cells -- create the one close to pie radians.
+            for (int j = 0 ; j < numCellPts ; j++)
+                new_ids[j] = (!closeToLow[j] ? 2*idlist->GetId(j) :
+                                               2*idlist->GetId(j)+1);
+
+            if (in_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
+              ((vtkUnstructuredGrid*) out_ds)->
+                InsertNextCell(in_ds->GetCellType(i), numCellPts, new_ids);
+            else // if (in_ds->GetDataObjectType() == VTK_POLY_DATA)
+              ((vtkPolyData*) out_ds)->
+                InsertNextCell(in_ds->GetCellType(i), numCellPts, new_ids);
+
             out_cd->CopyData(in_cd, i, cellCnt++);
+
         }
         else
         {
-            vtkIdType new_ids[8];
-            for (j = 0 ; j < cellNPts ; j++)
-                new_ids[j] = 2*ids[j];
-            new_grid->InsertNextCell(ugrid->GetCellType(i), cellNPts, new_ids);
+            for (int j = 0 ; j < numCellPts ; j++)
+              new_ids[j] = 2*idlist->GetId(j);
+
+            if (in_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
+              ((vtkUnstructuredGrid*) out_ds)->
+                InsertNextCell(in_ds->GetCellType(i), numCellPts, new_ids);
+            else // if (in_ds->GetDataObjectType() == VTK_POLY_DATA)
+              ((vtkPolyData*) out_ds)->
+                InsertNextCell(in_ds->GetCellType(i), numCellPts, new_ids);
+
             out_cd->CopyData(in_cd, i, cellCnt++);
         }
-    }
-    new_grid->Squeeze();
-    new_pts->Delete();
-    if (needDelete)
-        ugrid->Delete();
 
-    return new_grid;
+        delete[] closeToLow;
+        delete[] new_ids;
+    }
+
+    out_ds->Squeeze();
+    new_pts->Delete();
+
+    return out_ds;
 }
 
 // ****************************************************************************
@@ -661,11 +740,9 @@ FixWraparounds(vtkDataSet *in_ds, int comp_idx)
 //      Sends the specified input and output through the CoordConvert filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Hank Childs
 //  Creation:   Fri Jun 27 16:41:32 PST 2003
@@ -678,11 +755,19 @@ FixWraparounds(vtkDataSet *in_ds, int comp_idx)
 //    Jeremy Meredith, Fri Aug  7 15:35:29 EDT 2009
 //    Call a common transform function to avoid code duplication.
 //
+//    Eric Brugger, Mon Jul 21 10:33:06 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtCoordSystemConvert::ExecuteData(vtkDataSet *in_ds, int, std::string)
+avtDataRepresentation *
+avtCoordSystemConvert::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     std::vector<vtkDataSet *> deleteList;
 
     CoordSystem ct_current = inputSys;
@@ -691,36 +776,35 @@ avtCoordSystemConvert::ExecuteData(vtkDataSet *in_ds, int, std::string)
     vtkDataSet *new_ds;
 
     if( ct_current == CARTESIAN && outputSys == CYLINDRICAL )
-      new_ds = Transform(cur_ds,
-                         vectorTransformMethod,
-                         CartesianToCylindricalPoint);
-
+        new_ds = Transform(cur_ds,
+                           continuousPhi, vectorTransformMethod,
+                           CartesianToCylindricalPoint);
     else if( ct_current == CARTESIAN && outputSys == SPHERICAL )
       new_ds = Transform(cur_ds,
-                         vectorTransformMethod,
+                         continuousPhi, vectorTransformMethod,
                          CartesianToSphericalPoint);
 
     else if( ct_current == CYLINDRICAL && outputSys == CARTESIAN )
       new_ds = Transform(cur_ds,
-                         vectorTransformMethod,
+                         continuousPhi, vectorTransformMethod,
                          CylindricalToCartesianPoint);
 
     else if( ct_current == CYLINDRICAL && outputSys == SPHERICAL )
       new_ds = Transform(cur_ds,
-                         vectorTransformMethod,
+                         continuousPhi, vectorTransformMethod,
                          CylindricalToSphericalPoint);
 
     else if( ct_current == SPHERICAL && outputSys == CARTESIAN )
       new_ds = Transform(cur_ds,
-                         vectorTransformMethod,
+                         continuousPhi, vectorTransformMethod,
                          SphericalToCartesianPoint);
 
     else if( ct_current == SPHERICAL && outputSys == CYLINDRICAL )
       new_ds = Transform(cur_ds,
-                         vectorTransformMethod,
+                         continuousPhi, vectorTransformMethod,
                          SphericalToCylindricalPoint);
     else
-      return in_ds;
+      return in_dr;
       
     deleteList.push_back(new_ds);
     cur_ds = new_ds;
@@ -734,18 +818,22 @@ avtCoordSystemConvert::ExecuteData(vtkDataSet *in_ds, int, std::string)
     }
     else if (outputSys == CYLINDRICAL)
     {
-        cur_ds = FixWraparounds(cur_ds, 1);
-        deleteList.push_back(cur_ds);
+        if( ct_current != CARTESIAN || !continuousPhi )
+        {
+          cur_ds = FixWraparounds(cur_ds, 1);
+          deleteList.push_back(cur_ds);
+        }
     }
 
-    ManageMemory(cur_ds);
+    avtDataRepresentation *out_dr = new avtDataRepresentation(cur_ds,
+        in_dr->GetDomain(), in_dr->GetLabel());
 
     for (unsigned int i = 0 ; i < deleteList.size() ; i++)
     {
          deleteList[i]->Delete();
     }
 
-    return cur_ds;
+    return out_dr;
 }
 
 
@@ -801,7 +889,9 @@ CreateNewDataset(vtkDataSet *in_ds, vtkPoints *newPts)
     vtkDataSet *rv = NULL;
 
     int dstype = in_ds->GetDataObjectType();
-    if (dstype == VTK_STRUCTURED_GRID || dstype == VTK_POLY_DATA ||
+
+    if (dstype == VTK_POLY_DATA ||
+        dstype == VTK_STRUCTURED_GRID ||
         dstype == VTK_UNSTRUCTURED_GRID)
     {
         vtkPointSet *rv2 = (vtkPointSet *) in_ds->NewInstance();
@@ -823,6 +913,10 @@ CreateNewDataset(vtkDataSet *in_ds, vtkPoints *newPts)
         rv2->SetPoints(newPts);
 
         rv = rv2;
+    }
+    else
+    {
+      EXCEPTION1(ImproperUseException, "The dataset type can not be converted.");
     }
 
     return rv;

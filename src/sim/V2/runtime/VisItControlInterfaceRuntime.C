@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,7 @@
 #include <VisItInterfaceTypes_V2.h>
 #include <VisItInterfaceTypes_V2P.h>
 
+#include <DebugStream.h>
 #include <Engine.h>
 #include <NetworkManager.h>
 #include <LostConnectionException.h>
@@ -62,6 +63,10 @@
 #include <visitstream.h>
 #include <map>
 #include <vector>
+
+#include <vtkVisItUtility.h>
+#include <avtFileDescriptorManager.h>
+
 
 extern void DataCallbacksCleanup(void);
 
@@ -113,8 +118,16 @@ void *simv2_get_engine()
 {
     // Make sure the timer is initialized. In visit this is normally
     // done in the main function but for the simulation it's done here.
-    if ( visitTimer == NULL)
-        TimingsManager::Initialize( "Simulation");
+    if (visitTimer == NULL)
+    {
+        TimingsManager::Initialize("Simulation");
+        // really disable the timer since we are very likely
+        // running in a resource constrained environment over
+        // a long time period
+        visitTimer->Disable();
+        visitTimer->NoForcedTiming();
+    }
+
     Engine *engine = Engine::Instance();
     engine->EnableSimulationPlugins();
     return (void*)engine;
@@ -135,7 +148,7 @@ int simv2_initialize(void *e, int argc, char *argv[])
         retval = 0;
     }
     ENDTRY
-    return 1;
+    return retval;
 }
 
 int simv2_connect_viewer(void *e, int argc, char *argv[])
@@ -167,8 +180,6 @@ int simv2_get_descriptor(void *e)
     Engine *engine = (Engine*)(e);
     return engine->GetInputSocket();
 }
-
-#include <DebugStream.h>
 
 int simv2_process_input(void *e)
 {
@@ -234,6 +245,16 @@ void simv2_disconnect()
     TRY
     {
         Engine::DisconnectSimulation();
+
+        if (visitTimer)
+            TimingsManager::Finalize();
+
+        // KSB: This may be needed for memory leaks, but I've commented
+        // it out for now, as it's use causes a segfault should VisIt
+        // try to reconnect to the same simulation.
+        //vtkVisItUtility::CleanupStaticVTKObjects();
+        avtFileDescriptorManager::DeleteInstance();
+
         DataCallbacksCleanup();
     }
     CATCHALL
@@ -307,15 +328,25 @@ void
 simv2_debug_logs(int level, const char *msg)
 {
     if(level == 1)
+    {
         debug1 << msg;
+    }
     else if(level == 2)
+    {
         debug2 << msg;
+    }
     else if(level == 3)
+    {
         debug3 << msg;
+    }
     else if(level == 4)
+    {
         debug4 << msg;
+    }
     else if(level == 5)
+    {
         debug5 << msg;
+    }
 }
 
 int
@@ -694,7 +725,7 @@ SetAttributeSubjectValues(AttributeSubject *atts,
 }
 
 int
-simv2_set_plot_options(void *e, int plotID, const char *fieldName, 
+simv2_set_plot_options(void * /*e*/, int plotID, const char *fieldName, 
     int fieldType, void *fieldVal, int fieldLen)
 {
     int status = VISIT_ERROR;
@@ -715,7 +746,7 @@ simv2_set_plot_options(void *e, int plotID, const char *fieldName,
 }
 
 int
-simv2_set_operator_options(void *e, int plotID, int operatorID, const char *fieldName, 
+simv2_set_operator_options(void * /*e*/, int plotID, int operatorID, const char *fieldName, 
     int fieldType, void *fieldVal, int fieldLen)
 {
     int status = VISIT_ERROR;
@@ -724,7 +755,7 @@ simv2_set_operator_options(void *e, int plotID, int operatorID, const char *fiel
         std::map<int, PlotInformation>::iterator it = GetPlotInformation()->find(plotID);
         if(it != GetPlotInformation()->end() && fieldVal != NULL)
         {
-            if(operatorID >= 0 && operatorID < it->second.operators.size())
+            if(operatorID >= 0 && operatorID < static_cast<int>(it->second.operators.size()))
             {
                 status = SetAttributeSubjectValues(it->second.operators[operatorID].atts, 
                     std::string(fieldName), fieldType, fieldVal, fieldLen); 

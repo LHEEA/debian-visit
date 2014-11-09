@@ -83,7 +83,7 @@ void DIR_Graph::convert_SKL_to_graph (Skeleton::Skeleton s)
 {
   init_graph();
 
-  int num_edges = s.size();
+  int num_edges = (int)s.size();
   nlist.resize(num_edges + 1);
   elist.resize(num_edges);
 
@@ -125,7 +125,7 @@ void DIR_Graph::trim_leafs()
   std::vector<GraphEdge> tmp_elist;
   std::vector<GraphNode> tmp_nlist;
 
-  int i;
+  size_t i;
   for (i=0; i<elist.size(); i++)
   {
     GraphEdge &e=elist[i];
@@ -139,7 +139,7 @@ void DIR_Graph::trim_leafs()
   {
     GraphEdge &e=tmp_elist[i];
     bool add=true;
-    for (int j=0; j<tmp_nlist.size(); j++)
+    for (size_t j=0; j<tmp_nlist.size(); j++)
     {
       if (tmp_nlist[j].pre_node_id == e.node1)
       {
@@ -156,7 +156,7 @@ void DIR_Graph::trim_leafs()
     }
     
     add=true;
-    for (int j=0; j<tmp_nlist.size(); j++)
+    for (size_t j=0; j<tmp_nlist.size(); j++)
     {
       if (tmp_nlist[j].pre_node_id == e.node2)
       {
@@ -178,22 +178,22 @@ void DIR_Graph::trim_leafs()
   {
     GraphEdge &e=tmp_elist[i];
     
-    for (int j=0; j<tmp_nlist.size(); j++)
+    for (size_t j=0; j<tmp_nlist.size(); j++)
     {
       if (tmp_nlist[j].pre_node_id == e.node1)
       {
         e.node1 = tmp_nlist[j].node_id;
-        tmp_nlist[j].edges.push_back(i);
+        tmp_nlist[j].edges.push_back((int)i);
         break;
       }
     }
     
-    for (int j=0; j<tmp_nlist.size(); j++)
+    for (size_t j=0; j<tmp_nlist.size(); j++)
     {
       if (tmp_nlist[j].pre_node_id == e.node2)
       {
         e.node2 = tmp_nlist[j].node_id;
-        tmp_nlist[j].edges.push_back(i);
+        tmp_nlist[j].edges.push_back((int)i);
         break;
       }
     }
@@ -215,7 +215,7 @@ void DIR_Graph::trim_leafs()
 
 int DIR_Graph::Min_Distance(const std::vector<double>& D, std::vector<bool>& F)
 {                
-  size_t j;
+  size_t j = 0;
   double dmin = 1.e30;                                                   
             
   for(size_t i = 0; i < nlist.size(); i++)
@@ -295,12 +295,12 @@ void DIR_Graph::Dijkstra_path_between(int n1, int n2, std::vector<int> &path)
 void DIR_Graph::search_shortest_paths_between_pairs_of_leafs()
 {
   std::vector<int> leaf_nodes;
-  int i, j;
+  size_t i, j;
   
   for (i=0; i<nlist.size(); i++)
   {
     if (nlist[i].edges.size()<2)
-      leaf_nodes.push_back(i);
+      leaf_nodes.push_back((int)i);
   }
   
   for (i=0; i<leaf_nodes.size()-1; i++)
@@ -317,7 +317,7 @@ void DIR_Graph::search_shortest_paths_between_pairs_of_leafs()
 void DIR_Graph::get_the_longest_shortest_path()
 {
   std::vector<float> path_lens;
-  int i, j;
+  size_t i, j;
 
   for (i=0; i<all_paths_between_leafs.size(); i++)
   {
@@ -344,7 +344,7 @@ void DIR_Graph::get_the_longest_shortest_path()
     if (path_lens[i] > cur_longest_len)
     {
       cur_longest_len = path_lens[i];
-      path_id = i;
+      path_id = (int)i;
     }
   }
 
@@ -362,7 +362,7 @@ Skeleton::Point DIR_Graph::get_centroid()
   search_shortest_paths_between_pairs_of_leafs();
   get_the_longest_shortest_path();
 
-  int i;
+  size_t i;
   float half_len = longest_length/2.;
 
   float cur_len = 0;
@@ -386,4 +386,6 @@ Skeleton::Point DIR_Graph::get_centroid()
       return Skeleton::Point(cx, cy);
     }
   }
+
+  return Skeleton::Point(INFINITY, INFINITY); ///TODO: check on fix for no return-type?
 }

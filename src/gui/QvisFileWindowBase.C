@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -380,8 +380,7 @@ QvisFileWindowBase::UpdateComboBox(QComboBox *cb, const stringVector &s,
     cb->clear();
 
     // Populate the combo box.
-    int i;
-    for(i = 0; i < s.size(); ++i)
+    for(size_t i = 0; i < s.size(); ++i)
         cb->addItem(s[i].c_str());
 
     // Set the current item.
@@ -393,8 +392,8 @@ QvisFileWindowBase::UpdateComboBox(QComboBox *cb, const stringVector &s,
     }
 
     cb->setCurrentIndex(index);
-//    cb->setEditText(activeItem);
-cb->setEditable(true);
+    //    cb->setEditText(activeItem);
+    cb->setEditable(true);
     // Note: in Qt4 combo boxes expand out to max possible size, we
     // don't need to set a min size as we did before.
     // (we may want to set a max size some time in the future, but
@@ -720,7 +719,7 @@ QvisFileWindowBase::UpdateHostComboBox()
         else
             hostNames = p.SplitHostPattern(p.GetHost());
 
-        for (int k = 0; k < hostNames.size(); ++k)
+        for (size_t k = 0; k < hostNames.size(); ++k)
         {
             if(std::find(hosts.begin(), hosts.end(), hostNames[k]) == hosts.end())
                 hosts.push_back(hostNames[k]);
@@ -732,7 +731,7 @@ QvisFileWindowBase::UpdateHostComboBox()
     //
     if(invalidHosts.size() > 0)
     {
-        for(int i = 0; i < invalidHosts.size(); ++i)
+        for(size_t i = 0; i < invalidHosts.size(); ++i)
         {
             stringVector::iterator pos = std::find(hosts.begin(), hosts.end(),
                 invalidHosts[i]);
@@ -1537,7 +1536,7 @@ QvisFileWindowBase::GetVirtualDatabaseDefinitions(
 
     // Add the definitions for all virtual files to the map.
     defs.clear();
-    for(int i = 0; i < files.size(); ++i)
+    for(size_t i = 0; i < files.size(); ++i)
     {
         if(files[i].IsVirtual())
         {
@@ -1580,7 +1579,7 @@ QvisFileWindowBase::CheckForNewStates()
     // See if the open file is in the intermediate file list and if it is
     // in there and it is a virtual file, check for new states on the viewer.
     //
-    for(int i = 0; i < intermediateFileList.size(); ++i)
+    for(size_t i = 0; i < intermediateFileList.size(); ++i)
     {
         if(intermediateFileList[i].IsVirtual())
         {
@@ -1785,7 +1784,7 @@ QvisFileWindowBase::changeDirectory(QListWidgetItem *item)
                 }
                 else 
                 {
-                    int separatorPos = newPath.rfind(separator);
+                    size_t separatorPos = newPath.rfind(separator);
                     // If the last character is a slash, remove it.
                     if(separatorPos == newPath.size() - 1)
                         newPath = newPath.substr(separatorPos);
@@ -2101,7 +2100,7 @@ DecodeQualifiedFilename(const QVariant &v)
         f.host      = values[0].toString().toStdString();
         f.path      = values[1].toString().toStdString();
         f.filename  = values[2].toString().toStdString();
-        f.separator = values[3].toChar().toAscii();
+        f.separator = values[3].toChar().toLatin1();
         f.SetAccess(values[4].toBool());
         f.SetVirtual(values[5].toBool());
     }

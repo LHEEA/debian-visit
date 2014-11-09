@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -103,7 +103,7 @@ S2S(SetState s)
 QvisSubsetPanelWidget::QvisSubsetPanelWidget(QWidget *parent,
                                              ViewerProxy *viewer_proxy) 
 :  QWidget(parent), viewerProxy(viewer_proxy), activeChild(NULL),
-   numChecked(0), numCheckable(0)
+   numCheckable(0), numChecked(0)
 {
     // create contents
 
@@ -244,8 +244,9 @@ QvisSubsetPanelWidget::ViewSet(int id)
     if(s == CompletelyChecked)
         numChecked++;
 
+    QvisSubsetPanelItem *checkItem=NULL;
     // Add all of the collections that come out of the whole.
-    for(int j = 0; j < mapsOut.size(); ++j)
+    for(size_t j = 0; j < mapsOut.size(); ++j)
     {
         // cIndex is the j'th collection coming from out of the whole.
         int cIndex = mapsOut[j];
@@ -254,9 +255,9 @@ QvisSubsetPanelWidget::ViewSet(int id)
         avtSILCollection_p collection = restriction->GetSILCollection(cIndex);
         QString collectionName(collection->GetCategory().c_str());
     
-        QvisSubsetPanelItem *checkItem = new QvisSubsetPanelItem(item, 
-                                                                 collectionName,
-                                                                 cIndex);
+        checkItem = new QvisSubsetPanelItem(item,
+                                            collectionName,
+                                            cIndex);
     }
 
     item->setExpanded(true);
@@ -320,16 +321,17 @@ QvisSubsetPanelWidget::ViewCollection(int id)
             
             // Add all of the collections that come out of the set. Note that
             // they are added as uncheckable items.
+            QvisSubsetPanelItem *cItem = NULL;
             const std::vector<int> &mapsOut = set->GetMapsOut();
-            for(int j = 0; j < mapsOut.size(); ++j)
+            for(size_t j = 0; j < mapsOut.size(); ++j)
             {
                 int cIndex = mapsOut[j];
 
                 avtSILCollection_p c = restriction->GetSILCollection(cIndex);
                 QString collectionName(c->GetCategory().c_str());
-                QvisSubsetPanelItem *cItem = new QvisSubsetPanelItem(item,
-                                                                     collectionName,
-                                                                     cIndex);
+                cItem = new QvisSubsetPanelItem(item,
+                                                collectionName,
+                                                cIndex);
             }
         }
         blockSignals(false);

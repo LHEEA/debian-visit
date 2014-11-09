@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -665,7 +665,7 @@ avtOpenGLCurveRenderer::DrawCurveAsSymbols()
 #define MAX_SYMBOL_VERTS 25
 
     double symbolPoints[MAX_SYMBOL_VERTS][2];
-    int symbolNVerts;
+    int symbolNVerts = 0;
     if (atts.GetSymbol() == CurveAttributes::Point)
     {
         symbolNVerts = 1;
@@ -749,6 +749,16 @@ avtOpenGLCurveRenderer::DrawCurveAsSymbols()
         symbolPoints[3][1] = sin(M_PI/4. + M_PI) * REDUCE_SCALE * bin_y_size / 2.;
         glLineWidth(2.);
         glBegin(GL_LINES);
+    }
+    else // shouldn't happen, but let's default to Point, for completeness
+    {
+        debug3 << "avtOpenGLCurveRenderer encountered invalid symbol type, reverting"
+               << " to Point" << endl;
+        symbolNVerts = 1;
+        glPointSize(atts.GetPointSize());
+        symbolPoints[0][0] = 0.;
+        symbolPoints[0][1] = 0.;
+        glBegin(GL_POINTS);
     }
 
     // static case

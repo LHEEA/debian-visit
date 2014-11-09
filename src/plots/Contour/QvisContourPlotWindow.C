@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -626,9 +626,9 @@ QvisContourPlotWindow::UpdateMultipleAreaColors()
     if(cm == ContourAttributes::Level)
         nEntries = contourAtts->GetContourNLevels();
     else if(cm == ContourAttributes::Value)
-        nEntries = contourAtts->GetContourValue().size();
+        nEntries = (int)contourAtts->GetContourValue().size();
     else
-        nEntries = contourAtts->GetContourPercent().size();
+        nEntries = (int)contourAtts->GetContourPercent().size();
 
     // Block the signals from the multipleColors widget.
     multipleColors->blockSignals(true);
@@ -756,9 +756,9 @@ QvisContourPlotWindow::UpdateMultipleAreaNames()
     if(cm == ContourAttributes::Level)
         vecSize = contourAtts->GetContourNLevels();
     else if(cm == ContourAttributes::Value)
-        vecSize = contourAtts->GetContourValue().size();
+        vecSize = (int)contourAtts->GetContourValue().size();
     else
-        vecSize = contourAtts->GetContourPercent().size();
+        vecSize = (int)contourAtts->GetContourPercent().size();
 
     if(vecSize == multipleColors->numEntries())
     {
@@ -822,7 +822,7 @@ void
 QvisContourPlotWindow::UpdateSelectByText()
 {
     QString temp, temp2;
-    int     i;
+    size_t     i;
 
     if(contourAtts->GetContourMethod() == ContourAttributes::Level)
     {

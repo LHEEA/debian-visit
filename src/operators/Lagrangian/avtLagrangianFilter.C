@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -233,7 +233,7 @@ avtLagrangianFilter::CreateIntegralCurve(const avtIVPSolver *model,
     if (atts.GetXAxisSample() == LagrangianAttributes::Variable ||
         atts.GetYAxisSample() == LagrangianAttributes::Variable)
     {
-        mask |= avtStateRecorderIntegralCurve::SAMPLE_SCALAR0;
+        mask |= avtStateRecorderIntegralCurve::SAMPLE_VARIABLE;
     }
     
     avtLagrangianIC *ic = new avtLagrangianIC(mask, model, dir, t_start,
@@ -281,7 +281,7 @@ avtLagrangianFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCurve *> &
 {
     
     avtLagrangianIC *ic = (avtLagrangianIC*)ics[0];
-    int nSamps = ic->GetNumberOfSamples();
+    int nSamps = (int)ic->GetNumberOfSamples();
     
     vtkRectilinearGrid *rg = vtkVisItUtility::Create1DRGrid(nSamps,VTK_FLOAT);
     vtkFloatArray    *vals = vtkFloatArray::New();
@@ -294,7 +294,7 @@ avtLagrangianFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCurve *> &
     
     avtStateRecorderIntegralCurve::Sample samp;
 
-    float xi, yi;
+    float xi = 0, yi = 0;
     for (int j = 0; j < nSamps; j++)
     {
         samp = ic->GetSample(j);
@@ -317,7 +317,7 @@ avtLagrangianFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCurve *> &
         else if (atts.GetYAxisSample() == LagrangianAttributes::Vorticity)
             yi = samp.vorticity;
         else if (atts.GetYAxisSample() == LagrangianAttributes::Variable)
-            yi = samp.scalar0;
+            yi = samp.variable;
         
         xc->SetValue(j, xi);
         vals->SetValue(j, yi);
@@ -380,6 +380,11 @@ avtLagrangianFilter::ModifyContract(avtContract_p in_contract)
 //  Programmer: Dave Pugmire
 //  Creation:   Wed Mar 7 14:22:35 PST 2012
 //
+//  Modifications:
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 
 void
@@ -436,6 +441,8 @@ avtLagrangianFilter::UpdateDataObjectInfo(void)
     GetOutput()->GetInfo().GetAttributes().SetXUnits("");
     GetOutput()->GetInfo().GetAttributes().SetYLabel(yLabel.c_str());
     GetOutput()->GetInfo().GetAttributes().SetYUnits("");
+
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("Lagrangian");
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -114,8 +114,9 @@
 #include <avtQueryFactory.h>
 #include <avtMultiresFilter.h>
 #include <CompactSILRestrictionAttributes.h>
-#include <VisWindow.h>
 #include <VisWinRendering.h> // for SetStereoEnabled
+#include <VisWindow.h>
+#include <VisWindowTypes.h>
 #include <ParsingExprList.h>
 #include <avtExprNode.h>
 #include <DatabasePluginManager.h>
@@ -137,10 +138,12 @@
 
 #include <algorithm>
 #include <climits>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
 #ifdef _WIN32
+#include <functional>
 #include <direct.h>  // for _getcwd, _chdir
 #else
 #include <unistd.h>
@@ -682,7 +685,12 @@ NetworkManager::GetDBFromCache(const std::string &filename, int time,
 #if defined(_WIN32)
                 _getcwd(tmpcwd, 1023);
 #else
-                getcwd(tmpcwd, 1023);
+                char* res = getcwd(tmpcwd, 1023); 
+                if(res == NULL)
+                {
+                    debug1 << "failed to get current working directory"
+                           << " via getcwd()" << std::endl;
+                }
 #endif
                 tmpcwd[1023] = '\0';
 
@@ -702,7 +710,12 @@ NetworkManager::GetDBFromCache(const std::string &filename, int time,
 #if defined(_WIN32)
                     _chdir(path.c_str());
 #else
-                    chdir(path.c_str());
+                    int res = chdir(path.c_str());
+                    if(res == -1)
+                    {
+                        debug1 << "failed to change the current working directory"
+                               << " via chdir()" << std::endl;
+                    }
 #endif
                 }
                 // look for files that match pattern
@@ -723,7 +736,12 @@ NetworkManager::GetDBFromCache(const std::string &filename, int time,
 #if defined(_WIN32)
                     _chdir(oldPath.c_str());
 #else
-                    chdir(oldPath.c_str());
+                    int res = chdir(oldPath.c_str()); 
+                    if(res == -1)
+                    {
+                        debug1 << "failed to change the current working directory"
+                               << " via chdir()" << std::endl;
+                    }
 #endif
                 }
             
@@ -1033,6 +1051,13 @@ NetworkManager::StartNetwork(const std::string &format,
 //    Brad Whitlock, Wed Jan 18 11:30:34 PST 2012
 //    I added missing data support.
 //
+//    Eric Brugger, Thu Jan  2 15:18:21 PST 2014
+//    I added support for 3d multi resolution data selections.
+//
+//    Eric Brugger, Wed Jan  8 17:03:56 PST 2014
+//    I added a ViewArea to the multi resolution data selection since the
+//    view frustum was insufficient in 3d.
+//
 // ****************************************************************************
 
 void
@@ -1127,25 +1152,66 @@ NetworkManager::StartNetwork(const std::string &format,
     VisWindow *visWin = viswinMap[windowID].viswin;
     if (visWin->GetMultiresolutionMode())
     {
-        double frustum[6];
-        const avtView2D view2D = visWin->GetView2D();
+        int size[2];
+        visWin->GetSize(size[0], size[1]);
+
+        // Get the 2D transform matrix, viewport, view area and extents.
+        double transform2D[16];
+        double viewport2D[6];
+        double area2D;
+        double extents2D[6];
+        avtView2D view2D = visWin->GetView2D();
         if (!view2D.windowValid)
         {
-            frustum[0] = DBL_MAX;
-            frustum[1] = -DBL_MAX;
-            frustum[2] = DBL_MAX;
-            frustum[3] = -DBL_MAX;
+            for (int i = 0; i < 16; i++)
+                transform2D[i] = DBL_MAX;
+            for (int i = 0; i < 6; i++)
+                viewport2D[i] = DBL_MAX;
+            area2D = DBL_MAX;
+            for (int i = 0; i < 6; i++)
+                extents2D[i] = DBL_MAX;
         }
         else
         {
-            frustum[0] = view2D.window[0];
-            frustum[1] = view2D.window[1];
-            frustum[2] = view2D.window[2];
-            frustum[3] = view2D.window[3];
+            view2D.GetActualViewport(viewport2D, size[0], size[1]);
+            double ratioWindow = double(size[0]) / double(size[1]);
+            double ratioViewport = (viewport2D[1] - viewport2D[0]) /
+                                   (viewport2D[3] - viewport2D[2]);
+            double ratio = ratioWindow * ratioViewport;
+            view2D.GetCompositeProjectionTransformMatrix(transform2D, ratio);
+            view2D.CalculateExtentsAndArea(extents2D, area2D, transform2D);
         }
+
+        // Get the 3D transform matrix, viewport, view area and extents.
+        double transform3D[16];
+        double viewport3D[6];
+        double area3D;
+        double extents3D[6];
+        avtView3D view3D = visWin->GetView3D();
+        if (!view3D.windowValid)
+        {
+            for (int i = 0; i < 16; i++)
+                transform3D[i] = DBL_MAX;
+            for (int i = 0; i < 6; i++)
+                viewport3D[i] = DBL_MAX;
+            area3D = DBL_MAX;
+            for (int i = 0; i < 6; i++)
+                extents3D[i] = DBL_MAX;
+        }
+        else
+        {
+            double ratio = double(size[0]) / double(size[1]);
+            view3D.GetCompositeProjectionTransformMatrix(transform3D, ratio);
+            view3D.CalculateExtentsAndArea(extents3D, area3D, transform3D);
+        }
+
+        // Get the cell size.
         double cellSize = visWin->GetMultiresolutionCellSize();
 
-        avtMultiresFilter *f2 = new avtMultiresFilter(frustum, cellSize);
+        // Add the multires filter.
+        avtMultiresFilter *f2 = new avtMultiresFilter(transform2D, transform3D,
+            viewport2D, viewport3D, size, area2D, area3D, extents2D, extents3D,
+            cellSize);
         filt = new NetnodeFilter(f2, "MultiresFilter");
         filt->GetInputNodes().push_back(input);
         workingNet->AddNode(filt);
@@ -1620,7 +1686,7 @@ NetworkManager::EndNetwork(int windowID)
     {
         const std::string &selName = workingNet->GetSelectionName();
         std::vector<Netnode *> netnodes = workingNet->GetNodeList();
-        for (int i = 0 ; i < netnodes.size() ; i++)
+        for (size_t i = 0 ; i < netnodes.size() ; i++)
         {
             avtFilter *filt = netnodes[i]->GetFilter();
             if (filt == NULL)
@@ -1712,7 +1778,7 @@ NetworkManager::UseNetwork(int id)
         EXCEPTION0(ImproperUseException);
     }
 
-    if (id >= networkCache.size())
+    if ((size_t)id >= networkCache.size())
     {
         debug1 << "Internal error: asked to reuse network ID (" << id
             << " >= num saved networks (" << networkCache.size() << ")"
@@ -2026,7 +2092,7 @@ NetworkManager::GetShouldUseCompression(int windowID) const
 void
 NetworkManager::DoneWithNetwork(int id)
 {
-    if (id >= networkCache.size())
+    if ((size_t)id >= networkCache.size())
     {
         debug1 << "Internal error: Done with network ID (" << id
             << " >= num saved networks (" << networkCache.size() << ")"
@@ -2049,7 +2115,7 @@ NetworkManager::DoneWithNetwork(int id)
         bool otherNetsUseThisWindow = false;
         for (size_t i = 0; i < networkCache.size(); i++)
         {
-            if (i == id)
+            if (i == (size_t)id)
                 continue;
             if (networkCache[i] && (thisNetworksWinID ==
                                     networkCache[i]->GetWinID()))
@@ -2105,7 +2171,7 @@ NetworkManager::DoneWithNetwork(int id)
 void
 NetworkManager::UpdatePlotAtts(int id, const AttributeGroup *atts)
 {
-    if (id >= networkCache.size())
+    if ((size_t)id >= networkCache.size())
     {
         debug1 << "Internal error: asked to reuse network ID (" << id
             << ") >= num saved networks (" << networkCache.size() << ")"
@@ -2794,7 +2860,6 @@ NetworkManager::SaveWindow(const intVector &ids,
                 if(networkCache.size() > 0)
                 {
                     DataNetwork *net = networkCache[networkIds[0]];
-                    int id = net->GetNetID();
 
                     // We need to update the view so we can see what we have. This is
                     // not quite the method I wanted to use to get the data attributes
@@ -3557,7 +3622,7 @@ NetworkManager::StopQueryMode(void)
 void
 NetworkManager::Pick(const int id, const int winId, PickAttributes *pa)
 {
-    if (id >= networkCache.size())
+    if ((size_t)id >= networkCache.size())
     {
         debug1 << "Internal error:  asked to use network ID (" << id << ") >= "
                << "num saved networks (" << networkCache.size() << ")" << endl;
@@ -3916,7 +3981,7 @@ NetworkManager::Query(const std::vector<int> &ids, QueryAttributes *qa)
     for (size_t i = 0 ; i < ids.size() ; i++)
     {
         int id = ids[i];
-        if (id >= networkCache.size())
+        if ((size_t)id >= networkCache.size())
         {
             debug1 << "Internal error:  asked to use network ID (" << id 
                    << ") >= num saved networks ("
@@ -4062,7 +4127,7 @@ NetworkManager::CreateNamedSelection(int id, const SelectionProperties &props)
     {
         // The selection source is a plot that has been executed.
 
-        if (id >= networkCache.size())
+        if ((size_t)id >= networkCache.size())
         {
             debug1 << mName << "Internal error:  asked to use network ID (" << id 
                    << ") >= num saved networks ("
@@ -4351,7 +4416,7 @@ NetworkManager::SaveNamedSelection(const std::string &selName)
 void
 NetworkManager::ConstructDataBinning(int id, ConstructDataBinningAttributes *atts)
 {
-    if (id >= networkCache.size())
+    if ((size_t)id >= networkCache.size())
     {
         debug1 << "Internal error:  asked to use network ID (" << id 
                << ") >= num saved networks ("
@@ -4432,9 +4497,96 @@ NetworkManager::GetDataBinning(const char *name)
     return NULL;
 }
 
+// ****************************************************************************
+//  Method:  NetworkManager::ExportDatabases
+//
+//  Purpose:
+//      Exports a database.
+//
+//  Arguments:
+//    ids        The networks to use.
+//    atts       The export database attributes.
+//    timeSuffix A string that represents a time to be appended to the filename.
+//
+//  Note:        Work partially supported by DOE Grant SC0007548.
+//
+//  Programmer:  Brad Whitlock
+//  Creation:    Fri Jan 24 16:54:20 PST 2014
+//
+//  Modifications:
+//    Brad Whitlock, Thu Jul 24 22:27:34 EDT 2014
+//    Pass timeSuffix.
+//
+// ****************************************************************************
+
+void
+NetworkManager::ExportDatabases(const intVector &ids, const ExportDBAttributes &atts,
+    const std::string &timeSuffix)
+{
+    // Determine the filename and extension.
+    std::string filename, ext;
+    const std::string &f = atts.GetFilename();
+    std::string::size_type idx = f.rfind(".");
+    if(idx != std::string::npos)
+    {
+        filename = f.substr(0, idx);
+        ext = f.substr(idx, f.size() - idx);
+    }
+    else
+        filename = f;
+
+    if(ids.size() > 1)
+    {
+        // FUTURE: Get the plugin info here, create the writer.
+
+        // FUTURE: Call writer->OpenFile here.
+
+        bool err = false;
+        std::string errMsg;
+        for(size_t i = 0; i < ids.size(); ++i)
+        {
+            // Rig up a temporary ExportDBAttributes where we change the filename a little.
+            ExportDBAttributes eAtts(atts);
+            char plotid[4];
+            SNPRINTF(plotid, 4, "_%02d", int(i));
+
+            if(atts.GetAllTimes())
+                eAtts.SetFilename(filename + plotid + std::string("_") + timeSuffix + ext);
+            else
+                eAtts.SetFilename(filename + plotid + ext);
+
+            TRY
+            {
+                ExportSingleDatabase(ids[i], eAtts);
+            }
+            CATCH2(VisItException, e)
+            {
+                err = true;
+                errMsg = e.Message();
+            }
+            ENDTRY
+        }
+
+        // FUTURE: Call writer->CloseFile here.
+
+        if(err)
+        {
+            EXCEPTION1(VisItException, errMsg); // use RECONSTITUTE_EXCEPTION?
+        }
+    }
+    else if(!ids.empty())
+    {
+        ExportDBAttributes eAtts(atts);
+        if(atts.GetAllTimes())
+            eAtts.SetFilename(filename + timeSuffix + ext);
+        else
+            eAtts.SetFilename(filename + ext);
+        ExportSingleDatabase(ids[0], eAtts);
+    }
+}
 
 // ****************************************************************************
-//  Method:  NetworkManager::ExportDatabase
+//  Method:  NetworkManager::ExportSingleDatabase
 //
 //  Purpose:
 //      Exports a database.
@@ -4461,12 +4613,21 @@ NetworkManager::GetDataBinning(const char *name)
 //    Brad Whitlock, Tue Jun 24 16:10:41 PDT 2008
 //    Changed how the database plugin manager is accessed.
 //
+//    Brad Whitlock, Tue Jan 21 15:29:31 PST 2014
+//    I added code to allow a plot to modify the contract and I passed the
+//    plot name to the writer so we have some more information.
+//
+//    Brad Whitlock, Fri Feb 28 16:27:47 PST 2014
+//    Reorder some exception handling, add some more in case bad stuff happens
+//    down in the writer.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 
 void
-NetworkManager::ExportDatabase(int id, ExportDBAttributes *atts)
+NetworkManager::ExportSingleDatabase(int id, const ExportDBAttributes &atts)
 {
-    if (id >= networkCache.size())
+    if ((size_t)id >= networkCache.size())
     {
         debug1 << "Internal error:  asked to use network ID (" << id 
                << ") >= num saved networks ("
@@ -4500,8 +4661,12 @@ NetworkManager::ExportDatabase(int id, ExportDBAttributes *atts)
         debug1 << "Could not find a valid input to export." << endl;
         EXCEPTION0(NoInputException);
     }
+    if (strcmp(dob->GetType(), "avtDataset") != 0)
+    {
+        EXCEPTION0(ImproperUseException);
+    }
 
-    const std::string &db_type = atts->GetDb_type_fullname();
+    const std::string &db_type = atts.GetDb_type_fullname();
     if (!GetDatabasePluginManager()->PluginAvailable(db_type))
     {
         char msg[1024];
@@ -4518,10 +4683,10 @@ NetworkManager::ExportDatabase(int id, ExportDBAttributes *atts)
                  db_type.c_str());
         EXCEPTION1(ImproperUseException, msg);
     }
-    DBOptionsAttributes opts = atts->GetOpts();
+
+    DBOptionsAttributes opts = atts.GetOpts();
     info->SetWriteOptions(&opts);
     avtDatabaseWriter *wrtr = info->GetWriter();
-
     if (wrtr == NULL)
     {
         char msg[1024];
@@ -4530,32 +4695,42 @@ NetworkManager::ExportDatabase(int id, ExportDBAttributes *atts)
         EXCEPTION1(ImproperUseException, msg);
     }
 
-    if (strcmp(dob->GetType(), "avtDataset") != 0)
+    TRY
     {
-        EXCEPTION0(ImproperUseException);
+        std::string plotName(networkCache[id]->GetPlot()->GetName());
+        int time = networkCache[id]->GetTime();
+        ref_ptr<avtDatabase> db = networkCache[id]->GetNetDB()->GetDatabase();
+
+        // Set the contract to use for the export. Give the plot a chance to 
+        // enhance the contract as would be the case in a normal execute.
+        avtContract_p c = networkCache[id]->GetContract();
+        c = networkCache[id]->GetPlot()->ModifyContract(c);
+        wrtr->SetContractToUse(c);
+        wrtr->SetInput(dob);
+
+        std::string qualFilename;
+        if (atts.GetDirname() == "")
+            qualFilename = atts.GetFilename();
+        else
+            qualFilename = atts.GetDirname() + std::string(VISIT_SLASH_STRING)
+                         + atts.GetFilename();
+        bool doAll = false;
+        std::vector<std::string> vars = atts.GetVariables();
+        if (vars.size() == 1 && vars[0] == "<all>")
+        {
+            doAll = true;
+            vars.clear();
+        }
+
+        wrtr->Write(plotName, qualFilename, db->GetMetaData(time), vars, doAll);
+        delete wrtr;
     }
-
-    int time = networkCache[id]->GetTime();
-    ref_ptr<avtDatabase> db = networkCache[id]->GetNetDB()->GetDatabase();
-    wrtr->SetInput(dob);
-
-    wrtr->SetContractToUse(networkCache[id]->GetContract());
-    
-    std::string qualFilename;
-    if (atts->GetDirname() == "")
-        qualFilename = atts->GetFilename();
-    else
-        qualFilename = atts->GetDirname() + std::string(VISIT_SLASH_STRING)
-                     + atts->GetFilename();
-    bool doAll = false;
-    std::vector<std::string> vars = atts->GetVariables();
-    if (vars.size() == 1 && vars[0] == "<all>")
+    CATCH2(VisItException, e)
     {
-        doAll = true;
-        vars.clear();
+        delete wrtr;
+        RETHROW;
     }
-    wrtr->Write(qualFilename, db->GetMetaData(time), vars, doAll);
-    delete wrtr;
+    ENDTRY
 }
 
 
@@ -4652,7 +4827,7 @@ NetworkManager::CloneNetwork(const int id)
         EXCEPTION1(ImproperUseException,error);
     }
 
-    if (id >= networkCache.size())
+    if ((size_t)id >= networkCache.size())
     {
         debug1 << "Internal error:  asked to clone network ID (" << id 
                << ") >= num saved networks (" << networkCache.size() << ")" 
@@ -5185,7 +5360,7 @@ BuildBlankImageVector(avtImage_p img)
     MPI_Bcast(rcv, PAR_Size(), MPI_INT, src_node, VISIT_MPI_COMM);
 
     data.reserve(PAR_Size());
-    for(size_t i = 0 ; i < PAR_Size(); ++i)
+    for(size_t i = 0 ; i < (size_t)PAR_Size(); ++i)
     {
         data.push_back(rcv[i]);
     }
@@ -5431,7 +5606,7 @@ NetworkManager::PickForIntersection(const int winId, PickAttributes *pa)
     bool needRender = false;
     for (size_t i = 0; i < ids.size(); i++)
     {
-        if (ids[i] >= networkCache.size())
+        if ((size_t)ids[i] >= networkCache.size())
         {
             debug1 << "Internal error:  asked to use network ID (" 
                    << ids[i] << ") >= " << "num saved networks (" 

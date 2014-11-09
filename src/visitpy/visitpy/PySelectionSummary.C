@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewSelectionSummary(int);
 std::string
 PySelectionSummary_ToString(const SelectionSummary *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sname = \"%s\"\n", prefix, atts->GetName().c_str());
     str += tmpStr;
@@ -159,7 +159,7 @@ SelectionSummary_GetVariables(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetVariables().size())
+    if(index < 0 || (size_t)index >= obj->data->GetVariables().size())
     {
         char msg[200];
         if(obj->data->GetVariables().size() == 0)
@@ -675,7 +675,6 @@ PySelectionSummary_GetLogString()
 static void
 PySelectionSummary_CallLogRoutine(Subject *subj, void *data)
 {
-    SelectionSummary *atts = (SelectionSummary *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

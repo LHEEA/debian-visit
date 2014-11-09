@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,7 +47,9 @@
 
 #include "avtADIOSBasicFileFormat.h"
 #include "avtXGCFileFormat.h"
-#include "avtPixieFileFormat.h"
+//#include "avtPixieFileFormat.h"
+#include "avtSpecFEMFileFormat.h"
+#include <avtADIOSSchemaFileFormat.h>
 
 // ****************************************************************************
 // Method: ADIOS_CreateFileFormatInterface
@@ -72,60 +74,79 @@
 //  Dave Pugmire, Tue Mar  9 12:40:15 EST 2010
 //  Added XGC reader.
 //
+//   Dave Pugmire, Wed Apr  9 13:39:04 EDT 2014
+//   Added specFM and schema readers.
+//
+//
 // ****************************************************************************
 
 avtFileFormatInterface *
 ADIOS_CreateFileFormatInterface(const char * const *list, int nList, int nBlock)
 {
     avtFileFormatInterface *ffi = NULL;
-
-    if(list != NULL || nList > 0)
+    
+    if (list != NULL || nList > 0)
     {
         // Determine the type of reader that we want to use.
-        ADIOSFileObject *f = NULL;
         int flavor = -1;
         TRY
         {
-            f = new ADIOSFileObject(list[0]);
-            f->Open();
-            if (avtXGCFileFormat::Identify(f))
+            if (avtXGCFileFormat::Identify(list[0]))
             {
                 debug5<<"Database is avtXGCFileFormat"<<endl;
                 flavor = 1;
             }
-            else if (avtPixieFileFormat::Identify(f))
+            /*
+            else if (avtPixieFileFormat::Identify(list[0]))
             {
                 debug5<<"Database is avtPixieFileFormat"<<endl;
                 flavor = 2;
             }
-            else if (avtADIOSBasicFileFormat::Identify(f))
+            */
+            else if (avtSpecFEMFileFormat::Identify(list[0]))
+            {
+                debug5<<"Database is avtSpecFEMFileFormat"<<endl;
+                flavor = 3;
+            }
+            else if (avtADIOSSchemaFileFormat::Identify(list[0]))
+            {
+                debug5<<"Database is avtADIOSSchemaFileFormat"<<endl;
+                flavor = 4;
+            }
+            else if (avtADIOSBasicFileFormat::Identify(list[0]))
             {
                 debug5<<"Database is avtADIOSBasicFileFormat"<<endl;
                 flavor = 0;
             }
-            delete f;
         }
         CATCH(VisItException)
         {
-            delete f;
             RETHROW;
         }
         ENDTRY
 
         switch(flavor)
         {
+
           case 1:
             ffi = avtXGCFileFormat::CreateInterface(list, nList, nBlock);
             break;
+            /*
           case 2:
             ffi = avtPixieFileFormat::CreateInterface(list, nList, nBlock);
+            break;
+            */
+          case 3:
+            ffi = avtSpecFEMFileFormat::CreateInterface(list, nList, nBlock);
+            break;
+          case 4:
+            ffi = avtADIOSSchemaFileFormat::CreateInterface(list, nList, nBlock);
             break;
           case 0:
             ffi = avtADIOSBasicFileFormat::CreateInterface(list, nList, nBlock);
             break;
             
           default:
-            delete f;
             return NULL;
         }
             

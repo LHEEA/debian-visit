@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -174,6 +174,9 @@ avtIsovolumeFilter::Equivalent(const AttributeGroup *a)
 //    Hank Childs, Sat Sep 29 11:24:12 PDT 2007
 //    Pass in vtkDataArrays to the clipper, not "float *".
 //
+//    Eric Brugger, Wed Jul 30 18:49:46 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -217,6 +220,7 @@ avtIsovolumeFilter::ExecuteSingleClip(vtkDataSet *in_ds, float val, bool flip)
     else
     {
         debug1 << "Could not find any data for isovolume operation\n";
+        clipper->Delete();
         EXCEPTION1(VisItException, "No variable was present for the Isovolume");
     }
 
@@ -226,7 +230,7 @@ avtIsovolumeFilter::ExecuteSingleClip(vtkDataSet *in_ds, float val, bool flip)
     clipper->SetInputData(in_ds);
     clipper->Update();
     vtkDataSet *out_ds = clipper->GetOutput();
-    ManageMemory(out_ds);
+    out_ds->Register(NULL);
     clipper->Delete();
 
     //
@@ -279,11 +283,9 @@ inline void IsovolumeMinMax(double &min, double &max, Accessor access)
 //      Sends the specified input and output through the Isovolume filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Jeremy Meredith
 //  Creation:   January 30, 2004
@@ -316,11 +318,30 @@ inline void IsovolumeMinMax(double &min, double &max, Accessor access)
 //    Brad Whitlock, Sun Apr 22 01:21:10 PDT 2012
 //    I added double support.
 //
+//    Gunther H. Weber, Tue May 13 11:51:19 PDT 2014
+//    Check whether data set is empty before performing max clip to prevent
+//    crash in border case.
+//
+//    Eric Brugger, Wed Jul 30 18:49:46 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
+//    Brad Whitlock, Fri Sep  5 11:09:06 PDT 2014
+//    Fix reference counting.
+//
+//    Eric Brugger, Fri Sep 26 08:49:02 PDT 2014
+//    I modified the routine to return a NULL in the case where it previously
+//    returned an avtDataRepresentation with a NULL vtkDataSet.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtIsovolumeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
+avtDataRepresentation *
+avtIsovolumeFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     //
     // Start off by calculating the range of the dataset.
     //
@@ -331,7 +352,7 @@ avtIsovolumeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
         vals = in_ds->GetCellData()->GetScalars();
 
     if (vals == NULL)
-        return in_ds;
+        return in_dr;
 
     double min, max;
     if(vals->GetDataType() == VTK_FLOAT)
@@ -366,17 +387,34 @@ avtIsovolumeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     // Do the clipping!
     //
     vtkDataSet *out_ds = in_ds;
-    if (doMinClip)
-        out_ds = ExecuteSingleClip(out_ds, atts.GetLbound(), true);
-    if (doMaxClip)
-        out_ds = ExecuteSingleClip(out_ds, atts.GetUbound(), false);
+    if(doMinClip && doMaxClip)
+    {
+        vtkDataSet *intermediate = NULL;
+        intermediate = ExecuteSingleClip(in_ds, atts.GetLbound(), true);
+        if(intermediate->GetNumberOfCells() > 0)
+        {
+            out_ds = ExecuteSingleClip(intermediate, atts.GetUbound(), false);
+            intermediate->Delete();
+        }
+        else
+            out_ds = intermediate;
+    }
+    else if(doMinClip)
+        out_ds = ExecuteSingleClip(in_ds, atts.GetLbound(), true);
+    else if(doMaxClip)
+        out_ds = ExecuteSingleClip(in_ds, atts.GetUbound(), false);
+    bool own = out_ds != in_ds;
 
     //
     // Make sure there's something there
     //
     if (out_ds->GetNumberOfCells() <= 0)
     {
-        out_ds = NULL;
+        // We can't delete the out_ds unless we made it and own it. 
+        // Otherwise, we're deleting the reference out from under the in_ds.
+        if(own)
+            out_ds->Delete();
+        return NULL;
     }
 
     //
@@ -385,8 +423,7 @@ avtIsovolumeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     // necessarily have a ugrid, since it might be that we didn't process the
     // dataset.
     //
-    bool shouldDelete = false;
-    if (in_ds->GetDataObjectType() == VTK_POLY_DATA && out_ds != NULL &&
+    if (in_ds->GetDataObjectType() == VTK_POLY_DATA &&
         out_ds->GetDataObjectType() == VTK_UNSTRUCTURED_GRID)
     {
         vtkUnstructuredGrid *ugrid = (vtkUnstructuredGrid *) out_ds;
@@ -403,15 +440,19 @@ avtIsovolumeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
             ugrid->GetCellPoints(i, npts, pts);
             out_pd->InsertNextCell(celltype, npts, pts);
         }
+        if(own)
+            out_ds->Delete();
         out_ds = out_pd;
-        shouldDelete = true;
+        own = true;
     }
 
-    ManageMemory(out_ds);
-    if (shouldDelete)
+    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
+        in_dr->GetDomain(), in_dr->GetLabel());
+
+    if (own && out_ds != NULL)
         out_ds->Delete();
 
-    return out_ds;
+    return out_dr;
 }
 
 
@@ -428,6 +469,10 @@ avtIsovolumeFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
 //    Kathleen Bonnell, Thu Mar  2 14:26:06 PST 2006 
 //    Set ZonesSplit.
 //
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 
 void
@@ -435,6 +480,11 @@ avtIsovolumeFilter::UpdateDataObjectInfo(void)
 {
     GetOutput()->GetInfo().GetValidity().InvalidateZones();
     GetOutput()->GetInfo().GetValidity().ZonesSplit();
+
+    char params[100];
+    SNPRINTF(params, 100, "var=%s, min=%lg, max=%lg", atts.GetVariable().c_str(),
+        atts.GetLbound(), atts.GetUbound());
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("Isovolume", params);
 }
 
 

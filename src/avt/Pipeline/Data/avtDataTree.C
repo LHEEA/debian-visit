@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -161,6 +161,32 @@ avtDataTree::avtDataTree(vtkDataSet *ds, int index, string s)
 //    ds        The avtDataRepresentation that sets this 
 //              avtDataTree up as a leaf.
 //
+//  Programmer: Cameron Christensen
+//  Creation:   May 29, 2014
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+avtDataTree::avtDataTree(avtDataRepresentation *ds)
+{
+    if (!ds || !ds->Valid())
+    {
+        EXCEPTION0(NoInputException);
+    }
+    nChildren = 0;
+    children  = NULL;
+    dataRep   = new avtDataRepresentation(*ds);
+}
+ 
+
+// ****************************************************************************
+//  Method: avtDataTree constructor (leaf)
+//
+//  Arguments:
+//    ds        The avtDataRepresentation that sets this 
+//              avtDataTree up as a leaf.
+//
 //  Programmer: Kathleen Bonnell
 //  Creation:   February 1, 2001 
 //
@@ -244,7 +270,7 @@ avtDataTree::avtDataTree(int n, vtkDataSet **ds, int *ind)
 
 avtDataTree::avtDataTree(int n, vtkDataSet **ds, vector<int> &ind)
 {
-    if (ds == NULL || ind.size() != n || n == 0)
+    if (ds == NULL || ind.size() != (size_t)n || n == 0)
     {
         EXCEPTION0(NoInputException);
     }
@@ -333,7 +359,7 @@ avtDataTree::avtDataTree(int n, vtkDataSet **ds, int ind, vector<string> &l)
     // This code should be called *always* to ensure we don't walk off the
     // end of the vector since this method assumes that the length of the
     // l label vector is at least the size of n.
-    if(l.size() < n)
+    if(l.size() < (size_t)n)
     {
         EXCEPTION1(ImproperUseException, "The are fewer labels than expected!");
     }
@@ -398,6 +424,38 @@ avtDataTree::avtDataTree(int n, vtkDataSet **ds, int ind, string &l)
 //    n       The number of children for this tree. 
 //    dom     The avtDataRepresentations that are this tree's leaves. 
 //
+//  Programmer: Cameron Christensen
+//  Creation:   May 29, 2014
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+avtDataTree::avtDataTree(int n, avtDataRepresentation **drep)
+{
+    if (drep == NULL)
+    {
+        EXCEPTION0(NoInputException);
+    }
+    nChildren = n;
+    children = new avtDataTree_p [nChildren];
+    for (int i = 0; i < nChildren; i++)
+    {
+        if (drep[i] && drep[i]->Valid())
+        {
+            children[i] = new avtDataTree(drep[i]);
+        }
+    }
+    dataRep = NULL;
+}
+
+// ****************************************************************************
+//  Method: avtDataTree constructor
+//
+//  Arguments:
+//    n       The number of children for this tree. 
+//    dom     The avtDataRepresentations that are this tree's leaves. 
+//
 //  Programmer: Kathleen Bonnell
 //  Creation:   February 1, 2001 
 //
@@ -442,6 +500,10 @@ avtDataTree::avtDataTree(int n, avtDataRepresentation *drep)
 //    Mark C. Miller, 22Apr03
 //    Added option to create a tree without the data at the leaves
 //
+//    Eric Brugger, Tue Sep 30 15:08:12 PDT 2014
+//    I modified the EAVL version of the avtDataRepresentation constructor
+//    to also have domain and label arguments.
+//
 // ****************************************************************************
 
 avtDataTree::avtDataTree(avtDataTree_p dt, bool dontCopyData)
@@ -471,9 +533,20 @@ avtDataTree::avtDataTree(avtDataTree_p dt, bool dontCopyData)
         if (dontCopyData)
         {
             avtDataRepresentation& oldRep = dt->GetDataRepresentation();
-            dataRep  = new avtDataRepresentation(NULL, oldRep.GetDomain(),
-                                                       oldRep.GetLabel(),
-                                                       dontCopyData);
+            if (oldRep.GetDataRepType() == DATA_REP_TYPE_VTK)
+            {
+                dataRep  = new avtDataRepresentation((vtkDataSet *)NULL,
+                                                     oldRep.GetDomain(),
+                                                     oldRep.GetLabel(),
+                                                     dontCopyData);
+            }
+            else
+            {
+                dataRep  = new avtDataRepresentation((eavlDataSet *)NULL,
+                                                     oldRep.GetDomain(),
+                                                     oldRep.GetLabel(),
+                                                     dontCopyData);
+            }
         }
         else
         {
@@ -1103,7 +1176,7 @@ avtDataTree::PruneTree(const vector<int> &list, vector<int> &goodIds)
 
     avtDataTree_p *treelist = new avtDataTree_p[list.size()];
     int count = 0;
-    for (int i = 0 ; i < list.size() ; i++)
+    for (size_t i = 0 ; i < list.size() ; i++)
     {
         success = false;
         pmap.chunkId = list[i];
@@ -1171,7 +1244,7 @@ avtDataTree::PruneTree(const vector<string> &labels)
 
     avtDataTree_p *treelist = new avtDataTree_p[labels.size()];
     int count = 0;
-    for (int i = 0 ; i < labels.size() ; i++)
+    for (size_t i = 0 ; i < labels.size() ; i++)
     {
         success = false;
         pmap.label = labels[i];
@@ -1244,7 +1317,7 @@ avtDataTree::PruneTree(const vector<string> &labels, vector<string> &goodLabels)
 
     avtDataTree_p *treelist = new avtDataTree_p[labels.size()];
     int count = 0;
-    for (int i = 0 ; i < labels.size() ; i++)
+    for (size_t i = 0 ; i < labels.size() ; i++)
     {
         success = false;
         pmap.label = labels[i];

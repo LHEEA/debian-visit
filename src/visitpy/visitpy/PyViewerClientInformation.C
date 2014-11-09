@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewViewerClientInformation(int);
 std::string
 PyViewerClientInformation_ToString(const ViewerClientInformation *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     { // new scope
         int index = 0;
@@ -125,7 +125,7 @@ ViewerClientInformation_GetVars(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetVars().size())
+    if(index < 0 || (size_t)index >= obj->data->GetVars().size())
     {
         char msg[200];
         if(obj->data->GetVars().size() == 0)
@@ -501,7 +501,6 @@ PyViewerClientInformation_GetLogString()
 static void
 PyViewerClientInformation_CallLogRoutine(Subject *subj, void *data)
 {
-    ViewerClientInformation *atts = (ViewerClientInformation *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

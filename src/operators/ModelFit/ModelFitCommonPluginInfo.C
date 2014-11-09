@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -135,7 +135,7 @@ ModelFitCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMetaData *md)
     //varname += ")";
     e->SetName(varname);
     char defn[1024];
-    sprintf(defn, "point_constant(%s, 0)", mesh);
+    sprintf(defn, "point_constant(<%s>, 0)", mesh);
     e->SetDefinition(defn);
     e->SetMeshName(std::string(mesh));
     e->SetType(Expression::ScalarMeshVar);
@@ -151,14 +151,14 @@ ModelFitCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMetaData *md)
     //varname += mesh;
     //varname += ")";
     e->SetName(varname);
-    sprintf(defn, "point_constant(%s, 0)", mesh);
+    sprintf(defn, "point_constant(<%s>, 0)", mesh);
     e->SetDefinition(defn);
     e->SetMeshName(std::string(mesh));
     e->SetType(Expression::ScalarMeshVar);
     e->SetFromOperator(true);
     e->SetOperatorName("ModelFit");
     expressions->AddExpressions(*e);
-
+    delete e;
     return expressions;
 }
 

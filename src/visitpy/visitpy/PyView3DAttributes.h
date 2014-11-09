@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define VIEW3DATTRIBUTES_NMETH 35
+#define VIEW3DATTRIBUTES_NMETH 37
 void VISITPY_API           PyView3DAttributes_StartUp(View3DAttributes *subj, void *data);
 void VISITPY_API           PyView3DAttributes_CloseDown();
 VISITPY_API PyMethodDef *  PyView3DAttributes_GetMethodTable(int *nMethods);

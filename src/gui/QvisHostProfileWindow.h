@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -169,6 +169,9 @@ class QNetworkAccessManager;
 //    Brad Whitlock, Wed Aug 15 13:55:13 PDT 2012
 //    I added controls to set the ssh command.
 //
+//    David Camp, Mon Aug  4 10:46:09 PDT 2014
+//    Added controls to set the threads option.
+//
 // ****************************************************************************
 
 class GUI_API QvisHostProfileWindow : public QvisPostableWindowObserver
@@ -193,6 +196,7 @@ private:
     void addRemoteProfile(const QString& inputUrl, const QString& results);
     void ListWidgetDropEvent(QDropEvent * event);
     void addChildren(const QModelIndex& list, QStringList& suffixList, QStringList& globalList);
+    void selectProfiles(const QModelIndex& index);
 private slots:
     void apply();
 
@@ -208,6 +212,7 @@ private slots:
     void delLaunchProfile();
     void copyLaunchProfile();
     void makeDefaultLaunchProfile();
+    void selectProfiles();
     void retriveLatestProfiles();
     void downloadHosts(QNetworkReply* reply);
 
@@ -224,6 +229,7 @@ private slots:
     void processSublaunchPostCmdText(const QString &);
     void numProcessorsChanged(int value);
     void timeoutChanged(int value);
+    void threadsChanged(int value);
     void launchMethodChanged(const QString &method);
     void numNodesChanged(int value);
     void toggleLaunch(bool);
@@ -331,6 +337,8 @@ private:
     QLineEdit    *sublaunchPostCmd;
     QLabel       *timeoutLabel;
     QSpinBox     *timeout;
+    QLabel       *threadsLabel;
+    QSpinBox     *threads;
 
     // Launch HW Accel Settings
     QLabel       *hwdisclaimer;

@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -94,7 +94,7 @@ public class MoleculeAttributes extends AttributeSubject implements Plugin
         drawBondsAs = BONDRENDERINGMODE_CYLINDERBONDS;
         colorBonds = BONDCOLORINGMODE_COLORBYATOM;
         bondSingleColor = new ColorAttribute(128, 128, 128);
-        radiusVariable = new String("Default");
+        radiusVariable = new String("default");
         radiusScaleFactor = 1f;
         radiusFixed = 0.3f;
         atomSphereQuality = DETAILLEVEL_MEDIUM;
@@ -122,7 +122,7 @@ public class MoleculeAttributes extends AttributeSubject implements Plugin
         drawBondsAs = BONDRENDERINGMODE_CYLINDERBONDS;
         colorBonds = BONDCOLORINGMODE_COLORBYATOM;
         bondSingleColor = new ColorAttribute(128, 128, 128);
-        radiusVariable = new String("Default");
+        radiusVariable = new String("default");
         radiusScaleFactor = 1f;
         radiusFixed = 0.3f;
         atomSphereQuality = DETAILLEVEL_MEDIUM;

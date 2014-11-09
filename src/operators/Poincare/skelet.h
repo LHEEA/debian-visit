@@ -51,6 +51,7 @@
 #include <deque>
 #include <list>
 #include <queue>
+#include <functional>
 
 namespace Skeleton {
 
@@ -334,7 +335,7 @@ public:
     assert 
       (x.nextVertex == NULL || facingTowards (x.rightLine, x.nextVertex -> leftLine));
 
-    ((VertexSkelet &)x).ID = size ();       // automatic numbering
+    ((VertexSkelet &)x).ID = (int)size ();       // automatic numbering
 
     std::list <VertexSkelet> :: push_back (x);
   }
@@ -413,7 +414,7 @@ public:
 //  *epsStream << x.higher.vertex -> point.x << ' ' << x.higher.vertex -> point.y << " lineto\n";
 #endif
 
-    ((SkeletonLine &)x).ID = size ();     // automatic numbering 
+    ((SkeletonLine &)x).ID = (int)size ();     // automatic numbering 
     std::list <SkeletonLine> :: push_back (x);
   }
 };

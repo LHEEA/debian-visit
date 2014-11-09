@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -171,7 +171,11 @@ ExprParser::~ExprParser()
 //    Allow unary minus to get integrated directly into float and int
 //    constants.
 //
+//    Kathleen Biagas, Thu May  1 17:17:32 PDT 2014
+//    Changed FloatConstExpr to double.
+//
 // ****************************************************************************
+
 ParseTreeNode*
 ExprParser::ApplyRule(const Symbol           &sym,
                       const Rule             *rule,
@@ -246,7 +250,7 @@ ExprParser::ApplyRule(const Symbol           &sym,
                      E[1]->GetTypeName() == "FloatConst")
             {
                 ConstExpr *c = dynamic_cast<ConstExpr*>(E[1]);
-                float v = dynamic_cast<FloatConstExpr*>(c)->GetValue();
+                double v = dynamic_cast<FloatConstExpr*>(c)->GetValue();
                 node = factory->CreateFloatConstExpr(p,-v);
             }
             else

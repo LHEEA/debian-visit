@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,10 +43,9 @@
 #ifndef AVT_RemoveCracksFilter_H
 #define AVT_RemoveCracksFilter_H
 
-
 #include <avtPluginDataTreeIterator.h>
-#include <CracksClipperAttributes.h>
 
+#include <CracksClipperAttributes.h>
 
 class vtkDataSet;
 
@@ -63,6 +62,9 @@ class vtkDataSet;
 //  Modifications:
 //    Kathleen Bonnell, Fri Oct 13 11:05:01 PDT 2006
 //    Removed int arg from RemoveCracks method.
+//
+//    Eric Brugger, Wed Jul 23 11:17:54 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -84,7 +86,7 @@ class avtRemoveCracksFilter : public avtPluginDataTreeIterator
   protected:
     CracksClipperAttributes   atts;
 
-    virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
 
   private:
     bool                  NeedsProcessing(vtkDataSet *, bool *np);

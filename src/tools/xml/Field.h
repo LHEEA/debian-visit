@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,6 +51,8 @@
 #endif
 
 #include <cstdlib>
+#include <iostream>
+
 // ****************************************************************************
 //  Class:  Field
 //
@@ -1412,7 +1414,7 @@ class Enum : public virtual Field
         for (size_t i=0; i < enumType->values.size(); i++)
         {
             if (enumType->values[i] == s)
-                val = i;
+                val = (int)i;
         }
         if (val == -1)
             throw QString("")+"Unknown value for field '"+name+"' of type enum "+enumType->type+": "+s;

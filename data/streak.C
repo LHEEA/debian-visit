@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,6 @@ main(int, char *[])
     //
     // Populate the rt and zt arrays
     //
-    double xmin = -10., xmax = 10.;
-    double ymin = 0., ymax = 30.;
     for(int t = 0; t < timeStates; ++t)
     {
         int ii = t;

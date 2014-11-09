@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -238,7 +238,7 @@ SetAppearance(QApplication *app, AppearanceAttributes *aa)
         if(v >= 255 - 50)
         {
             base = btn.dark(150);
-            bright_mode = TRUE;
+            bright_mode = true;
         }
 
         QPalette pal(fg, btn, btn.light(),

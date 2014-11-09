@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+ * Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
  * Produced at the Lawrence Berkeley National Laboratory
  * All rights reserved.
  *
@@ -131,7 +131,7 @@ avtH5NimrodFileFormat::avtH5NimrodFileFormat (const char *filename):
 {
     // INITIALIZE DATA MEMBERS
     fname = filename;
-    hid_t file_id, root_id, group_id;
+    hid_t file_id, root_id, group_id = 0; /* TODO: check fix for uninitialized pointer */
     char *string_attrib;
     float time;
 
@@ -225,7 +225,7 @@ avtH5NimrodFileFormat::avtH5NimrodFileFormat (const char *filename):
         EXCEPTION1( InvalidVariableException, "H5NIMROD Read Dimensions - Grid dataset 'X' does not have three dimensions" );
     }
     // points
-    for (i = 0, npoints = 1; i < ndims; i++)
+    for (i = 0, npoints = 1; i < (hsize_t)ndims; i++)
     {
         debug5 << "ndims: " << ndims << " " << grid_dims[i] << std::endl;
         npoints *= grid_dims[i];
@@ -500,6 +500,8 @@ avtH5NimrodFileFormat::GetMesh (int timestate, const char *meshname)
     free (Ycoord);
     free (Zcoord);
 
+    vtkpoints->Delete();
+
     H5Gclose (grid_id);
     H5Fclose (file);
 
@@ -543,7 +545,7 @@ avtH5NimrodFileFormat::GetVar (int timestate, const char *varname)
 
     float *var;
     hsize_t npoints = 1;
-    for (hsize_t i = 0; i < ndims; i++)
+    for (hsize_t i = 0; i < (hsize_t)ndims; i++)
     {
         npoints *= grid_dims[i];
     }
@@ -606,7 +608,7 @@ avtH5NimrodFileFormat::GetVectorVar (int timestate, const char *varname)
             NULL);
 
     hsize_t npoints = 1;
-    for (hsize_t i = 0; i < ndims; i++)
+    for (hsize_t i = 0; i < (hsize_t)ndims; i++)
     {
         npoints *= grid_dims[i];
     }

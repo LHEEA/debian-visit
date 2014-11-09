@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -554,7 +554,6 @@ ZooMIR::GetDataset(std::vector<int> mats, vtkDataSet *ds,
         if(origCoordType == VTK_FLOAT)
         {
             float *pts_buff = (float *) outPts->GetVoidPointer(0);
-            int outIndex = 0;
             for (int i=0; i<origNPoints; i++)
             {
                 *pts_buff++ = static_cast<float>(origXCoords[i]);

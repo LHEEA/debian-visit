@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -153,8 +153,9 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
     int numCritPts = 0;
 
     if (DebugStream::Level5())
+    {
         debug5 << "::CreateIntegralCurveOutput " << ics.size() << endl;
-
+    }
     //See how many pts, ics we have so we can preallocate everything.
     for (int i = 0; i < numICs; i++)
     {
@@ -308,7 +309,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
 
         //cerr << phiScaling << "  " << (phiScaling == 0.0) << endl;
 
-        for (int j = 0; j < numSamps; j++)
+        for (size_t j = 0; j < numSamps; j++)
         {
             avtStateRecorderIntegralCurve::Sample s = ic->GetSample(j);
             line->GetPointIds()->SetId(j, pIdx);
@@ -362,7 +363,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
                 scalars->InsertTuple1(pIdx, s.arclength);
                 break;
               case PICS_COLOR_VARIABLE:
-                scalars->InsertTuple1(pIdx, s.scalar0);
+                scalars->InsertTuple1(pIdx, s.secondarys[0]);
                 break;
               case PICS_COLOR_ID:
                 scalars->InsertTuple1(pIdx, ic->id);
@@ -391,7 +392,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
             
             // opacity/theta scalars
             if (opacity)
-                opacity->InsertTuple1(pIdx, s.scalar1);
+                opacity->InsertTuple1(pIdx, s.secondarys[1]);
             if (thetas)
             {
                 float scaledVort = s.vorticity * (prevT-s.time);
@@ -400,7 +401,7 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
                 prevT = s.time;
             }
             if (scaleTubeRad)
-                scaleTubeRad->InsertTuple1(pIdx, s.scalar2);
+                scaleTubeRad->InsertTuple1(pIdx, s.secondarys[2]);
             
             pIdx++;
         }
@@ -520,7 +521,7 @@ avtStreamlinePolyDataFilter::ComputeCorrelationDistance(int idx,  avtStateRecord
 
 static avtStateRecorderIntegralCurve * icFromID(int id, std::vector<avtIntegralCurve *> &ics)
 {
-    for (int i = 0; i < ics.size(); i++)
+    for (size_t i = 0; i < ics.size(); i++)
     {
         if (ics[i]->id == id)
             return dynamic_cast<avtStateRecorderIntegralCurve*>(ics[i]);
@@ -545,7 +546,7 @@ static avtStateRecorderIntegralCurve * icFromID(int id, std::vector<avtIntegralC
 void
 avtStreamlinePolyDataFilter::ProcessVaryTubeRadiusByScalar(std::vector<avtIntegralCurve *> &ics)
 {
-    for (int i = 0; i < fwdBwdICPairs.size(); i++)
+    for (size_t i = 0; i < fwdBwdICPairs.size(); i++)
     {
         avtStateRecorderIntegralCurve *ic[2] = {icFromID(fwdBwdICPairs[i].first, ics),
                                                 icFromID(fwdBwdICPairs[i].second, ics)};
@@ -559,13 +560,13 @@ avtStreamlinePolyDataFilter::ProcessVaryTubeRadiusByScalar(std::vector<avtIntegr
         for (int i = 0; i < 2; i++)
         {
             size_t n = ic[i]->GetNumberOfSamples();
-            for (int j = 0; j < n; j++)
+            for (size_t j = 0; j < n; j++)
             {
                 avtStateRecorderIntegralCurve::Sample s = ic[i]->GetSample(j);
-                if (s.scalar2 < range[0])
-                    range[0] = s.scalar2;
-                if (s.scalar2 > range[1])
-                    range[1] = s.scalar2;
+                if (s.secondarys[2] < range[0])
+                    range[0] = s.secondarys[2];
+                if (s.secondarys[2] > range[1])
+                    range[1] = s.secondarys[2];
             }
         }
 
@@ -574,10 +575,10 @@ avtStreamlinePolyDataFilter::ProcessVaryTubeRadiusByScalar(std::vector<avtIntegr
         for (int i = 0; i < 2; i++)
         {
             size_t n = ic[i]->GetNumberOfSamples();
-            for (int j = 0; j < n; j++)
+            for (size_t j = 0; j < n; j++)
             {
                 avtStateRecorderIntegralCurve::Sample s = ic[i]->GetSample(j);
-                s.scalar2 = (s.scalar2-range[0])/dRange;
+                s.secondarys[2] = (s.secondarys[2]-range[0])/dRange;
             }
         }
     }

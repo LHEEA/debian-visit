@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,6 +106,13 @@ public:
 
     avtMatSpeciesMetaData &operator [] (int i);
     const avtMatSpeciesMetaData &operator [] (int i) const;
+
+
+    // Keyframing methods
+    virtual std::string               GetFieldName(int index) const;
+    virtual AttributeGroup::FieldType GetFieldType(int index) const;
+    virtual std::string               GetFieldTypeName(int index) const;
+    virtual bool                      FieldsEqual(int index, const AttributeGroup *rhs) const;
 
     // User-defined methods
     avtSpeciesMetaData(const std::string &n, const std::string &meshn, const std::string &matn, int nummat, const intVector &ns, const std::vector<stringVector> &sn);

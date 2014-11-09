@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -66,6 +66,11 @@
 class STATE_API MapNode : public Variant
 {
   public:
+    enum {
+        MapNodeType = Variant::ID__LAST,
+        ID__LAST
+    } MapNodeTypeEnum;
+
     MapNode();
     MapNode(const MapNode&);
     MapNode(const XMLNode&,bool decodeString = true);
@@ -111,9 +116,11 @@ class STATE_API MapNode : public Variant
     int                  GetNumEntries() const {return (int)entries.size();}
     void                 Reset();
 
+    using Variant::ToXML;
     virtual std::string  ToXML(bool encodeString = true) const;
     virtual XMLNode      ToXMLNode(bool encodeString = true) const;
 
+    using Variant::ToJSON;
     virtual std::string  ToJSON(bool encodeString = true) const;
     virtual JSONNode     ToJSONNode(bool encodeString = true, bool id = true) const;
 
@@ -123,13 +130,13 @@ class STATE_API MapNode : public Variant
     void                 Write(Connection *conn) const;
     void                 Read(Connection &conn);
 
-    static int MapNodeType;
  private:
     virtual JSONNode ToJSONNodeData(bool encodeString) const;
     virtual JSONNode ToJSONNodeMetaData(bool id) const;
     void  SetValue(const XMLNode &, bool decodeString = true);
     void  SetValue(const JSONNode &, bool decodeString = true);
     void  SetValue(const JSONNode& data, const JSONNode& metadata,bool decodeString);
+    void  SetValue(const JSONNode* data, const JSONNode* metadata,bool decodeString);
     std::map<std::string,MapNode> entries;
 };
 

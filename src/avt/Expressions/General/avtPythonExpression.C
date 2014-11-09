@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,8 +39,8 @@
 // ************************************************************************* //
 //                              avtPythonExpression.C                        //
 // ************************************************************************* //
+#include <Python.h> // this must be the first include
 #include <avtPythonExpression.h>
-#include <Python.h>
 
 #include <avtExprNode.h>
 #include <avtExpressionEvaluatorFilter.h>

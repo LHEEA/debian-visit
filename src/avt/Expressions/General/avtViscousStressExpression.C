@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,11 +106,13 @@ avtViscousStressExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomains
         avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
         topo_dim = atts.GetTopologicalDimension();
 
-        if(topo_dim == 2)
-        if(GetInput()->GetInfo().GetAttributes().GetMeshCoordType()== AVT_XY)
-        {rz_mesh = false;}
+        if(topo_dim == 2) 
+        {
+            if (GetInput()->GetInfo().GetAttributes().GetMeshCoordType()== AVT_XY)
+                rz_mesh = false;
+        }
         else
-        {rz_mesh = true;}
+            rz_mesh = true;
 
         if(topo_dim != 2)
         {

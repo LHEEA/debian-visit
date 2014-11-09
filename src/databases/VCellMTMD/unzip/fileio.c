@@ -1034,7 +1034,7 @@ static int is_vms_varlen_txt(__G__ uch *ef_buf, unsigned ef_len)
 #define VMSREC_C_UNDEF  0
 #define VMSREC_C_VAR    2
     uch vms_rectype = VMSREC_C_UNDEF;
-    uch vms_fileorg = 0;
+    uch vms_fileorg = 0; 
 
 #define VMSPK_ITEMID            0
 #define VMSPK_ITEMLEN           2
@@ -1045,7 +1045,7 @@ static int is_vms_varlen_txt(__G__ uch *ef_buf, unsigned ef_len)
 /* offsets of interesting fields in VMS fabdef structure */
 #define VMSFAB_B_RFM            31      /* record format byte */
 #define VMSFAB_B_ORG            29      /* file organization byte */
-
+    (void) vms_fileorg;
     if (ef_len == 0 || ef_buf == NULL)
         return FALSE;
 
@@ -1156,7 +1156,7 @@ static int disk_error(__G)
       FnFilter1(G.filename)));
 
 #ifndef WINDLL
-    fgets(G.answerbuf, 9, stdin);
+    char* res = fgets(G.answerbuf, 9, stdin); (void) res;
     if (*G.answerbuf == 'y')   /* stop writing to this file */
         G.disk_full = 1;       /*  (outfile bad?), but new OK */
     else
@@ -1418,15 +1418,12 @@ int UZ_EXP UzpMessageNull(pG, buf, size, flag)
 /* Function UzpInput() */   /* GRR:  this is a placeholder for now */
 /***********************/
 
-int UZ_EXP UzpInput(zvoid *pG, uch *buf, int *size, int flag)
+int UZ_EXP UzpInput(zvoid *, uch *, int *size, int)
     //zvoid *pG;    /* globals struct:  always passed */
     //uch *buf;     /* preformatted string to be printed */
     //int *size;    /* (address of) size of buf and of returned string */
     //int flag;     /* flag bits (bit 0: no echo) */
 {
-    /* tell picky compilers to shut up about "unused variable" warnings */
-    pG = pG; buf = buf; flag = flag;
-
     *size = 0;
     return 0;
 
@@ -1471,7 +1468,7 @@ void UZ_EXP UzpMorePause(zvoid *pG, ZCONST char *prompt, int flag)
         c = (uch)FGETCH(0);
 
     /* newline was not echoed, so cover up prompt line */
-    fprintf(stderr, LoadFarString(HidePrompt));
+    fprintf(stderr, "%s", LoadFarString(HidePrompt));
     fflush(stderr);
 
     if (

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,7 +39,7 @@
 /*****************************************************************************
 * Adapted from VTK6/Rendering/OpenGL/vtkOpenGLExtensionMananger
 * Provides OS Mesa support for VisIt in cases where a VTK build does not.
-/*=========================================================================
+=========================================================================
 
   Program:   Visualization Toolkit
   Module:    vtkOSMesaGLExtensionManager.cxx

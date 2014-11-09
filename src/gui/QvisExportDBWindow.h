@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -52,6 +52,7 @@ class QSlider;
 class QvisVariableButton;
 class ExportDBAttributes;
 class DBPluginInfoAttributes;
+class PlotList;
 
 // ****************************************************************************
 // Class: QvisExportDBWindow
@@ -79,6 +80,16 @@ class DBPluginInfoAttributes;
 //   Brad Whitlock, Wed Apr  9 11:57:54 PDT 2008
 //   QString for caption, shortName.
 //
+//   Brad Whitlock, Thu Mar 20 13:52:11 PDT 2014
+//   Improvements for delimiters and for showing licenses.
+//   Work partially supported by DOE Grant SC0007548.
+//
+//   Kathleen Biagas, Wed Apr 23 14:46:51 MST 2014
+//   Add plotList.
+//
+//   Brad Whitlock, Thu Jul 24 13:55:34 EDT 2014
+//   Added check box for doing all time steps.
+//
 // ****************************************************************************
 
 class GUI_API QvisExportDBWindow : public QvisPostableWindowSimpleObserver
@@ -90,9 +101,11 @@ public:
                        QvisNotepadArea *notepad = 0);
     virtual ~QvisExportDBWindow();
 
+    virtual void Update(Subject *TheChangedSubject);
     virtual void SubjectRemoved(Subject *TheRemovedSubject);
     virtual void ConnectSubjects(ExportDBAttributes *edb,
-                                 DBPluginInfoAttributes *dbp);
+                                 DBPluginInfoAttributes *dbp,
+                                 PlotList *pl);
 public slots:
     virtual void apply();
 protected:
@@ -100,6 +113,8 @@ protected:
     void UpdateWindow(bool doAll);
     void GetCurrentValues(int which_widget);
     void Apply(bool ignore = false);
+    QString Delimiter() const;
+    void UpdateVariablesList();
 protected slots:
     void variableProcessText();
     void processFilenameText();
@@ -109,9 +124,16 @@ protected slots:
     void exportButtonClicked();
     void addVariable(const QString &);
     void selectOutputDirectory();
+    void delimiterChanged(int);
+    void allTimesToggled(bool);
 private:
     DBPluginInfoAttributes *dbPluginInfoAtts;
     ExportDBAttributes     *exportDBAtts;
+    PlotList               *plotList;
+    bool                    localPlot;
+
+    int                     delimiter;
+    QStringList             licenseShown;
 
     QLineEdit           *filenameLineEdit;
     QLineEdit           *directoryNameLineEdit;
@@ -120,6 +142,7 @@ private:
     QComboBox           *fileFormatComboBox;
     QvisVariableButton  *varsButton;
     QLineEdit           *varsLineEdit;
+    QCheckBox           *allTimes;
 };
 
 #endif

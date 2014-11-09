@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewPlotList(int);
 std::string
 PyPlotList_ToString(const PlotList *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     { // new scope
         int index = 0;
@@ -109,7 +109,7 @@ PlotList_GetPlots(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetPlots().size())
+    if(index < 0 || (size_t)index >= obj->data->GetPlots().size())
     {
         char msg[200];
         if(obj->data->GetPlots().size() == 0)
@@ -430,7 +430,6 @@ PyPlotList_GetLogString()
 static void
 PyPlotList_CallLogRoutine(Subject *subj, void *data)
 {
-    PlotList *atts = (PlotList *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

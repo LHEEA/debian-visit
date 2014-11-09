@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -128,7 +128,7 @@ avtExtrudedVolWriter::WriteHeaders(const avtDatabaseMetaData *md,
         ofile << "NTIMES: " << nTimesteps << endl;
         variables = scalars;
         ofile << "VARIABLES: " << variables.size() << endl;
-        for (int i = 0 ; i < variables.size() ; i++)
+        for (size_t i = 0 ; i < variables.size() ; i++)
             if (strncmp(variables[i].c_str(), "AVT_TRACE_HIST_", 
                         strlen("AVT_TRACE_HIST_")) == 0)
                 ofile << variables[i].c_str() + strlen("AVT_TRACE_HIST_")<<endl;
@@ -191,7 +191,7 @@ avtExtrudedVolWriter::WriteChunk(vtkDataSet *ds, int chunk)
             ofile << pt[0] << " " << pt[1] << " " << pt[2] << endl;
         }
 
-        for (i = 0 ; i < variables.size() ; i++)
+        for (i = 0 ; i < (int)variables.size() ; i++)
         {
             vtkDataArray *arr = 
                             ds->GetPointData()->GetArray(variables[i].c_str());

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -56,7 +56,7 @@
 ADD_SUBDIRECTORY(hosts)
 
 # Directories that we want installed wholesale to the "resources" directory.
-SET(RESOURCE_DIRECTORIES colortables help hosts movietemplates translations usage clients)
+SET(RESOURCE_DIRECTORIES colortables help hosts images movietemplates translations usage clients)
 
 # Copy the resources directory into the out of source build
 FOREACH(ITEM ${RESOURCE_DIRECTORIES})

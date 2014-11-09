@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewMeshManagementAttributes(int);
 std::string
 PyMeshManagementAttributes_ToString(const MeshManagementAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const doubleVector &discretizationTolerance = atts->GetDiscretizationTolerance();
         SNPRINTF(tmpStr, 1000, "%sdiscretizationTolerance = (", prefix);
@@ -769,7 +769,6 @@ PyMeshManagementAttributes_GetLogString()
 static void
 PyMeshManagementAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    MeshManagementAttributes *atts = (MeshManagementAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

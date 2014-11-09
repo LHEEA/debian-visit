@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -112,14 +112,14 @@ void
 QvisKeyframeDelegate::paint(QPainter *p, const QStyleOptionViewItem &option, 
     const QModelIndex &index) const
 {
-    if (qVariantCanConvert<PlotRangeData>(index.data()))
+    if (index.data().canConvert<PlotRangeData>())
     {
         PlotRangeData s = index.data().value<PlotRangeData>();
         drawer->setCurrentIndex(s.currentIndex);
         drawer->setNumFrames(s.numFrames);
         drawer->drawPlotRange(p, option.rect, s.start, s.end);
     }
-    else if(qVariantCanConvert<KeyframePoints>(index.data()))
+    else if(index.data().canConvert<KeyframePoints>())
     {
         KeyframePoints s = index.data().value<KeyframePoints>();
 
@@ -130,7 +130,6 @@ QvisKeyframeDelegate::paint(QPainter *p, const QStyleOptionViewItem &option,
             if(it.value() != -1)
                 pts.append(it.value());
 
-        bool diamond = delegateType(index) == KeyframeDataModel::PlotAttsDelegate;
         drawer->setCurrentIndex(s.currentIndex);
         drawer->setNumFrames(s.numFrames);
         if(delegateType(index) == KeyframeDataModel::CurrentFrameDelegate)
@@ -198,7 +197,7 @@ QvisKeyframeDelegate::createEditor(QWidget *parent,
     const QStyleOptionViewItem &option, const QModelIndex &index) const
 {
     QWidget *w = 0;
-    if (qVariantCanConvert<PlotRangeData>(index.data()))
+    if (index.data().canConvert<PlotRangeData>())
     {
         QvisKeyframePlotRangeWidget *edit = new QvisKeyframePlotRangeWidget(parent);
         edit->setDrawer(drawer);
@@ -206,7 +205,7 @@ QvisKeyframeDelegate::createEditor(QWidget *parent,
                 this, SIGNAL(commitData(QWidget *)));
         w = edit;
     }
-    else if(qVariantCanConvert<KeyframePoints>(index.data()))
+    else if(index.data().canConvert<KeyframePoints>())
     {
         QvisKeyframeWidget *edit = new QvisKeyframeWidget(parent);
         edit->setDrawer(drawer);
@@ -266,7 +265,7 @@ QvisKeyframeDelegate::updateEditorGeometry(QWidget *editor,
 void
 QvisKeyframeDelegate::setEditorData(QWidget *editor, const QModelIndex &index) const
 {
-    if (qVariantCanConvert<PlotRangeData>(index.data()))
+    if (index.data().canConvert<PlotRangeData>())
     {
         PlotRangeData s = index.data().value<PlotRangeData>();
         QvisKeyframePlotRangeWidget *edit = (QvisKeyframePlotRangeWidget *)editor;
@@ -274,7 +273,7 @@ QvisKeyframeDelegate::setEditorData(QWidget *editor, const QModelIndex &index) c
         drawer->setNumFrames(s.numFrames);
         edit->setData(s.start, s.end);
     }
-    else if(qVariantCanConvert<KeyframePoints>(index.data()))
+    else if(index.data().canConvert<KeyframePoints>())
     {
         KeyframePoints s = index.data().value<KeyframePoints>();
         QvisKeyframeWidget *edit = (QvisKeyframeWidget *)editor;
@@ -306,14 +305,14 @@ void
 QvisKeyframeDelegate::setModelData(QWidget *editor, QAbstractItemModel *model, 
     const QModelIndex &index) const
 {
-    if (qVariantCanConvert<PlotRangeData>(index.data()))
+    if (index.data().canConvert<PlotRangeData>())
     {
         PlotRangeData s(index.data().value<PlotRangeData>());
         QvisKeyframePlotRangeWidget *edit = (QvisKeyframePlotRangeWidget *)editor;
         edit->getData(s.start, s.end);
         model->setData(index, qVariantFromValue(s));
     }
-    else if (qVariantCanConvert<KeyframePoints>(index.data()))
+    else if (index.data().canConvert<KeyframePoints>())
     {
         KeyframePoints s(index.data().value<KeyframePoints>());
         QvisKeyframeWidget *edit = (QvisKeyframeWidget *)editor;

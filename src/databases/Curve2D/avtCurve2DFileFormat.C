@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 #include <vector>
 #include <string>
 
-#include <vtkFloatArray.h>
+#include <vtkDoubleArray.h>
 #include <vtkPointData.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkVisItUtility.h>
@@ -107,7 +107,7 @@ avtCurve2DFileFormat::avtCurve2DFileFormat(const char *fname)
 
 avtCurve2DFileFormat::~avtCurve2DFileFormat()
 {
-    for (int i = 0 ; i < curves.size() ; i++)
+    for (size_t i = 0 ; i < curves.size() ; i++)
     {
         curves[i]->Delete();
     }
@@ -148,7 +148,7 @@ avtCurve2DFileFormat::GetMesh(const char *name)
         ReadFile();
     }
 
-    for (int i = 0 ; i < curves.size() ; i++)
+    for (size_t i = 0 ; i < curves.size() ; i++)
     {
         if (strcmp(curveNames[i].c_str(), name) == 0)
         {
@@ -232,7 +232,7 @@ avtCurve2DFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         ReadFile();
     }
 
-    for (int i = 0 ; i < curveNames.size() ; i++)
+    for (size_t i = 0 ; i < curveNames.size() ; i++)
     {
         avtCurveMetaData *curve = new avtCurveMetaData;
         curve->name = curveNames[i];
@@ -315,6 +315,9 @@ avtCurve2DFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //    Brad Whitlock, Mon Jul 23 12:06:38 PDT 2012
 //    Build lightweight rectilinear grids on mdserver.
 //
+//    Kathleen Biagas, Tue Jul 15 14:16:46 MST 2014
+//    Change from using float to double.
+//
 // ****************************************************************************
 
 #define INVALID_POINT_WARNING(X)                                        \
@@ -364,8 +367,8 @@ avtCurve2DFileFormat::ReadFile(void)
     // Read in all of the points and store where there are lines between them
     // so we can re-construct them later.
     //
-    vector<float> xl;
-    vector<float> yl;
+    vector<double> xl;
+    vector<double> yl;
     vector<bool>  breakpoint_following;
     vector<int>   cutoff;
     vector<avtCentering> centering;
@@ -375,12 +378,11 @@ avtCurve2DFileFormat::ReadFile(void)
     curveCycle = INVALID_CYCLE;
     CurveToken lastt = VALID_POINT;
     bool justStartedNewCurve = false;
-    float lastx;
     xl.reserve(1000);
     yl.reserve(1000);
     while (!ifile.eof())
     {
-        float   x, y;
+        double   x, y;
         string  lineName;
         CurveToken t = GetPoint(ifile, x, y, lineName);
         switch (t)
@@ -395,7 +397,7 @@ avtCurve2DFileFormat::ReadFile(void)
                 curveNames.push_back(str2);
                 headerName = "";
             }
-            int len = xl.size();
+            size_t len = xl.size();
             bool shouldAddPoint = true;
             if (len > 0)
             {
@@ -421,7 +423,7 @@ avtCurve2DFileFormat::ReadFile(void)
             {
                 // If we parsed a header followed by another header,
                 // see if it has TIME. 
-                int timePos = headerName.find("TIME");
+                size_t timePos = headerName.find("TIME");
                 if ( timePos != string::npos)
                 {
                     string tStr = headerName.substr(timePos+4);
@@ -432,7 +434,7 @@ avtCurve2DFileFormat::ReadFile(void)
                 }
                 else
                 {
-                    int cyclePos = headerName.find("CYCLE");
+                    size_t cyclePos = headerName.find("CYCLE");
                     if ( cyclePos != string::npos)
                     {
                         string cyStr = headerName.substr(cyclePos+5);
@@ -495,7 +497,7 @@ avtCurve2DFileFormat::ReadFile(void)
           }
        }
        lastt = t;
-       lastx = x;
+       //lastx = x;
        lineCount++;
     }  
 
@@ -503,7 +505,7 @@ avtCurve2DFileFormat::ReadFile(void)
     // it is TIME. 
     if (headerName != "")
     {
-        int timePos = headerName.find("TIME");
+        size_t timePos = headerName.find("TIME");
         if ( timePos != string::npos)
         {
             string tStr = headerName.substr(timePos+4);
@@ -514,7 +516,7 @@ avtCurve2DFileFormat::ReadFile(void)
         }
         else
         {
-            int cyclePos = headerName.find("CYCLE");
+            size_t cyclePos = headerName.find("CYCLE");
             if ( cyclePos != string::npos)
             {
                 string cyStr = headerName.substr(cyclePos+5);
@@ -532,8 +534,8 @@ avtCurve2DFileFormat::ReadFile(void)
     int start = 0;
     cutoff.push_back((int)xl.size());       // Make logic easier.
     centering.push_back(useCentering); //      ditto
-    int curveIndex = 0;
-    for (int i = 0 ; i < cutoff.size() ; i++)
+    int curveIndex = 0; (void) curveIndex;
+    for (size_t i = 0 ; i < cutoff.size() ; i++)
     {
         if (start == cutoff[i])
         {
@@ -547,9 +549,9 @@ avtCurve2DFileFormat::ReadFile(void)
 #ifdef MDSERVER
         vtkRectilinearGrid *rg = vtkRectilinearGrid::New();
 #else
-        vtkRectilinearGrid *rg = vtkVisItUtility::Create1DRGrid(nPts,VTK_FLOAT);
+        vtkRectilinearGrid *rg = vtkVisItUtility::Create1DRGrid(nPts,VTK_DOUBLE);
  
-        vtkFloatArray    *vals = vtkFloatArray::New();
+        vtkDoubleArray    *vals = vtkDoubleArray::New();
         vals->SetNumberOfComponents(1);
         vals->SetNumberOfTuples(nPts);
         if (curveNames.size() != 0) 
@@ -559,13 +561,13 @@ avtCurve2DFileFormat::ReadFile(void)
 
         rg->GetPointData()->SetScalars(vals);
         vals->Delete();
-        vtkFloatArray *xc = vtkFloatArray::SafeDownCast(rg->GetXCoordinates());
+        vtkDoubleArray *xc = vtkDoubleArray::SafeDownCast(rg->GetXCoordinates());
 #endif
 
-        double dmin = FLT_MAX;
-        double dmax = -FLT_MAX;
-        double smin = FLT_MAX;
-        double smax = -FLT_MAX;
+        double dmin = DBL_MAX;
+        double dmax = -DBL_MAX;
+        double smin = DBL_MAX;
+        double smax = -DBL_MAX;
         for (int j = 0 ; j < nPts ; j++)
         {
             double X, Y;
@@ -662,10 +664,13 @@ avtCurve2DFileFormat::ReadFile(void)
 //    Jeremy Meredith, Fri Jan  8 16:32:40 EST 2010
 //    Only to ASCII check in strict mode since it's basically the whole file.
 //
+//    Kathleen Biagas, Tue Jul 15 14:16:46 MST 2014
+//    Change from using float to double.
+//
 // ****************************************************************************
 
 CurveToken
-avtCurve2DFileFormat::GetPoint(ifstream &ifile, float &x, float &y, string &ln)
+avtCurve2DFileFormat::GetPoint(ifstream &ifile, double &x, double &y, string &ln)
 {
     char line[256];
     ifile.getline(line, 256, '\n');
@@ -678,7 +683,7 @@ avtCurve2DFileFormat::GetPoint(ifstream &ifile, float &x, float &y, string &ln)
     // Parenthesis are special characters for variables names, etc, so just
     // change them to square brackets to "go with the flow"...
     //
-    int i, nchars = strlen(line);
+    size_t i, nchars = strlen(line);
     for (i = 0 ; i < nchars ; i++)
     {
         if (line[i] == '(')
@@ -696,7 +701,7 @@ avtCurve2DFileFormat::GetPoint(ifstream &ifile, float &x, float &y, string &ln)
         return HEADER;
     }
     bool allSpace = true;
-    int len = strlen(line);
+    size_t len = strlen(line);
     for (i = 0 ; i < len ; i++)
     {
         if (!isspace(line[i]))
@@ -730,7 +735,7 @@ avtCurve2DFileFormat::GetPoint(ifstream &ifile, float &x, float &y, string &ln)
     char *ystr = NULL;
 
     errno = 0;
-    x = (float) strtod(line, &ystr);
+    x = strtod(line, &ystr);
     if (((x == 0.0) && (ystr == line)) || (errno == ERANGE))
     {
         return INVALID_POINT;
@@ -750,7 +755,7 @@ avtCurve2DFileFormat::GetPoint(ifstream &ifile, float &x, float &y, string &ln)
 
     char *tmpstr;
     errno = 0;
-    y = (float) strtod(ystr, &tmpstr);
+    y = strtod(ystr, &tmpstr);
     if (((y == 0.0) && (tmpstr == ystr)) || (errno == ERANGE))
     {
         return INVALID_POINT;

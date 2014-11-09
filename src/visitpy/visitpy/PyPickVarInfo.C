@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewPickVarInfo(int);
 std::string
 PyPickVarInfo_ToString(const PickVarInfo *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%svariableName = \"%s\"\n", prefix, atts->GetVariableName().c_str());
     str += tmpStr;
@@ -1075,7 +1075,6 @@ PyPickVarInfo_GetLogString()
 static void
 PyPickVarInfo_CallLogRoutine(Subject *subj, void *data)
 {
-    PickVarInfo *atts = (PickVarInfo *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

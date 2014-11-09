@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -439,7 +439,7 @@ int main(int argc, char **argv)
             "Demonstrates multiple blocks (collections of domains) and "
             "reduced/enhanced connectivity via domain boundaries.",
             "/path/to/where/sim/was/started",
-            NULL, NULL, NULL);
+            NULL, NULL, SimulationFilename());
     }
 
     /* Read input problem setup, geometry, data.*/

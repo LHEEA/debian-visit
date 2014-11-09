@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,9 +48,16 @@
 #include <array_ref_ptr.h>
 #include <string>
 
-class  vtkDataSet;
 class  avtWebpage;
+class  eavlDataSet;
+class  vtkDataSet;
 
+
+typedef enum
+{
+    DATA_REP_TYPE_EAVL,
+    DATA_REP_TYPE_VTK
+} DataRepType;
 
 typedef enum
 {
@@ -111,6 +118,13 @@ typedef enum
 //    Cyrus Harrison, Wed Feb 13 10:25:48 PST 2008
 //    Removed DatasetDump option b/c it was migrated to avtDebugDumpOptions.
 //
+//    Cameron Christensen, Thursday, May 22, 2014
+//    Added support for EAVL.
+//
+//    Eric Brugger, Tue Sep 30 15:05:02 PDT 2014
+//    I modified the EAVL version of the avtDataRepresentation constructor
+//    to also have domain and label arguments.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtDataRepresentation
@@ -119,6 +133,8 @@ class PIPELINE_API avtDataRepresentation
                         avtDataRepresentation();
                         avtDataRepresentation(vtkDataSet *, int, std::string,
                                               bool dontCopyData = false);
+                        avtDataRepresentation(eavlDataSet *, int, std::string,
+                                              bool dontCopyData = false);
                         avtDataRepresentation(char *, int, int, std::string,
                                               CharStrRef &, DataSetType);
                         avtDataRepresentation(const avtDataRepresentation &);
@@ -126,6 +142,8 @@ class PIPELINE_API avtDataRepresentation
 
     avtDataRepresentation    &operator=(const avtDataRepresentation &);
 
+    DataRepType         GetDataRepType() const { return dataRepType; }
+    eavlDataSet        *GetDataEAVL(void);
     vtkDataSet         *GetDataVTK(void);
     unsigned char      *GetDataString(int &, DataSetType &);
     unsigned char      *GetCompressedDataString(int &, DataSetType &);
@@ -143,11 +161,13 @@ class PIPELINE_API avtDataRepresentation
     const char         *DebugDump(avtWebpage *, const char *);
 
   protected:
+    eavlDataSet        *asEAVL;
     vtkDataSet         *asVTK;
     unsigned char      *asChar;
     int                 asCharLength;
     CharStrRef          originalString;
     DataSetType         datasetType;
+    DataRepType         dataRepType;
 
     float               compressionRatio;
     float               timeToCompress;
@@ -156,13 +176,20 @@ class PIPELINE_API avtDataRepresentation
     int                 domain;
     std::string         label;
 
-    static bool         initializedNullDataset;
-    static vtkDataSet  *nullDataset;
+    static bool         initializedNullDatasets;
+    static vtkDataSet  *nullVTKDataset;
+    static eavlDataSet *nullEAVLDataset;
 
     unsigned char      *GetDataString(int &, DataSetType &, bool);
-    static void         InitializeNullDataset(void);
-    static void         DeleteNullDataset(void);
+    unsigned char      *vtkToString(bool compress);
+    static void         InitializeNullDatasets(void);
+    static void         DeleteNullDatasets(void);
     static DataSetType  DatasetTypeForVTK(vtkDataSet *);
+
+ private:
+    vtkDataSet*         EAVLToVTK(eavlDataSet *data);
+    eavlDataSet*        VTKToEAVL(vtkDataSet *data);
+
 };
 
 

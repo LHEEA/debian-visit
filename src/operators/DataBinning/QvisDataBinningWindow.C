@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1047,7 +1047,7 @@ QvisDataBinningWindow::dim1BinBasedOnChanged(int val)
         newVal = DataBinningAttributes::X;
     else if (val == 2)
         newVal = DataBinningAttributes::Y;
-    else if (val == 3)
+    else /*if (val == 3) */
         newVal = DataBinningAttributes::Z;
     if(newVal != atts->GetDim1BinBasedOn())
     {
@@ -1066,7 +1066,7 @@ QvisDataBinningWindow::dim2BinBasedOnChanged(int val)
         newVal = DataBinningAttributes::X;
     else if (val == 2)
         newVal = DataBinningAttributes::Y;
-    else if (val == 3)
+    else /*if (val == 3) */
         newVal = DataBinningAttributes::Z;
     if(newVal != atts->GetDim2BinBasedOn())
     {
@@ -1085,7 +1085,7 @@ QvisDataBinningWindow::dim3BinBasedOnChanged(int val)
         newVal = DataBinningAttributes::X;
     else if (val == 2)
         newVal = DataBinningAttributes::Y;
-    else if (val == 3)
+    else /*if (val == 3)*/
         newVal = DataBinningAttributes::Z;
     if(newVal != atts->GetDim3BinBasedOn())
     {

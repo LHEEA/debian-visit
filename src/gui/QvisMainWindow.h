@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -245,6 +245,9 @@ class WindowInformation;
 class GUI_API QvisMainWindow : public QvisWindowBase, public SimpleObserver
 {
     Q_OBJECT
+
+    using QvisWindowBase::SetFromNode;
+
 public:
     QvisMainWindow(int orientation, const char *captionString = 0);
     ~QvisMainWindow();

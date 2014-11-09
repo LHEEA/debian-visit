@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -35,6 +35,9 @@
 # DAMAGE.
 #
 # Modifications:
+#    Gunther H. Weber, Thu Nov 21 18:24:53 PST 2013
+#    Use instead PYSIDE_INCLUDE_DIR (set by findpackage PySide) instead of
+#    VISIT_PYSIDE_DIR to support system PySide installs.
 #
 #*****************************************************************************
 
@@ -47,10 +50,10 @@ set(pyside_gui_include_paths
     ${QT_QTGUI_INCLUDE_DIR}
     ${QT_QTOPENGL_INCLUDE_DIR}
     ${QT_INCLUDE_DIR}
-    ${VISIT_PYSIDE_DIR}/include/PySide
-    ${VISIT_PYSIDE_DIR}/include/PySide/QtCore
-    ${VISIT_PYSIDE_DIR}/include/PySide/QtGui
-    ${VISIT_PYSIDE_DIR}/include/PySide/QtOpenGL
+    ${PYSIDE_INCLUDE_DIR}
+    ${PYSIDE_INCLUDE_DIR}/QtCore
+    ${PYSIDE_INCLUDE_DIR}/QtGui
+    ${PYSIDE_INCLUDE_DIR}/QtOpenGL
     ${VISIT_SOURCE_DIR}/gui/
     ${VISIT_SOURCE_DIR}/gui/main
     ${VISIT_SOURCE_DIR}/viewer/subjectproxy
@@ -95,7 +98,7 @@ ${CMAKE_CURRENT_BINARY_DIR}/pyside_gui/pyside_gui_module_wrapper.cpp)
 #
 IF(MESA_FOUND)
     set(pyside_gui_link_libs ${pyside_gui_link_libs} ${MESA_LIB})
-    LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${MESA_LIBRARY_DIR})
+    LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${MESA_LIBRARY_DIR} ${EAVL_LIBRARY_DIR})
 ENDIF(MESA_FOUND)
 
 PYSIDE_ADD_MODULE(pyside_gui

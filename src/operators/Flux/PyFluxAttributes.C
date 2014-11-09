@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewFluxAttributes(int);
 std::string
 PyFluxAttributes_ToString(const FluxAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sflowField = \"%s\"\n", prefix, atts->GetFlowField().c_str());
     str += tmpStr;
@@ -393,7 +393,6 @@ PyFluxAttributes_GetLogString()
 static void
 PyFluxAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    FluxAttributes *atts = (FluxAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

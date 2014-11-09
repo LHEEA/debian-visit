@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -465,7 +465,7 @@ avtRayTracer::Execute(void)
         trans.SetPassThruRectilinearGrids(true);
         extractor.SetRectilinearGridsAreInWorldSpace(true, view, aspect);
     }
-    int  timingVolToImg;
+    int  timingVolToImg = 0;
     if (rayCastingSLIVR == true && parallelOn)
         timingVolToImg = visitTimer->StartTimer();
 
@@ -721,8 +721,6 @@ avtRayTracer::Execute(void)
             if (patchesToCompositeLocally[index] == -1 || index == totalPatchesToCompositeLocally){
                 end = index-1;
 
-                int dimsX, dimsY;
-
                 imgMetaData composedPatch = imgMetaDataMultiMap.find(patchesToCompositeLocally[start])->second;
                 imgMetaData lastPatch = imgMetaDataMultiMap.find(patchesToCompositeLocally[end])->second;
 
@@ -895,7 +893,6 @@ avtRayTracer::Execute(void)
                     
                 std::multimap<int,imgMetaData>::iterator it;
                 for (it = imgMetaDataMultiMap.begin(); it != imgMetaDataMultiMap.end(); ++it ){
-                    imgMetaData tempImgMetaData = it->second;
 
                     const bool is_in = ((std::find(senderListSet.begin(), senderListSet.end(), it->second.destProcId)) != (senderListSet.end()));
                     if (is_in){
@@ -969,7 +966,6 @@ avtRayTracer::Execute(void)
                     imgData tempImgData;
                     imgMetaData tempImgMetaData;
 
-                    //imgComm.recvPointToPoint(tempImgMetaData, tempImgData);
                     imgComm.recvPointToPointMetaData(tempImgMetaData, numProcessors);
 
                     tempImgData.procId = tempImgMetaData.procId;
@@ -994,7 +990,6 @@ avtRayTracer::Execute(void)
                 
                 std::multimap<int,imgMetaData>::iterator it;
                 for (it = imgMetaDataMultiMap.begin(); it != imgMetaDataMultiMap.end(); ++it ){
-                    imgMetaData tempImgMetaData = it->second;
 
                     const bool is_in = ((std::find(senderListSet.begin(), senderListSet.end(), it->second.destProcId)) != (senderListSet.end()));
                     if (is_in){
@@ -1250,9 +1245,6 @@ avtRayTracer::Execute(void)
 
         visitTimer->StopTimer(timingIndex, "Ray Tracing");
         visitTimer->DumpTimings();
-
-        //if (imgTest != NULL)
-        //   delete []imgTest;
 
         extractor.delImgPatches();
 

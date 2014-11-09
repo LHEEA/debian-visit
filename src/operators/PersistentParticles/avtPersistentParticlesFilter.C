@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -661,7 +661,7 @@ avtPersistentParticlesFilter::IterateTraceData(int ts, avtDataTree_p tree)
 
           //Copy the pointdata from the input mesh to the output mesh
           vtkPointData* allData = particlePathData->GetPointData();
-          for( unsigned int j=0 ; j<allData->GetNumberOfArrays() ; j++) {
+          for( unsigned int j=0 ; j< (unsigned int)allData->GetNumberOfArrays() ; j++) {
             allData->GetArray(j)->
               InsertTuple( newPointIndex,
                            currData->GetArray(j)->GetTuple(i) );
@@ -678,7 +678,7 @@ avtPersistentParticlesFilter::IterateTraceData(int ts, avtDataTree_p tree)
             
             //Copy the celldata from the input mesh to the output mesh
             vtkCellData* allCellData = particlePathData->GetCellData();
-            for( unsigned int j=0 ; j<allCellData->GetNumberOfArrays() ; j++) {
+            for( unsigned int j=0 ; j<(unsigned int)allCellData->GetNumberOfArrays() ; j++) {
               allCellData->GetArray(j)->
                 InsertTuple( newCellIndex,
                              currCellData->GetArray(j)->GetTuple(i) );
@@ -699,7 +699,7 @@ avtPersistentParticlesFilter::IterateTraceData(int ts, avtDataTree_p tree)
 
             //Copy the celldata from the input mesh to the output mesh
             vtkCellData* allCellData = particlePathData->GetCellData();
-            for( unsigned int j=0 ; j<allCellData->GetNumberOfArrays() ; j++) {
+            for( unsigned int j=0 ; j<(unsigned int)allCellData->GetNumberOfArrays() ; j++) {
                allCellData->GetArray(j)->
                  InsertTuple( newCellIndex,
                               currCellData->GetArray(j)->GetTuple(i) );
@@ -837,6 +837,10 @@ avtPersistentParticlesFilter::ModifyContract(avtContract_p in_contract)
 //  Brad Whitlock, Wed Apr  4 15:15:02 PDT 2012
 //  Fix crash for pipelines that don't have active variables.
 //
+//  Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//  Add filter metadata used in export.
+//  Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
 
 void
@@ -867,4 +871,6 @@ avtPersistentParticlesFilter::UpdateDataObjectInfo(void)
            if( out_data_atts.HasInvTransform() )
                out_data_atts.SetCanUseInvTransform(false);
     }
+
+    out_data_atts.AddFilterMetaData("PersistentParticles");
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -133,7 +133,7 @@ public:
 protected:
     void                 SetupAllRPCs();
     virtual void         SetupComponentRPCs() = 0;
-    std::string          GetVisItString() const;
+    std::string          GetVisItString(const MachineProfile &profile) const;
     virtual void         AddExtraArguments();
 
     std::string          componentName;

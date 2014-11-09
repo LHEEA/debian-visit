@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewDeformSphereGlyphAttributes(int);
 std::string
 PyDeformSphereGlyphAttributes_ToString(const DeformSphereGlyphAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%svar = \"%s\"\n", prefix, atts->GetVar().c_str());
     str += tmpStr;
@@ -390,7 +390,6 @@ PyDeformSphereGlyphAttributes_GetLogString()
 static void
 PyDeformSphereGlyphAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    DeformSphereGlyphAttributes *atts = (DeformSphereGlyphAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

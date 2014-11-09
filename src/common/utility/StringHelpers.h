@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -164,7 +164,7 @@ namespace StringHelpers
 
         const char *str = s;
         // get rid of leading 0's; they confuse strtoul.
-        if(str[0] == '0' && str[1] != 'x')
+        if(str[0] == '0' && str[1] != '\0' && str[1] != 'x')
         {
             while(*str == '0') { ++str; }
         }

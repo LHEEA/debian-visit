@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -419,7 +419,6 @@ static int
 Listen(int port, struct sockaddr_in &sin)
 {
     int  on = 1;
-    bool portFound = false;
 
     // Open a socket.
     int listenSock = socket(AF_INET, SOCK_STREAM, 0);

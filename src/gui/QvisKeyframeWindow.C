@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -264,7 +264,11 @@ QvisKeyframeWindow::CreateWindowContents()
             kv, SLOT(expandAll()));
     connect(kv->selectionModel(), SIGNAL(selectionChanged(const QItemSelection &, const QItemSelection &)),
             this, SLOT(newSelection()));
+#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
     kv->header()->setResizeMode(QHeaderView::ResizeToContents);
+#else
+    kv->header()->setSectionResizeMode(QHeaderView::ResizeToContents);
+#endif
     kv->setEditTriggers(QAbstractItemView::AllEditTriggers);
     kv->setItemDelegateForColumn(1, new QvisKeyframeDelegate(this));
     mainLayout->addWidget(kv, row,0,1,3);
@@ -317,7 +321,7 @@ QvisKeyframeWindow::GetCurrentFrame() const
 {
     int curFrame = 0;
 
-    for(int i = 0; i < windowInfo->GetTimeSliders().size(); ++i)
+    for(size_t i = 0; i < windowInfo->GetTimeSliders().size(); ++i)
     {
         if(windowInfo->GetTimeSliders()[i] == KeyframeDataModel::KF_TIME_SLIDER)
         {
@@ -370,7 +374,6 @@ QvisKeyframeWindow::UpdateWindowInformation()
     // "Keyframe animation". Look for it in the time slider list and get
     // the number of frames from the keyframe attributes.
     //
-    int curFrame = GetCurrentFrame();
 
     //
     // Get the number of frames from the keyframe atts.
@@ -379,7 +382,6 @@ QvisKeyframeWindow::UpdateWindowInformation()
     if (numFrames == 0)
     {
         numFrames = 1;
-        curFrame = 0;
     }
     temp.sprintf("%d", numFrames);
     nFrames->blockSignals(true);

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -52,6 +52,9 @@
 #   Kathleen Biagas, Tue Sep  3 11:08:03 PDT 2013
 #   Swap avtGLEWInitializer for avtOpenGLExtensionManager.
 #
+#   Kathleen Biagas, Wed Jan  8 14:19:28 PST 2014
+#   Add vtkAxesActor2D.
+#
 #****************************************************************************/
 
 SET(VISIT_VTK_MANTA_SOURCES
@@ -91,6 +94,7 @@ ENDIF(VISIT_USE_GLEW)
 
 SET(AVTPLOTTER_VTK_SOURCES
 vtk/InitVTKRendering.C 
+vtk/vtkAxesActor2D.C 
 vtk/vtkBackgroundActor.C 
 vtk/vtkLineLegend.C 
 vtk/vtkMultiFontVectorText.C 
@@ -181,7 +185,7 @@ ${GRAPHICS_INCLUDES}
 )
 
 # Add link directories
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} )
+LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} )
 
 
 #********************************* SERIAL ************************************

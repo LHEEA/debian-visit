@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -323,6 +323,9 @@ VisWinPathTracker::GetSmartDirectory(const std::string &path)
 //    Kathleen Bonnell, Wed Feb 13 07:52:58 PST 2008 
 //    Call FindLastSlash, which searches for unix and windows style slashes.
 //
+//    Kathleen Biagas, Wed Jan 29 15:21:21 MST 2014
+//    Check size before taking substring.
+//
 // ****************************************************************************
 
 void
@@ -357,8 +360,12 @@ VisWinPathTracker::UpdatePaths()
         if( path_common == itr->second.GetPath())
             spath = itr->second.GetFileName();
         else
-            spath = itr->second.GetPath().substr(path_common_size+1);
-
+        {
+            if ((size_t)path_common_size < itr->second.GetPath().size())
+                spath = itr->second.GetPath().substr(path_common_size+1);
+            else
+                spath = itr->second.GetPath();
+        }
 
         itr->second.SetSmartPath(spath);
     }
@@ -369,8 +376,13 @@ VisWinPathTracker::UpdatePaths()
         if( dir_common == itr->second.GetDirectory())
             sdir = dir_common.substr(FindLastSlash(dir_common)+1);
         else
-            sdir = itr->second.GetDirectory().substr(dir_common_size+1);
-        
+        {
+            if ((size_t)dir_common_size < itr->second.GetDirectory().size())
+                sdir = itr->second.GetDirectory().substr(dir_common_size+1);
+            else
+                sdir = itr->second.GetDirectory();
+        }
+
         itr->second.SetSmartDirectory(sdir);
     }
 }
@@ -441,7 +453,6 @@ std::string VisWinPathTracker::GetCommonPath(stringVector &paths)
 
     // loop indices
     int i = 0;
-    int j = 0;
     // get # of paths
     int npaths = paths.size();
     
@@ -528,7 +539,7 @@ VisWinPathTracker::Entry::Entry(const std::string &path)
     fileName  = path;
     
     int idx = FindLastSlash(directory);
-    if(idx != string::npos)
+    if((size_t)idx != string::npos)
     {
         fileName  = directory.substr(idx+1);
         directory = directory.substr(0,idx);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewDeferExpressionAttributes(int);
 std::string
 PyDeferExpressionAttributes_ToString(const DeferExpressionAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const stringVector &exprs = atts->GetExprs();
         SNPRINTF(tmpStr, 1000, "%sexprs = (", prefix);
@@ -365,7 +365,6 @@ PyDeferExpressionAttributes_GetLogString()
 static void
 PyDeferExpressionAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    DeferExpressionAttributes *atts = (DeferExpressionAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

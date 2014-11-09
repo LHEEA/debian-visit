@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -401,7 +401,6 @@ avtText3DColleague::SetOptions(const AnnotationObject &annot)
     //
     // Set the labels if the text vector is different
     //
-    bool textChanged = false;
     if(currentOptions.GetText() != annot.GetText())
     {
         const stringVector &text = annot.GetText();
@@ -409,7 +408,6 @@ avtText3DColleague::SetOptions(const AnnotationObject &annot)
             SetText(text[0].c_str());
         else
             SetText("");
-        textChanged = true;
     }
 
     //

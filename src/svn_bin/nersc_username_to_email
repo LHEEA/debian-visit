@@ -73,6 +73,12 @@
 #    Eric Brugger, Mon Oct 21 11:25:21 PDT 2013
 #    Added case for "camc" for Cameron Christensen.
 #
+#    Kevin Griffin, Mon Jun  2 12:06:07 PDT 2014
+#    Added case for userid "kgriffin".
+#
+#    Ryan Bleile, Wed Jun 11 09:23:59 CDT 2014
+#    Added case for userid "rbleile" for myself. 
+#
 # *****************************************************************************
 
 
@@ -116,6 +122,10 @@ case $1 in
     # Eric Brugger, Lawrence Livermore National Laboratory
     "brugger")
         emaddr=brugger1@llnl.gov
+        ;;
+    # Kevin Griffin, Lawrence Livermore National Laboratory
+    "kgriffin")
+        emaddr=griffin28@llnl.gov
         ;;
     # Tom Fogal, University of New Hampshire / University of Utah
     "fogal1")
@@ -192,6 +202,10 @@ case $1 in
     # Cameron Christensen
     "camc")
         emaddr=cam@sci.utah.edu
+        ;;
+    # Ryan Bleile
+    "rbleile")
+        emaddr=rbleile@cs.uoregon.edu
         ;;
     *)
         emaddr=visit-core-support@elist.ornl.gov

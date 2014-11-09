@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -189,18 +189,18 @@ avtCreateBondsFilter::AtomBondDistances(int elementA, int elementB,
     vector<int>    &element1 = atts.GetAtomicNumber1();
     vector<int>    &element2 = atts.GetAtomicNumber2();
 
-    int n1 = atts.GetAtomicNumber1().size();
-    int n2 = atts.GetAtomicNumber2().size();
-    int n3 = atts.GetMinDist().size();
-    int n4 = atts.GetMaxDist().size();
+    size_t n1 = atts.GetAtomicNumber1().size();
+    size_t n2 = atts.GetAtomicNumber2().size();
+    size_t n3 = atts.GetMinDist().size();
+    size_t n4 = atts.GetMaxDist().size();
     if (n1 != n2 || n1 != n3 || n1 != n4)
     {
         EXCEPTION1(ImproperUseException,
                    "Bond list data arrays were not all the same length.");
     }
-    int n = n1;
+    size_t n = n1;
 
-    for (int i=0; i<n; i++)
+    for (size_t i=0; i<n; i++)
     {
         // a -1 in the element list means "any"
         int e1 = element1[i];
@@ -262,24 +262,31 @@ ShouldAtomsBeBonded(double dmin, double dmax,
 //      Sends the specified input and output through the CreateBonds filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
-//      <unused>   The label.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer:  Jeremy Meredith
 //  Creation:    January 27, 2010
 //
-//   Jeremy Meredith, Tue Feb 22 21:36:07 EST 2011
-//   Added support for non-polydata mesh types through the geometry filter.
-//   Sure, it may be a little blunt, but it doesn't hurt anything and allows
-//   e.g. Silo point meshes (which are unstructured, not poly data) to work.
+//  Modifications:
+//    Jeremy Meredith, Tue Feb 22 21:36:07 EST 2011
+//    Added support for non-polydata mesh types through the geometry filter.
+//    Sure, it may be a little blunt, but it doesn't hurt anything and allows
+//    e.g. Silo point meshes (which are unstructured, not poly data) to work.
+//
+//    Eric Brugger, Wed Jul 23 11:25:16 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
-vtkDataSet *
-avtCreateBondsFilter::ExecuteData(vtkDataSet *in_ds, int, string)
+avtDataRepresentation *
+avtCreateBondsFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     vtkGeometryFilter *geom = NULL;
     if (in_ds->GetDataObjectType() != VTK_POLY_DATA)
     {
@@ -295,13 +302,13 @@ avtCreateBondsFilter::ExecuteData(vtkDataSet *in_ds, int, string)
     //
     float maxBondDist = 0.;
     vector<double> &maxDist = atts.GetMaxDist();
-    for (int i=0; i<maxDist.size(); i++)
+    for (size_t i=0; i<maxDist.size(); i++)
     {
         if (maxDist[i] > maxBondDist)
             maxBondDist = maxDist[i];
     }
     if (maxBondDist <= 0.)
-        return in_ds;
+        return in_dr;
 
     //
     // Find the actual extents
@@ -345,7 +352,13 @@ avtCreateBondsFilter::ExecuteData(vtkDataSet *in_ds, int, string)
     }
     if (geom)
         geom->Delete();
-    return out_ds;
+
+    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
+        in_dr->GetDomain(), in_dr->GetLabel());
+
+    out_ds->Delete();
+
+    return out_dr;
 }
 
 
@@ -372,6 +385,9 @@ avtCreateBondsFilter::ExecuteData(vtkDataSet *in_ds, int, string)
 //
 //   Kathleen Biagas, Tue Aug 21 16:08:27 MST 2012
 //   Preserve coordinate type.
+//
+//   Eric Brugger, Wed Jul 23 11:25:16 PDT 2014
+//   Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -400,6 +416,7 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
     {
         debug1 << "avtCreateBondsFilter: did not find appropriate point array\n";
         debug1 << "   -- returning original data set with no bonds changed.\n";
+        in->Register(NULL);
         return in;
     }
 
@@ -460,9 +477,6 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
     // for periodic atom images
     //
     bool addPeriodicBonds = atts.GetAddPeriodicBonds();
-    bool xper = addPeriodicBonds && atts.GetPeriodicInX();
-    bool yper = addPeriodicBonds && atts.GetPeriodicInY();
-    bool zper = addPeriodicBonds && atts.GetPeriodicInZ();
     double xv[3], yv[3], zv[3];
     for (int j=0; j<3; j++)
     {
@@ -605,7 +619,7 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
             for (int k=1; k<nk-1; k++)
             {
                 int index1 = i + ni*(j + nj*(k));
-                int nla1 = atomgrid[index1].size();
+                int nla1 = (int)atomgrid[index1].size();
                 // for each atom in each box
                 for (int la1=0; la1<nla1; la1++)
                 {
@@ -639,7 +653,7 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
                                 // add this extra layer of boxes, though.
 
                                 int index2 = ii + ni*(jj + nj*(kk));
-                                int nla2 = atomgrid[index2].size();
+                                int nla2 = (int)atomgrid[index2].size();
                                 for (int la2=0; la2<nla2 && ctr<max_per_atom; la2++)
                                 {
                                     if (index1==index2 && la1==la2)
@@ -698,8 +712,6 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
 
     delete[] atomgrid;
 
-    ManageMemory(out);
-    out->Delete();
     return out;    
 }
 
@@ -741,6 +753,9 @@ avtCreateBondsFilter::ExecuteData_Fast(vtkPolyData *in, float maxBondDist,
 //    Kathleen Biagas, Tue Aug 21 16:08:27 MST 2012 
 //    Preserve coordinate type.
 //
+//    Eric Brugger, Wed Jul 23 11:25:16 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -765,6 +780,7 @@ avtCreateBondsFilter::ExecuteData_Slow(vtkPolyData *in)
     {
         debug1 << "avtCreateBondsFilter: did not find appropriate point array\n";
         debug1 << "   -- returning original data set with no bonds changed.\n";
+        in->Register(NULL);
         return in;
     }
 
@@ -1014,8 +1030,6 @@ avtCreateBondsFilter::ExecuteData_Slow(vtkPolyData *in)
             origCellNums->SetTuple1(i,-1);
     }
 
-    ManageMemory(out);
-    out->Delete();
     return out;
 }
 
@@ -1064,4 +1078,27 @@ avtCreateBondsFilter::ModifyContract(avtContract_p spec)
     avtContract_p rv = new avtContract(spec, nds);
 
     return rv;
+}
+
+// ****************************************************************************
+// Method: avtCreateBondsFilter::UpdateDataObjectInfo
+//
+// Purpose:
+//   Update the data object information.
+//
+// Note:       Work partially supported by DOE Grant SC0007548.
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Mar 18 10:53:05 PDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtCreateBondsFilter::UpdateDataObjectInfo(void)
+{
+    avtPluginDataTreeIterator::UpdateDataObjectInfo();
+
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("CreateBonds");
 }

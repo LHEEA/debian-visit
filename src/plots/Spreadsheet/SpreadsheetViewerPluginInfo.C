@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -563,8 +563,6 @@ void
 SpreadsheetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts, 
     const ViewerPlot *plot)
 {
-    const char *mName = "SpreadsheetViewerPluginInfo::PrivateSetPlotAtts: ";
-
     // Search for a SIL_DOMAIN category under the current silTopSet and add
     // sets that are used.
     SpreadsheetAttributes *sAtts = (SpreadsheetAttributes *)atts;
@@ -582,7 +580,7 @@ SpreadsheetViewerPluginInfo::PrivateSetPlotAtts(AttributeSubject *atts,
         if(*collection != NULL && collection->GetRole() == SIL_DOMAIN) 
         {
             nSets = collection->GetNumberOfSubsets(); 
-            for(size_t si = 0; si < nSets && !validName; ++si)
+            for(int si = 0; si < nSets && !validName; ++si)
             {
                 if(!firstNameSet)
                 {

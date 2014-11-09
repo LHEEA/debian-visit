@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,7 +75,7 @@ avtDataBinningFunctionInfo::avtDataBinningFunctionInfo(avtBinningScheme *bs,
     }
 
     binningScheme = bs;
-    for (int i = 0 ; i < bn.size() ; i++)
+    for (size_t i = 0 ; i < bn.size() ; i++)
         binBasedOn.push_back((BinBasedOn) bn[i]);
     tupleNames = tn;
     codomainVariable = cv;

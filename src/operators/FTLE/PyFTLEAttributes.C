@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewFTLEAttributes(int);
 std::string
 PyFTLEAttributes_ToString(const FTLEAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *sourceType_names = "NativeMesh, RegularGrid";
     switch (atts->GetSourceType())
@@ -2094,7 +2094,6 @@ PyFTLEAttributes_GetLogString()
 static void
 PyFTLEAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    FTLEAttributes *atts = (FTLEAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

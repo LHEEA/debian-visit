@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -252,8 +252,10 @@ bool avtGLSLProgram::Create()
     glGetProgramiv( program, GL_LINK_STATUS, &linked );
 
     if( linked != GL_TRUE )
+    {
         debug1 << "avtGLSLProgram \""<< name << "\": "
                   "GLSL program failed to link\n";
+    }
 
     if( shadersOK && linked )
         return true;
@@ -308,10 +310,12 @@ bool avtGLSLProgram::IsSupported()
         return supported;
 
     if( !avt::glew::initialize() )
-        return supported = 0;
+    {
+        return (supported = 0); ///TODO: supported = 0 check on this change
+    }
         
-    return supported = 
-        avt::glew::supported( "GL_VERSION_2_0" ) &&
-        avt::glew::supported( "GL_ARB_shading_language_100" );
+    return (supported = 
+        (avt::glew::supported( "GL_VERSION_2_0" ) &&
+        avt::glew::supported( "GL_ARB_shading_language_100" )));
 }
 

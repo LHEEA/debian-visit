@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -149,6 +149,9 @@
 //    Kathleen Biagas, Tue Oct 29 16:04:19 MST 2013
 //    For extraIncludes specified in CXXFLAGS, check for use of 
 //    ${VISIT_INCLUDE_DIR} and correct it if building against public VisIt.
+//
+//    Eric Brugger, Wed May 21 14:48:11 PDT 2014
+//    I added support for EAVL.
 //
 // ****************************************************************************
 
@@ -461,6 +464,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << "${QT_INCLUDE_DIR}" << endl;
         out << "${QT_QTCORE_INCLUDE_DIR}" << endl;
         out << "${QT_QTGUI_INCLUDE_DIR}" << endl;
+        out << "${EAVL_INCLUDE_DIR} " << endl;
         out << "${VTK_INCLUDE_DIRS} " << endl;
         out << "${PYINCLUDES}" << endl;
         if(extraIncludes.size() > 0)
@@ -625,6 +629,7 @@ class CMakeGeneratorPlugin : public Plugin
         linkDirs.push_back("${VISIT_LIBRARY_DIR}");
         linkDirs.push_back("${QT_LIBRARY_DIR}");
         linkDirs.push_back("${GLEW_LIBRARY_DIR}");
+        linkDirs.push_back("${EAVL_LIBRARY_DIR}");
         linkDirs.push_back("${VTK_LIBRARY_DIRS}");
         // Extract extra link directories from LDFLAGS if they have ${},$(),-L
         for (size_t i=0; i<ldflags.size(); i++)
@@ -693,14 +698,16 @@ class CMakeGeneratorPlugin : public Plugin
         out << endl;
         // Java sources
         out << "    IF(VISIT_JAVA)" << endl;
-        out << "        ADD_CUSTOM_TARGET(Java"<<name<<" ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java ";
+        out << "        FILE(COPY " << atts->name<<".java " << "DESTINATION ${JavaClient_BINARY_DIR}/src/plots)" << endl;
+        out << "        ADD_CUSTOM_TARGET(Java"<<name<<" ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} ";
         if(customjfiles)
         {
             for(size_t i = 0; i < jfiles.size(); ++i)
                 out << jfiles[i] << " ";
         }
-        out << atts->name<<".java)" << endl;
-        out << "        ADD_DEPENDENCIES(Java"<<name<<" JavaClient)" << endl;
+        out << atts->name<<".java" << endl;
+        out << "            DEPENDS JavaClient" << endl;
+        out << "            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})" << endl;
         out << "    ENDIF(VISIT_JAVA)" << endl;
 
         out << "ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)" << endl;
@@ -850,6 +857,7 @@ class CMakeGeneratorPlugin : public Plugin
         linkDirs.push_back("${VISIT_LIBRARY_DIR}");
         linkDirs.push_back("${QT_LIBRARY_DIR}");
         linkDirs.push_back("${GLEW_LIBRARY_DIR}");
+        linkDirs.push_back("${EAVL_LIBRARY_DIR}");
         linkDirs.push_back("${VTK_LIBRARY_DIRS}");
         for (size_t i=0; i<ldflags.size(); i++)
         {
@@ -913,14 +921,16 @@ class CMakeGeneratorPlugin : public Plugin
         out << endl;
         // Java sources
         out << "    IF(VISIT_JAVA)" << endl;
-        out << "        ADD_CUSTOM_TARGET(Java"<<name<<" ALL ${CMAKE_Java_COMPILER} ${CMAKE_Java_FLAGS} -d ${VISIT_BINARY_DIR}/java -classpath ${VISIT_BINARY_DIR}/java ";
+        out << "        FILE(COPY " << atts->name<<".java DESTINATION ${JavaClient_BINARY_DIR}/src/operators)" << endl;
+        out << "        ADD_CUSTOM_TARGET(Java"<<name<<" ALL ${Java_JAVAC_EXECUTABLE} ${VISIT_Java_FLAGS} -d ${JavaClient_BINARY_DIR} -classpath ${JavaClient_BINARY_DIR} -sourcepath ${JavaClient_BINARY_DIR} ";
         if(customjfiles)
         {
             for(size_t i = 0; i < jfiles.size(); ++i)
                 out << jfiles[i] << " ";
         }
-        out << atts->name<<".java)" << endl;
-        out << "        ADD_DEPENDENCIES(Java"<<name<<" JavaClient)" << endl;
+        out << atts->name<<".java" << endl;
+        out << "            DEPENDS JavaClient" << endl;
+        out << "            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})" << endl;
         out << "    ENDIF(VISIT_JAVA)" << endl;
 
         out << "ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)" << endl;
@@ -1082,6 +1092,7 @@ class CMakeGeneratorPlugin : public Plugin
         out << VisItIncludeDir() << "/avt/VisWindow/VisWindow" << endl;
         out << VisItIncludeDir() << "/visit_vtk/full" << endl;
         out << VisItIncludeDir() << "/visit_vtk/lightweight" << endl;
+        out << "${EAVL_INCLUDE_DIR} " << endl;
         out << "${VTK_INCLUDE_DIRS} " << endl;
         out << ")" << endl;
         out << endl;
@@ -1143,6 +1154,7 @@ class CMakeGeneratorPlugin : public Plugin
         // Extract extra link directories from LDFLAGS if they have ${},$(),-L
         std::vector<QString> linkDirs;
         linkDirs.push_back("${VISIT_LIBRARY_DIR}");
+        linkDirs.push_back("${EAVL_LIBRARY_DIR}");
         linkDirs.push_back("${VTK_LIBRARY_DIRS}");
         for (size_t i=0; i<ldflags.size(); i++)
         {

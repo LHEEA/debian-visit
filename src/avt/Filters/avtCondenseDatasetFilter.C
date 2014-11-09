@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -102,10 +102,9 @@ avtCondenseDatasetFilter::~avtCondenseDatasetFilter()
 //      Sends the specified input and output through the CondenseDataset filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      <unused>   The domain number.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Kathleen Bonnell 
 //  Creation:   November 07, 2000
@@ -152,14 +151,24 @@ avtCondenseDatasetFilter::~avtCondenseDatasetFilter()
 //    Changed function to be thread safe. I remove the class variable rpfPD
 //    and rpfUG. Now I allocate the needed VTK object during execution.
 //
+//    Burlen Loring, Mon Apr 14 15:56:19 PDT 2014
+//    Don't take two references to the output
+//
+//    Eric Brugger, Fri Jul 18 16:07:04 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtCondenseDatasetFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
+avtDataRepresentation *
+avtCondenseDatasetFilter::ExecuteData(avtDataRepresentation *in_dr)
 {
     int i;
 
     //
+    // Get the VTK data set.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+
     // Remove any variable that has "VTK" or "AVT" in its name.  Make a for
     // loop with two iterations.  Iteration #1 is to determine if we have
     // to strip out arrays.  Iteration #2 is to strip out the arrays.  The
@@ -168,7 +177,7 @@ avtCondenseDatasetFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     // copies of the data can really slow things down.
     //
     vtkDataSet *no_vars = in_ds;
-    bool needToDelete = false;
+    bool needToDeleteNoVars = false;
     bool needToRemoveAVar = true;
     for (int j = 0 ; (j < 2) && needToRemoveAVar ; j++)
     {
@@ -181,7 +190,7 @@ avtCondenseDatasetFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
             // the arrays.
             no_vars = (vtkDataSet *) in_ds->NewInstance();
             no_vars->ShallowCopy(in_ds);
-            needToDelete = true;
+            needToDeleteNoVars = true;
         }
 
         if (!keepAVTandVTK)
@@ -292,6 +301,7 @@ avtCondenseDatasetFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
     }
 
     vtkDataSet *out_ds = NULL;  
+    bool needToDeleteOutDs = false;
     if (shouldTakeRelevantPoints)
     {
         vtkPolyData *out_pd = NULL;
@@ -314,6 +324,7 @@ avtCondenseDatasetFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
                     rpfPD->Update();
                     rpfPD->Delete();
                     out_ds = (vtkDataSet*)out_pd;
+                    needToDeleteOutDs = true;
                     break;
                 }
     
@@ -326,6 +337,7 @@ avtCondenseDatasetFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
                     rpfUG->Update();
                     rpfUG->Delete();
                     out_ds = (vtkDataSet*)out_ug;
+                    needToDeleteOutDs = true;
                     break;
                 }
     
@@ -342,12 +354,16 @@ avtCondenseDatasetFilter::ExecuteData(vtkDataSet *in_ds, int, std::string)
         out_ds = no_vars;
     }
 
-    if (out_ds != in_ds)
-        ManageMemory(out_ds);
-    if (needToDelete)
+    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
+        in_dr->GetDomain(), in_dr->GetLabel());
+
+    if (needToDeleteOutDs)
+        out_ds->Delete();
+
+    if (needToDeleteNoVars)
         no_vars->Delete();
 
-    return out_ds;
+    return out_dr;
 }
 
 

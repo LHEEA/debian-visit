@@ -41,11 +41,11 @@
 cmake_minimum_required(VERSION 2.8)
 
 IF(WIN32)
-    PROJECT(VISIT_DATA)
+    PROJECT(VISIT_TEST)
 ENDIF(WIN32)
 
 #-----------------------------------------------------------------------------
-# If this directory exists the root CMakeLists.txt adds this directroy as a 
+# If this directory exists the root CMakeLists.txt adds this directory as a
 # subdirectory to the main VisIt project.
 #
 # Prevent users from running cmake directy in this directory.
@@ -63,4 +63,6 @@ PYTHON_ADD_DISTUTILS_SETUP(visit_testing_py_setup
                            site-packages
                            setup.py)
 
-
+IF(BUILD_TESTING)
+    SUBDIRS(tests)
+ENDIF()

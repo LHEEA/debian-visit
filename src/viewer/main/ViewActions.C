@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -325,7 +325,7 @@ void
 SaveViewAction::DeleteViews()
 {
     // Delete the views
-    for(int i = 0; i < views.size(); ++i)
+    for(size_t i = 0; i < views.size(); ++i)
     {
         if(views[i].viewType == VIEWCurve)
         {
@@ -371,8 +371,8 @@ SaveViewAction::DeleteViewsFromInterface()
     window->GetToolbar()->RemoveAction(this);
 
     // Remove all of the choices after the second choice.
-    int s = children.size();
-    for(int i = 2; i < s; ++i)
+    size_t s = children.size();
+    for(size_t i = 2; i < s; ++i)
     {
         delete children[s - i + 1];
         children.pop_back();
@@ -457,7 +457,7 @@ SaveViewAction::CopyFrom(const ViewerActionBase *obj)
         // Delete the views from the interface.
         DeleteViewsFromInterface();
 
-        for(int i = 0; i < saveView->views.size(); ++i)
+        for(size_t i = 0; i < saveView->views.size(); ++i)
         {
             void *newView = 0;
 
@@ -515,7 +515,7 @@ SaveViewAction::CopyFrom(const ViewerActionBase *obj)
 void
 SaveViewAction::SaveCurrentView()
 {
-    if(views.size() < MAX_SAVED_VIEWS)
+    if(views.size() < (size_t)MAX_SAVED_VIEWS)
     {
         void *saveView;
         int vt;
@@ -649,7 +649,7 @@ SaveViewAction::AddNewView(void *v, int vt)
 void
 SaveViewAction::UseSavedView(int index)
 {
-    if(index >= 0 && index < views.size())
+    if(index >= 0 && (size_t)index < views.size())
     {
         if(views[index].viewType == VIEWCurve)
         {
@@ -797,7 +797,7 @@ SaveViewAction::CreateNode(DataNode *parentNode)
 
     // Add a node for each view that is not the default view.
     intVector viewTypes;
-    for(int i = 0; i < views.size(); ++i)
+    for(size_t i = 0; i < views.size(); ++i)
     {
         if(views[i].viewType == VIEWCurve)
         {

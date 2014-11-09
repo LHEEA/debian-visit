@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewavtDefaultPlotMetaData(int);
 std::string
 PyavtDefaultPlotMetaData_ToString(const avtDefaultPlotMetaData *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%spluginID = \"%s\"\n", prefix, atts->pluginID.c_str());
     str += tmpStr;
@@ -429,7 +429,6 @@ PyavtDefaultPlotMetaData_GetLogString()
 static void
 PyavtDefaultPlotMetaData_CallLogRoutine(Subject *subj, void *data)
 {
-    avtDefaultPlotMetaData *atts = (avtDefaultPlotMetaData *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

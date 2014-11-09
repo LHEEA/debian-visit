@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -632,7 +632,7 @@ avtRectFileFormat::ReadVizFile(ifstream &in)
 
     for (i=0; i<ndomains; i++)
     {
-        if (i == 0 && (buff == "curv" || buff == "rect") || i > 0)
+        if ((i == 0 && (buff == "curv" || buff == "rect")) || i > 0)
             in >> buff; // for "domainIJK" token
         int x,y,z;
         in >> x >> y >> z;

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -74,6 +74,10 @@
 #
 #    Kathleen Biagas, Thu June 14 15:53:12 MST 2012 
 #    Add target for pyside on windows.
+#
+#    Gunther H. Weber, Thu Nov 21 18:26:51 PST 2013
+#    Use ${PYSIDE_PYTHONPATH} (set by findpackage PySide) instead of 
+#    ${VISIT_PYSIDE_DIR}/lib/site-packages to support system PySide installs
 #
 #----------------------------------------------------------------------------
 
@@ -201,27 +205,36 @@ IF(VISIT_PYTHON_FILTERS)
             ENDIF(NOT "${VTK_MODULE_SYM_CREATE}" STREQUAL "0")
         ENDFOREACH(ITM ${VTK_PYTHON_MODULE_ITEMS})
     ELSE (NOT WIN32)
-        FILE(GLOB VTK_EGG_FILE "${VISIT_VTK_DIR}/lib/site-packages/*egg*")
+        FILE(GLOB VTK_EGG_FILE "${VTK_PY_WRAPPERS_DIR}/site-packages/*egg*")
         # because you don't need to choose your configuration up-front
         # on windows, make this a custom target so they are copied to the
         # correct lib/${CFG} directory
         ADD_CUSTOM_TARGET(vtk_python_modules ALL)
-        ADD_CUSTOM_COMMAND(TARGET vtk_python_modules POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    ${VISIT_VTK_DIR}/lib/site-packages/vtk
-                    ${VISIT_LIBRARY_DIR}/site-packages/vtk
-            COMMAND ${CMAKE_COMMAND} -E copy
-                    ${VTK_EGG_FILE}
-                    ${VISIT_LIBRARY_DIR}/site-packages
-            COMMENT "Copying ${VISIT_VTK_DIR}/lib/site-packages to ${VISIT_LIBRARY_DIR}/site-packages/vtk"
-            )
+        IF(${VTK_VERSION} VERSION_LESS "6.1.0")
+            ADD_CUSTOM_COMMAND(TARGET vtk_python_modules POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                        ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk
+                        ${VISIT_LIBRARY_DIR}/site-packages/vtk
+                COMMAND ${CMAKE_COMMAND} -E copy
+                        ${VTK_EGG_FILE}
+                        ${VISIT_LIBRARY_DIR}/site-packages
+                COMMENT "Copying ${VTK_PY_WRAPPERS_DIR}/site-packages to ${VISIT_LIBRARY_DIR}/site-packages/vtk"
+                )
+        ELSE()
+            ADD_CUSTOM_COMMAND(TARGET vtk_python_modules POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                        ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk
+                        ${VISIT_LIBRARY_DIR}/site-packages/vtk
+                COMMENT "Copying ${VTK_PY_WRAPPERS_DIR}/site-packages to ${VISIT_LIBRARY_DIR}/site-packages/vtk"
+                )
+        ENDIF()
     ENDIF (NOT WIN32)
 ENDIF(VISIT_PYTHON_FILTERS)
 
 IF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)
     MESSAGE(STATUS "Adding PySide to lib/site-packages/")
     IF (NOT WIN32)
-        FILE(GLOB PYSIDE_MODULE_ITEMS "${VISIT_PYSIDE_DIR}/lib/python${PYTHON_VERSION}/site-packages/*")
+        FILE(GLOB PYSIDE_MODULE_ITEMS "${PYSIDE_PYTHONPATH}/*")
         FOREACH(ITM ${PYSIDE_MODULE_ITEMS})
             GET_FILENAME_COMPONENT(ITM_ABS ${ITM} ABSOLUTE)
             GET_FILENAME_COMPONENT(ITM_BASE ${ITM_ABS} NAME)
@@ -241,9 +254,9 @@ IF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)
         ADD_CUSTOM_TARGET(pyside_modules ALL)
         ADD_CUSTOM_COMMAND(TARGET pyside_modules POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_directory
-                    ${VISIT_PYSIDE_DIR}/lib/site-packages/PySide
+                    ${PYSIDE_PYTHONPATH}/PySide
                     ${VISIT_LIBRARY_DIR}/site-packages/PySide
-            COMMENT "Copying ${VISIT_PYSIDE_DIR}/lib/site-packages/PySide to ${VISIT_LIBRARY_DIR}/site-packages/PySide"
+            COMMENT "Copying ${PYSIDE_PYTHONPATH}/PySide to ${VISIT_LIBRARY_DIR}/site-packages/PySide"
             )
     ENDIF (NOT WIN32)
 ENDIF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)

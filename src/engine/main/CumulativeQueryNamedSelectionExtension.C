@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -127,6 +127,8 @@
 // Creation:   Fri Dec 17 14:50:16 PST 2010
 //
 // Modifications:
+//     Eric Brugger, Wed Aug 20 16:13:09 PDT 2014
+//     Modified the class to work with avtDataRepresentation.
 //   
 // ****************************************************************************
 
@@ -197,11 +199,16 @@ protected:
         cellCount = 0;
     }
 
-    virtual vtkDataSet *ExecuteData(vtkDataSet *ds, int dom, std::string)
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *dr)
     {
+        //
+        // Get the VTK data set.
+        //
+        vtkDataSet *ds = dr->GetDataVTK();
+
         cellCount += ds->GetNumberOfCells();
 
-        return ds;
+        return dr;
     }
 
     virtual void PostExecute(void)
@@ -226,7 +233,9 @@ protected:
 
                 std::vector<VISIT_LONG_LONG> hist(256, 0);
                 if(!avtDatasetExaminer::CalculateHistogram(ds, it->first, minmax[0], minmax[1], hist))
+                {
                     debug1 << "CalculateHistogram failed" << endl;
+                }
                 
                 it->second = new Histogram;
                 for(int i = 0; i < 256; ++i)
@@ -611,7 +620,7 @@ CumulativeQuery<CQCellIdentifier,
     delete [] allIds;
     delete [] allFrequencies;
 
-    for( int ts=0; ts<selectionPerTimeStep.size(); ++ts )
+    for( size_t ts=0; ts<selectionPerTimeStep.size(); ++ts )
     {
       delete [] allIdsPerTimeStep[ts];
       delete [] allVariablesPerTimeStep[ts];
@@ -856,11 +865,11 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::Summation(
         typename CQSelection::const_iterator it;
         for(it = cellFrequency.begin(); it != cellFrequency.end(); ++it)
         {
-            if(it->second.frequency == nts)
+            if((unsigned  int)it->second.frequency == nts)
             {
                 selection[it->first] = it->second;
 
-                for( int ts=0; ts<nts; ++ts )
+                for( unsigned int ts=0; ts<nts; ++ts )
                 {
                   // cellsPerTimeStep is a const but the [] operator
                   // is not a const so use find instead which is a
@@ -884,7 +893,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::Summation(
     {
         selection = cellFrequency;
 
-        for( int ts=0; ts<nts; ++ts )
+        for( unsigned int ts=0; ts<nts; ++ts )
           selectionPerTimeStep[ts] = cellsPerTimeStep[ts];
     }
 }
@@ -1517,7 +1526,6 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
     double *allVariables = new double[totalCells];
     int *index = new int[totalCells];
 
-    int i = 0;
 
     // Create an index variable that we'll sort using another variable
     // while storing the variables and ids in a one dimensional array.
@@ -2597,7 +2605,7 @@ GetSelectionEx(avtDataObject_p dob, avtContract_p contract, const SelectionPrope
             // the variables that we care about.
             //
             hist.SetInput(newdob);
-            for(int i = 0; i < prop2.GetVariables().size(); ++i)
+            for(size_t i = 0; i < prop2.GetVariables().size(); ++i)
                 hist.AddVariable(prop2.GetVariables()[i]);
             newdob = hist.GetOutput(); 
 
@@ -2701,7 +2709,6 @@ avtNamedSelection *
 CumulativeQueryNamedSelectionExtension::GetSelection(avtDataObject_p dob,
     const SelectionProperties &props, avtNamedSelectionCache &cache)
 {
-    const char *mName = "CumulativeQueryNamedSelectionExtension::GetSelection: ";
     avtNamedSelection *ns = NULL;
 
     avtContract_p c0 = dob->GetContractFromPreviousExecution();

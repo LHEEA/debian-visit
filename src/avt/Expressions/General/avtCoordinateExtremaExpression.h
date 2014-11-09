@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,7 +53,7 @@ typedef enum
     CT_Z,
     CT_Radius,
     CT_Theta,
-    CT_Phi,
+    CT_Phi
 } CoordinateType;
 
 

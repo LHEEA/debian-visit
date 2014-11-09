@@ -67,13 +67,23 @@ from stat import *
 pil_available = True
 try:
     from PIL import Image, ImageChops, ImageStat
-except ImportError, err:
+except ImportError, pilImpErr:
     pil_available=False
+
+# check for VTK
+VTK_available = True
+try:
+    from vtk import vtkPNGReader, vtkPNMReader, vtkJPEGReader, vtkTIFFReader, \
+                    vtkImageResize, vtkImageDifference
+    import array
+except ImportError, vtkImpErr:
+    VTK_available=False
 
 # used to acccess visit_test_common
 sys.path.append(os.path.abspath(os.path.split(__visit_script_file__)[0]))
 
 from visit_test_common import *
+from visit_test_ctest import *
 
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
@@ -568,7 +578,7 @@ def JSONTextTestResult(case_name,status,nchanges,nlines,failed,skip):
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 30 2012
 # ----------------------------------------------------------------------------
-def HTMLTextTestResult(case_name,stats,nchanges,nlines,failed,skip):
+def HTMLTextTestResult(case_name,status,nchanges,nlines,failed,skip):
     """
     Creates html entry for the result of a text based test.
     """
@@ -590,14 +600,87 @@ def HTMLTextTestResult(case_name,stats,nchanges,nlines,failed,skip):
     html.write(" </tr>\n")
 
 # ----------------------------------------------------------------------------
+#  Method: LogAssertTestResult
+#
+#  Programmer: Cyrus Harrison
+#  Date:       Fri Nov 22 2013
+# ----------------------------------------------------------------------------
+def LogAssertTestResult(case_name,assert_check,result,details):
+    """
+    Log the result of an assert based test.
+    """
+    details = str(details)
+    if not result:
+        if skip:
+            status = "skipped"
+        else:
+            status = "failed"
+    else:
+        status = "passed"
+    # write result
+    Log("    Test case '%s' (Assert: %s) %s" % (case_name,
+                                                assert_check,
+                                                status.upper()))
+    JSONAssertTestResult(case_name,status,assert_check,result,details)
+    HTMLAssertTestResult(case_name,status,assert_check,result,details)
+
+# ----------------------------------------------------------------------------
+#  Method: JSONAssertTestResult
+#
+#  Programmer: Cyrus Harrison
+#  Date:       Fri Nov 22 2013
+# ----------------------------------------------------------------------------
+def JSONAssertTestResult(case_name,status,assert_check,result,details):
+    res = json_results_load()
+    t_res = {'name':         case_name,
+             'status':       status,
+             'assert_check': assert_check,
+             'details':      details}
+    res["sections"][-1]["cases"].append(t_res)
+    json_results_save(res)
+
+
+# ----------------------------------------------------------------------------
+#  Method: HTMLTextTestResult
+#
+#  Programmer: Cyrus Harrison
+#  Date:       Fri Nov 22 2013
+# ----------------------------------------------------------------------------
+def HTMLAssertTestResult(case_name,status,assert_check,result,details):
+    """
+    Creates html entry for the result of an assert based test.
+    """
+    # TODO use template file
+    html = html_output_file_handle()
+    # write to the html file
+    color = "#00ff00"
+    if not result:
+        if skip:
+            color = "#0000ff"
+        else:
+            color = "#ff0000"
+    html.write(" <tr>\n")
+    html.write("  <td bgcolor=\"%s\">%s</td>\n" % (color, case_name))
+    html.write("  <td colspan=5 align=center> %s : %s (Assert_%s)</td>\n" % (details,str(result),assert_check))
+    html.write(" </tr>\n")
+
+# ----------------------------------------------------------------------------
 #  Method: LogImageTestResult
 #
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 30 2012
+#
+#  Modifications:
+#   Kathleen Biagas, Thu Feb  6 14:08:00 PST 2014
+#   Only do ctest logging if ctest is enabled.
+#
+#   Burlen Loring, Tue May 27 11:44:04 PDT 2014
+#   Report threshold error
 # ----------------------------------------------------------------------------
 def LogImageTestResult(case_name,
                        diffState,modeSpecific,
-                       tPixs, pPixs, dPixs, dpix, davg):
+                       tPixs, pPixs, dPixs, dpix, davg,
+                       cur, diff, base, thrErr):
     """
     Log the result of an image based test.
     """
@@ -607,15 +690,20 @@ def LogImageTestResult(case_name,
         status = "passed"
     elif diffState == 'Acceptable':
         status  = "passed"
-        details = "#pix=%06d, #nonbg=%06d, #diff=%06d, ~%%diffs=%.3f, avgdiff=%3.3f" % (tPixs, pPixs, dPixs, dpix, davg)
+        details = "#pix=%06d, #nonbg=%06d, #diff=%06d, ~%%diffs=%.3f, avgdiff=%3.3f, threrr=%3.3f" \
+                    % (tPixs, pPixs, dPixs, dpix, davg, thrErr)
     elif diffState == 'Unacceptable':
         status  = "failed"
-        details = "#pix=%06d, #nonbg=%06d, #diff=%06d, ~%%diffs=%.3f, avgdiff=%3.3f" % (tPixs, pPixs, dPixs, dpix, davg)
+        details = "#pix=%06d, #nonbg=%06d, #diff=%06d, ~%%diffs=%.3f, avgdiff=%3.3f, threrr=%3.3f" \
+                    % (tPixs, pPixs, dPixs, dpix, davg, thrErr)
+        if TestEnv.params["ctest"]:
+            Log(ctestReportDiff(thrErr))
+            Log(ctestReportDiffImages(cur,diff,base))
     elif diffState == 'Skipped':
         status = "skipped"
     else:
         status = "unknown"
-        details = "#pix=UNK , #nonbg=UNK , #diff=UNK , ~%%diffs=UNK,  avgdiff=UNK"
+        details = "#pix=UNK , #nonbg=UNK , #diff=UNK , ~%%diffs=UNK,  avgdiff=UNK threrr=UNK"
     msg = "    Test case '%s' %s" % (case_name,status.upper())
     if details !="":
         msg += ": " + details
@@ -702,6 +790,11 @@ def JSONImageTestResult(case_name, status,
 #   I added the optional argument alreadySaved that indicates if the image
 #   has already been saved.
 #
+#   Brad Whitlock, Thu Nov  7 14:01:26 PST 2013
+#   Force width and height for the window.
+#
+#   Kathleen Biagas, Wed Jan 15 09:39:13 MST 2014
+#   Saved alternate SaveWindowAttributes for use in GetBackgroundImage
 # ----------------------------------------------------------------------------
 def Test(case_name, altSWA=0, alreadySaved=0):
     CheckInteractive(case_name)
@@ -709,6 +802,7 @@ def Test(case_name, altSWA=0, alreadySaved=0):
     # we may need to use global for these guys
     #global maxds
     #global numskip
+    global savedAltSWA
 
     (cur, diff, base, altbase, modeSpecific) = GenFileNames(case_name, ".png")
 
@@ -716,9 +810,17 @@ def Test(case_name, altSWA=0, alreadySaved=0):
     if alreadySaved == 0:
         if altSWA != 0:
             sa = altSWA
+            savedAltSWA = altSWA
         else:
+            savedAltSWA = 0
             sa = SaveWindowAttributes()
             sa.screenCapture=1
+            # Force the active window to be the right size.
+            width = TestEnv.params["width"]
+            height = TestEnv.params["height"]
+            g = GetGlobalAttributes()
+            win = g.windows[g.activeWindow]
+            ResizeWindow(win, width, height)
         sa.family   = 0
         sa.fileName = cur
         sa.format   = sa.PNG
@@ -732,16 +834,27 @@ def Test(case_name, altSWA=0, alreadySaved=0):
     dPixs     = 0
     dpix      = 0.0
     davg      = 0.0
+    thrErr    = -1.0
+
     if TestEnv.params["use_pil"]:
-        (tPixs, pPixs, dPixs, davg) = DiffUsingPIL(case_name, cur, diff,
-                                                   base, altbase)
-        diffState, dpix = CalcDiffState(pPixs, dPixs, davg)
+        if TestEnv.params["threshold_diff"]:
+            # threshold difference
+            diffState, thrErr, (tPixs, pPixs, dPixs, davg) \
+                = DiffUsingThreshold(case_name, cur, diff, base, altbase,
+                               TestEnv.params["threshold_error"])
+        else:
+            # raw difference
+            (tPixs, pPixs, dPixs, davg) \
+                = DiffUsingPIL(case_name, cur, diff, base, altbase)
+            diffState, dpix = CalcDiffState(pPixs, dPixs, davg)
+
     if skip:
         diffState = 'Skipped'
         TestEnv.results["numskip"]+= 1
 
     LogImageTestResult(case_name,diffState, modeSpecific,
-                       dpix, tPixs, pPixs, dPixs, davg)
+                       dpix, tPixs, pPixs, dPixs, davg,
+                       cur, diff, base, thrErr)
 
     # update maxmimum diff state
     diffVals = {
@@ -869,6 +982,9 @@ def HTMLImageTestResult(case_name,status,
 # ----------------------------------------------------------------------------
 # Function: GetBackgroundImage
 #
+# Modifications:
+#    Kathleen Biagas, Wed Jan 15 09:40:09 MST 2014
+#    Use alternate SaveWindowAttributes if available.
 # ----------------------------------------------------------------------------
 def GetBackgroundImage(file):
     """
@@ -921,10 +1037,13 @@ def GetBackgroundImage(file):
     # now save the background image
     oldSWA = SaveWindowAttributes()
     tmpSWA = SaveWindowAttributes()
+    if savedAltSWA == 0:
+        tmpSWA.screenCapture = 1
+    else:
+        tmpSWA = savedAltSWA
     tmpSWA.family   = 0
     tmpSWA.fileName = out_path("current",file + "_bg.png")
     tmpSWA.format   = tmpSWA.PNG
-    tmpSWA.screenCapture = 1
     SetSaveWindowAttributes(tmpSWA)
     SaveWindow()
     bkimage = Image.open(tmpSWA.fileName)
@@ -937,6 +1056,157 @@ def GetBackgroundImage(file):
     SetActivePlots(tuple(activeList))
 
     return bkimage
+
+# ----------------------------------------------------------------------------
+# Function: GetReaderForFile
+#
+# Burlen Loring, Sat May 24 15:44:33 PDT 2014
+# Create a reader to read an image file
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+
+def GetReaderForFile(filename):
+    """
+    Given a filename return a VTK reader that can read it
+    """
+    r = vtkPNGReader()
+    if not r.CanReadFile(filename):
+        r = vtkPNMReader()
+        if not r.CanReadFile(filename):
+            r = vtkJPEGReader()
+            if not r.CanReadFile(filename):
+                r = vtkTIFFReader()
+                if not r.CanReadFile(filename):
+                    return None
+    r.SetFileName(filename)
+    return r
+
+# ----------------------------------------------------------------------------
+# Function: VTKImageDataToPILImage
+#
+# Burlen Loring, Sat May 24 15:44:33 PDT 2014
+# In memory conversion from vtkImageData to PIL Image
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+
+def VTKImageDataToPILImage(dataset):
+    """
+    Convert the image from VTK to PIL
+    """
+    def zeros(n):
+      while n>0:
+        yield 0
+        n-=1
+
+    def fmt(nc):
+      if nc==1: return 'L'
+      elif nc==3: return 'RGB'
+      elif nc==4: return 'RGBA'
+      else: return None
+
+    dims = dataset.GetDimensions()[0:2]
+    vim = dataset.GetPointData().GetArray(0)
+    nc = vim.GetNumberOfComponents()
+    nt = vim.GetNumberOfTuples()
+    buf = array.array('B',zeros(nc*nt)) # TOOD -- Use numpy
+    vim.ExportToVoidPointer(buf)
+    pim = Image.frombuffer(fmt(nc),dims,buf,'raw',fmt(nc),0,1)
+    pim = pim.transpose(Image.FLIP_TOP_BOTTOM)
+    return pim
+
+# ----------------------------------------------------------------------------
+# Function: DiffUsingThreshold
+# Burlen Loring, Sat May 24 15:44:33 PDT 2014
+#
+# Image difference using VTK's threshold algorithm. Stats are
+# computed and diffs are enhanced using the same processing as
+# is done in DiffUsingPIL for which this is a drop in replacement.
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+
+def DiffUsingThreshold(case_name, cur, diff, base, altbase, overrides):
+    """
+    Computes difference and stats for the regression test using
+    threshold based image difference algorithm.
+    """
+    acceptableError = 10.0
+    if case_name in overrides:
+        acceptableError = overrides[case_name]
+
+    baseline = None
+    baseReader = None
+    baselines = [altbase, base]
+    # check for existence of the baseline
+    for f in baselines:
+        if os.path.isfile(f):
+            baseline = f
+            break
+    if baseline is None:
+        Log('Warning: No baseline image: %s'%(base))
+        if TestEnv.params["ctest"]:
+            Log(ctestReportMissingBaseline(base))
+        baselines = [test_module_path('nobaseline.pnm')]
+    # check for the reader
+    for f in baselines:
+        baseReader = GetReaderForFile(f)
+        if baseReader is not None:
+            break
+    if baseReader is None:
+        Log('Warning: No reader for baseline image: %s'%(base))
+    # read baseline
+    baseReader.Update()
+    baseDims = baseReader.GetOutput().GetDimensions()
+
+    # read test image
+    testReader = GetReaderForFile(cur)
+    testReader.Update()
+    testDims = testReader.GetOutput().GetDimensions()
+
+    # resize baseline
+    baseSource = baseReader
+    if testDims != baseDims:
+        Log('Error: Baseline%s and current%s images are different sizes.' \
+            %(str(baseDims[0:2]),str(testDims[0:2])))
+        baseSource = vtkImageResize()
+        baseSource.SetInputConnection(baseReader.GetOutputPort())
+        baseSource.SetOutputDimensions(testDims)
+
+    # compute the diff
+    differ = vtkImageDifference()
+    differ.SetInputConnection(testReader.GetOutputPort())
+    differ.SetImageConnection(baseSource.GetOutputPort())
+    differ.Update()
+
+    # test status
+    error = differ.GetThresholdedError();
+    testFailed = error > acceptableError
+    diffState = 'Unacceptable' if testFailed else 'Acceptable'
+
+    # create images/data for test suite's reporting
+    mdiffimg = None
+    dmin, dmax, dmean, dmedian, drms, dstddev = 0,0,0,0,0,0
+    plotpixels, diffpixels, totpixels = 0,0,0
+
+    oldimg = VTKImageDataToPILImage(baseReader.GetOutput())
+    newimg = VTKImageDataToPILImage(testReader.GetOutput())
+    diffimg = VTKImageDataToPILImage(differ.GetOutput())
+
+    mdiffimg, dmin, dmax, dmean, dmedian, drms, dstddev, \
+    plotpixels, diffpixels, totpixels \
+        = ProcessDiffImage(case_name, oldimg, newimg, diffimg)
+
+    mdiffimg.save(diff)
+    #diffimg.save(diff)
+
+    CreateImagesForWeb(case_name, testFailed, oldimg, newimg, mdiffimg)
+
+    return diffState, error, (totpixels, plotpixels, diffpixels, dmean)
 
 # ----------------------------------------------------------------------------
 # Function: DiffUsingPIL
@@ -954,6 +1224,13 @@ def GetBackgroundImage(file):
 #   Mark C. Miller, Tue Jul 20 19:27:09 PDT 2010
 #   Left in (commented out) line for color image stats. Will use in a later
 #   update to compute max channel difference.
+#
+#   Kathleen Biagas, Thu Feb  6 14:08:00 PST 2014
+#   Only do ctest logging if ctest is enabled.
+#
+#   Burlen Loring, Mon May 26 13:39:37 PDT 2014
+#   refactor generally useful code into two new functions: CreateImagesForWeb
+#   and ProcessDiffImage
 # ----------------------------------------------------------------------------
 
 def DiffUsingPIL(case_name, cur, diff, baseline, altbase):
@@ -978,20 +1255,85 @@ def DiffUsingPIL(case_name, cur, diff, baseline, altbase):
                 oldimg = oldimg.resize(size, Image.BICUBIC)
         else:
             Log("Warning: No baseline image: %s" % baseline)
+            if TestEnv.params["ctest"]:
+                Log(ctestReportMissingBaseline(baseline))
             oldimg = Image.open(test_module_path('nobaseline.pnm'))
             oldimg = oldimg.resize(size, Image.BICUBIC)
     except:
         oldimg = Image.open(test_module_path('nobaseline.pnm'))
         Log("Warning: Defective baseline image: %s" % baseline)
+        if TestEnv.params["ctest"]:
+            Log(ctestReportMissingBaseline(baseline))
         oldimg = oldimg.resize(size, Image.BICUBIC)
 
 
     # create the difference image
     diffimg = ImageChops.difference(oldimg, newimg)
     #dstatc = ImageStat.Stat(diffimg) # stats of color image
+
+    mdiffimg, dmin, dmax, dmean, dmedian, drms, dstddev, \
+    plotpixels, diffpixels, totpixels \
+        = ProcessDiffImage(case_name, oldimg, newimg, diffimg)
+
+    mdiffimg.save(diff)
+
+    CreateImagesForWeb(case_name, bool(dmax!=0), oldimg, newimg, mdiffimg)
+
+    return (totpixels, plotpixels, diffpixels, dmean)
+
+
+# ----------------------------------------------------------------------------
+# Function: CreateImagesForWeb
+#
+# Burlen Loring, Mon May 26 09:45:21 PDT 2014
+# Split this out of DiffUsingPIL so it can be used elsewhere.
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+
+def CreateImagesForWeb(case_name, testFailed, baseimg, testimg, diffimg):
+    """
+    Given test image set create coresponding thumbnails for web
+    consumption
+    """
+    thumbsize = (100,100)
+
+    # full size baseline
+    baseimg.save(out_path("html","b_%s.png"%case_name))
+    # thumb size baseline
+    oldthumb = baseimg.resize(   thumbsize, Image.BICUBIC)
+    oldthumb.save(out_path("html","b_%s_thumb.png"%case_name))
+
+    if (testFailed):
+        # fullsize test image and diff
+        testimg.save(out_path("html","c_%s.png"%case_name))
+        diffimg.save(out_path("html","d_%s.png"%case_name))
+        # thumbsize test and diff
+        newthumb = testimg.resize(thumbsize, Image.BICUBIC)
+        newthumb.save(out_path("html","c_%s_thumb.png"%case_name))
+
+        diffthumb = diffimg.resize(thumbsize, Image.BICUBIC)
+        diffthumb.save(out_path("html","d_%s_thumb.png"%case_name))
+
+# ----------------------------------------------------------------------------
+# Function: ProcessDiffImage
+#
+# Burlen Loring, Mon May 26 09:45:21 PDT 2014
+# Split this out of DiffUsingPIL so it can be used elsewhere.
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+
+def ProcessDiffImage(case_name, baseimg, testimg, diffimg):
+    """
+    Given a set of test images process (ie enhance) the difference image
+    and compute various stats used in the report. Return the processed image
+    and stats.
+    """
     diffimg = diffimg.convert("L", (0.3333333, 0.3333333, 0.3333333, 0))
 
-    # get some statistics
     dstat   = ImageStat.Stat(diffimg)
     dmin    = dstat.extrema[0][0]
     dmax    = dstat.extrema[0][1]
@@ -1002,12 +1344,12 @@ def DiffUsingPIL(case_name, cur, diff, baseline, altbase):
 
     plotpixels = 0
     diffpixels = 0
-    size = newimg.size
+    size = testimg.size
     totpixels = size[0] * size[1]
 
     mdiffimg = diffimg.copy()
-    if (dmax > 0 and dmax != dmin):
 
+    if (dmax > 0 and dmax != dmin):
         # brighten the difference image before we save it
         pmap = []
         pmap.append(0)
@@ -1023,50 +1365,33 @@ def DiffUsingPIL(case_name, cur, diff, baseline, altbase):
             # background
             backimg = GetBackgroundImage(case_name)
 
-            # now, scan over pixels in oldimg counting how many non-background
+            # now, scan over pixels in baseimg counting how many non-background
             # pixels there are and how many diffs there are
             for col in range(0,size[0]):
                 for row in range(0, size[1]):
-                    newpixel = newimg.getpixel((col,row))
-                    oldpixel = oldimg.getpixel((col,row))
+                    newpixel = testimg.getpixel((col,row))
+                    oldpixel = baseimg.getpixel((col,row))
                     backpixel = backimg.getpixel((col,row))
                     diffpixel = mdiffimg.getpixel((col,row))
                     if oldpixel != backpixel:
                         plotpixels = plotpixels + 1
                     if diffpixel == 255:
                         diffpixels = diffpixels + 1
-
         else:
-
+            # constant color background
             mdstat   = ImageStat.Stat(mdiffimg)
-            oldimgm = oldimg.convert("L", (0.3333333, 0.3333333, 0.3333333, 0))
+            baseimgm = baseimg.convert("L", (0.3333333, 0.3333333, 0.3333333, 0))
             map1 = []
             for i in range(0,254): map1.append(255)
             map1.append(0)
             map1.append(0)
-            oldimgm = oldimgm.point(map1)
-            mbstat   = ImageStat.Stat(oldimgm)
+            baseimgm = baseimgm.point(map1)
+            mbstat   = ImageStat.Stat(baseimgm)
             diffpixels = int(mdstat.sum[0]/255)
             plotpixels = int(mbstat.sum[0]/255)
 
-    mdiffimg.save(diff)
+    return mdiffimg, dmin, dmax, dmean, dmedian, drms, dstddev, plotpixels, diffpixels, totpixels
 
-    # thumbnail size (w,h)
-    thumbsize = (100,100)
-
-    # create thumbnails and save jpegs
-    oldthumb = oldimg.resize(   thumbsize, Image.BICUBIC)
-    oldthumb.save(out_path("html","b_%s_thumb.png"%case_name));
-    oldimg.save(out_path("html","b_%s.png"%case_name));
-    if (dmax != 0):
-        newthumb    = newimg.resize(   thumbsize, Image.BICUBIC)
-        diffthumb   = mdiffimg.resize(  thumbsize, Image.BICUBIC)
-        newthumb.save(out_path("html","c_%s_thumb.png"%case_name));
-        diffthumb.save(out_path("html","d_%s_thumb.png"%case_name));
-        newimg.save(out_path("html","c_%s.png"%case_name));
-        mdiffimg.save(out_path("html","d_%s.png"%case_name));
-
-    return (totpixels, plotpixels, diffpixels, dmean)
 
 # ----------------------------------------------------------------------------
 # Function: FilterTestText
@@ -1279,6 +1604,8 @@ def CheckInteractive(case_name):
 #   Cyrus Harrison, Tue Nov  6 13:08:56 PST 2012
 #   Fix error code propagation logic.
 #
+#   Mark C. Miller, Wed Jul  9 18:43:41 PDT 2014
+#   Added setFailed and setSkipped args for caller to control these
 # ----------------------------------------------------------------------------
 def TestText(case_name, inText):
     """
@@ -1334,6 +1661,96 @@ def TestText(case_name, inText):
     # set error codes
     if failed and not skip:
         TestEnv.results["maxds"] = max(TestEnv.results["maxds"], 2)
+
+
+# ----------------------------------------------------------------------------
+# Function: AssertTrue
+#
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+def AssertTrue(case_name,val):
+    CheckInteractive(case_name)
+    result = val == True
+    LogAssertTestResult(case_name,"True",result,val)
+
+# ----------------------------------------------------------------------------
+# Function: AssertTrue
+#
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+def AssertFalse(case_name,val):
+    CheckInteractive(case_name)
+    result = val == False
+    LogAssertTestResult(case_name,"False",result,val)
+
+# ----------------------------------------------------------------------------
+# Function: AssertEqual
+#
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+def AssertEqual(case_name,val_a,val_b):
+    CheckInteractive(case_name)
+    result = val_a == val_b
+    LogAssertTestResult(case_name,"Equal",result,
+                        "%s == %s" % (str(val_a),str(val_b)))
+
+# ----------------------------------------------------------------------------
+# Function: AssertGT
+#
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+def AssertGT(case_name,val_a,val_b):
+    CheckInteractive(case_name)
+    result = val_a > val_b
+    LogAssertTestResult(case_name,"Greater than",
+                        result,"%s > %s" % (str(val_a),str(val_b)))
+
+# ----------------------------------------------------------------------------
+# Function: AssertGTE
+#
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+def AssertGTE(case_name,val_a,val_b):
+    CheckInteractive(case_name)
+    result = val_a >= val_b
+    LogAssertTestResult(case_name,"Greater than or Equal",
+                       result,"%s >= %s" % (str(val_a),str(val_b)))
+
+# ----------------------------------------------------------------------------
+# Function: AssertLT
+#
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+def AssertLT(case_name,val_a,val_b):
+    CheckInteractive(case_name)
+    result = val_a < val_b
+    LogAssertTestResult(case_name,"Less than",
+                        result,"%s < %s" % (str(val_a),str(val_b)))
+
+# ----------------------------------------------------------------------------
+# Function: AssertLTE
+#
+#
+# Modifications:
+#
+# ----------------------------------------------------------------------------
+def AssertLTE(case_name,val_a,val_b):
+    CheckInteractive(case_name)
+    result = val_a <= val_b
+    LogAssertTestResult(case_name,"Less than or Equal",
+                        result,"%s <= %s" % (str(val_a),str(val_b)))
 
 # ----------------------------------------------------------------------------
 # Function: TestSection
@@ -1504,6 +1921,221 @@ def FindAndOpenDatabase(dbname, extraPaths=()):
     return 0, ""
 
 #############################################################################
+#   Simulation Support
+#############################################################################
+
+def SimVisItDir():
+    return TestEnv.params["sim_dir"]
+
+def SimProgram(sim):
+    if not sys.platform.startswith("win"):
+        return os.path.join(SimVisItDir(), "tools","DataManualExamples","Simulations",sim)
+    else:
+        return os.path.join(SimVisItDir(), "tools","DataManualExamples","Simulations","%s.exe"%sim)
+
+def SimFile(sim2):
+    workingdir = os.curdir
+    return os.path.abspath(os.path.join(workingdir, sim2))
+
+def TestSimulation(sim, sim2):
+    return Simulation(SimVisItDir(), SimProgram(sim), SimFile(sim2))
+
+def TestParallelSimulation(sim, sim2, np):
+    return Simulation(SimVisItDir(), SimProgram(sim), SimFile(sim2), np)
+
+# ----------------------------------------------------------------------------
+#  Class: Simulation
+#
+#  Programmer: Brad Whitlock
+#  Date:       Wed Dec 18, 2013
+#
+#  Modifications:
+#    Brad Whitlock, Fri Jun 27 11:14:56 PDT 2014
+#    Added some parallel launch code.    
+#
+#    Kathleen Biagas, Thu Sep 4 16:43:27 MST 2014
+#    Set close_fds to False for windows.
+#
+# ----------------------------------------------------------------------------
+class Simulation(object):
+    def __init__(self, vdir, s, sim2, np=1):
+        self.simulation = s
+        self.host = "localhost"
+        self.sim2 = sim2
+        self.visitdir = vdir
+        self.p = None
+        self.connected = False
+        self.extraargs = []
+        self.np = np
+
+    def startsim(self):
+        """
+        Start up the simulation.
+        """
+        # Close any compute engine that the test script launched already.
+        CloseComputeEngine()
+        # Start up the simulation.
+        tfile = self.sim2 + ".trace"
+        args = [self.simulation, "-dir", self.visitdir, "-trace", tfile, "-sim2", self.sim2]
+        for a in self.extraargs:
+            args = args + [a]
+        if self.np > 1:
+            # TODO: subclass MainLauncher, use internallauncher function to start
+            # up the parallel engine using the host profile XML's for the current
+            # host so we get the proper way of submitting parallel jobs.
+
+            # For now...
+            import socket
+            if "edge" in socket.gethostname():
+                do_submit = 0
+                if do_submit:
+                    msubscript = os.path.join(os.path.abspath(os.curdir), string.replace(self.sim2, "sim2", "msub"))
+                    f = open(msubscript, "wt")
+                    f.write("#!/bin/sh\n")
+                    f.write("cd %s\n" % os.path.abspath(os.curdir))
+                    f.write("ulimit -c 0\n")
+                    f.write("srun -n %d" % self.np)
+                    for a in args:
+                        f.write(" %s" % a)
+                    f.write("\n")
+                    f.close()
+                    args = ["msub", "-l", "nodes=1:ppn=12", msubscript]
+                else:
+                    args = ["srun", "-n", str(self.np)] + args
+            else:
+                args = ["mpiexec", "-n", str(self.np)] + args
+        s="Running: "
+        for a in args:
+            s = s + a + " "
+        print s
+        if not sys.platform.startswith("win"):
+            self.p = subprocess.Popen(args,
+                                      stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE,
+                                      close_fds=True)
+        else:
+            self.p = subprocess.Popen(args,
+                                      stdin=subprocess.PIPE,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE,
+                                      close_fds=False)
+           
+        return self.p != None
+
+    def addargument(self, arg):
+        """
+        Add an extra command line argument for the simulation."
+        """
+        self.extraargs = self.extraargs + [arg]
+
+    def connect(self):
+        """
+        Connect to the simulation."
+        """
+        print "Connecting to simulation ", self.simulation
+        ret = OpenDatabase(self.sim2)
+        if ret:
+            self.connected = True
+        return ret
+
+    def disconnect(self):
+        """
+        Disconnect from the simulation.
+        """
+        self.connected = False
+        CloseDatabase(self.sim2)
+        CloseComputeEngine(self.host, self.sim2)
+        return 1
+
+    def endsim(self):
+        """
+        Tell the simulation to terminate."
+        """
+        # 'being nice' hangs on windows
+        if not sys.platform.startswith("win") and self.connected:
+            # Be nice about it.
+            self.p.stdin.write("quit\n")
+            self.p.communicate()
+            self.p.wait()
+        else:
+            # Force the sim to terminate.
+            self.p.terminate()
+        return 1
+
+    # Sim commands
+    def consolecommand(self, cmd):
+        """
+        Send a console command to the simulation."
+        """
+        if self.connected:
+            self.p.stdin.write(cmd + "\n")
+            self.p.stdin.flush()
+
+    def controlcommand(self, cmd):
+        """
+        Send a control command to the simulation."
+        """
+        ret = 0
+        if self.connected:
+            ret = SendSimulationCommand(self.host, self.sim2, cmd)
+   
+    def metadata(self):
+        md = None
+        if self.connected:
+            md = GetMetaData(self.sim2)
+        return md
+
+# ----------------------------------------------------------------------------
+# Function: TestSimStartAndConnect
+#
+# ----------------------------------------------------------------------------
+
+def TestSimStartAndConnect(testname, sim):
+    # Test that the simulation executable exists.
+    exe = os.path.split(sim.simulation)[1]
+    started = 0
+    connected = 0
+    if os.path.exists(sim.simulation):
+        txt = "Simulation executable \"%s\" exists.\n" % exe
+        # Test that the simulation starts and that we can connect to it.
+        started = sim.startsim()
+        if started:
+            txt = txt + "Simulation \"%s\" started.\n" % exe
+            connected = sim.connect()
+            if connected:
+                txt = txt + "VisIt connected to simulation \"%s\"." % exe
+            else:
+                txt = txt + "VisIt did not connect to simulation \"%s\"." % exe
+        else:
+            txt = txt + "Simulation \"%s\" did not start." % exe
+    else:
+        txt = "Simulation executable \"%s\" does not exist.\n" % exe    
+    TestText(testname, txt)
+    return started,connected
+
+# ----------------------------------------------------------------------------
+# Function: TestSimMetaData
+#
+# ----------------------------------------------------------------------------
+
+def TestSimMetaData(testname, md):
+    lines = string.split(str(md), "\n")
+    txt = ""
+    for line in lines:
+        if "exprList" in line:
+            continue
+        outline = line
+        if "simInfo.port" in line:
+            outline = "simInfo.port = PORT"
+        if "simInfo.securityKey" in line:
+            outline = "simInfo.securityKey = KEY"
+        if "simInfo.host" in line:
+            outline = "simInfo.host = HOST"
+        txt = txt + outline + "\n"
+    TestText(testname, txt)
+
+#############################################################################
 #   Argument/Environment Processing
 #############################################################################
 
@@ -1525,6 +2157,8 @@ class TestEnv(object):
     """
     params  = {"interactive": 0,
                "use_pil":     True,
+               "threshold_diff": False,
+               "threshold_error": {},
                "avgdiff":     0.0,
                "pixdiff":     0,
                "numdiff":     0.0,
@@ -1551,9 +2185,13 @@ class TestEnv(object):
                 cls.params["serial"]   = False
             if mode == "pdb":
                 cls.params["silo_mode"] = "pdb"
-            if cls.params["use_pil"] and not pil_available:
-                Log("WARNING: unable to import modules from PIL: %s" % str(err))
+            if (cls.params["use_pil"] or cls.params["threshold_diff"]) and not pil_available:
+                Log("WARNING: unable to import modules from PIL: %s" % str(pilImpErr))
                 cls.params["use_pil"] = False
+                cls.params["threshold_diff"] = False
+            if (cls.params["threshold_diff"]) and not VTK_available:
+                Log("WARNING: unable to import modules from VTK: %s" % str(vtkImpErr))
+                cls.params["threshold_diff"] = False
         if cls.params["fuzzy_match"]:
             # default tols for scalable mode
             if cls.params["pixdiff"] < 2:
@@ -1625,6 +2263,11 @@ def AddSkipCase(case_name):
 #
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 30 2012
+#
+#  Modifications:
+#    Eric Brugger, Fri Aug 15 10:16:22 PDT 2014
+#    I added the ability to specify the parallel launch method.
+#
 # ----------------------------------------------------------------------------
 def InitTestEnv():
     """
@@ -1655,7 +2298,12 @@ def InitTestEnv():
     # start parallel engine if parallel
     haveParallelEngine = True
     if TestEnv.params["parallel"]:
-        haveParallelEngine = (OpenComputeEngine("localhost", ("-np", "2")) == 1)
+        if TestEnv.params["parallel_launch"] == "mpirun":
+            haveParallelEngine = (OpenComputeEngine("localhost", ("-np", "2")) == 1)
+        elif TestEnv.params["parallel_launch"] == "srun":
+            haveParallelEngine = (OpenComputeEngine("localhost", ("-l", "srun", "-np", "2")) == 1)
+        else:
+            haveParallelEngine = (OpenComputeEngine("localhost", ("-np", "2")) == 1)
     if haveParallelEngine == False:
         Exit()
     else:
@@ -1680,7 +2328,9 @@ InitTestEnv()
 #keep as global var for now
 SILO_MODE = TestEnv.SILO_MODE
 
-
-
+#
+# Run our test script using "Source"
+#
+visit.Source(TestEnv.params["script"])
 
 

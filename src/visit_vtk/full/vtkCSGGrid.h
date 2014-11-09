@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -100,6 +100,11 @@
 //    rather than creating a new vtkDataSet after partitioning with each
 //    boundary.
 //
+//    Eric Brugger, Wed Sep  3 14:31:08 PDT 2014
+//    I refactored some code to correct a bug with the multi-pass CSG
+//    discretization where it would do the wrong thing if a region 
+//    referenced the same boundary multiple times.
+//
 
 // .SECTION See Also
 // vtkImplicitFunction, vtkQuadric, vtkUnstructuredGrid, vtkDataSet
@@ -107,21 +112,21 @@
 #define __vtkCSGGrid_h
 #include <visit_vtk_exports.h>
 
+#include <vtkCSGFixedLengthBitField.h>
+#include <vtkDataArray.h>
+#include <vtkIdTypeArray.h>
+#include <vtkDataSet.h>
+#include <vtkImplicitFunctionCollection.h>
+#include <vtkPlanes.h>
+#include <vtkStructuredData.h>
+
 #include <map>
 #include <vector>
-
-#include "vtkDataArray.h"
-#include "vtkIdTypeArray.h"
-#include "vtkDataSet.h"
-#include "vtkImplicitFunctionCollection.h"
-#include "vtkPlanes.h"
-#include "vtkStructuredData.h"
-
-#include <FixedLengthBitField.h>
 
 #include <float.h>
 
 class vtkPolyData;
+class vtkRectilinearGrid;
 class vtkUnstructuredGrid;
 
 #define VTK_CSG_GRID 20
@@ -202,10 +207,9 @@ public:
   // A discretize method that returns the volumetric mesh, uniformally
   // sampled to a specific number of samples in x, y and z
   //
-  vtkUnstructuredGrid *GetMultiPassDiscretization(int specificZone = -1);
-
-  bool                 DiscretizeSpaceMultiPass(const double bnds[6],
-                                   const int dims[3], const int subRegion[6]);
+  vtkUnstructuredGrid *DiscretizeSpaceMultiPass(int specificZone,
+                                   const double bnds[6], const int dims[3],
+                                   const int subRegion[6]);
 
   vtkUnstructuredGrid *DiscretizeSpace(int specificZone = -1, double tol = 0.01,
                                    double minX = -10.0, double maxX = 10.0,
@@ -310,7 +314,14 @@ protected:
   vtkCSGGrid();
   ~vtkCSGGrid();
 
-    bool EvaluateRegionBits(int region, FixedLengthBitField<64> &bits);
+  vtkRectilinearGrid *CreateRectilinearGrid(const double bnds[6],
+                                            const int dims[3],
+                                            const int subRegion[6]);
+  vtkUnstructuredGrid *SplitGrid(vtkRectilinearGrid *rgrid,
+                                 const int nBounds, double *bounds);
+
+  bool EvaluateRegionBits(int region, vtkCSGFixedLengthBitField &bits);
+  void GetRegionBounds(int reg, std::vector<int> &bounds);
 
   //
   // We put this in the protected part of the interface because
@@ -335,7 +346,7 @@ protected:
   // These are storage of the binary partition tree unstructured grid
   // and bitfield for the boundary tags for the multipass algorithm.
   vtkUnstructuredGrid *multipassProcessedGrid;
-  std::vector<FixedLengthBitField<64> > *multipassTags;
+  std::vector<vtkCSGFixedLengthBitField> *multipassTags;
 
 
 
@@ -345,6 +356,7 @@ protected:
   int *leftIds, *rightIds, *regTypeFlags;
   int numZones;
   int *gridZones;
+  int *zoneMap;
 private:
 
 

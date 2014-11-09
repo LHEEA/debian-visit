@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewFontAttributes(int);
 std::string
 PyFontAttributes_ToString(const FontAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *font_names = "Arial, Courier, Times";
     switch (atts->GetFont())
@@ -583,7 +583,6 @@ PyFontAttributes_GetLogString()
 static void
 PyFontAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    FontAttributes *atts = (FontAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

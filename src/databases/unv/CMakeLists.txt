@@ -46,11 +46,12 @@ ${VISIT_INCLUDE_DIR}/avt/Pipeline/Sources
 ${VISIT_INCLUDE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_INCLUDE_DIR}/visit_vtk/full
 ${VISIT_INCLUDE_DIR}/visit_vtk/lightweight
+${EAVL_INCLUDE_DIR} 
 ${VTK_INCLUDE_DIRS} 
 )
 
 
-LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} )
+LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} )
 
 ADD_LIBRARY(IunvDatabase ${LIBI_SOURCES})
 TARGET_LINK_LIBRARIES(IunvDatabase visitcommon)
@@ -58,19 +59,19 @@ SET(INSTALLTARGETS IunvDatabase)
 
 IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
     ADD_LIBRARY(MunvDatabase ${LIBM_SOURCES}    )
-    TARGET_LINK_LIBRARIES(MunvDatabase visitcommon avtdbatts avtdatabase_ser )
+    TARGET_LINK_LIBRARIES(MunvDatabase visitcommon avtdbatts avtdatabase_ser ${vtkzlib_LIBRARIES} )
     ADD_TARGET_DEFINITIONS(MunvDatabase MDSERVER)
     SET(INSTALLTARGETS ${INSTALLTARGETS} MunvDatabase)
 ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(EunvDatabase_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(EunvDatabase_ser visitcommon avtdatabase_ser avtpipeline_ser )
+TARGET_LINK_LIBRARIES(EunvDatabase_ser visitcommon avtdatabase_ser avtpipeline_ser ${vtkzlib_LIBRARIES} )
 ADD_TARGET_DEFINITIONS(EunvDatabase_ser ENGINE)
 SET(INSTALLTARGETS ${INSTALLTARGETS} EunvDatabase_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(EunvDatabase_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(EunvDatabase_par visitcommon avtdatabase_par avtpipeline_par )
+    TARGET_LINK_LIBRARIES(EunvDatabase_par visitcommon avtdatabase_par avtpipeline_par ${vtkzlib_LIBRARIES} )
     ADD_TARGET_DEFINITIONS(EunvDatabase_par ENGINE)
     SET(INSTALLTARGETS ${INSTALLTARGETS} EunvDatabase_par)
 ENDIF(VISIT_PARALLEL)

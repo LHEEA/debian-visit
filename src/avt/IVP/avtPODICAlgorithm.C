@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -114,7 +114,7 @@ void
 avtPODICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve*> &ics)
 {
     //Get the ICs that I own.
-    for (int i = 0; i < ics.size(); i++)
+    for (size_t i = 0; i < ics.size(); i++)
     {
         avtIntegralCurve *ic = ics[i];
         
@@ -138,8 +138,10 @@ avtPODICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve*> &ics)
         for (int i = 0; i < numDomains; i++)
         {
             BlockIDType d(i,0);
-            if (OwnDomain(d))
+            if (OwnDomain(d)) 
+            {
                 debug1<<i<<" ";
+            }
         }
         debug1<<"]\n";
     }

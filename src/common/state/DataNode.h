@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -91,6 +91,10 @@ typedef enum
 //
 //    Kathleen Biagas, Fri Jun 17 16:41:27 PDT 2011
 //    Add MapNode node.
+//
+//   Burlen Loring, Wed Jul 16 18:38:55 PDT 2014
+//   Added cast helper methods to catch invalid casts that lead
+//   to undefined behavior
 //
 // ****************************************************************************
 
@@ -204,8 +208,19 @@ public:
     int GetNumChildren() const;
     int GetNumChildObjects() const;
     DataNode **GetChildren();
+
 private:
+    DataNode(); // not implemented
+    DataNode(const DataNode &); // not implemented
+    void operator=(const DataNode &); // not implemented
+
     void FreeData();
+
+    // Functions to handle validation of casts from void*
+    // and the following conversions
+    template <typename RetType> RetType AsValue() const;
+    template <typename RetType> const RetType &AsClass(RetType &substitute) const;
+    template <typename RetType> const RetType *AsArray() const;
 
     std::string   Key;
     NodeTypeEnum  NodeType;
@@ -221,12 +236,11 @@ private:
     static floatVector         bogusFloatVector;
     static doubleVector        bogusDoubleVector;
     static stringVector        bogusStringVector;
-
     static MapNode             bogusMapNode;
 };
 
 // Utility functions.
-const char *NodeTypeName(NodeTypeEnum e);
+const char *NodeTypeName(int e);
 NodeTypeEnum GetNodeType(const char *str);
 
 #endif

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,7 +56,6 @@ struct Assembly
 
 
 #include <boost/cstdint.hpp>
-using boost::int64_t;
 
 // ****************************************************************************
 //  Class: avtSASFileFormat
@@ -105,7 +104,7 @@ class avtSASFileFormat : public avtMTMDFileFormat
     int                    nAssemblyTypes;
     AssemblyType          *aAssemblyTypes;
     int                    nAssemblys;
-    int64_t                iAssemblyDiskLoc;   //location of first assembly
+    boost::int64_t         iAssemblyDiskLoc;   //location of first assembly
 
     std::vector<Assembly>  aCachedAssemblies;
 

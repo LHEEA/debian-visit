@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -81,7 +81,7 @@ reverse_endian(const T &data)
     // Rearrange the bytes.
     unsigned char *dest = (unsigned char *)&retval;
     unsigned char *src = (unsigned char *)&data + sizeof(T) - 1;
-    for(int i = 0; i < sizeof(T); ++i)
+    for(size_t i = 0; i < sizeof(T); ++i)
         *dest++ = *src--;
 
     return retval;
@@ -377,8 +377,10 @@ avtANALYZEFileFormat::GetVar(const char *varname)
                     if(fileInformation.ReversedEndian())
                     {
                         short *end = data + ntuples;
-                        while(data < end)
-                            *data++ = reverse_endian(*data);
+                        while(data < end) {
+                            *data = reverse_endian(*data);
+                            data++;
+                        }
                     }
                 }
             }
@@ -397,8 +399,10 @@ avtANALYZEFileFormat::GetVar(const char *varname)
                     if(fileInformation.ReversedEndian())
                     {
                         int *end = data + ntuples;
-                        while(data < end)
-                            *data++ = reverse_endian(*data);
+                        while(data < end) {
+                            *data = reverse_endian(*data);
+                            data++;
+                        }
                     }
                 }
             }
@@ -417,8 +421,10 @@ avtANALYZEFileFormat::GetVar(const char *varname)
                     if(fileInformation.ReversedEndian())
                     {
                         float *end = data + ntuples;
-                        while(data < end)
-                            *data++ = reverse_endian(*data);
+                        while(data < end) {
+                            *data = reverse_endian(*data);
+                            data++;
+                        }
                     }
                 }
             }

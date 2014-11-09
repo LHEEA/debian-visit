@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -167,7 +167,7 @@ ViewerPasswordWindow::~ViewerPasswordWindow()
 // ****************************************************************************
 
 void
-ViewerPasswordWindow::authenticate(const char *username, const char *host,
+ViewerPasswordWindow::authenticate(const char *username, const char* password, const char *host,
                                    int fd)
 {
 #if !defined(_WIN32)
@@ -194,21 +194,21 @@ ViewerPasswordWindow::authenticate(const char *username, const char *host,
             debug1 << "See warning message for possible causes" << endl;
             EXCEPTION0(CouldNotConnectException);
         }
-
+        size_t result = 0;
         // Write output to stderr
-        write(STDERR_FILENO, pbuf, nread);
+        result = write(STDERR_FILENO, pbuf, nread);
 
         pbuf += nread;
         *pbuf = '\0';
 
         if (strstr(buffer, "continue connecting (yes/no)?"))
         {
-            write(fd, "yes\n", 4);
+            result = write(fd, "yes\n", 4);
             pbuf = buffer;
         }
         else if (strstr(buffer, "continue connecting(yes/no)?"))
         {
-            write(fd, "yes\n", 4);
+            result = write(fd, "yes\n", 4);
             pbuf = buffer;
         }
         else if (strstr(buffer, "assword") ||
@@ -218,7 +218,12 @@ ViewerPasswordWindow::authenticate(const char *username, const char *host,
         {
             // Password needed. Prompt for it and write it to the FD.
             VisItPasswordWindow::ReturnCode ret = VisItPasswordWindow::PW_Accepted;
-            std::string passwd = instance->password(username, host, false, ret);
+
+            //Start with password that was supplied by machine profile
+            std::string passwd = password;
+            if (passwd.empty()) {
+                passwd = instance->password(username, host, false, ret);
+            }
 
             if (passwd.empty())
             {
@@ -233,8 +238,8 @@ ViewerPasswordWindow::authenticate(const char *username, const char *host,
                 }
             }
 
-            write(fd, passwd.c_str(), passwd.size());
-            write(fd, "\n", 1);
+            result = write(fd, passwd.c_str(), passwd.size());
+            result = write(fd, "\n", 1);
             pbuf = buffer;
 
             // We put up the password window, have zero timeout for
@@ -260,8 +265,8 @@ ViewerPasswordWindow::authenticate(const char *username, const char *host,
                 }
             }
 
-            write(fd, passphr.c_str(), passphr.size());
-            write(fd, "\n", 1);
+            result = write(fd, passphr.c_str(), passphr.size());
+            result = write(fd, "\n", 1);
             pbuf = buffer;
 
             // We put up the password window, have zero timeout for

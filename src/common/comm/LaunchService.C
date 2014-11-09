@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -334,8 +334,9 @@ LaunchService::Launch(const stringVector &origLaunchArgs, bool doBridge,
     {
         args[i] = new char[launchArgs[i].size() + 1];
         strcpy(args[i], launchArgs[i].c_str());
-        if(i > 0)
+        if(i > 0) {
             debug1 << launchArgs[i].c_str() << " ";
+        }
     }
     debug1 << ")" << endl;
 

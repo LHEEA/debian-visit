@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -112,6 +112,13 @@ avtNumNodesQuery::GetDefaultInputParams(MapNode &params)
 //    Hank Childs, Sat Nov 21 13:25:42 PST 2009
 //    Add long long support.
 //
+//    Kathleen Biagas, Wed Feb 12 08:17:21 PST 2014
+//    Add xml results.
+//
+//    Kathleen Biagas, Thu Sep 11 09:13:45 PDT 2014
+//    Added flag to count original nodes only (may be needed for arbpoly
+//    data that was split by the DB reader.
+//
 // ****************************************************************************
 
 void
@@ -132,6 +139,10 @@ avtNumNodesQuery::PerformQuery(QueryAttributes *qA)
     avtGhostType gzt = 
         GetInput()->GetInfo().GetAttributes().GetContainsGhostZones();
 
+    bool countOriginalOnly = OriginalData() &&
+            !GetInput()->GetInfo().GetValidity().GetZonesPreserved() &&
+             GetInput()->GetInfo().GetAttributes().GetContainsOriginalNodes();
+
     VISIT_LONG_LONG totalNodes[2] = {0, 0};
     VISIT_LONG_LONG tn[2] = {0, 0};
     char msg[200];
@@ -140,21 +151,25 @@ avtNumNodesQuery::PerformQuery(QueryAttributes *qA)
         avtDataset_p input = GetTypedInput();
         if (gzt != AVT_HAS_GHOSTS)
         {
-            totalNodes[0] = avtDatasetExaminer::GetNumberOfNodes(input);
+            totalNodes[0] = avtDatasetExaminer::GetNumberOfNodes(input,
+                                                 countOriginalOnly);
         }
         else 
         {
             avtDatasetExaminer::GetNumberOfNodes(input, totalNodes[0], 
-                                                 totalNodes[1]);
+                                                 totalNodes[1],
+                                                 countOriginalOnly);
         }
     }
 
     SumLongLongArrayAcrossAllProcessors(totalNodes, tn, 2);
 
+    MapNode result_node;
+    result_node["num_nodes"] = (int)tn[0];
     if (OriginalData())
-        SNPRINTF(msg, 200, "The original number of nodes is %ld.", tn[0]);
+        SNPRINTF(msg, 200, "The original number of nodes is %lld.", tn[0]);
     else 
-        SNPRINTF(msg, 200, "The actual number of nodes is %ld.", tn[0]);
+        SNPRINTF(msg, 200, "The actual number of nodes is %lld.", tn[0]);
 
 
     if (gzt != AVT_HAS_GHOSTS)
@@ -165,12 +180,13 @@ avtNumNodesQuery::PerformQuery(QueryAttributes *qA)
     else
     {
         char msg2[200];
-        SNPRINTF(msg2, 200, "%s\nThe number of ghost nodes is %ld.", msg, tn[1]);
+        SNPRINTF(msg2, 200, "%s\nThe number of ghost nodes is %lld.", msg, tn[1]);
         double results[2] = {(double) tn[0], (double) tn[1]};
         qA->SetResultsValues(results, 2);
         qA->SetResultsMessage(msg2);
+        result_node["num_ghost_nodes"] = (int)tn[1];
     }
-
+    qA->SetXmlResult(result_node.ToXML());
     UpdateProgress(1, 0);
 }
 

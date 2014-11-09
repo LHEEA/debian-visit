@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -126,6 +126,44 @@ IntegralCurveAttributes::DataValue_FromString(const std::string &s, IntegralCurv
 }
 
 //
+// Enum conversion methods for IntegralCurveAttributes::CropValue
+//
+
+static const char *CropValue_strings[] = {
+"Distance", "Time", "StepNumber"
+};
+
+std::string
+IntegralCurveAttributes::CropValue_ToString(IntegralCurveAttributes::CropValue t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return CropValue_strings[index];
+}
+
+std::string
+IntegralCurveAttributes::CropValue_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return CropValue_strings[index];
+}
+
+bool
+IntegralCurveAttributes::CropValue_FromString(const std::string &s, IntegralCurveAttributes::CropValue &val)
+{
+    val = IntegralCurveAttributes::Distance;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == CropValue_strings[i])
+        {
+            val = (CropValue)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for IntegralCurveAttributes::DisplayGeometry
 //
 
@@ -157,44 +195,6 @@ IntegralCurveAttributes::DisplayGeometry_FromString(const std::string &s, Integr
         if(s == DisplayGeometry_strings[i])
         {
             val = (DisplayGeometry)i;
-            return true;
-        }
-    }
-    return false;
-}
-
-//
-// Enum conversion methods for IntegralCurveAttributes::CoordinateSystem
-//
-
-static const char *CoordinateSystem_strings[] = {
-"AsIs", "CylindricalToCartesian", "CartesianToCylindrical"
-};
-
-std::string
-IntegralCurveAttributes::CoordinateSystem_ToString(IntegralCurveAttributes::CoordinateSystem t)
-{
-    int index = int(t);
-    if(index < 0 || index >= 3) index = 0;
-    return CoordinateSystem_strings[index];
-}
-
-std::string
-IntegralCurveAttributes::CoordinateSystem_ToString(int t)
-{
-    int index = (t < 0 || t >= 3) ? 0 : t;
-    return CoordinateSystem_strings[index];
-}
-
-bool
-IntegralCurveAttributes::CoordinateSystem_FromString(const std::string &s, IntegralCurveAttributes::CoordinateSystem &val)
-{
-    val = IntegralCurveAttributes::AsIs;
-    for(int i = 0; i < 3; ++i)
-    {
-        if(s == CoordinateSystem_strings[i])
-        {
-            val = (CoordinateSystem)i;
             return true;
         }
     }
@@ -515,13 +515,14 @@ void IntegralCurveAttributes::Init()
     pathlines = false;
     pathlinesOverrideStartingTimeFlag = false;
     pathlinesOverrideStartingTime = 0;
+    pathlinesPeriod = 0;
     pathlinesCMFE = POS_CMFE;
     displayGeometry = Lines;
-    coordinateSystem = AsIs;
-    phiScalingFlag = false;
-    phiScaling = 1;
-    showLines = true;
-    showPoints = false;
+    cropBeginFlag = false;
+    cropBegin = 0;
+    cropEndFlag = false;
+    cropEnd = 0;
+    cropValue = Time;
     sampleDistance0 = 10;
     sampleDistance1 = 10;
     sampleDistance2 = 10;
@@ -627,13 +628,14 @@ void IntegralCurveAttributes::Copy(const IntegralCurveAttributes &obj)
     pathlines = obj.pathlines;
     pathlinesOverrideStartingTimeFlag = obj.pathlinesOverrideStartingTimeFlag;
     pathlinesOverrideStartingTime = obj.pathlinesOverrideStartingTime;
+    pathlinesPeriod = obj.pathlinesPeriod;
     pathlinesCMFE = obj.pathlinesCMFE;
     displayGeometry = obj.displayGeometry;
-    coordinateSystem = obj.coordinateSystem;
-    phiScalingFlag = obj.phiScalingFlag;
-    phiScaling = obj.phiScaling;
-    showLines = obj.showLines;
-    showPoints = obj.showPoints;
+    cropBeginFlag = obj.cropBeginFlag;
+    cropBegin = obj.cropBegin;
+    cropEndFlag = obj.cropEndFlag;
+    cropEnd = obj.cropEnd;
+    cropValue = obj.cropValue;
     sampleDistance0 = obj.sampleDistance0;
     sampleDistance1 = obj.sampleDistance1;
     sampleDistance2 = obj.sampleDistance2;
@@ -894,13 +896,14 @@ IntegralCurveAttributes::operator == (const IntegralCurveAttributes &obj) const
             (pathlines == obj.pathlines) &&
             (pathlinesOverrideStartingTimeFlag == obj.pathlinesOverrideStartingTimeFlag) &&
             (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime) &&
+            (pathlinesPeriod == obj.pathlinesPeriod) &&
             (pathlinesCMFE == obj.pathlinesCMFE) &&
             (displayGeometry == obj.displayGeometry) &&
-            (coordinateSystem == obj.coordinateSystem) &&
-            (phiScalingFlag == obj.phiScalingFlag) &&
-            (phiScaling == obj.phiScaling) &&
-            (showLines == obj.showLines) &&
-            (showPoints == obj.showPoints) &&
+            (cropBeginFlag == obj.cropBeginFlag) &&
+            (cropBegin == obj.cropBegin) &&
+            (cropEndFlag == obj.cropEndFlag) &&
+            (cropEnd == obj.cropEnd) &&
+            (cropValue == obj.cropValue) &&
             (sampleDistance0 == obj.sampleDistance0) &&
             (sampleDistance1 == obj.sampleDistance1) &&
             (sampleDistance2 == obj.sampleDistance2) &&
@@ -1215,13 +1218,14 @@ IntegralCurveAttributes::SelectAll()
     Select(ID_pathlines,                          (void *)&pathlines);
     Select(ID_pathlinesOverrideStartingTimeFlag,  (void *)&pathlinesOverrideStartingTimeFlag);
     Select(ID_pathlinesOverrideStartingTime,      (void *)&pathlinesOverrideStartingTime);
+    Select(ID_pathlinesPeriod,                    (void *)&pathlinesPeriod);
     Select(ID_pathlinesCMFE,                      (void *)&pathlinesCMFE);
     Select(ID_displayGeometry,                    (void *)&displayGeometry);
-    Select(ID_coordinateSystem,                   (void *)&coordinateSystem);
-    Select(ID_phiScalingFlag,                     (void *)&phiScalingFlag);
-    Select(ID_phiScaling,                         (void *)&phiScaling);
-    Select(ID_showLines,                          (void *)&showLines);
-    Select(ID_showPoints,                         (void *)&showPoints);
+    Select(ID_cropBeginFlag,                      (void *)&cropBeginFlag);
+    Select(ID_cropBegin,                          (void *)&cropBegin);
+    Select(ID_cropEndFlag,                        (void *)&cropEndFlag);
+    Select(ID_cropEnd,                            (void *)&cropEnd);
+    Select(ID_cropValue,                          (void *)&cropValue);
     Select(ID_sampleDistance0,                    (void *)&sampleDistance0);
     Select(ID_sampleDistance1,                    (void *)&sampleDistance1);
     Select(ID_sampleDistance2,                    (void *)&sampleDistance2);
@@ -1517,6 +1521,12 @@ IntegralCurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, boo
         node->AddNode(new DataNode("pathlinesOverrideStartingTime", pathlinesOverrideStartingTime));
     }
 
+    if(completeSave || !FieldsEqual(ID_pathlinesPeriod, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pathlinesPeriod", pathlinesPeriod));
+    }
+
     if(completeSave || !FieldsEqual(ID_pathlinesCMFE, &defaultObject))
     {
         addToParent = true;
@@ -1529,34 +1539,34 @@ IntegralCurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, boo
         node->AddNode(new DataNode("displayGeometry", DisplayGeometry_ToString(displayGeometry)));
     }
 
-    if(completeSave || !FieldsEqual(ID_coordinateSystem, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_cropBeginFlag, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("coordinateSystem", CoordinateSystem_ToString(coordinateSystem)));
+        node->AddNode(new DataNode("cropBeginFlag", cropBeginFlag));
     }
 
-    if(completeSave || !FieldsEqual(ID_phiScalingFlag, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_cropBegin, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("phiScalingFlag", phiScalingFlag));
+        node->AddNode(new DataNode("cropBegin", cropBegin));
     }
 
-    if(completeSave || !FieldsEqual(ID_phiScaling, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_cropEndFlag, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("phiScaling", phiScaling));
+        node->AddNode(new DataNode("cropEndFlag", cropEndFlag));
     }
 
-    if(completeSave || !FieldsEqual(ID_showLines, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_cropEnd, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("showLines", showLines));
+        node->AddNode(new DataNode("cropEnd", cropEnd));
     }
 
-    if(completeSave || !FieldsEqual(ID_showPoints, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_cropValue, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("showPoints", showPoints));
+        node->AddNode(new DataNode("cropValue", CropValue_ToString(cropValue)));
     }
 
     if(completeSave || !FieldsEqual(ID_sampleDistance0, &defaultObject))
@@ -1877,6 +1887,8 @@ IntegralCurveAttributes::SetFromNode(DataNode *parentNode)
         SetPathlinesOverrideStartingTimeFlag(node->AsBool());
     if((node = searchNode->GetNode("pathlinesOverrideStartingTime")) != 0)
         SetPathlinesOverrideStartingTime(node->AsDouble());
+    if((node = searchNode->GetNode("pathlinesPeriod")) != 0)
+        SetPathlinesPeriod(node->AsDouble());
     if((node = searchNode->GetNode("pathlinesCMFE")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1909,30 +1921,30 @@ IntegralCurveAttributes::SetFromNode(DataNode *parentNode)
                 SetDisplayGeometry(value);
         }
     }
-    if((node = searchNode->GetNode("coordinateSystem")) != 0)
+    if((node = searchNode->GetNode("cropBeginFlag")) != 0)
+        SetCropBeginFlag(node->AsBool());
+    if((node = searchNode->GetNode("cropBegin")) != 0)
+        SetCropBegin(node->AsDouble());
+    if((node = searchNode->GetNode("cropEndFlag")) != 0)
+        SetCropEndFlag(node->AsBool());
+    if((node = searchNode->GetNode("cropEnd")) != 0)
+        SetCropEnd(node->AsDouble());
+    if((node = searchNode->GetNode("cropValue")) != 0)
     {
         // Allow enums to be int or string in the config file
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
             if(ival >= 0 && ival < 3)
-                SetCoordinateSystem(CoordinateSystem(ival));
+                SetCropValue(CropValue(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
         {
-            CoordinateSystem value;
-            if(CoordinateSystem_FromString(node->AsString(), value))
-                SetCoordinateSystem(value);
+            CropValue value;
+            if(CropValue_FromString(node->AsString(), value))
+                SetCropValue(value);
         }
     }
-    if((node = searchNode->GetNode("phiScalingFlag")) != 0)
-        SetPhiScalingFlag(node->AsBool());
-    if((node = searchNode->GetNode("phiScaling")) != 0)
-        SetPhiScaling(node->AsDouble());
-    if((node = searchNode->GetNode("showLines")) != 0)
-        SetShowLines(node->AsBool());
-    if((node = searchNode->GetNode("showPoints")) != 0)
-        SetShowPoints(node->AsBool());
     if((node = searchNode->GetNode("sampleDistance0")) != 0)
         SetSampleDistance0(node->AsDouble());
     if((node = searchNode->GetNode("sampleDistance1")) != 0)
@@ -2292,6 +2304,13 @@ IntegralCurveAttributes::SetPathlinesOverrideStartingTime(double pathlinesOverri
 }
 
 void
+IntegralCurveAttributes::SetPathlinesPeriod(double pathlinesPeriod_)
+{
+    pathlinesPeriod = pathlinesPeriod_;
+    Select(ID_pathlinesPeriod, (void *)&pathlinesPeriod);
+}
+
+void
 IntegralCurveAttributes::SetPathlinesCMFE(IntegralCurveAttributes::PathlinesCMFE pathlinesCMFE_)
 {
     pathlinesCMFE = pathlinesCMFE_;
@@ -2306,38 +2325,38 @@ IntegralCurveAttributes::SetDisplayGeometry(IntegralCurveAttributes::DisplayGeom
 }
 
 void
-IntegralCurveAttributes::SetCoordinateSystem(IntegralCurveAttributes::CoordinateSystem coordinateSystem_)
+IntegralCurveAttributes::SetCropBeginFlag(bool cropBeginFlag_)
 {
-    coordinateSystem = coordinateSystem_;
-    Select(ID_coordinateSystem, (void *)&coordinateSystem);
+    cropBeginFlag = cropBeginFlag_;
+    Select(ID_cropBeginFlag, (void *)&cropBeginFlag);
 }
 
 void
-IntegralCurveAttributes::SetPhiScalingFlag(bool phiScalingFlag_)
+IntegralCurveAttributes::SetCropBegin(double cropBegin_)
 {
-    phiScalingFlag = phiScalingFlag_;
-    Select(ID_phiScalingFlag, (void *)&phiScalingFlag);
+    cropBegin = cropBegin_;
+    Select(ID_cropBegin, (void *)&cropBegin);
 }
 
 void
-IntegralCurveAttributes::SetPhiScaling(double phiScaling_)
+IntegralCurveAttributes::SetCropEndFlag(bool cropEndFlag_)
 {
-    phiScaling = phiScaling_;
-    Select(ID_phiScaling, (void *)&phiScaling);
+    cropEndFlag = cropEndFlag_;
+    Select(ID_cropEndFlag, (void *)&cropEndFlag);
 }
 
 void
-IntegralCurveAttributes::SetShowLines(bool showLines_)
+IntegralCurveAttributes::SetCropEnd(double cropEnd_)
 {
-    showLines = showLines_;
-    Select(ID_showLines, (void *)&showLines);
+    cropEnd = cropEnd_;
+    Select(ID_cropEnd, (void *)&cropEnd);
 }
 
 void
-IntegralCurveAttributes::SetShowPoints(bool showPoints_)
+IntegralCurveAttributes::SetCropValue(IntegralCurveAttributes::CropValue cropValue_)
 {
-    showPoints = showPoints_;
-    Select(ID_showPoints, (void *)&showPoints);
+    cropValue = cropValue_;
+    Select(ID_cropValue, (void *)&cropValue);
 }
 
 void
@@ -2775,6 +2794,12 @@ IntegralCurveAttributes::GetPathlinesOverrideStartingTime() const
     return pathlinesOverrideStartingTime;
 }
 
+double
+IntegralCurveAttributes::GetPathlinesPeriod() const
+{
+    return pathlinesPeriod;
+}
+
 IntegralCurveAttributes::PathlinesCMFE
 IntegralCurveAttributes::GetPathlinesCMFE() const
 {
@@ -2787,34 +2812,34 @@ IntegralCurveAttributes::GetDisplayGeometry() const
     return DisplayGeometry(displayGeometry);
 }
 
-IntegralCurveAttributes::CoordinateSystem
-IntegralCurveAttributes::GetCoordinateSystem() const
-{
-    return CoordinateSystem(coordinateSystem);
-}
-
 bool
-IntegralCurveAttributes::GetPhiScalingFlag() const
+IntegralCurveAttributes::GetCropBeginFlag() const
 {
-    return phiScalingFlag;
+    return cropBeginFlag;
 }
 
 double
-IntegralCurveAttributes::GetPhiScaling() const
+IntegralCurveAttributes::GetCropBegin() const
 {
-    return phiScaling;
+    return cropBegin;
 }
 
 bool
-IntegralCurveAttributes::GetShowLines() const
+IntegralCurveAttributes::GetCropEndFlag() const
 {
-    return showLines;
+    return cropEndFlag;
 }
 
-bool
-IntegralCurveAttributes::GetShowPoints() const
+double
+IntegralCurveAttributes::GetCropEnd() const
 {
-    return showPoints;
+    return cropEnd;
+}
+
+IntegralCurveAttributes::CropValue
+IntegralCurveAttributes::GetCropValue() const
+{
+    return CropValue(cropValue);
 }
 
 double
@@ -3066,13 +3091,14 @@ IntegralCurveAttributes::GetFieldName(int index) const
     case ID_pathlines:                          return "pathlines";
     case ID_pathlinesOverrideStartingTimeFlag:  return "pathlinesOverrideStartingTimeFlag";
     case ID_pathlinesOverrideStartingTime:      return "pathlinesOverrideStartingTime";
+    case ID_pathlinesPeriod:                    return "pathlinesPeriod";
     case ID_pathlinesCMFE:                      return "pathlinesCMFE";
     case ID_displayGeometry:                    return "displayGeometry";
-    case ID_coordinateSystem:                   return "coordinateSystem";
-    case ID_phiScalingFlag:                     return "phiScalingFlag";
-    case ID_phiScaling:                         return "phiScaling";
-    case ID_showLines:                          return "showLines";
-    case ID_showPoints:                         return "showPoints";
+    case ID_cropBeginFlag:                      return "cropBeginFlag";
+    case ID_cropBegin:                          return "cropBegin";
+    case ID_cropEndFlag:                        return "cropEndFlag";
+    case ID_cropEnd:                            return "cropEnd";
+    case ID_cropValue:                          return "cropValue";
     case ID_sampleDistance0:                    return "sampleDistance0";
     case ID_sampleDistance1:                    return "sampleDistance1";
     case ID_sampleDistance2:                    return "sampleDistance2";
@@ -3155,13 +3181,14 @@ IntegralCurveAttributes::GetFieldType(int index) const
     case ID_pathlines:                          return FieldType_bool;
     case ID_pathlinesOverrideStartingTimeFlag:  return FieldType_bool;
     case ID_pathlinesOverrideStartingTime:      return FieldType_double;
+    case ID_pathlinesPeriod:                    return FieldType_double;
     case ID_pathlinesCMFE:                      return FieldType_enum;
     case ID_displayGeometry:                    return FieldType_enum;
-    case ID_coordinateSystem:                   return FieldType_enum;
-    case ID_phiScalingFlag:                     return FieldType_bool;
-    case ID_phiScaling:                         return FieldType_double;
-    case ID_showLines:                          return FieldType_bool;
-    case ID_showPoints:                         return FieldType_bool;
+    case ID_cropBeginFlag:                      return FieldType_bool;
+    case ID_cropBegin:                          return FieldType_double;
+    case ID_cropEndFlag:                        return FieldType_bool;
+    case ID_cropEnd:                            return FieldType_double;
+    case ID_cropValue:                          return FieldType_enum;
     case ID_sampleDistance0:                    return FieldType_double;
     case ID_sampleDistance1:                    return FieldType_double;
     case ID_sampleDistance2:                    return FieldType_double;
@@ -3244,13 +3271,14 @@ IntegralCurveAttributes::GetFieldTypeName(int index) const
     case ID_pathlines:                          return "bool";
     case ID_pathlinesOverrideStartingTimeFlag:  return "bool";
     case ID_pathlinesOverrideStartingTime:      return "double";
+    case ID_pathlinesPeriod:                    return "double";
     case ID_pathlinesCMFE:                      return "enum";
     case ID_displayGeometry:                    return "enum";
-    case ID_coordinateSystem:                   return "enum";
-    case ID_phiScalingFlag:                     return "bool";
-    case ID_phiScaling:                         return "double";
-    case ID_showLines:                          return "bool";
-    case ID_showPoints:                         return "bool";
+    case ID_cropBeginFlag:                      return "bool";
+    case ID_cropBegin:                          return "double";
+    case ID_cropEndFlag:                        return "bool";
+    case ID_cropEnd:                            return "double";
+    case ID_cropValue:                          return "enum";
     case ID_sampleDistance0:                    return "double";
     case ID_sampleDistance1:                    return "double";
     case ID_sampleDistance2:                    return "double";
@@ -3544,6 +3572,11 @@ IntegralCurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) cons
         retval = (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime);
         }
         break;
+    case ID_pathlinesPeriod:
+        {  // new scope
+        retval = (pathlinesPeriod == obj.pathlinesPeriod);
+        }
+        break;
     case ID_pathlinesCMFE:
         {  // new scope
         retval = (pathlinesCMFE == obj.pathlinesCMFE);
@@ -3554,29 +3587,29 @@ IntegralCurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) cons
         retval = (displayGeometry == obj.displayGeometry);
         }
         break;
-    case ID_coordinateSystem:
+    case ID_cropBeginFlag:
         {  // new scope
-        retval = (coordinateSystem == obj.coordinateSystem);
+        retval = (cropBeginFlag == obj.cropBeginFlag);
         }
         break;
-    case ID_phiScalingFlag:
+    case ID_cropBegin:
         {  // new scope
-        retval = (phiScalingFlag == obj.phiScalingFlag);
+        retval = (cropBegin == obj.cropBegin);
         }
         break;
-    case ID_phiScaling:
+    case ID_cropEndFlag:
         {  // new scope
-        retval = (phiScaling == obj.phiScaling);
+        retval = (cropEndFlag == obj.cropEndFlag);
         }
         break;
-    case ID_showLines:
+    case ID_cropEnd:
         {  // new scope
-        retval = (showLines == obj.showLines);
+        retval = (cropEnd == obj.cropEnd);
         }
         break;
-    case ID_showPoints:
+    case ID_cropValue:
         {  // new scope
-        retval = (showPoints == obj.showPoints);
+        retval = (cropValue == obj.cropValue);
         }
         break;
     case ID_sampleDistance0:
@@ -3734,9 +3767,6 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         fieldType != obj.fieldType ||
         fieldConstant != obj.fieldConstant ||
         integrationType != obj.integrationType ||
-        coordinateSystem != obj.coordinateSystem ||
-        phiScalingFlag != obj.phiScalingFlag ||
-        phiScaling != obj.phiScaling ||
         maxStepLength != obj.maxStepLength ||
         maxTimeStep != obj.maxTimeStep ||
         limitMaximumTimestep != obj.limitMaximumTimestep ||
@@ -3745,8 +3775,11 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         absTolBBox != obj.absTolBBox ||
         absTolSizeType != obj.absTolSizeType ||
         forceNodeCenteredData != obj.forceNodeCenteredData ||
-        showPoints != obj.showPoints ||
-        showLines != obj.showLines ||
+        cropBeginFlag != obj.cropBeginFlag ||
+        cropBegin != obj.cropBegin ||
+        cropEndFlag != obj.cropEndFlag ||
+        cropEnd != obj.cropEnd ||
+        cropValue != obj.cropValue ||
         pathlines != obj.pathlines ||
         pathlinesOverrideStartingTimeFlag != obj.pathlinesOverrideStartingTimeFlag ||
         pathlinesOverrideStartingTime != obj.pathlinesOverrideStartingTime ||
@@ -3760,6 +3793,7 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
           correlationDistanceMinDistType != obj.correlationDistanceMinDistType)) ||
         0 )
     {
+
         return true;
     }
          
@@ -3886,3 +3920,4 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
 
     return false;
 }
+

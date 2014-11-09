@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewTriangulateRegularPointsAttributes(int);
 std::string
 PyTriangulateRegularPointsAttributes_ToString(const TriangulateRegularPointsAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetUseXGridSpacing())
         SNPRINTF(tmpStr, 1000, "%suseXGridSpacing = 1\n", prefix);
@@ -428,7 +428,6 @@ PyTriangulateRegularPointsAttributes_GetLogString()
 static void
 PyTriangulateRegularPointsAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    TriangulateRegularPointsAttributes *atts = (TriangulateRegularPointsAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

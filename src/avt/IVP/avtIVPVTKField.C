@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,10 +73,12 @@ avtIVPVTKField::avtIVPVTKField( vtkDataSet* dataset, avtCellLocator* locator )
     if( ds )
         ds->Register( NULL );
 
-    if( velData = ds->GetPointData()->GetVectors() )
+    if( (velData = ds->GetPointData()->GetVectors()) ) {
         velCellBased = false;
-    else if( velData = ds->GetCellData()->GetVectors() )
+    }
+    else if( (velData = ds->GetCellData()->GetVectors()) ) {
         velCellBased = true;
+    }
     else 
     {
         velData = 0;
@@ -321,7 +323,7 @@ avtIVPVTKField::ComputeVorticity( const double& t, const avtVector &pt ) const
 
 
     {
-        double tmp1[2], pcoord[3], dist2, w[1024];
+        double tmp1[3], pcoord[3], dist2, w[1024];
         int subid;
 
         cell->EvaluatePosition( (double*)&pt.x, tmp1, subid, pcoord, dist2, w );
@@ -409,10 +411,12 @@ avtIVPVTKField::SetScalarVariable(unsigned char index, const std::string& name)
     vtkDataArray* data;
     bool cellBased;
 
-    if( data = ds->GetPointData()->GetScalars( name.c_str() ) )
+    if( (data = ds->GetPointData()->GetScalars( name.c_str() )) ) {
         cellBased = false;
-    else if( data = ds->GetCellData()->GetScalars( name.c_str() ) )
+    }
+    else if( (data = ds->GetCellData()->GetScalars( name.c_str() )) ) {
         cellBased = true;
+    }
     else 
         EXCEPTION1( ImproperUseException, 
                     "avtIVPVTKField: Can't locate scalar \"" + name + 

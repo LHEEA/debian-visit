@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -750,17 +750,24 @@ avtSTSDFileFormatInterface::ActivateTimestep(int ts)
 //  Programmer: Mark C. Miller 
 //  Creation:   March 16, 2004 
 //
+//  Modifications:
+//    Brad Whitlock, Thu Jun 19 10:58:00 PDT 2014
+//    Added meshname.
+//
 // ****************************************************************************
 
-void
-avtSTSDFileFormatInterface::PopulateIOInformation(int ts, avtIOInformation& ioInfo)
+bool
+avtSTSDFileFormatInterface::PopulateIOInformation(int ts, const std::string &meshname,
+    avtIOInformation& ioInfo)
 {
     if (ts < 0 || ts >= nTimesteps)
     {
         EXCEPTION2(BadIndexException, ts, nTimesteps);
     }
+    bool retval = false;
     for (int j = 0 ; j < nBlocks ; j++)
     {
-        timesteps[ts][j]->PopulateIOInformation(ioInfo);
+        retval |= timesteps[ts][j]->PopulateIOInformation(meshname, ioInfo);
     }
+    return retval;
 }

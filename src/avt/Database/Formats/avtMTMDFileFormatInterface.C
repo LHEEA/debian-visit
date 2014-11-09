@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -349,8 +349,6 @@ void
 avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     int timeState, bool forceReadAllCyclesTimes)
 {
-    int i;
-
     GenerateTimestepCounts();
 
     //
@@ -373,7 +371,7 @@ avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     int tsGroup = GetTimestepGroupForTimestep(timeState);
     int localTS = GetTimestepWithinGroup(timeState);
     int offset = 0;
-    for (i = 0 ; i < nTimestepGroups ; i++)
+    for (size_t i = 0 ; i < (size_t)nTimestepGroups ; i++)
     {
         chunks[i]->SetTimeSliceOffset(offset);
         offset += tsPerGroup[i];
@@ -383,8 +381,8 @@ avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     else
         chunks[tsGroup]->SetReadAllCyclesAndTimes(false);
     chunks[tsGroup]->SetDatabaseMetaData(md, localTS);
-    for (i = 0 ; i < nTimestepGroups ; i++)
-        if (i != tsGroup)
+    for (size_t i = 0 ; i < (size_t)nTimestepGroups ; i++)
+        if (i != (size_t)tsGroup)
             chunks[i]->RegisterDatabaseMetaData(md);
 
     //
@@ -395,7 +393,7 @@ avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     if (md->AreAllCyclesAccurateAndValid(nTotalTimesteps) != true)
     {
         vector<int> cycles;
-        for (i=0; i<nTimestepGroups; i++)
+        for (size_t i=0; i < (size_t)nTimestepGroups; i++)
         {
             vector<int> tmp;
             chunks[i]->FormatGetCycles(tmp);
@@ -404,7 +402,7 @@ avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
         bool cyclesLookGood = true;
         if (!isEnsemble)
         {
-            for (i = 0; i < cycles.size(); i++)
+            for (size_t i = 0; i < cycles.size(); i++)
             {
                 if ((i != 0) && (cycles[i] <= cycles[i-1]))
                 {
@@ -413,13 +411,13 @@ avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
                 }
             }
         }
-        if (cycles.size() != nTotalTimesteps)
+        if (cycles.size() != (size_t)nTotalTimesteps)
             cyclesLookGood = false;
         if (cyclesLookGood == false)
         {
             std::vector<int> cyclesFromMassCall = cycles;
             cycles.clear();
-            for (i = 0; i < nTotalTimesteps; i++)
+            for (size_t i = 0; i < (size_t)nTotalTimesteps; i++)
             {
                 int tsg = GetTimestepGroupForTimestep(i);
                 int lts = GetTimestepWithinGroup(i);
@@ -452,7 +450,7 @@ avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     {
         // Set the times in the metadata.
         vector<double> times;
-        for (i=0; i<nTimestepGroups; i++)
+        for (size_t i=0; i<(size_t)nTimestepGroups; i++)
         {
             vector<double> tmp;
             chunks[i]->FormatGetTimes(tmp);
@@ -461,7 +459,7 @@ avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
         bool timesLookGood = true;
         if (!isEnsemble)
         {
-            for (i = 0; i < times.size(); i++)
+            for (size_t i = 0; i < times.size(); i++)
             {
                 if ((i != 0) && (times[i] <= times[i-1]))
                 {
@@ -470,13 +468,13 @@ avtMTMDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
                 }
             }
         }
-        if (times.size() != nTotalTimesteps)
+        if (times.size() != (size_t)nTotalTimesteps)
             timesLookGood = false;
         if (timesLookGood == false)
         {
             vector<double> timesFromMassCall = times;
             times.clear();
-            for (i = 0; i < nTotalTimesteps; i++)
+            for (size_t i = 0; i < (size_t)nTotalTimesteps; i++)
             {
                 int tsg = GetTimestepGroupForTimestep(i);
                 int lts = GetTimestepWithinGroup(i);
@@ -548,7 +546,7 @@ avtMTMDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
     bool cyclesLookGood = true;
     if (!isEnsemble)
     {
-        for (int i = 0; i < cycles.size(); i++)
+        for (size_t i = 0; i < cycles.size(); i++)
         {
             if ((i != 0) && (cycles[i] <= cycles[i-1]))
             {
@@ -557,7 +555,7 @@ avtMTMDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
             }
         }
     }
-    if (cycles.size() != nTotalTimesteps)
+    if (cycles.size() != (size_t)nTotalTimesteps)
         cyclesLookGood = false;
     if (cyclesLookGood == false)
     {
@@ -584,7 +582,7 @@ avtMTMDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
         times.insert(times.end(),tmp.begin(),tmp.end());
     }
     bool timesLookGood = true;
-    for (int i = 0; i < times.size(); i++)
+    for (size_t i = 0; i < times.size(); i++)
     {
         if ((i != 0) && (times[i] <= times[i-1]))
         {
@@ -592,7 +590,7 @@ avtMTMDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
             break;
         }
     }
-    if (times.size() != nTotalTimesteps)
+    if (times.size() != (size_t)nTotalTimesteps)
         timesLookGood = false;
     if (timesLookGood == false)
     {
@@ -675,14 +673,18 @@ avtMTMDFileFormatInterface::ActivateTimestep(int ts)
 //    Jeremy Meredith, Thu Jan 28 15:49:05 EST 2010
 //    MTMD files can now be grouped into longer sequences.
 //
+//    Brad Whitlock, Thu Jun 19 11:08:46 PDT 2014
+//    Pass mesh name.
+//
 // ****************************************************************************
 
-void
-avtMTMDFileFormatInterface::PopulateIOInformation(int ts, avtIOInformation& ioInfo)
+bool
+avtMTMDFileFormatInterface::PopulateIOInformation(int ts, const std::string &meshname,
+    avtIOInformation& ioInfo)
 {
     int tsGroup = GetTimestepGroupForTimestep(ts);
     int localTS = GetTimestepWithinGroup(ts);
-    chunks[tsGroup]->PopulateIOInformation(localTS, ioInfo);
+    return chunks[tsGroup]->PopulateIOInformation(localTS, meshname, ioInfo);
 }
 
 

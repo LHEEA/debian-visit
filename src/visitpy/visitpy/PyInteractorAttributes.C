@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewInteractorAttributes(int);
 std::string
 PyInteractorAttributes_ToString(const InteractorAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetShowGuidelines())
         SNPRINTF(tmpStr, 1000, "%sshowGuidelines = 1\n", prefix);
@@ -564,7 +564,6 @@ PyInteractorAttributes_GetLogString()
 static void
 PyInteractorAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    InteractorAttributes *atts = (InteractorAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

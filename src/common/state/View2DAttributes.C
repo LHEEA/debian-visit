@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -942,8 +942,8 @@ View2DAttributes::GetUseFullFrame(const double *limits) const
         
     // if the limits are not initialized then doing math
     // with them will cause an error so check them first.
-    if ( limits[1] == -DBL_MAX  && limits[0] == DBL_MAX ||
-         limits[3] == -DBL_MAX  && limits[2] == DBL_MAX   )
+    if ( (limits[1] == -DBL_MAX  && limits[0] == DBL_MAX) ||
+         (limits[3] == -DBL_MAX  && limits[2] == DBL_MAX)   )
     {
         return false;
     }

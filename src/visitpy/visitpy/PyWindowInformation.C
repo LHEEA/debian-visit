@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewWindowInformation(int);
 std::string
 PyWindowInformation_ToString(const WindowInformation *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sactiveSource = \"%s\"\n", prefix, atts->GetActiveSource().c_str());
     str += tmpStr;
@@ -1491,7 +1491,6 @@ PyWindowInformation_GetLogString()
 static void
 PyWindowInformation_CallLogRoutine(Subject *subj, void *data)
 {
-    WindowInformation *atts = (WindowInformation *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

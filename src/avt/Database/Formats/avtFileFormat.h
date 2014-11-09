@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -131,6 +131,9 @@ class     avtVariableCache;
 //    Add method for mangling names used for caching when selections are
 //    present.
 //
+//    Brad Whitlock, Thu Jun 19 10:50:25 PDT 2014
+//    Pass mesh name to PopulateIOInformation.
+//
 // ****************************************************************************
 
 class DATABASE_API avtFileFormat
@@ -143,10 +146,10 @@ class DATABASE_API avtFileFormat
 
 
     virtual void          ActivateTimestep(void);
+    virtual void          ActivateTimestep(int) { ActivateTimestep(); }
 
     virtual void          FreeUpResources(void);
     void                  RegisterDatabaseMetaData(avtDatabaseMetaData *);
-    virtual void          PopulateIOInformation(avtIOInformation &);
     void                  SetCache(avtVariableCache *);
 
     void                  SetStrictMode(bool v) { strictMode = v;    }

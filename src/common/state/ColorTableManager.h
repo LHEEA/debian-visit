@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,6 +63,10 @@ class DataNode;
 //   Brad Whitlock, Thu Feb 17 15:54:26 PST 2005
 //   Made WriteConfigFile return bool.
 //
+//   Katahleen Biagas, Fri Aug 8 08:36:27 PDT 2014
+//   Add 'importingPersonal' flag to distinguish between a users's color tables
+//   and the 'extra' standard tables that VisIt imports from resources.
+//
 // ****************************************************************************
 
 class STATE_API ColorTableManager : public ConfigManager
@@ -88,6 +92,7 @@ protected:
 private:
     ColorTableAttributes *ctAtts;
     ColorControlPointList ccpl;
+    bool importingPersonal;
 };
 
 #endif

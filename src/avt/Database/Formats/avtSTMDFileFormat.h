@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -93,6 +93,10 @@ class     avtIOInformation;
 //
 //    Mark C. Miller, Fri Oct 29 09:58:43 PDT 2010
 //    Moved implementation of SetDatabaseMetaData to the .C file.
+//
+//    Brad Whitlock, Thu Jun 19 10:50:25 PDT 2014
+//    Pass mesh name to PopulateIOInformation.
+//
 // ****************************************************************************
 
 class DATABASE_API avtSTMDFileFormat : public avtFileFormat
@@ -107,8 +111,9 @@ class DATABASE_API avtSTMDFileFormat : public avtFileFormat
 
     virtual void           ActivateTimestep(void)
                                { avtFileFormat::ActivateTimestep(); };
-    virtual void           PopulateIOInformation(avtIOInformation& ioInfo)
-                               { avtFileFormat::PopulateIOInformation(ioInfo); };
+    virtual bool           PopulateIOInformation(const std::string &meshname,
+                                                 avtIOInformation& ioInfo) { return false; }
+
     virtual void           SetDatabaseMetaData(avtDatabaseMetaData *md);
 
     void                   SetTimestep(int ts, int ns) 

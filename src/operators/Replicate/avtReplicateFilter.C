@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -232,6 +232,10 @@ avtReplicateFilter::ModifyContract(avtContract_p spec)
 //    after replicating, for example, we need to know what the new 
 //    supercell vectors are for periodicity, not the old unit cell vectors.
 //
+//    Brad Whitlock, Mon Apr  7 15:55:02 PDT 2014
+//    Add filter metadata used in export.
+//    Work partially supported by DOE Grant SC0007548.
+//
 // ****************************************************************************
  
 void
@@ -257,6 +261,8 @@ avtReplicateFilter::UpdateDataObjectInfo(void)
         outUC[2*3 + i] = inUC[2*3 + i] * atts.GetZReplications();
     }
     GetOutput()->GetInfo().GetAttributes().SetUnitCellVectors(outUC);
+
+    GetOutput()->GetInfo().GetAttributes().AddFilterMetaData("Replicate");
 }
 
 
@@ -267,11 +273,9 @@ avtReplicateFilter::UpdateDataObjectInfo(void)
 //      Sends the specified input and output through the Replicate filter.
 //
 //  Arguments:
-//      in_ds      The input dataset.
-//      dom        The domain number.
-//      str        An identifying string.
+//      in_dr      The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data tree.
 //
 //  Programmer: Jeremy Meredith
 //  Creation:   August 29, 2006
@@ -301,6 +305,9 @@ avtReplicateFilter::UpdateDataObjectInfo(void)
 //    sit at 0,0,0, even if a simulation with periodic boundary conditions
 //    has it starting at some other point.
 //
+//    Eric Brugger, Thu Aug 14 08:53:49 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 static void TransformVector(const double m[16], double v[3])
 {
@@ -310,11 +317,18 @@ static void TransformVector(const double m[16], double v[3])
 }
 
 avtDataTree_p 
-avtReplicateFilter::ExecuteDataTree(vtkDataSet *in_ds, int dom, string str)
+avtReplicateFilter::ExecuteDataTree(avtDataRepresentation *in_dr)
 {
+    //
+    // Get the VTK data set, the domain number, and the label.
+    //
+    vtkDataSet *in_ds = in_dr->GetDataVTK();
+    int domain = in_dr->GetDomain();
+    std::string label = in_dr->GetLabel();
+
     int  i, j, k;
 
-    if (in_ds == NULL)
+    if (in_dr == NULL)
     {
         return NULL;
     }
@@ -406,16 +420,16 @@ avtReplicateFilter::ExecuteDataTree(vtkDataSet *in_ds, int dom, string str)
                     output = newoutput;
                 }
             }
-            rv = new avtDataTree(1, (vtkDataSet**)(&output), dom, str);
+            rv = new avtDataTree(1, (vtkDataSet**)(&output), domain, label);
         }
         else
         {
-            rv = new avtDataTree(nrep, replications, dom, str);
+            rv = new avtDataTree(nrep, replications, domain, label);
         }
     }
     else
     {
-        rv = new avtDataTree(nrep, replications, dom, str);
+        rv = new avtDataTree(nrep, replications, domain, label);
     }
 
     //
@@ -507,7 +521,6 @@ vtkDataSet *
 avtReplicateFilter::ReplicateRectilinear(vtkRectilinearGrid *ds, double offset[3])
 {
     vtkRectilinearGrid *out = (vtkRectilinearGrid *) ds->NewInstance();
-    int nPts = ds->GetNumberOfPoints();
     int dims[3];
     ds->GetDimensions(dims);
     out->GetFieldData()->ShallowCopy(ds->GetFieldData());
@@ -756,7 +769,6 @@ vtkPolyData *
 avtReplicateFilter::ReplicateAndShiftUnitCellAtoms(vtkPolyData *in)
 {
     bool replicate = atts.GetReplicateUnitCellAtoms();
-    bool shift     = atts.GetShiftPeriodicAtomOrigin();
 
     // Make sure we have molecular data; if there are polygons
     // in here, some of our assumptions will be wrong.

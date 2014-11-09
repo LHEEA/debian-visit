@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -189,6 +189,10 @@ avtWatertightQuery::PreExecute(void)
 //  Programmer: Hank Childs
 //  Creation:   September 23, 2005
 //
+//  Modifications:
+//    Kathleen Biagas, Tue Feb 25 10:33:31 PST 2014
+//    Add XML results.
+//
 // ****************************************************************************
 
 
@@ -226,6 +230,9 @@ avtWatertightQuery::PostExecute(void)
     //
     SetResultMessage(buf);
     SetResultValue(foundExternalNode);
+    MapNode result_node;
+    result_node["watertight"] = foundExternalNode;
+    SetXmlResult(result_node.ToXML());
 }
 
 

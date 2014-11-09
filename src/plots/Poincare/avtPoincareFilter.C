@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -294,7 +294,8 @@ avtPoincareFilter::CreateIntegralCurve( const avtIVPSolver* model,
     // need at least these three attributes
     unsigned char attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
 
-    avtPoincareIC *rv = new avtPoincareIC( attr, model, dir, 
+    avtPoincareIC *rv = new avtPoincareIC( 0, false, 0,
+                                           attr, model, dir, 
                                            t_start, p_start, v_start, ID );
 
     if (intersectObj)
@@ -1781,7 +1782,7 @@ avtPoincareFilter::ClassifyFieldlines(std::vector<avtIntegralCurve *> &ics)
                  FieldlineProperties::ADDING_POINTS )
         {
           poincare_ic->status.ClearTerminationMet();
-      
+
           // Do not add more points than the user specified.
           if( poincare_ic->properties.nPuncturesNeeded > maxPunctures )
             poincare_ic->properties.nPuncturesNeeded = maxPunctures;
@@ -1815,7 +1816,7 @@ avtPoincareFilter::ClassifyFieldlines(std::vector<avtIntegralCurve *> &ics)
                  FieldlineProperties::ADD_O_POINTS )
         {
           poincare_ic->status.ClearTerminationMet();
-      
+
           // Make sure more analysis is done in the poincare filter
           // once O point seeds are added to the queue.
           analysisComplete = false;
@@ -1829,7 +1830,7 @@ avtPoincareFilter::ClassifyFieldlines(std::vector<avtIntegralCurve *> &ics)
                  FieldlineProperties::ISLAND_BOUNDARY_SEARCH )
         {
           poincare_ic->status.ClearTerminationMet();
-      
+
           // Make sure more analysis is done in the poincare filter
           // once boundary seed points are added to the queue.
           analysisComplete = false;
@@ -2189,7 +2190,7 @@ avtPoincareFilter::CreatePoincareOutput( avtDataTree *dt,
 
         bool completeIslands = true;
 
-        if( summaryFlag ) 
+        if( summaryFlag )
         {
           double safetyFactor;
 

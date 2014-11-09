@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -139,7 +139,7 @@ QvisTimeQueryOptionsWidget::CreateWindowContents()
     //
     startLabel = new QLabel(tr("Starting timestep"));
     gLayout->addWidget(startLabel, 0, 0);
-    QHBoxLayout *startLayout = new QHBoxLayout();
+
     startTime = new QSpinBox();
     startTime->setValue(0);
     startTime->setMinimum(0);
@@ -348,7 +348,7 @@ QvisTimeQueryOptionsWidget::UpdateState(PlotList *plotList)
     {
         const std::string &dbName = 
             plotList->GetPlots(selectedPlot).GetDatabaseName();
-        WindowInformation *wi = GetViewerState()->GetWindowInformation();
+
         DatabaseCorrelationList *correlations = 
             GetViewerState()->GetDatabaseCorrelationList();
 

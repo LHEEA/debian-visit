@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -385,7 +385,8 @@ public:
     int  GetNumVisiblePlots() const;
     int  AddPlot(int type, const std::string &var, bool replacePlots = false,
                  bool applyOperators = false, bool inheritSILRestriction = false,
-                 bool applySelections = false, DataNode *attributesNode = 0);
+                 bool applySelections = false, DataNode *attributesNode = 0,
+                 int embeddedPlotId = -1);
 
     int GetNumberOfCells(bool polysOnly = false) const;
 

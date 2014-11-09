@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -42,8 +42,11 @@
 
 #ifndef AVT_LOWER_RESOLUTION_VOLUME_FILTER_H
 #define AVT_LOWER_RESOLUTION_VOLUME_FILTER_H
+
 #include <avtPluginDataTreeIterator.h>
+
 #include <VolumeAttributes.h>
+
 
 // ****************************************************************************
 //  Class: avtLowerResolutionVolumeFilter
@@ -55,6 +58,8 @@
 //  Creation:   Mon Dec 15 16:19:01 PST 2008
 //
 //  Modifications:
+//    Eric Brugger, Tue Aug 19 14:01:15 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -75,7 +80,7 @@ class avtLowerResolutionVolumeFilter : public avtPluginDataTreeIterator
     int                      hist_size;
 
     void                     CalculateHistograms(vtkDataSet *ds);
-    virtual vtkDataSet      *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     virtual void             PostExecute();
     virtual bool             FilterUnderstandsTransformedRectMesh();
 };

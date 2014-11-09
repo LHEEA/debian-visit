@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -215,11 +215,9 @@ avtScatterFilter::PreExecute(void)
 //      Sends the specified input and output through the scatter filter.
 //
 //  Arguments:
-//      inDS       The input dataset.
-//      dom        The domain number.
-//      lab        The label.
+//      inDR       The input data representation.
 //
-//  Returns:       The output dataset.
+//  Returns:       The output data representation.
 //
 //  Programmer: Brad Whitlock
 //  Creation:   Tue Nov 2 22:36:23 PST 2004
@@ -244,12 +242,21 @@ avtScatterFilter::PreExecute(void)
 //    Kathleen Biagas, Thu Mar  1 14:49:50 MST 2012
 //    Keep track of original node numbers.
 //
+//    Eric Brugger, Tue Aug 19 11:13:44 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
-vtkDataSet *
-avtScatterFilter::ExecuteData(vtkDataSet *inDS, int, std::string)
+avtDataRepresentation *
+avtScatterFilter::ExecuteData(avtDataRepresentation *inDR)
 {
-debug4 << "avtScatterFilter::ExecuteData" << endl;
+    debug4 << "avtScatterFilter::ExecuteData" << endl;
+
+    //
+    // Get the VTK data set.
+    //
+    vtkDataSet *inDS = inDR->GetDataVTK();
+
     avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
 
     // Determine the name of the first variable.
@@ -397,7 +404,13 @@ debug4 << "avtScatterFilter::ExecuteData" << endl;
     }
     ENDTRY
 
-    return outDS;
+    avtDataRepresentation *outDR = new avtDataRepresentation(outDS,
+        inDR->GetDomain(), inDR->GetLabel());
+
+    if (outDS != NULL)
+        outDS->Delete();
+
+    return outDR;
 }
 
 // ****************************************************************************
@@ -580,8 +593,6 @@ avtScatterFilter::PointMeshFromVariables(DataInput *d1,
            << "zExtents = [" << zMin << ", " << zMax << "]" << endl;
 
     vtkIdType nCells = 0;
-    avtDataAttributes &dataAtts = GetOutput()->GetInfo().GetAttributes();
-    const float EPSILON = 1.e-9;
 
     debug4 << mName << "arr1 = " << arr1->GetName()
            << ", ntuples=" << arr1->GetNumberOfTuples() << endl;
@@ -779,12 +790,8 @@ avtScatterFilter::PointMeshFromVariables(DataInput *d1,
     {    
         coord = (float *)pts->GetVoidPointer(0);
 
-        // Variables for log scaling
-        float small_val = 0.1;  // Less than 1.
-        float log_smallval = log10(small_val);
-
         // Variables for skew scaling.
-        float x_range, x_rangeInverse, x_logSkew, x_k;
+        float x_range = 0, x_rangeInverse = 0, x_logSkew = 0, x_k = 0;
         if(d1scale == 2)
         {
             x_range = xMax - xMin; 
@@ -792,7 +799,7 @@ avtScatterFilter::PointMeshFromVariables(DataInput *d1,
             x_logSkew = log(d1->skew);
             x_k = x_range / (d1->skew - 1.);
         }
-        float y_range, y_rangeInverse, y_logSkew, y_k;
+        float y_range = 0, y_rangeInverse = 0, y_logSkew = 0, y_k = 0;
         if(d2scale == 2)
         {
             y_range = yMax - yMin; 
@@ -801,15 +808,9 @@ avtScatterFilter::PointMeshFromVariables(DataInput *d1,
             y_k = y_range / (d2->skew - 1.);
         }
 
-#if 0
-#define LOG10_X(X) log10((X) - xMin + small_val) - log_smallval;
-#define LOG10_Y(Y) log10((Y) - yMin + small_val) - log_smallval;
-#define LOG10_Z(Z) log10((Z) - zMin + small_val) - log_smallval;
-#else
 #define LOG10_X(X) log10(X)
 #define LOG10_Y(Y) log10(Y)
 #define LOG10_Z(Z) log10(Z)
-#endif
 
         if(arr3 == 0)
         {
@@ -836,7 +837,7 @@ avtScatterFilter::PointMeshFromVariables(DataInput *d1,
         }
         else
         {
-            float z_range, z_rangeInverse, z_logSkew, z_k;
+            float z_range = 0, z_rangeInverse = 0, z_logSkew = 0, z_k = 0;
             if(d3->scale == 2)
             {
                 z_range = zMax - zMin; 
@@ -960,16 +961,12 @@ avtScatterFilter::PointMeshFromVariables(DataInput *d1,
     //
     // Set the final spatial extents value.
     //
-
     thisProcsSpatialExtents[0] = xMin;
     thisProcsSpatialExtents[1] = xMax;
     thisProcsSpatialExtents[2] = yMin;
     thisProcsSpatialExtents[3] = yMax;
     thisProcsSpatialExtents[4] = zMin;
     thisProcsSpatialExtents[5] = zMax;
-
-    outDS->Register(NULL);
-    outDS->Delete();
 
     return outDS;
 }

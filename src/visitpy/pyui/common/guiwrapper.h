@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,9 +73,11 @@ public:
     QMainWindow* GetMainWindow();
     QApplication* GetApp();
 
+    int          GetPlotWindowSize();
     QMainWindow* GetPlotWindow(int index);
     QMainWindow* GetPlotWindow(const QString& name);
 
+    int          GetOperatorWindowSize();
     QMainWindow* GetOperatorWindow(int index);
     QMainWindow* GetOperatorWindow(const QString& name);
 
@@ -115,7 +117,12 @@ public:
     
     QMainWindow* GetOtherWindow(const QString& name);
 
-    //QMainWindow* GetPlotManagerWindow() { return gui->GetPlotManagerWindow(); }
+    /// Get list of all windows 
+    QList<QMainWindow*> GetPlotWindows();
+    QList<QMainWindow*> GetOperatorWindows();
+    QList<QMainWindow*> GetOtherWindows();
+
+    //QMainWindow* GetPlotManagerWindow(){ return gui->GetPlotManagerWindow(); }
     
     QMainWindow* GetSourceManagerWindow();
 

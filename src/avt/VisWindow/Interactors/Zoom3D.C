@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -64,7 +64,7 @@
 
 Zoom3D::Zoom3D(VisWindowInteractorProxy &v) : ZoomInteractor(v)
 {
-    ctrlPushed = false;
+    shiftPressed = false;
     shouldSpin = false;    
 }
 
@@ -181,6 +181,11 @@ Zoom3D::OnTimer(void)
 //    the left mouse button would result in the window being stuck in pan mode
 //    if the shift key was released before the left mouse button.
 //
+//    Eric Brugger, Fri Feb 28 14:51:50 PST 2014
+//    I disabled the mode where pressing the ctrl key and the left mouse
+//    button pans the image. The code is still there so that an equivalent
+//    mode can easily be added.
+//
 // ****************************************************************************
 
 void
@@ -188,23 +193,27 @@ Zoom3D::StartLeftButtonAction()
 {
     DisableSpinMode();
 
-    //
-    // If ctrl is pushed, pan, otherwise zoom.  Save which one we did so we
-    // can issue the proper "End.." statement when the button is released.
-    //
-    if (Interactor->GetControlKey())
+    // If shift is pressed, pan, otherwise rubber band zoom.  The pan
+    // action matches the Navigate2D/3D modes. Save which one we did so
+    // we can issue the proper "End.." statement when the button is
+    // released.
+    if (Interactor->GetShiftKey())
     {
         StartBoundingBox();
         StartPan();
-        ctrlPushed = true;
+        shiftPressed = true;
     }
+
+    // NOTE: the shift and ctrl go into the rubberband zoom and affect
+    // whether one gets a rectangle (shift) or zooms out (ctrl). At
+    // this point the shift is intercepted above to pan which matches
+    // the Navigate2D/3D modes.
     else
     {
         int x, y;
         Interactor->GetEventPosition(x, y);
         StartZoom();
         StartRubberBand(x, y);
-        ctrlPushed = false;
     }
 }
 
@@ -248,14 +257,14 @@ Zoom3D::StartLeftButtonAction()
 void
 Zoom3D::EndLeftButtonAction()
 {
-    //
-    // We must issue the proper end state for either pan or rotate depending
-    // on whether the shift or ctrl button was pushed.
-    //
-    if (ctrlPushed)
+    // We must issue the proper end state for either pan or rotate
+    // depending on whether the shift or ctrl button was pushed.  The
+    // shift left mouse pan action matches the Navigate2D/3D modes.
+    if (shiftPressed)
     {
         EndBoundingBox();
         EndPan();
+        shiftPressed = false;
     }
     else
     {
@@ -267,8 +276,6 @@ Zoom3D::EndLeftButtonAction()
     EnableSpinMode();
 
     IssueViewCallback();
-
-    ctrlPushed = false;
 }
 
 
@@ -296,10 +303,11 @@ Zoom3D::EndLeftButtonAction()
 void
 Zoom3D::AbortLeftButtonAction()
 {
-    if (ctrlPushed)
+    if (shiftPressed)
     {
         EndBoundingBox();
         EndPan();
+        shiftPressed = false;
     }
     else
     {
@@ -496,8 +504,6 @@ Zoom3D::ZoomCamera(void)
 void
 Zoom3D::ZoomCamera(const int x, const int y)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
     if (OldY != y)
     {
         //

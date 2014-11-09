@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -374,7 +374,7 @@ EngineProxy::ExtractEngineInformation()
     // and parse them out so we can query their values in the
     // engine proxy.
     //
-    for(int i = 0; i < argv.size(); ++i)
+    for(size_t i = 0; i < argv.size(); ++i)
     {
         if(argv[i] == "-np" && (i+1) < argv.size())
         {
@@ -596,12 +596,16 @@ EngineProxy::SendKeepAlive()
     unsigned char buf[KEEPALIVE_SIZE];
     if(engineP != NULL)
     {
-        if (engineP->GetReadConnection(1)->DirectRead(buf, KEEPALIVE_SIZE) < 0)
+        if (engineP->GetReadConnection(1)->DirectRead(buf, KEEPALIVE_SIZE) < 0) 
+        {
             debug1 << "Error reading keep alive data from engine!!!!\n";
+        }
     }
     else
     {
-        if (component->GetWriteConnection(1)->DirectRead(buf, KEEPALIVE_SIZE) < 0)
+        if (component->GetWriteConnection(1)->DirectRead(buf, KEEPALIVE_SIZE) < 0) 
+        {
             debug1 << "Error reading keep alive data from engine!!!!\n";
+        }
     }
 }

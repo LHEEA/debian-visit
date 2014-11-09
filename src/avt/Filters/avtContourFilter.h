@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,12 +45,12 @@
 
 #include <filters_exports.h>
 
-#include <ContourOpAttributes.h>
 #include <avtSIMODataTreeIterator.h>
+
+#include <ContourOpAttributes.h>
+
 #include <string>
 #include <vector>
-
-class vtkDataSet;
 
 
 // ****************************************************************************
@@ -93,6 +93,12 @@ class vtkDataSet;
 //    Hank Childs, Sun Mar  6 08:18:53 PST 2005
 //    Removed "centering conversion module" data member.
 //
+//    Eric Brugger, Mon Jul 21 10:13:44 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
+//    Cameron Christensen, Tuesday, June 10, 2014
+//    Modified the class to work with EAVL.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtContourFilter : public avtSIMODataTreeIterator
@@ -125,7 +131,7 @@ class AVTFILTERS_API avtContourFilter : public avtSIMODataTreeIterator
 
     virtual avtContract_p
                                ModifyContract(avtContract_p);
-    virtual avtDataTree_p      ExecuteDataTree(vtkDataSet *, int, std::string);
+    virtual avtDataTree_p      ExecuteDataTree(avtDataRepresentation *);
 
     virtual void               UpdateDataObjectInfo(void);
     virtual void               PreExecute(void);
@@ -134,6 +140,11 @@ class AVTFILTERS_API avtContourFilter : public avtSIMODataTreeIterator
     void                       CreateNIsoValues(double, double);
     void                       SetIsoValues(double, double);
     void                       CreateLabels(void);
+
+ private:
+    avtDataTree_p      ExecuteDataTree_EAVL(avtDataRepresentation *);
+    avtDataTree_p      ExecuteDataTree_VTK(avtDataRepresentation *);
+
 };
 
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -681,7 +681,7 @@ QvisStreamlinePlotWindow::CreateWindowContents()
     connect(maxDistance, SIGNAL(returnPressed()), this, SLOT(maxDistanceProcessText()));
     terminationLayout->addWidget(maxDistance, 2,1);
 
-// ----------------------------------------------------------------------
+    // ----------------------------------------------------------------------
     // Appearance tab
     // ----------------------------------------------------------------------
     QWidget *appearanceTab = new QWidget(central);
@@ -1187,7 +1187,6 @@ QvisStreamlinePlotWindow::CreateAppearanceTab(QWidget *pageAppearance)
 void
 QvisStreamlinePlotWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 {
-    int row = 0;
     QGridLayout *advGLayout = new QGridLayout(pageAdvanced);
     advGLayout->setMargin(5);
     advGLayout->setSpacing(5);
@@ -1552,18 +1551,26 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
             break;
         case StreamlineAttributes::ID_pointList:
             {
+                pointList->blockSignals(true);
+
                 std::vector<double> points = streamAtts->GetPointList();
 
+                QListWidgetItem *item = NULL;
+
                 pointList->clear();
-                for (int i = 0; i < points.size(); i+= 3)
+                for (size_t i = 0; i < points.size(); i+= 3)
                 {
                     char tmp[256];
                     sprintf(tmp, "%lf %lf %lf", points[i], points[i+1], points[i+2]);
                     QString str = tmp;
                     QListWidgetItem *item = new QListWidgetItem(str, pointList);
                     item->setFlags(item->flags() | Qt::ItemIsEditable);
-                    pointList->setCurrentItem(item);
                 }
+
+                if( item )
+                  pointList->setCurrentItem(item);
+
+                pointList->blockSignals(false);
 
                 break;
             }
@@ -1673,11 +1680,13 @@ QvisStreamlinePlotWindow::UpdateWindow(bool doAll)
                 tubeSizeType->hide();
                 ribbonSizeType->hide();
                 geomRadiusLabel->hide();
+
                 tubeDisplayDensityLabel->hide();
                 tubeDisplayDensity->hide();
                 tubeRadiusVary->hide();
                 tubeRadiusVaryVariable->hide();
                 tubeRadiusVaryVariableLabel->hide();
+
                 tubeRadiusVaryFactorLabel->hide();
                 tubeRadiusVaryFactorEdit->hide();
             }
@@ -3589,10 +3598,10 @@ QvisStreamlinePlotWindow::GetCurrentValues(int which_widget)
             streamAtts->SetCorrelationDistanceMinDistBBox(streamAtts->GetCorrelationDistanceMinDistBBox());
         }
     }
-    if (which_widget == StreamlineAttributes::ID_selection || doAll)
-    {
-        int val = selections->currentIndex();
-    }
+    //if (which_widget == StreamlineAttributes::ID_selection || doAll)
+    //{
+    //    int val = selections->currentIndex(); (void) val;
+    //}
 }
 
 
@@ -4418,6 +4427,10 @@ QvisStreamlinePlotWindow::deletePoints()
 void
 QvisStreamlinePlotWindow::readPoints()
 {
+    pointList->blockSignals(true);
+
+    QListWidgetItem *item = NULL;
+
     QString res = QFileDialog::getOpenFileName(NULL, tr("Open text file"), ".");
     std::string filename = res.toLatin1().data();
 
@@ -4445,13 +4458,17 @@ QvisStreamlinePlotWindow::readPoints()
         {
             char vals[256];
             sprintf(vals, "%f %f %f", x,y,z);
-            QListWidgetItem *item = new QListWidgetItem(vals, pointList);
+            item = new QListWidgetItem(vals, pointList);
             item->setFlags(item->flags() | Qt::ItemIsEditable);
-            pointList->setCurrentItem(item);
         }
     }
 
     f.close();
+
+    if( item )
+      pointList->setCurrentItem(item);
+
+    pointList->blockSignals(false);
 }
 
 void

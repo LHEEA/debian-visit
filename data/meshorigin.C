@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,13 @@
 #include <math.h>
 #include <string.h>
 
+// supress the following since silo uses char * in its API
+#if defined(__clang__)
+# pragma GCC diagnostic ignored "-Wdeprecated-writable-strings"
+#elif defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
+
 DBoptlist *
 MakeOptList(int origin)
 {
@@ -61,7 +68,7 @@ write_point3d(DBfile *dbfile, const char *meshname, int origin)
     DBoptlist *opt = NULL;
     int i;
     float x[NPTS], y[NPTS], z[NPTS];
-    int dims[] = {NPTS, NPTS, NPTS}, ndims = 3;
+    int ndims = 3;
     float *coords[] = {(float*)x, (float*)y, (float*)z};
     for(i = 0; i < NPTS; ++i)
     {

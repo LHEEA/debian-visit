@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -131,8 +131,6 @@ avtMeshCoordinateExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomain
         vtkDataArray *X = rg->GetXCoordinates();
         vtkDataArray *Y = rg->GetYCoordinates();
         vtkDataArray *Z = rg->GetZCoordinates();
-
-        int npts = dims[0]*dims[1]*dims[2];    
 
 #define EXTRACT_COORDS(dtype) \
 { \

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -191,11 +191,18 @@ avtKurtosisQuery::CurveQuery(int n1, const float *x1, const float *y1)
 //    Cyrus Harrison, Tue Sep 18 13:45:35 PDT 2007
 //    Added support for user settable floating point format string
 //
+//    Kathleen Biagas, Mon Feb 24 16:08:14 PST 2014
+//    Add Xml results.
+//
 // ****************************************************************************
 
 std::string
 avtKurtosisQuery::CreateMessage(double kurtosis)
 {
+    MapNode result_node;
+    result_node["kurtosis"] = kurtosis;
+    SetXmlResult(result_node.ToXML());
+
     char msg[1024];
     std::string format = "The kurtosis of the distribution is " 
                       + queryAtts.GetFloatFormat() + ".";

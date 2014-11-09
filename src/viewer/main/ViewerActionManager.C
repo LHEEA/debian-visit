@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -92,7 +92,7 @@ public:
         // Add all of the action groups as choices.
         ViewerActionManager *actionMgr = window->GetActionManager();
         stringVector names(actionMgr->GetActionGroupNames(false));
-        for(int i = 0; i < names.size(); ++i)
+        for(size_t i = 0; i < names.size(); ++i)
             AddChoice(names[i].c_str());
     }
 
@@ -610,6 +610,7 @@ ViewerActionManager::ViewerActionManager(ViewerWindow *win) :
     AddAction(new SetToolUpdateModeAction(win), ViewerRPC::SetToolUpdateModeRPC);
 #ifdef HAVE_DDT
     AddAction(new ReleaseToDDTAction(win), ViewerRPC::ReleaseToDDTRPC);
+    AddAction(new PlotDDTVispointVariablesAction(win), ViewerRPC::PlotDDTVispointVariablesRPC);
 #endif
 
     AddAction(new ToggleSpinModeAction(win), ViewerRPC::ToggleSpinModeRPC);
@@ -633,6 +634,7 @@ ViewerActionManager::ViewerActionManager(ViewerWindow *win) :
     AddAction(new SetOperatorOptionsAction(win), ViewerRPC::SetOperatorOptionsRPC);
 
     AddAction(new AddPlotAction(win), ViewerRPC::AddPlotRPC);
+    AddAction(new AddEmbeddedPlotAction(win), ViewerRPC::AddEmbeddedPlotRPC);
     AddAction(new DrawPlotsAction(win), ViewerRPC::DrawPlotsRPC);
     AddAction(new HideActivePlotsAction(win), ViewerRPC::HideActivePlotsRPC);
     AddAction(new DeleteActivePlotsAction(win), ViewerRPC::DeleteActivePlotsRPC);
@@ -758,7 +760,7 @@ ViewerActionManager::EnableActions(ViewerWindowManagerAttributes *wma)
         // object and add the new action group to the manager.
         ActionGroup newAction(ag.GetName());
         newAction.enabled = ag.GetVisible();
-        for(int j = 0; j < ag.GetActions().size(); ++j)
+        for(int j = 0; j < (int)ag.GetActions().size(); ++j)
         {
             ActionIndex index = ag.GetAction(j);
             if(index != ViewerRPC::MaxRPC)
@@ -851,7 +853,7 @@ ViewerActionManager::RealizeActionGroups(bool toolbarsVisible, bool largeIcons)
     for(;pos != actionGroups.end(); ++pos)
     {
         const ActionIndexVector &a = pos->actions;
-        for(int j = 0; j < a.size(); ++j)
+        for(size_t j = 0; j < a.size(); ++j)
         {
             ViewerActionBase *action = GetAction(a[j]);
             if(action && action->VisualEnabled())
@@ -938,7 +940,7 @@ ViewerActionManager::RealizeActionGroups(bool toolbarsVisible, bool largeIcons)
     //
     // Enable or disable the action groups based on user-settings.
     //
-    for(i = 0; i < actionGroups.size(); ++i)
+    for(i = 0; i < (int)actionGroups.size(); ++i)
     {
         SetActionGroupEnabled(i, actionGroups[i].enabled);
     }
@@ -991,7 +993,7 @@ ViewerActionManager::UpdateActionConstruction(ViewerActionBase *action)
     for(;pos != actionGroups.end(); ++pos)
     {
         const ActionIndexVector &a = pos->actions;
-        for(int j = 0; j < a.size(); ++j)
+        for(size_t j = 0; j < a.size(); ++j)
         {
             if(GetAction(a[j]) == action && action->VisualEnabled())
             {
@@ -1070,14 +1072,14 @@ ViewerActionManager::UpdateActionInformation(ViewerWindowManagerAttributes *wma)
 {
     wma->ClearActionConfigurations();
 
-    for(int i = 0; i < actionGroups.size(); ++i)
+    for(size_t i = 0; i < actionGroups.size(); ++i)
     {
         const ActionGroup &ag = actionGroups[i];
         if(ag.name != "Customize")
         {
             ActionGroupDescription description(ag.name);
             description.SetVisible(ag.enabled);
-            for(int j = 0; j < ag.actions.size(); ++j)
+            for(size_t j = 0; j < ag.actions.size(); ++j)
             {
                 ViewerActionBase *action = GetAction(ag.actions[j]);
                 if(action && !action->CanHaveOwnToolbar())
@@ -1197,7 +1199,7 @@ ViewerActionManager::UpdatePopup()
         const ActionIndexVector &a = pos->actions;
         bool hasEnabledActions = false;
         ViewerWindow *win = 0;
-        for(int i = 0; i < a.size() && !hasEnabledActions; ++i)
+        for(size_t i = 0; i < a.size() && !hasEnabledActions; ++i)
         {
             int actionIndex = a[i];
             ViewerActionBase *action = actions[actionIndex];
@@ -1295,11 +1297,11 @@ ViewerActionManager::AddAction(ViewerActionBase *action, ActionIndex index)
 void
 ViewerActionManager::AddActionGroup(const ViewerActionManager::ActionGroup &group)
 {
-    for(int i = 0; i < actionGroups.size(); ++i)
+    for(size_t i = 0; i < actionGroups.size(); ++i)
     {
         if(group.name == actionGroups[i].name)
         {
-            for(int j = 0; j < group.actions.size(); ++j)
+            for(size_t j = 0; j < group.actions.size(); ++j)
                 actionGroups[i].AddAction(group.actions[j]);
             return;
         }
@@ -1340,7 +1342,7 @@ ViewerActionManager::GetNumberOfActionGroupMemberships(ActionIndex index) const
         for(pos = actionGroups.begin(); pos != actionGroups.end(); ++pos)
         {
             const ActionIndexVector &a = pos->actions;
-            for(int i = 0; i < a.size(); ++i)
+            for(size_t i = 0; i < a.size(); ++i)
                 count += ((a[i] == index) ? 1 : 0);
         }
     }
@@ -1375,7 +1377,7 @@ void
 ViewerActionManager::SetActionGroupEnabled(int index, bool val, bool update)
 {
     // Look for the named action group.
-    if(index >= 0 && index < actionGroups.size())
+    if(index >= 0 && (size_t)index < actionGroups.size())
     {
         // Set the action group's enabled value.
         actionGroups[index].enabled = val;
@@ -1433,7 +1435,7 @@ ViewerActionManager::SetActionGroupEnabled(int index, bool val, bool update)
 bool
 ViewerActionManager::GetActionGroupEnabled(int index) const
 {
-    return (index >= 0 && index < actionGroups.size()) ? actionGroups[index].enabled : false;    
+    return (index >= 0 && (size_t)index < actionGroups.size()) ? actionGroups[index].enabled : false;    
 }
 
 // ****************************************************************************
@@ -1590,7 +1592,7 @@ void
 ViewerActionManager::ActionGroup::AddAction(ActionIndex index)
 {
     // Return early if the action is already in the list.
-    for(int i = 0; i < actions.size(); ++i)
+    for(size_t i = 0; i < actions.size(); ++i)
     {
         if(actions[i] == index)
              return;

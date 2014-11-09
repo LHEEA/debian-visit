@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewavtVectorMetaData(int);
 std::string
 PyavtVectorMetaData_ToString(const avtVectorMetaData *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     str = PyavtVarMetaData_ToString(atts, prefix);
 
@@ -189,6 +189,8 @@ PyavtVectorMetaData_setattr(PyObject *self, char *name, PyObject *args)
 {
     if (PyavtVarMetaData_setattr(self, name, args) != -1)
         return 0;
+    else
+        PyErr_Clear();
 
     // Create a tuple to contain the arguments since all of the Set
     // functions expect a tuple.
@@ -359,7 +361,6 @@ PyavtVectorMetaData_GetLogString()
 static void
 PyavtVectorMetaData_CallLogRoutine(Subject *subj, void *data)
 {
-    avtVectorMetaData *atts = (avtVectorMetaData *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -35,6 +35,8 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Biagas, Tues Oct 1 09:33:47 MST 2013
+#   Removed VISIT_MSVC_VERSION from windows handling.
 #
 #****************************************************************************/
 
@@ -43,6 +45,10 @@
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 
 IF (WIN32)
-  SET_UP_THIRD_PARTY(SZIP lib/${VISIT_MSVC_VERSION} include szlibdll)
+  IF(SZIP_LIB_NAME) 
+      SET_UP_THIRD_PARTY(SZIP lib include ${SZIP_LIB_NAME})
+  ELSE()
+      SET_UP_THIRD_PARTY(SZIP lib include szlibdll)
+  ENDIF()
 ENDIF (WIN32)
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -231,6 +231,7 @@ void TransformAttributes::Init()
     transformType = Similarity;
     inputCoordSys = Cartesian;
     outputCoordSys = Spherical;
+    continuousPhi = false;
     m00 = 1;
     m01 = 0;
     m02 = 0;
@@ -297,6 +298,7 @@ void TransformAttributes::Copy(const TransformAttributes &obj)
     transformType = obj.transformType;
     inputCoordSys = obj.inputCoordSys;
     outputCoordSys = obj.outputCoordSys;
+    continuousPhi = obj.continuousPhi;
     m00 = obj.m00;
     m01 = obj.m01;
     m02 = obj.m02;
@@ -505,6 +507,7 @@ TransformAttributes::operator == (const TransformAttributes &obj) const
             (transformType == obj.transformType) &&
             (inputCoordSys == obj.inputCoordSys) &&
             (outputCoordSys == obj.outputCoordSys) &&
+            (continuousPhi == obj.continuousPhi) &&
             (m00 == obj.m00) &&
             (m01 == obj.m01) &&
             (m02 == obj.m02) &&
@@ -719,6 +722,7 @@ TransformAttributes::SelectAll()
     Select(ID_transformType,         (void *)&transformType);
     Select(ID_inputCoordSys,         (void *)&inputCoordSys);
     Select(ID_outputCoordSys,        (void *)&outputCoordSys);
+    Select(ID_continuousPhi,         (void *)&continuousPhi);
     Select(ID_m00,                   (void *)&m00);
     Select(ID_m01,                   (void *)&m01);
     Select(ID_m02,                   (void *)&m02);
@@ -870,6 +874,12 @@ TransformAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool fo
     {
         addToParent = true;
         node->AddNode(new DataNode("outputCoordSys", CoordinateSystem_ToString(outputCoordSys)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_continuousPhi, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("continuousPhi", continuousPhi));
     }
 
     if(completeSave || !FieldsEqual(ID_m00, &defaultObject))
@@ -1025,38 +1035,11 @@ TransformAttributes::SetFromNode(DataNode *parentNode)
     if((node = searchNode->GetNode("doRotate")) != 0)
         SetDoRotate(node->AsBool());
     if((node = searchNode->GetNode("rotateOrigin")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_ARRAY_NODE)
-        {
-            SetRotateOrigin(node->AsDoubleArray());
-        }
-        else if(node->GetNodeType() == FLOAT_ARRAY_NODE)
-        {
-            const float *fa = node->AsFloatArray();
-            double da[3] = {fa[0], fa[1], fa[2]};
-            SetRotateOrigin(da);
-        }
-    }
+        SetRotateOrigin(node->AsDoubleArray());
     if((node = searchNode->GetNode("rotateAxis")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_ARRAY_NODE)
-        {
-            SetRotateAxis(node->AsDoubleArray());
-        }
-        else if(node->GetNodeType() == FLOAT_ARRAY_NODE)
-        {
-            const float *fa = node->AsFloatArray();
-            double da[3] = {fa[0], fa[1], fa[2]};
-            SetRotateAxis(da);
-        }
-    }
+        SetRotateAxis(node->AsDoubleArray());
     if((node = searchNode->GetNode("rotateAmount")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_NODE)
-            SetRotateAmount(node->AsDouble());
-        else if(node->GetNodeType() == FLOAT_NODE)
-            SetRotateAmount((double)node->AsFloat());
-    }
+        SetRotateAmount(node->AsDouble());
     if((node = searchNode->GetNode("rotateType")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1076,62 +1059,21 @@ TransformAttributes::SetFromNode(DataNode *parentNode)
     if((node = searchNode->GetNode("doScale")) != 0)
         SetDoScale(node->AsBool());
     if((node = searchNode->GetNode("scaleOrigin")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_ARRAY_NODE)
-        {
-            SetScaleOrigin(node->AsDoubleArray());
-        }
-        else if(node->GetNodeType() == FLOAT_ARRAY_NODE)
-        {
-            const float *fa = node->AsFloatArray();
-            double da[3] = {fa[0], fa[1], fa[2]};
-            SetScaleOrigin(da);
-        }
-    }
+        SetScaleOrigin(node->AsDoubleArray());
     if((node = searchNode->GetNode("scaleX")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_NODE)
-            SetScaleX(node->AsDouble());
-        else if(node->GetNodeType() == FLOAT_NODE)
-            SetScaleX((double)node->AsFloat());
-    }
+        SetScaleX(node->AsDouble());
     if((node = searchNode->GetNode("scaleY")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_NODE)
-            SetScaleY(node->AsDouble());
-        else if(node->GetNodeType() == FLOAT_NODE)
-            SetScaleY((double)node->AsFloat());
-    }
+        SetScaleY(node->AsDouble());
     if((node = searchNode->GetNode("scaleZ")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_NODE)
-            SetScaleZ(node->AsDouble());
-        else if(node->GetNodeType() == FLOAT_NODE)
-            SetScaleZ((double)node->AsFloat());
-    }
+        SetScaleZ(node->AsDouble());
     if((node = searchNode->GetNode("doTranslate")) != 0)
         SetDoTranslate(node->AsBool());
     if((node = searchNode->GetNode("translateX")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_NODE)
-            SetTranslateX(node->AsDouble());
-        else if(node->GetNodeType() == FLOAT_NODE)
-            SetTranslateX((double)node->AsFloat());
-    }
+        SetTranslateX(node->AsDouble());
     if((node = searchNode->GetNode("translateY")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_NODE)
-            SetTranslateY(node->AsDouble());
-        else if(node->GetNodeType() == FLOAT_NODE)
-            SetTranslateY((double)node->AsFloat());
-    }
+        SetTranslateY(node->AsDouble());
     if((node = searchNode->GetNode("translateZ")) != 0)
-    {
-        if(node->GetNodeType() == DOUBLE_NODE)
-            SetTranslateZ(node->AsDouble());
-        else if(node->GetNodeType() == FLOAT_NODE)
-            SetTranslateZ((double)node->AsFloat());
-    }
+        SetTranslateZ(node->AsDouble());
     if((node = searchNode->GetNode("transformType")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1180,6 +1122,8 @@ TransformAttributes::SetFromNode(DataNode *parentNode)
                 SetOutputCoordSys(value);
         }
     }
+    if((node = searchNode->GetNode("continuousPhi")) != 0)
+        SetContinuousPhi(node->AsBool());
     if((node = searchNode->GetNode("m00")) != 0)
         SetM00(node->AsDouble());
     if((node = searchNode->GetNode("m01")) != 0)
@@ -1233,6 +1177,7 @@ TransformAttributes::SetFromNode(DataNode *parentNode)
     if((node = searchNode->GetNode("transformVectors")) != 0)
         SetTransformVectors(node->AsBool());
 }
+
 ///////////////////////////////////////////////////////////////////////////////
 // Set property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -1360,6 +1305,13 @@ TransformAttributes::SetOutputCoordSys(TransformAttributes::CoordinateSystem out
 {
     outputCoordSys = outputCoordSys_;
     Select(ID_outputCoordSys, (void *)&outputCoordSys);
+}
+
+void
+TransformAttributes::SetContinuousPhi(bool continuousPhi_)
+{
+    continuousPhi = continuousPhi_;
+    Select(ID_continuousPhi, (void *)&continuousPhi);
 }
 
 void
@@ -1619,6 +1571,12 @@ TransformAttributes::GetOutputCoordSys() const
     return CoordinateSystem(outputCoordSys);
 }
 
+bool
+TransformAttributes::GetContinuousPhi() const
+{
+    return continuousPhi;
+}
+
 double
 TransformAttributes::GetM00() const
 {
@@ -1796,6 +1754,7 @@ TransformAttributes::GetFieldName(int index) const
     case ID_transformType:         return "transformType";
     case ID_inputCoordSys:         return "inputCoordSys";
     case ID_outputCoordSys:        return "outputCoordSys";
+    case ID_continuousPhi:         return "continuousPhi";
     case ID_m00:                   return "m00";
     case ID_m01:                   return "m01";
     case ID_m02:                   return "m02";
@@ -1856,6 +1815,7 @@ TransformAttributes::GetFieldType(int index) const
     case ID_transformType:         return FieldType_enum;
     case ID_inputCoordSys:         return FieldType_enum;
     case ID_outputCoordSys:        return FieldType_enum;
+    case ID_continuousPhi:         return FieldType_bool;
     case ID_m00:                   return FieldType_double;
     case ID_m01:                   return FieldType_double;
     case ID_m02:                   return FieldType_double;
@@ -1916,6 +1876,7 @@ TransformAttributes::GetFieldTypeName(int index) const
     case ID_transformType:         return "enum";
     case ID_inputCoordSys:         return "enum";
     case ID_outputCoordSys:        return "enum";
+    case ID_continuousPhi:         return "bool";
     case ID_m00:                   return "double";
     case ID_m01:                   return "double";
     case ID_m02:                   return "double";
@@ -2061,6 +2022,11 @@ TransformAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (outputCoordSys == obj.outputCoordSys);
         }
         break;
+    case ID_continuousPhi:
+        {  // new scope
+        retval = (continuousPhi == obj.continuousPhi);
+        }
+        break;
     case ID_m00:
         {  // new scope
         retval = (m00 == obj.m00);
@@ -2165,4 +2131,69 @@ TransformAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 ///////////////////////////////////////////////////////////////////////////////
 // User-defined methods.
 ///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+// Method: TransformAttributes::ProcessOldVersions
+//
+// Purpose:
+//   This method handles some old fields by converting them to new fields.
+//
+// Programmer: Burlen Loring
+// Creation:   Fri Jul 18 15:20:59 PDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+TransformAttributes::ProcessOldVersions(DataNode *parentNode,
+    const char *configVersion)
+{
+    if(parentNode == 0)
+        return;
+
+    DataNode *searchNode = parentNode->GetNode("TransformAttributes");
+    if(searchNode == 0)
+        return;
+
+    // deal with the changes in r19090 where type for a number of attributes
+    // was changed from float/floatArray to double/doubleArray.
+    if(VersionLessThan(configVersion, "2.6.0"))
+    {
+        const char *floatArrayAtts[] = {
+            "rotateOrigin",
+            "rotateAxis",
+            "scaleOrigin",
+            };
+        for (size_t i=0; i<3; ++i)
+        {
+            DataNode *floatArrayAtt = searchNode->GetNode(floatArrayAtts[i]);
+            if (floatArrayAtt)
+            {
+                const float *f = floatArrayAtt->AsFloatArray();
+                double d[3] = {f[0], f[1], f[2]};
+                searchNode->RemoveNode(floatArrayAtts[i], true);
+                searchNode->AddNode(new DataNode(floatArrayAtts[i], d, 3));
+            }
+        }
+        const char *floatAtts[] = {
+            "rotateAmount",
+            "scaleX",
+            "scaleY",
+            "scaleZ",
+            "translateX",
+            "translateY",
+            "translateZ"
+            };
+        for (size_t i=0; i<7; ++i)
+        {
+            DataNode *floatAtt = searchNode->GetNode(floatAtts[i]);
+            if (floatAtt)
+            {
+                float f = floatAtt->AsFloat();
+                searchNode->RemoveNode(floatAtts[i], true);
+                searchNode->AddNode(new DataNode(floatAtts[i], double(f)));
+            }
+        }
+    }
+}
 

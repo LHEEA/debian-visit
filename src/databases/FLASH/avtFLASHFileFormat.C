@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -483,7 +483,7 @@ avtFLASHFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         md->Add(mesh);
 
         // grid variables
-        for (int v = 0 ; v < varNames.size(); v++)
+        for (size_t v = 0 ; v < varNames.size(); v++)
         {
             // Create var names for unique submenu for block and level
             AddScalarVarToMetaData(md, varNames[v], "amr_mesh", AVT_ZONECENT);
@@ -572,7 +572,7 @@ avtFLASHFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             md->Add(bpmesh);
     
             // grid variables
-            for (int v = 0 ; v < varNames.size(); v++)
+            for (size_t v = 0 ; v < varNames.size(); v++)
             {
                 // Create var names for unique submenu for block and level
                 string composite = "mesh_blockandproc/" + varNames[v];
@@ -585,7 +585,7 @@ avtFLASHFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     if (numBlocks > 0 && dimension == 1)
     {
         // grid variables
-        for (int v = 0 ; v < varNames.size(); v++)
+        for (size_t v = 0 ; v < varNames.size(); v++)
         {
             avtCurveMetaData *curve = new avtCurveMetaData;
             curve->name = string("curves/") + varNames[v];
@@ -612,7 +612,7 @@ avtFLASHFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         md->Add(pmesh);
 
         // particle variables
-        for (int pv = 0 ; pv < particleVarNames.size(); pv++)
+        for (size_t pv = 0 ; pv < particleVarNames.size(); pv++)
         {
             AddScalarVarToMetaData(md,
                                    GetNiceParticleName(particleVarNames[pv]),
@@ -776,6 +776,9 @@ QsortCurveSorter(const void *arg1, const void *arg2)
 //    Hank Childs, Fri Mar 19 11:06:49 PDT 2010
 //    Do not flatten curves ... leave them as AMR.
 //
+//    Gunther H. Weber, Mon Jul 28 18:15:48 PDT 2014
+//    Add meta data requried by AMRStitchCell operator.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -818,6 +821,15 @@ avtFLASHFileFormat::GetMesh(int domain, const char *meshname)
         coords[1]->Delete();
         rGrid->SetZCoordinates(coords[2]);
         coords[2]->Delete();
+
+        vtkIntArray *arr = vtkIntArray::New();
+        arr->SetNumberOfTuples(3);
+        arr->SetValue(0, blocks[theRealDomain].minGlobalLogicalExtents[0]);
+        arr->SetValue(1, blocks[theRealDomain].minGlobalLogicalExtents[1]);
+        arr->SetValue(2, blocks[theRealDomain].minGlobalLogicalExtents[2]);
+        arr->SetName("base_index");
+        rGrid->GetFieldData()->AddArray(arr);
+        arr->Delete();
 
         return rGrid;
     }
@@ -865,9 +877,9 @@ avtFLASHFileFormat::GetMesh(int domain, const char *meshname)
         vtkPoints *points  = vtkPoints::New();
         points->SetNumberOfPoints(numParticles);
         float *pts = (float *) points->GetVoidPointer(0);
-        int i, index = 0;
+        int i/*, index = 0*/;
 
-        hid_t xtype, ytype, ztype; 
+        hid_t xtype = 0, ytype = 0, ztype = 0;  //TODO: check on fix for uninitialized pointer
  
         double *ddata = new double[numParticles];
         if (fileFormatVersion < FLASH3_FFV8)
@@ -1801,7 +1813,7 @@ void avtFLASHFileFormat::ReadProcessorNumbers()
        ssize_t objsize = H5Gget_objname_by_idx(rootId, idx, NULL, 0);
        if (objsize == 16)
        {
-           ssize_t objsize = H5Gget_objname_by_idx(rootId, idx, namefromfile, 17);
+           ssize_t objsize = H5Gget_objname_by_idx(rootId, idx, namefromfile, 17); (void) objsize;
            string tempstr = namefromfile;
            if (tempstr == objname)  //  If this file contains processor numbers
            {
@@ -1829,7 +1841,7 @@ void avtFLASHFileFormat::ReadProcessorNumbers()
         hsize_t procnum_ndims = H5Sget_simple_extent_dims(procnumSpaceId,
                                                           procnum_dims,NULL);
 
-        if (procnum_ndims != 1 || procnum_dims[0] != numBlocks)
+        if (procnum_ndims != 1 || procnum_dims[0] != (hsize_t)numBlocks)
         {
             EXCEPTION1(InvalidFilesException, filename.c_str());
         }
@@ -1915,8 +1927,8 @@ void avtFLASHFileFormat::ReadCoordinates()
     if (fileFormatVersion <= FLASH3_FFV8)
     {
         if (coordinates_ndims != 2 ||
-            coordinates_dims[0] != numBlocks ||
-            coordinates_dims[1] != dimension)
+            coordinates_dims[0] != (hsize_t)numBlocks ||
+            coordinates_dims[1] != (hsize_t)dimension)
         {
             EXCEPTION1(InvalidFilesException, filename.c_str());
         }
@@ -1952,8 +1964,8 @@ void avtFLASHFileFormat::ReadCoordinates()
     else if (fileFormatVersion == FLASH3_FFV9)
     {
         if (coordinates_ndims != 2 ||
-            coordinates_dims[0] != numBlocks ||
-            coordinates_dims[1] != MDIM)
+            coordinates_dims[0] != (hsize_t)numBlocks ||
+            coordinates_dims[1] != (hsize_t)MDIM)
         {
             EXCEPTION1(InvalidFilesException, filename.c_str());
         }
@@ -2012,7 +2024,7 @@ void avtFLASHFileFormat::ReadNodeTypes()
     hsize_t nodetype_ndims = H5Sget_simple_extent_dims(nodetypeSpaceId,
                                                          nodetype_dims,NULL);
 
-    if (nodetype_ndims != 1 || nodetype_dims[0] != numBlocks)
+    if (nodetype_ndims != 1 || nodetype_dims[0] != (hsize_t)numBlocks)
     {
         EXCEPTION1(InvalidFilesException, filename.c_str());
     }
@@ -2203,8 +2215,8 @@ void avtFLASHFileFormat::ReadBlockExtents()
     if (fileFormatVersion <= FLASH3_FFV8)
     {
         if (bbox_ndims != 3 ||
-            bbox_dims[0] != numBlocks ||
-            bbox_dims[1] != dimension ||
+            bbox_dims[0] != (hsize_t)numBlocks ||
+            bbox_dims[1] != (hsize_t)dimension ||
             bbox_dims[2] != 2)
         {
             EXCEPTION1(InvalidFilesException, filename.c_str());
@@ -2257,8 +2269,8 @@ void avtFLASHFileFormat::ReadBlockExtents()
     else if (fileFormatVersion == FLASH3_FFV9)
     {
         if (bbox_ndims != 3 ||
-            bbox_dims[0] != numBlocks ||
-            bbox_dims[1] != MDIM ||
+            bbox_dims[0] != (hsize_t)numBlocks ||
+            bbox_dims[1] != (hsize_t)MDIM ||
             bbox_dims[2] != 2)
         {
             EXCEPTION1(InvalidFilesException, filename.c_str());
@@ -2341,7 +2353,7 @@ void avtFLASHFileFormat::ReadRefinementLevels()
     hsize_t refinement_ndims = H5Sget_simple_extent_dims(refinementSpaceId,
                                                          refinement_dims,NULL);
 
-    if (refinement_ndims != 1 || refinement_dims[0] != numBlocks)
+    if (refinement_ndims != 1 || refinement_dims[0] != (hsize_t)numBlocks)
     {
         EXCEPTION1(InvalidFilesException, filename.c_str());
     }
@@ -2758,6 +2770,9 @@ void avtFLASHFileFormat::DetermineGlobalLogicalExtentsForAllBlocks()
 //    Hank Childs, Sat Mar 20 20:25:14 PDT 2010
 //    Only do domain abutment based on database option.
 //
+//    Gunther H. Weber, Mon Jul 28 18:14:55 PDT 2014
+//    Add metdata required for AMRStitchCell operator
+//
 // ****************************************************************************
 
 void
@@ -2779,34 +2794,10 @@ avtFLASHFileFormat::BuildDomainNesting()
     {
         int i;
 
-        if (addStructuredDomainBoundaries)
-        {
-            int t1 = visitTimer->StartTimer();
-            avtRectilinearDomainBoundaries *rdb = new avtRectilinearDomainBoundaries(true);
-            rdb->SetNumDomains(numBlocks);
-            for (i = 0; i < numBlocks; i++)
-            {
-                int logExts[6];
-                logExts[0] = blocks[i].minGlobalLogicalExtents[0];
-                logExts[1] = blocks[i].maxGlobalLogicalExtents[0];
-                logExts[2] = blocks[i].minGlobalLogicalExtents[1];
-                logExts[3] = blocks[i].maxGlobalLogicalExtents[1];
-                logExts[4] = blocks[i].minGlobalLogicalExtents[2];
-                logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
-                rdb->SetIndicesForAMRPatch(FLASHIdToVisitId[i], blocks[i].level - 1, logExts);
-            }
-            rdb->CalculateBoundaries();
-    
-            void_ref_ptr vrdb = void_ref_ptr(rdb,
-                                             avtStructuredDomainBoundaries::Destruct);
-            cache->CacheVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
-                                timestep, -1, vrdb);
-            visitTimer->StopTimer(t1, "FLASH setting up domain boundaries");
-        }
-    
         //
         // build the avtDomainNesting object
         //
+        vector< vector<int> > refinement_ratios;
 
         if (numLevels > 0)
         {
@@ -2833,6 +2824,7 @@ avtFLASHFileFormat::BuildDomainNesting()
                 ratios[1] = 2;
                 ratios[2] = 2;
                 dn->SetLevelRefinementRatios(i, ratios);
+                refinement_ratios.push_back(ratios);
             }
 
             //
@@ -2867,6 +2859,21 @@ avtFLASHFileFormat::BuildDomainNesting()
 
                 dn->SetNestingForDomain(FLASHIdToVisitId[i], blocks[i].level-1,
                                         childBlocks, logExts);
+
+                // Instead of finding a representative block for each level, we set the
+                // level cell size for each block. Less bookkeeping and the calculation
+                // is not that expensive
+                vector<double> cs(3);
+                cs[0] = 0.0;
+                cs[1] = 0.0;
+                cs[2] = 0.0;
+                for (int d=0 ; d<dimension; ++d)
+                {
+                    double minExt = blocks[i].minSpatialExtents[d];
+                    double maxExt = blocks[i].maxSpatialExtents[d];
+                    cs[d] = (maxExt-minExt) / double(block_ndims[d]-1);
+                }
+                dn->SetLevelCellSizes(blocks[i].level-1, cs);
             }
 
             void_ref_ptr vr = void_ref_ptr(dn,
@@ -2876,6 +2883,32 @@ avtFLASHFileFormat::BuildDomainNesting()
                                 AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
                                 timestep, -1, vr);
             visitTimer->StopTimer(t2, "FLASH setting up patch nesting");
+        }
+
+        if (addStructuredDomainBoundaries)
+        {
+            int t1 = visitTimer->StartTimer();
+            avtRectilinearDomainBoundaries *rdb = new avtRectilinearDomainBoundaries(true);
+            rdb->SetNumDomains(numBlocks);
+            rdb->SetRefinementRatios(refinement_ratios);
+            for (i = 0; i < numBlocks; i++)
+            {
+                int logExts[6];
+                logExts[0] = blocks[i].minGlobalLogicalExtents[0];
+                logExts[1] = blocks[i].maxGlobalLogicalExtents[0];
+                logExts[2] = blocks[i].minGlobalLogicalExtents[1];
+                logExts[3] = blocks[i].maxGlobalLogicalExtents[1];
+                logExts[4] = blocks[i].minGlobalLogicalExtents[2];
+                logExts[5] = blocks[i].maxGlobalLogicalExtents[2];
+                rdb->SetIndicesForAMRPatch(FLASHIdToVisitId[i], blocks[i].level - 1, logExts);
+            }
+            rdb->CalculateBoundaries();
+
+            void_ref_ptr vrdb = void_ref_ptr(rdb,
+                                             avtStructuredDomainBoundaries::Destruct);
+            cache->CacheVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
+                                timestep, -1, vrdb);
+            visitTimer->StopTimer(t1, "FLASH setting up domain boundaries");
         }
     }
 
@@ -3218,7 +3251,7 @@ avtFLASHFileFormat::ReadIntegerScalars(hid_t file_id)
     }
 
     hsize_t scalarDims[1];
-    hsize_t ndims = H5Sget_simple_extent_dims(spaceId, scalarDims, NULL);
+    hsize_t ndims = H5Sget_simple_extent_dims(spaceId, scalarDims, NULL); (void) ndims;
     int nScalars = scalarDims[0];
 
     hid_t datatype = H5Tcreate(H5T_COMPOUND, sizeof(IntegerScalars));
@@ -3299,7 +3332,7 @@ avtFLASHFileFormat::ReadRealScalars(hid_t file_id)
     }
 
     hsize_t scalarDims[10];
-    hsize_t ndims = H5Sget_simple_extent_dims(spaceId, scalarDims, NULL);
+    hsize_t ndims = H5Sget_simple_extent_dims(spaceId, scalarDims, NULL); (void) ndims;
 
     int nScalars = scalarDims[0];
 

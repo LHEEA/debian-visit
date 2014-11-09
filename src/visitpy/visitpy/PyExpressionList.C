@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewExpressionList(int);
 std::string
 PyExpressionList_ToString(const ExpressionList *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     { // new scope
         int index = 0;
@@ -109,7 +109,7 @@ ExpressionList_GetExpressions(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetExpressions().size())
+    if(index < 0 || (size_t)index >= obj->data->GetExpressions().size())
     {
         char msg[200];
         if(obj->data->GetExpressions().size() == 0)
@@ -430,7 +430,6 @@ PyExpressionList_GetLogString()
 static void
 PyExpressionList_CallLogRoutine(Subject *subj, void *data)
 {
-    ExpressionList *atts = (ExpressionList *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

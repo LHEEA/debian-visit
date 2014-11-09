@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -777,7 +777,7 @@ class XMLParser : public QXmlDefaultHandler
         }
         else if (tag == "Field")
         {
-            currentField->index = currentAttribute->fields.size();
+            currentField->index = (int)currentAttribute->fields.size();
             currentAttribute->fields.push_back(currentField);
             currentField = NULL;
         }

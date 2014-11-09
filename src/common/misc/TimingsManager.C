@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -188,6 +188,7 @@ TimingsManager::TimingsManager()
     openedFile        = false;
     numCurrentTimings = 0;
     enabled           = false;
+    noForcedTiming    = false;
     withholdOutput    = false;
     neverOutput       = false;
     outputAllTimings  = false;
@@ -300,6 +301,9 @@ TimingsManager::Finalize()
 //    Kathleen Bonnell, Tue Oct 31 16:38:28 PST 2006 
 //    Added different if-test for Windows platform. 
 //
+//    Cyrus Harrison, Fri Aug  8 13:25:54 PDT 2014
+//    Check return of getcwd().
+//
 // ****************************************************************************
 
 void
@@ -320,10 +324,16 @@ TimingsManager::SetFilename(const std::string &fname)
     {
         char currentDir[1024];
 #if defined(_WIN32)
-        _getcwd(currentDir,1023);
+        char* res = _getcwd(currentDir,1023);
 #else
-        getcwd(currentDir,1023);
+        char* res = getcwd(currentDir,1023);
 #endif
+        if(res == NULL)
+        {
+            debug1 << "failed to get current working directory via getcwd()"
+                   << std::endl;
+        }
+
         currentDir[1023]='\0';
         std::string filenameTmp(currentDir);
         if(filenameTmp[filenameTmp.size()-1] != VISIT_SLASH_CHAR)
@@ -377,6 +387,26 @@ void
 TimingsManager::Disable(void)
 {
     enabled = false;
+}
+
+// ****************************************************************************
+//  Method: TimingsManager::NoForcedTiming
+//
+//  Purpose:
+//      Disables the timing manager for real. If the timer is just disabled by
+//      calling Disable then it can still be forced to accumulate timing data
+//      bloating our memory use which is undesirable in long runs where we
+//      won't use the timing data anyway.
+//
+//  Programmer: Burlen Loring
+//  Creation:   Tue Apr 29 15:27:49 PDT 2014
+//
+// ****************************************************************************
+
+void
+TimingsManager::NoForcedTiming(bool v)
+{
+    noForcedTiming = v;
 }
 
 
@@ -501,15 +531,16 @@ TimingsManager::FindFirstUnusedEntry(void)
 int
 TimingsManager::StartTimer(bool forced)
 {
-    if (!enabled && !forced)
+    if (!enabled && (!forced || noForcedTiming))
         return -1;
+
     numCurrentTimings += 1;
     int rv = PlatformStartTimer();
-    if (rv == usedEntry.size())
+    if ((size_t)rv == usedEntry.size())
     {
         usedEntry.push_back(true);
     }
-    else if (rv > usedEntry.size())
+    else if ((size_t)rv > usedEntry.size())
     {
         debug1 << "TimingsManager::StartTimer: Cannot start timer. "
                << "Returning -1 as if timing was disabled." << std::endl;
@@ -575,9 +606,9 @@ TimingsManager::StopTimer(int index, const std::string &summary, bool forced)
 {
     double t = 0.;
 
-    if (enabled || forced)
+    if (enabled || (forced && !noForcedTiming))
     {
-        if (index >= 0 && index < usedEntry.size())
+        if (index >= 0 && (size_t)index < usedEntry.size())
             usedEntry[index] = false;
         t = PlatformStopTimer(index);
         if (!neverOutput)
@@ -937,7 +968,7 @@ SystemTimingsManager::PlatformStartTimer(void)
 double
 SystemTimingsManager::PlatformStopTimer(int index)
 {
-    if (index < 0 || index >= values.size())
+    if (index < 0 || (size_t)index >= values.size())
     {
         debug1 << "Invalid timing index (" << index << ") specified." << endl;
         return 0.0;
@@ -1019,7 +1050,7 @@ MPITimingsManager::PlatformStartTimer(void)
 double
 MPITimingsManager::PlatformStopTimer(int index)
 {
-    if (index < 0 || index >= values.size())
+    if (index < 0 || (size_t)index >= values.size())
     {
         debug1 << "Invalid timing index (" << index << ") specified." << endl;
         return 0.0;

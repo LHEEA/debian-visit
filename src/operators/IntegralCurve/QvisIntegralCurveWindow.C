@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -804,84 +804,42 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
     connect(correlationDistanceMinDistEdit, SIGNAL(returnPressed()),
             this, SLOT(processCorrelationDistanceMinDistEditText()));
 
+    // Create the crop group
+    QGroupBox *cropGrp = new QGroupBox(pageAppearance);
+    cropGrp->setTitle(tr("Crop the integral curve (for animations)"));
+    mainLayout->addWidget(cropGrp, 3, 0);
 
-    // Create the display group box.
-    QGroupBox *displayGroup = new QGroupBox(central);
-    displayGroup->setTitle(tr("Display"));
-    mainLayout->addWidget(displayGroup, 1, 0);
+    QGridLayout *cropLayout = new QGridLayout(cropGrp);
+    cropLayout->setMargin(5);
+    cropLayout->setSpacing(10);
 
-    QGridLayout *displayLayout = new QGridLayout(displayGroup);
-    displayLayout->setMargin(5);
-    displayLayout->setSpacing(10);
+    // Create the crop value.
+    cropLayout->addWidget(new QLabel(tr("Crop value"), cropGrp), 0, 0);
 
-    showLines = new QCheckBox(tr("Show lines"), displayGroup);
-    connect(showLines, SIGNAL(toggled(bool)),
-            this, SLOT(showLinesChanged(bool)));
-    displayLayout->addWidget(showLines, 0, 0);
-
-    showPoints = new QCheckBox(tr("Show points"), displayGroup);
-    connect(showPoints, SIGNAL(toggled(bool)), this,
-            SLOT(showPointsChanged(bool)));
-    displayLayout->addWidget(showPoints, 0, 1);
-
-
-    geometryLabel = new QLabel(tr("Line geometry"), central);
-    displayLayout->addWidget(geometryLabel, 1, 0);
-
-    geometryButtonGroup = new QButtonGroup(central);
-    QRadioButton *rb = new QRadioButton(tr("Line"), central);
-    geometryButtonGroup->addButton(rb, 0);
-    displayLayout->addWidget(rb, 1, 1);
-
-    rb = new QRadioButton(tr("Tubes"), central);
-    geometryButtonGroup->addButton(rb, 1);
-    displayLayout->addWidget(rb, 1, 2);
-
-    rb = new QRadioButton(tr("Ribbons"), central);
-    displayLayout->addWidget(rb, 1, 3);
-    geometryButtonGroup->addButton(rb, 2);
-
-    connect(geometryButtonGroup, SIGNAL(buttonClicked(int)), this,
-            SLOT(geometryButtonGroupChanged(int)));
+    cropValueComboBox = new QComboBox(cropGrp);
+    cropValueComboBox->addItem(tr("Distance"));
+    cropValueComboBox->addItem(tr("Time"));
+    cropValueComboBox->addItem(tr("Step numbers"));
+    connect(cropValueComboBox, SIGNAL(activated(int)), this, SLOT(cropValueChanged(int)));
+    cropLayout->addWidget(cropValueComboBox, 0, 1);
 
 
-    // Create the coordinate group
-    QGroupBox *coordinateGrp = new QGroupBox(central);
-    coordinateGrp->setTitle(tr("Coordinate transform"));
-    mainLayout->addWidget(coordinateGrp, 2, 0);
+    cropBeginFlag = new QCheckBox(tr("From"), cropGrp);
+    connect(cropBeginFlag, SIGNAL(toggled(bool)), this, SLOT(cropBeginFlagChanged(bool)));
+    cropLayout->addWidget(cropBeginFlag, 1, 0);
 
-    QGridLayout *coordinateLayout = new QGridLayout(coordinateGrp);
-    coordinateLayout->setMargin(5);
-    coordinateLayout->setSpacing(10);
-    coordinateLayout->setColumnStretch(2,10);
+    cropBegin = new QLineEdit(cropGrp);
+    connect(cropBegin, SIGNAL(returnPressed()), this, SLOT(cropBeginProcessText()));
+    cropLayout->addWidget(cropBegin, 1, 1);
 
-    coordinateButtonGroup = new QButtonGroup(coordinateGrp);
-    QRadioButton *asIsButton = new QRadioButton(tr("None"), coordinateGrp);
-    QRadioButton *toCartesianButton = new QRadioButton(tr("Cylindrical to Cartesian"), coordinateGrp);
-    QRadioButton *toCylindricalButton = new QRadioButton(tr("Cartesian to Cylindrical"), coordinateGrp);
-    coordinateButtonGroup->addButton(asIsButton, 0);
-    coordinateButtonGroup->addButton(toCartesianButton, 1);
-    coordinateButtonGroup->addButton(toCylindricalButton, 2);
 
-    coordinateLayout->addWidget(asIsButton, 0, 0);
-    coordinateLayout->addWidget(toCartesianButton, 0, 1);
-    coordinateLayout->addWidget(toCylindricalButton, 0, 2);
+    cropEndFlag = new QCheckBox(tr("To"), cropGrp);
+    connect(cropEndFlag, SIGNAL(toggled(bool)), this, SLOT(cropEndFlagChanged(bool)));
+    cropLayout->addWidget(cropEndFlag, 1, 2);
 
-    connect(coordinateButtonGroup, SIGNAL(buttonClicked(int)), this,
-            SLOT(coordinateButtonGroupChanged(int)));
-
-    // Create the widgets that specify a phi scaling.
-    phiScalingToggle = new QCheckBox(tr("Phi scaling"), central);
-    coordinateLayout->addWidget(phiScalingToggle, 1, 0);
-    connect(phiScalingToggle, SIGNAL(toggled(bool)),
-            this, SLOT(phiScalingToggled(bool)));
-
-    phiScaling = new QLineEdit(coordinateGrp);
-    connect(phiScaling, SIGNAL(returnPressed()),
-            this, SLOT(phiScalingProcessText()));
-    coordinateLayout->addWidget(phiScaling, 1, 1);
-
-    coordinateLayout->addWidget(new QLabel(tr("(When displaying in cylindrical coordinates.)"), central), 1, 2, 1, 2);
+    cropEnd = new QLineEdit(cropGrp);
+    connect(cropEnd, SIGNAL(returnPressed()), this, SLOT(cropEndProcessText()));
+    cropLayout->addWidget(cropEnd, 1, 3);
 
     // Streamlines/Pathline Group.
     QGroupBox *icGrp = new QGroupBox(pageAppearance);
@@ -924,9 +882,17 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
             this, SLOT(pathlineOverrideStartingTimeProcessText()));
     pathlineOptionsGrpLayout->addWidget(pathlineOverrideStartingTime, 1, 2);
 
+    QLabel *pathlinePeriodLabel = new QLabel(tr("Period"), pathlineOptionsGrp);
+    pathlinePeriodLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
+    pathlineOptionsGrpLayout->addWidget(pathlinePeriodLabel, 1, 3);
+    pathlinePeriod = new QLineEdit(pathlineOptionsGrp);
+    connect(pathlinePeriod, SIGNAL(returnPressed()),
+            this, SLOT(pathlinePeriodProcessText()));
+    pathlineOptionsGrpLayout->addWidget(pathlinePeriod, 1, 4);
+
     QGroupBox *cmfeOptionsGrp = new QGroupBox(pathlineOptionsGrp);
     cmfeOptionsGrp->setTitle(tr("How to perform interpolation over time"));
-    pathlineOptionsGrpLayout->addWidget(cmfeOptionsGrp, 2, 0);
+    pathlineOptionsGrpLayout->addWidget(cmfeOptionsGrp, 2, 0, 2, 5);
 
     QGridLayout *cmfeOptionsGrpLayout = new QGridLayout(cmfeOptionsGrp);
     cmfeOptionsGrpLayout->setSpacing(10);
@@ -938,8 +904,8 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
     posButton->setChecked(true);
     pathlineCMFEButtonGroup->addButton(connButton, 0);
     pathlineCMFEButtonGroup->addButton(posButton, 1);
-    cmfeOptionsGrpLayout->addWidget(connButton, 2, 0);
-    cmfeOptionsGrpLayout->addWidget(posButton, 3, 0);
+    cmfeOptionsGrpLayout->addWidget(connButton, 2, 0, 1, 5);
+    cmfeOptionsGrpLayout->addWidget(posButton, 3, 0, 1, 5);
     connect(pathlineCMFEButtonGroup, SIGNAL(buttonClicked(int)), this, SLOT(pathlineCMFEButtonGroupChanged(int)));
 }
 
@@ -968,7 +934,6 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
 void
 QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 {
-    int row = 0;
     QGridLayout *mainLayout = new QGridLayout(pageAdvanced);
     mainLayout->setMargin(5);
     mainLayout->setSpacing(5);
@@ -1232,7 +1197,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
                 std::vector<double> points = atts->GetPointList();
 
                 pointList->clear();
-                for (int i = 0; i < points.size(); i+= 3)
+                for (size_t i = 0; i < points.size(); i+= 3)
                 {
                     char tmp[256];
                     sprintf(tmp, "%lf %lf %lf", points[i], points[i+1], points[i+2]);
@@ -1342,27 +1307,37 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
                 TurnOff(correlationDistanceMinDistType);
             }
             break;
-          case IntegralCurveAttributes::ID_showLines:
-            showLines->blockSignals(true);
-            showLines->setChecked(atts->GetShowLines());
-            showLines->blockSignals(false);
 
-            geometryLabel->setEnabled(atts->GetShowLines());
-            geometryButtonGroup->button(0)->setEnabled(atts->GetShowLines());
-            geometryButtonGroup->button(1)->setEnabled(atts->GetShowLines());
-            geometryButtonGroup->button(2)->setEnabled(atts->GetShowLines());
-            
+        case IntegralCurveAttributes::ID_cropBeginFlag:
+            cropBeginFlag->blockSignals(true);
+            cropBeginFlag->setChecked(atts->GetCropBeginFlag());
+            cropBeginFlag->blockSignals(false);
+            cropBegin->setEnabled( atts->GetCropBeginFlag() );
             break;
-        case IntegralCurveAttributes::ID_showPoints:
-            showPoints->blockSignals(true);
-            showPoints->setChecked(atts->GetShowPoints());
-            showPoints->blockSignals(false);
+
+        case IntegralCurveAttributes::ID_cropBegin:
+            temp.setNum(atts->GetCropBegin(), 'g', 16);
+            cropBegin->setText(temp);
             break;
-        case IntegralCurveAttributes::ID_displayGeometry:
-            geometryButtonGroup->blockSignals(true);
-            geometryButtonGroup->button(atts->GetDisplayGeometry())->setChecked(true);
-            geometryButtonGroup->blockSignals(false);
+
+        case IntegralCurveAttributes::ID_cropEndFlag:
+            cropEndFlag->blockSignals(true);
+            cropEndFlag->setChecked(atts->GetCropEndFlag());
+            cropEndFlag->blockSignals(false);
+            cropEnd->setEnabled( atts->GetCropEndFlag() );
             break;
+
+        case IntegralCurveAttributes::ID_cropEnd:
+            temp.setNum(atts->GetCropEnd(), 'g', 16);
+            cropEnd->setText(temp);
+            break;
+
+        case IntegralCurveAttributes::ID_cropValue:
+            cropValueComboBox->blockSignals(true);
+            cropValueComboBox->setCurrentIndex(int(atts->GetCropValue()));
+            cropValueComboBox->blockSignals(false);
+            break;
+
         case IntegralCurveAttributes::ID_integrationDirection:
             directionType->blockSignals(true);
             directionType->setCurrentIndex(int(atts->GetIntegrationDirection()) );
@@ -1465,21 +1440,6 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             parallelAlgo->setCurrentIndex(atts->GetParallelizationAlgorithmType());
             parallelAlgo->blockSignals(false);
             break;
-        case IntegralCurveAttributes::ID_coordinateSystem:
-            coordinateButtonGroup->blockSignals(true);
-            coordinateButtonGroup->button(atts->GetCoordinateSystem())->setChecked(true);
-            phiScalingToggle->setEnabled(atts->GetCoordinateSystem()!=1);
-            phiScaling->setEnabled(atts->GetCoordinateSystem()!=1 &&
-                                   atts->GetPhiScalingFlag());
-            coordinateButtonGroup->blockSignals(false);
-            break;
-        case IntegralCurveAttributes::ID_phiScalingFlag:
-            phiScaling->setEnabled(atts->GetCoordinateSystem()!=1 &&
-                                   atts->GetPhiScalingFlag());
-            break;
-        case IntegralCurveAttributes::ID_phiScaling:
-            phiScaling->setText(DoubleToQString(atts->GetPhiScaling()));
-            break;
         case IntegralCurveAttributes::ID_maxProcessCount:
             maxSLCount->blockSignals(true);
             maxSLCount->setValue(atts->GetMaxProcessCount());
@@ -1502,6 +1462,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             if( pathlineOverrideStartingTimeFlag->isChecked() && ! icButtonGroup->button(1)->isChecked() )
                 pathlineOverrideStartingTimeFlag->setChecked(false);
             pathlineOverrideStartingTime->setEnabled(atts->GetPathlines() && atts->GetPathlinesOverrideStartingTimeFlag());
+            pathlinePeriod->setEnabled(atts->GetPathlines());
             pathlineCMFEButtonGroup->button(0)->setEnabled(atts->GetPathlines());
             pathlineCMFEButtonGroup->button(1)->setEnabled(atts->GetPathlines());
             icButtonGroup->blockSignals(false);
@@ -1515,6 +1476,10 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
         case IntegralCurveAttributes::ID_pathlinesOverrideStartingTime:
             temp.setNum(atts->GetPathlinesOverrideStartingTime(), 'g', 16);
             pathlineOverrideStartingTime->setText(temp);
+            break;
+        case IntegralCurveAttributes::ID_pathlinesPeriod:
+            temp.setNum(atts->GetPathlinesPeriod(), 'g', 16);
+            pathlinePeriod->setText(temp);
             break;
         case IntegralCurveAttributes::ID_pathlinesCMFE:
             pathlineCMFEButtonGroup->blockSignals(true);
@@ -2212,6 +2177,33 @@ QvisIntegralCurveWindow::GetCurrentValues(int which_widget)
             atts->SetTermDistance(atts->GetTermDistance());
         }
     }
+    // Do crop begin
+    if(which_widget == IntegralCurveAttributes::ID_cropBegin || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(cropBegin, val))
+            atts->SetCropBegin(val);
+        else
+        {
+            ResettingError(tr("crop begin"),
+                DoubleToQString(atts->GetCropBegin()));
+            atts->SetCropBegin(atts->GetCropBegin());
+        }
+    }
+    // Do crop end
+    if(which_widget == IntegralCurveAttributes::ID_cropEnd || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(cropEnd, val))
+            atts->SetCropEnd(val);
+        else
+        {
+            ResettingError(tr("crop end"),
+                DoubleToQString(atts->GetCropEnd()));
+            atts->SetCropEnd(atts->GetCropEnd());
+        }
+    }
+
     if(which_widget == IntegralCurveAttributes::ID_pathlinesOverrideStartingTime || doAll)
     {
         double val;
@@ -2222,6 +2214,18 @@ QvisIntegralCurveWindow::GetCurrentValues(int which_widget)
             ResettingError(tr("Pathlines Override Starting Time"),
                 DoubleToQString(atts->GetPathlinesOverrideStartingTime()));
             atts->SetPathlinesOverrideStartingTime(atts->GetPathlinesOverrideStartingTime());
+        }
+    }
+    if(which_widget == IntegralCurveAttributes::ID_pathlinesPeriod || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(pathlinePeriod, val))
+            atts->SetPathlinesPeriod(val);
+        else
+        {
+            ResettingError(tr("Pathlines Period"),
+                DoubleToQString(atts->GetPathlinesPeriod()));
+            atts->SetPathlinesPeriod(atts->GetPathlinesPeriod());
         }
     }
 
@@ -2493,22 +2497,6 @@ QvisIntegralCurveWindow::GetCurrentValues(int which_widget)
             atts->SetWorkGroupSize(val);
     }
     
-    if(which_widget == IntegralCurveAttributes::ID_phiScaling || doAll)
-    {
-        double val;
-        LineEditGetDouble(phiScaling, val);
-        if(LineEditGetDouble(phiScaling, val) && val >= 0)
-            atts->SetPhiScaling(val);
-        else
-        {
-//          cerr << "phi scaling (" << val << ")" << endl;
-
-            ResettingError(tr("phi scaling"),
-                DoubleToQString(atts->GetPhiScaling()));
-            atts->SetPhiScaling(atts->GetPhiScaling());
-        }
-    }
-    
     // criticalPointThreshold
     if(which_widget == IntegralCurveAttributes::ID_criticalPointThreshold || doAll)
     {
@@ -2593,7 +2581,7 @@ QvisIntegralCurveWindow::GetCurrentValues(int which_widget)
     }
     if (which_widget == IntegralCurveAttributes::ID_selection || doAll)
     {
-        int val = selections->currentIndex();
+        int val = selections->currentIndex(); (void) val; /// TODO: is this necessary?
     }
 }
 
@@ -2851,23 +2839,37 @@ QvisIntegralCurveWindow::workGroupSizeChanged(int val)
 }
 
 void
-QvisIntegralCurveWindow::showLinesChanged(bool val)
+QvisIntegralCurveWindow::cropBeginFlagChanged(bool val)
 {
-    atts->SetShowLines(val);
+    atts->SetCropBeginFlag(val);
     Apply();
 }
 
 void
-QvisIntegralCurveWindow::showPointsChanged(bool val)
+QvisIntegralCurveWindow::cropBeginProcessText()
 {
-    atts->SetShowPoints(val);
+    GetCurrentValues(IntegralCurveAttributes::ID_cropBegin);
     Apply();
 }
 
 void
-QvisIntegralCurveWindow::geometryButtonGroupChanged(int val)
+QvisIntegralCurveWindow::cropEndFlagChanged(bool val)
 {
-    atts->SetDisplayGeometry((IntegralCurveAttributes::DisplayGeometry) val);
+    atts->SetCropEndFlag(val);
+    Apply();
+}
+
+void
+QvisIntegralCurveWindow::cropEndProcessText()
+{
+    GetCurrentValues(IntegralCurveAttributes::ID_cropEnd);
+    Apply();
+}
+
+void
+QvisIntegralCurveWindow::cropValueChanged(int val)
+{
+    atts->SetCropValue((IntegralCurveAttributes::CropValue)val);
     Apply();
 }
 
@@ -2877,7 +2879,6 @@ QvisIntegralCurveWindow::useWholeBoxChanged(bool val)
     atts->SetUseWholeBox(val);
     Apply();
 }
-
 
 void
 QvisIntegralCurveWindow::boxExtentsProcessText()
@@ -2897,20 +2898,6 @@ void
 QvisIntegralCurveWindow::dataVariableChanged(const QString &var)
 {
     atts->SetDataVariable(var.toStdString());
-    Apply();
-}
-
-void
-QvisIntegralCurveWindow::coordinateButtonGroupChanged(int val)
-{
-    atts->SetCoordinateSystem((IntegralCurveAttributes::CoordinateSystem) val);
-    Apply();
-}
-
-void
-QvisIntegralCurveWindow::phiScalingToggled(bool val)
-{
-    atts->SetPhiScalingFlag(val);
     Apply();
 }
 
@@ -3086,13 +3073,6 @@ QvisIntegralCurveWindow::processCorrelationDistanceMinDistEditText()
 }
 
 void
-QvisIntegralCurveWindow::phiScalingProcessText()
-{
-    GetCurrentValues(IntegralCurveAttributes::ID_phiScaling);
-    Apply();
-}
-
-void
 QvisIntegralCurveWindow::icButtonGroupChanged(int val)
 {
     switch( val )
@@ -3118,6 +3098,13 @@ void
 QvisIntegralCurveWindow::pathlineOverrideStartingTimeProcessText()
 {
     GetCurrentValues(IntegralCurveAttributes::ID_pathlinesOverrideStartingTime);
+    Apply();
+}
+
+void
+QvisIntegralCurveWindow::pathlinePeriodProcessText()
+{
+    GetCurrentValues(IntegralCurveAttributes::ID_pathlinesPeriod);
     Apply();
 }
 

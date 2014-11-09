@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -184,6 +184,8 @@ class IVP_API ICStatus
     void ClearNumericalError() {ClearBit(NUMERICAL_ERROR);}
     void ClearBadStepError() {ClearBit(BAD_STEP_ERROR);}
 
+    unsigned long GetStatus() const {return status;};
+
  private:
     //bit assignments:
     //0:   OK
@@ -205,7 +207,7 @@ class IVP_API ICStatus
         EXITED_SPATIAL_BOUNDARY       = 0x0020,
         EXITED_TEMPORAL_BOUNDARY      = 0x0040,
         NUMERICAL_ERROR               = 0x0080,
-        BAD_STEP_ERROR                = 0x0100,
+        BAD_STEP_ERROR                = 0x0100
     };
 
     void SetBit(const ICStatusBits &b) {status |= b;}
@@ -313,7 +315,7 @@ class IVP_API avtIntegralCurve
     enum Direction
     {
         DIRECTION_FORWARD  = 0,
-        DIRECTION_BACKWARD = 1,
+        DIRECTION_BACKWARD = 1
     };
 
     enum SerializeFlags
@@ -321,7 +323,7 @@ class IVP_API avtIntegralCurve
         SERIALIZE_ALL     = -1,
         SERIALIZE_NO_OPT  = 0,
         SERIALIZE_STEPS   = 1,
-        SERIALIZE_INC_SEQ = 2,
+        SERIALIZE_INC_SEQ = 2
     };
 
     avtIntegralCurve(const avtIVPSolver* model,
@@ -432,6 +434,8 @@ inline std::ostream& operator<<(std::ostream& out,
         out<<"ExitTemporalBoundary ";
     if (status.NumericalError())
         out<<"NumericalError ";
+    if (status.BadStepError())
+        out<<"BadStepError ";
     
     out<<"}";
     return out;

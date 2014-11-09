@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -126,7 +126,9 @@ class QvisLCSWindow : public QvisOperatorWindow
     void limitMaxDistanceChanged(bool);
 
     void operationTypeChanged(int);
+    void operatorTypeChanged(int);
     void terminationTypeButtonGroupChanged(int);
+    void clampLogValuesChanged(bool);
 
     void maxTimeProcessText();
     void maxDistanceProcessText();
@@ -142,6 +144,7 @@ class QvisLCSWindow : public QvisOperatorWindow
     void icButtonGroupChanged(int val);
     void pathlineOverrideStartingTimeFlagChanged(bool val);
     void pathlineOverrideStartingTimeProcessText();
+    void pathlinePeriodProcessText();
     void pathlineCMFEButtonGroupChanged(int val);
 
     void issueWarningForMaxStepsChanged(bool);
@@ -185,6 +188,8 @@ class QvisLCSWindow : public QvisOperatorWindow
     QCheckBox *limitMaxDistance;
 
     QComboBox *operationType;
+    QComboBox *operatorType;
+    QCheckBox *clampLogValues;
 
     QButtonGroup *terminationTypeButtonGroup;
     QLineEdit *maxTime;
@@ -204,6 +209,7 @@ class QvisLCSWindow : public QvisOperatorWindow
     QButtonGroup *icButtonGroup;
     QCheckBox *pathlineOverrideStartingTimeFlag;
     QLineEdit *pathlineOverrideStartingTime;
+    QLineEdit *pathlinePeriod;
     QButtonGroup *pathlineCMFEButtonGroup;
 
     QCheckBox *issueWarningForMaxSteps;
@@ -212,7 +218,7 @@ class QvisLCSWindow : public QvisOperatorWindow
     QLineEdit *criticalPointThreshold;
     QLabel    *criticalPointThresholdLabel;
 
-    LCSAttributes *LCSAtts;
+    LCSAttributes *atts;
 };
 
 #endif

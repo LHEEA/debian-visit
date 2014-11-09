@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1302,7 +1302,8 @@ class WindowGeneratorScaleMode : public virtual ScaleMode , public virtual Windo
         c << "                "<<name<<"ButtonGroup->button(atts->Get"<<Name<<"())->setChecked(true);" << endl;
         c << "            "<<name<<"ButtonGroup->blockSignals(false);" << endl;
     }
-    virtual void            writeSourceCallback(QString &classname, QString &windowname, QTextStream &c)
+    ///TODO: check fix for overloaded virtual function writeSourceCallback (4 vs 3) params
+    virtual void            writeSourceCallback(QString &classname, QString &windowname, QTextStream &c, bool /*isEnabler*/)
     {
         c << "void" << endl;
         c << windowname<<"::"<<name<<"Changed(int val)" << endl;
@@ -1417,7 +1418,7 @@ class WindowGeneratorAttribute : public GeneratorBase
         fields.clear();
     }
 
-    void Print(QTextStream &out)
+    void Print(QTextStream &out) const
     {
         out << "    Attribute: " << name << " (" << purpose << ")" << endl;
         size_t i;

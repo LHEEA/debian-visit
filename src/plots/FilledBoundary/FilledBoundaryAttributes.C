@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -897,7 +897,7 @@ FilledBoundaryAttributes::SetFromNode(DataNode *parentNode)
         }
         if (!done)
         {
-            multiColor.RemoveColors(index);
+            multiColor.RemoveColors((int)index);
             for (size_t i=index+1; i<boundaryNames.size(); i++)
                 boundaryNames[i-1] = boundaryNames[i];
             boundaryNames.resize(boundaryNames.size() - 1);

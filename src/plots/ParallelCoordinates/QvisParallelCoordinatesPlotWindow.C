@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -479,7 +479,7 @@ QvisParallelCoordinatesPlotWindow::UpdateWindow(bool doAll)
           case ParallelCoordinatesAttributes::ID_extentMaxima:
             axisTree->blockSignals(true);
             axisTree->clear();
-            for (int ax=0; ax<atts->GetExtentMinima().size(); ax++)
+            for (size_t ax=0; ax<atts->GetExtentMinima().size(); ax++)
             {
                 QString name, emin("min"), emax("max");
                 if (atts->GetExtentMinima()[ax] > -1e+37)
@@ -490,7 +490,7 @@ QvisParallelCoordinatesPlotWindow::UpdateWindow(bool doAll)
                     name = (atts->GetVisualAxisNames()[ax]).c_str();
                 else
                 {
-                    name.sprintf(" %02d",ax);
+                    name.sprintf(" %02ld",ax);
                     name = tr("Axis") + name;
                 }
                 QTreeWidgetItem *item =
@@ -961,11 +961,11 @@ QvisParallelCoordinatesPlotWindow::contextColorChanged(const QColor &color)
 void
 QvisParallelCoordinatesPlotWindow::resetAxisExtents()
 {
-    for (int i=0; i<atts->GetExtentMinima().size(); i++)
+    for (size_t i=0; i<atts->GetExtentMinima().size(); i++)
     {
         atts->GetExtentMinima()[i] = -1e+37;
     }
-    for (int i=0; i<atts->GetExtentMaxima().size(); i++)
+    for (size_t i=0; i<atts->GetExtentMaxima().size(); i++)
     {
         atts->GetExtentMaxima()[i] = +1e+37;
     }
@@ -1006,7 +1006,7 @@ QvisParallelCoordinatesPlotWindow::resetAxisExtents()
 void
 QvisParallelCoordinatesPlotWindow::axisSelected(QTreeWidgetItem*)
 {
-    int nitems = atts->GetScalarAxisNames().size();
+    int nitems = (int)atts->GetScalarAxisNames().size();
     QTreeWidgetItem *ci = axisTree->currentItem();
     axisDelButton->setEnabled(nitems > 2 &&
                               ci != NULL);
@@ -1127,7 +1127,7 @@ QvisParallelCoordinatesPlotWindow::moveAxisUp()
 
     // must make a local copy
     stringVector axes = atts->GetScalarAxisNames();
-    int naxes = axes.size();
+    int naxes = (int)axes.size();
 
     // InsertAxis() will reorder axes already in the list, so we
     // just insert all the changed ones in the new desired order
@@ -1175,10 +1175,10 @@ QvisParallelCoordinatesPlotWindow::moveAxisDown()
     
     // must make a local copy
     stringVector axes = atts->GetScalarAxisNames();
-    int naxes = axes.size();
+    int naxes = (int)axes.size();
  
     // can't move last axis down in list
-    if (index >= axes.size()-1)
+    if (index >= naxes-1)
         return;
 
     // InsertAxis() will reorder axes already in the list, so we

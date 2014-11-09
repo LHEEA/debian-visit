@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1250,7 +1250,9 @@ ViewerFileServer::ExpandedFileName(const std::string &host,
 // Creation:   Wed Mar 31 10:00:43 PDT 2004
 //
 // Modifications:
-//   
+//   Kathleen Biagas, Thu Jan 23 10:55:41 MST 2014
+//   Return 'true' if we DON'T find the drive punctuation on Windows.
+//
 // ****************************************************************************
 
 bool
@@ -1260,7 +1262,7 @@ ViewerFileServer::ExpansionRequired(const std::string &filename) const
     {
 #if defined(_WIN32)
         // Look for some drive punctuation
-        if(filename.find(":\\") != std::string::npos)
+        if(filename.find(":\\") == std::string::npos)
             return true;
 #else
         // Make sure that we have an absolute path.
@@ -2050,7 +2052,7 @@ ViewerFileServer::ConnectServer(const std::string &mdServerHost,
 void
 ViewerFileServer::TerminateConnectionRequest(const stringVector &args, int failCode)
 {
-    int  argc = args.size();
+    int  argc = (int)args.size();
     char **argv = new char *[args.size() + 1];
 
     // Create an argv array out of the args string vector.
@@ -2339,7 +2341,7 @@ ViewerFileServer::CreateDatabaseCorrelation(const std::string &name,
 
     // Add the different databases to the correlation.
     QString msg;
-    for(int i = 0; i < dbs.size(); ++i)
+    for(size_t i = 0; i < dbs.size(); ++i)
     {
         //
         // Split the database name into host and database components
@@ -2500,7 +2502,7 @@ ViewerFileServer::GetMostSuitableCorrelation(const stringVector &dbs) const
         const DatabaseCorrelation &c = databaseCorrelationList->
             GetCorrelations(i);
         scores[c.GetName()] = 0;
-        for(int j = 0; j < dbs.size(); ++j)
+        for(size_t j = 0; j < dbs.size(); ++j)
         {
             if(c.UsesDatabase(dbs[j]))
                 ++scores[c.GetName()];
@@ -2519,7 +2521,7 @@ ViewerFileServer::GetMostSuitableCorrelation(const stringVector &dbs) const
     //
     std::string correlationName;
     int score = 0;
-    for(int desiredScore = dbs.size(); desiredScore > 1 && score == 0;
+    for(int desiredScore = (int)dbs.size(); desiredScore > 1 && score == 0;
         --desiredScore)
     {
         for(StringIntMap::const_iterator pos = scores.begin();
@@ -2540,7 +2542,7 @@ ViewerFileServer::GetMostSuitableCorrelation(const stringVector &dbs) const
     // since it means that it is not a trivial correlation.
     //
     DatabaseCorrelation *retval = 0;
-    if(dbs.size() == score || score > 1)
+    if((int)dbs.size() == score || score > 1)
         retval = databaseCorrelationList->FindCorrelation(correlationName);
 
     return retval;
@@ -2602,10 +2604,10 @@ ViewerFileServer::PreviouslyDeclinedCorrelationCreation(
     const stringVector &dbs) const
 {
     int index = 0;
-    for(int fileSet = 0; fileSet < declinedFilesLength.size();
+    for(size_t fileSet = 0; fileSet < declinedFilesLength.size();
         ++fileSet)
     {
-        if(declinedFilesLength[fileSet] == dbs.size())
+        if(declinedFilesLength[fileSet] == (int)dbs.size())
         {
             bool same = true;
             for(int i = 0; i < declinedFilesLength[fileSet] && same; ++i, ++index)
@@ -2925,7 +2927,7 @@ ViewerFileServer::CreateNode(DataNode *parentNode,
             // Map database names to source names.
             const stringVector &dbNames = corr.GetDatabaseNames();
             stringVector sourceIds;
-            for(int j = 0; j < dbNames.size(); ++j)
+            for(size_t j = 0; j < dbNames.size(); ++j)
             {
                 std::map<std::string, std::string>::const_iterator pos =
                     dbToSource.find(dbNames[j]);
@@ -3053,7 +3055,7 @@ ViewerFileServer::SetFromNode(DataNode *parentNode,
                 // database names using the sourceToDB map.
                 stringVector dbNames;
                 const stringVector &sourceNames = corr.GetDatabaseNames();
-                for(int j = 0; j < sourceNames.size(); ++j)
+                for(size_t j = 0; j < sourceNames.size(); ++j)
                 {
                     std::map<std::string,std::string>::const_iterator pos =
                         sourceToDB.find(sourceNames[j]);

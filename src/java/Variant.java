@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -266,7 +266,7 @@ public class Variant extends java.lang.Object
         else if(dataType == VARIANT_STRING_TYPE)
             SetValue(buf.ReadString());
 
-        if(dataType == VARIANT_BOOL_VECTOR_TYPE)
+        else if(dataType == VARIANT_BOOL_VECTOR_TYPE)
             SetValue(buf.ReadByteVector(), VARIANT_BOOL_VECTOR_TYPE);
         else if(dataType == VARIANT_CHAR_VECTOR_TYPE)
             SetValue(buf.ReadByteVector(), VARIANT_CHAR_VECTOR_TYPE);

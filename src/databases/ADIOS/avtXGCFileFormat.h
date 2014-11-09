@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -66,13 +66,13 @@ class vtkRectilinearGrid;
 class avtXGCFileFormat : public avtMTMDFileFormat
 {
   public:
-    static bool        Identify(ADIOSFileObject *);
+    static bool        Identify(const char *fname);
     static avtFileFormatInterface *CreateInterface(const char *const *list,
                                                    int nList,
                                                    int nBlock);
     static std::string CreateMeshName(const std::string &filename);
-    static bool IsFieldPFile(ADIOSFileObject *f);
-    static bool IsFieldIFile(ADIOSFileObject *f);
+    static std::string CreateDiagName(const std::string &filename);
+    static std::string CreateSeparatrixName(const std::string &filename);
     
     avtXGCFileFormat(const char *);
     virtual  ~avtXGCFileFormat();
@@ -104,13 +104,17 @@ class avtXGCFileFormat : public avtMTMDFileFormat
     virtual vtkDataArray  *GetVectorVar(int, int, const char *);
 
   protected:
-    ADIOSFileObject *file, *meshFile;
-    std::map<std::string, std::string> labelToVar;
-    
-    bool             initialized;
+    ADIOSFileObject *file, *meshFile, *diagFile;
+    std::string sepFileName;
+    bool initialized, haveSepMesh;
+    int numNodes, numTris, numPhi;
 
 
     void                   Initialize();
+    vtkDataArray          *GetTurbulence(int ts, int dom);
+    vtkDataArray          *GetSep();
+    vtkDataSet            *GetSepMesh();
+    vtkDataSet            *GetMesh2D(int ts, int dom);
 
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
 };

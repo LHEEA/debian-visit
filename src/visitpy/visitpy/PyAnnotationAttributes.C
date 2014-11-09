@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -82,8 +82,8 @@ static PyObject *NewAnnotationAttributes(int);
 std::string
 PyAnnotationAttributes_ToString(const AnnotationAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     { // new scope
         std::string objPrefix(prefix);
@@ -1409,7 +1409,6 @@ PyAnnotationAttributes_GetLogString()
 static void
 PyAnnotationAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    AnnotationAttributes *atts = (AnnotationAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

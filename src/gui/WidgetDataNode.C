@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -556,7 +556,6 @@ InitializeQComboBoxFromDataNode(QComboBox *co, DataNode *node)
     }
     else if(node->GetNodeType() == STRING_NODE)
     {
-        int index = 0;
         for(int i = 0; i < co->count(); ++i)
         {
             if(co->itemText(i).toStdString() == node->AsString())
@@ -785,7 +784,7 @@ InitializeWidgetFromDataNode(QWidget *ui, DataNode *node)
     // Iterate over the objects in the custom page and try and find
     // a setting in the config file with the same name. If we find
     // a compatible value then set it.
-    QList<QWidget*> widgets = qFindChildren<QWidget*>(ui);
+    QList<QWidget*> widgets = ui->findChildren<QWidget*>();
     for(int i = 0; i < widgets.size(); ++i)
     {
         QWidget *obj = widgets[i];
@@ -898,7 +897,7 @@ InitializeDataNodeFromWidget(QWidget *ui, DataNode *node)
     // a setting in the config file with the same name. If we find
     // a compatible value then set it.
 
-    QList<QWidget*> widgets = qFindChildren<QWidget*>(ui);
+    QList<QWidget*> widgets = ui->findChildren<QWidget*>();
     for(int i = 0; i < widgets.size(); ++i)
     {
         QWidget *obj = widgets[i];

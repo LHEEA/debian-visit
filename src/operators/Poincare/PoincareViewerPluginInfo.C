@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -236,7 +236,6 @@ PoincareViewerPluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
 {
     PoincareAttributes *atts_in = (PoincareAttributes *)atts;
 
-    const char numTypes = 14;
     const char *typeString[14] =
       { "None", "Safety Factor Q", "Safety Factor P",
         "Safety Factor Q != P", "Safety Factor P != Q",

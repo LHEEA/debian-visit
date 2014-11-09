@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -123,7 +123,6 @@ avtMemoryUsageQuery::PerformQuery(QueryAttributes *atts)
     
     // convert to megabytes    
     double m_size_mb = ( (double)m_size / 1048576.0);
-    double m_rss_mb  = ( (double)m_rss  / 1048576.0);
     
     int nprocs = PAR_Size();
     int rank   = PAR_Rank();
@@ -171,7 +170,7 @@ avtMemoryUsageQuery::GetResultMessage()
     std::string msg = "";
     char msg_buff[1024];
     double total_mem_size= 0.0;
-    for (int i=0;i< memSizeVals.size();i++)
+    for (size_t i=0;i< memSizeVals.size();i++)
         total_mem_size += memSizeVals[i];
     
     std::string float_format = queryAtts.GetFloatFormat();

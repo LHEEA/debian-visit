@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewLineSurfaceAttributes(int);
 std::string
 PyLineSurfaceAttributes_ToString(const LineSurfaceAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%sstartTime = %d\n", prefix, atts->GetStartTime());
     str += tmpStr;
@@ -542,7 +542,6 @@ PyLineSurfaceAttributes_GetLogString()
 static void
 PyLineSurfaceAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    LineSurfaceAttributes *atts = (LineSurfaceAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

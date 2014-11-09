@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -113,6 +113,11 @@ public:
         ArcLength,
         AverageDistanceFromSeed
     };
+    enum OperatorType
+    {
+        BaseValue,
+        Gradient
+    };
     enum TerminationType
     {
         Time,
@@ -165,6 +170,7 @@ public:
     void SetIntegrationDirection(IntegrationDirection integrationDirection_);
     void SetMaxSteps(int maxSteps_);
     void SetOperationType(OperationType operationType_);
+    void SetOperatorType(OperatorType operatorType_);
     void SetTerminationType(TerminationType terminationType_);
     void SetTerminateBySize(bool terminateBySize_);
     void SetTermSize(double termSize_);
@@ -183,6 +189,7 @@ public:
     void SetFieldConstant(double fieldConstant_);
     void SetVelocitySource(const double *velocitySource_);
     void SetIntegrationType(IntegrationType integrationType_);
+    void SetClampLogValues(bool clampLogValues_);
     void SetParallelizationAlgorithmType(ParallelizationAlgorithmType parallelizationAlgorithmType_);
     void SetMaxProcessCount(int maxProcessCount_);
     void SetMaxDomainCacheSize(int maxDomainCacheSize_);
@@ -190,6 +197,7 @@ public:
     void SetPathlines(bool pathlines_);
     void SetPathlinesOverrideStartingTimeFlag(bool pathlinesOverrideStartingTimeFlag_);
     void SetPathlinesOverrideStartingTime(double pathlinesOverrideStartingTime_);
+    void SetPathlinesPeriod(double pathlinesPeriod_);
     void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
     void SetForceNodeCenteredData(bool forceNodeCenteredData_);
     void SetIssueTerminationWarnings(bool issueTerminationWarnings_);
@@ -210,6 +218,7 @@ public:
     IntegrationDirection GetIntegrationDirection() const;
     int          GetMaxSteps() const;
     OperationType GetOperationType() const;
+    OperatorType GetOperatorType() const;
     TerminationType GetTerminationType() const;
     bool         GetTerminateBySize() const;
     double       GetTermSize() const;
@@ -229,6 +238,7 @@ public:
     const double *GetVelocitySource() const;
           double *GetVelocitySource();
     IntegrationType GetIntegrationType() const;
+    bool         GetClampLogValues() const;
     ParallelizationAlgorithmType GetParallelizationAlgorithmType() const;
     int          GetMaxProcessCount() const;
     int          GetMaxDomainCacheSize() const;
@@ -236,6 +246,7 @@ public:
     bool         GetPathlines() const;
     bool         GetPathlinesOverrideStartingTimeFlag() const;
     double       GetPathlinesOverrideStartingTime() const;
+    double       GetPathlinesPeriod() const;
     PathlinesCMFE GetPathlinesCMFE() const;
     bool         GetForceNodeCenteredData() const;
     bool         GetIssueTerminationWarnings() const;
@@ -288,6 +299,11 @@ public:
 protected:
     static std::string OperationType_ToString(int);
 public:
+    static std::string OperatorType_ToString(OperatorType);
+    static bool OperatorType_FromString(const std::string &, OperatorType &);
+protected:
+    static std::string OperatorType_ToString(int);
+public:
     static std::string TerminationType_ToString(TerminationType);
     static bool TerminationType_FromString(const std::string &, TerminationType &);
 protected:
@@ -319,6 +335,7 @@ public:
         ID_integrationDirection,
         ID_maxSteps,
         ID_operationType,
+        ID_operatorType,
         ID_terminationType,
         ID_terminateBySize,
         ID_termSize,
@@ -337,6 +354,7 @@ public:
         ID_fieldConstant,
         ID_velocitySource,
         ID_integrationType,
+        ID_clampLogValues,
         ID_parallelizationAlgorithmType,
         ID_maxProcessCount,
         ID_maxDomainCacheSize,
@@ -344,6 +362,7 @@ public:
         ID_pathlines,
         ID_pathlinesOverrideStartingTimeFlag,
         ID_pathlinesOverrideStartingTime,
+        ID_pathlinesPeriod,
         ID_pathlinesCMFE,
         ID_forceNodeCenteredData,
         ID_issueTerminationWarnings,
@@ -363,6 +382,7 @@ private:
     int    integrationDirection;
     int    maxSteps;
     int    operationType;
+    int    operatorType;
     int    terminationType;
     bool   terminateBySize;
     double termSize;
@@ -381,6 +401,7 @@ private:
     double fieldConstant;
     double velocitySource[3];
     int    integrationType;
+    bool   clampLogValues;
     int    parallelizationAlgorithmType;
     int    maxProcessCount;
     int    maxDomainCacheSize;
@@ -388,6 +409,7 @@ private:
     bool   pathlines;
     bool   pathlinesOverrideStartingTimeFlag;
     double pathlinesOverrideStartingTime;
+    double pathlinesPeriod;
     int    pathlinesCMFE;
     bool   forceNodeCenteredData;
     bool   issueTerminationWarnings;
@@ -399,6 +421,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define LCSATTRIBUTES_TMFS "iIiDiDiiiibdbdbddbddiddidDiiiiibbdibbbbd"
+#define LCSATTRIBUTES_TMFS "iIiDiDiiiiibdbdbddbddiddidDibiiiibbddibbbbd"
 
 #endif

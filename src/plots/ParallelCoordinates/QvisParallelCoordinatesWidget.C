@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -373,7 +373,7 @@ QvisParallelCoordinatesWidget::drawAxes(QPainter *painter)
         axisX = axesXPos[axisNum];
 
         if ((!namedRightAxis && (axisNum == axisCount-1)) ||
-            (axisNum >= axisTitles.size()))
+            (axisNum >= (int)axisTitles.size()))
         {
             for (size_t dashNum = 0; dashNum < dashesTopYPos.size(); dashNum++)
             {
@@ -422,7 +422,7 @@ QvisParallelCoordinatesWidget::drawAxisTitles(QPainter *painter)
     for (axisNum = 0; axisNum < axisCount; axisNum++)
     {
         if ((!namedRightAxis && (axisNum == axisCount-1)) ||
-            (axisNum >= axisTitles.size()))
+            (axisNum >= (int)axisTitles.size()))
         {
             axisTitle = std::string("?");
             titleCharCount = 1;
@@ -472,10 +472,8 @@ QvisParallelCoordinatesWidget::drawDataCurves(QPainter *painter)
 
     painter->setPen(QPen(QColor(128,128,128), 1));
 
-    for (axisNum = 0; axisNum < axisCount-1; axisNum++)
+    for (axisNum = 0; axisNum < axisCount-1 && axisNum < 8; axisNum++)
     {
-        if (axisNum > 7) break;   // Shouldn't happen
-
         leftAxisX = axesXPos[axisNum]; rightAxisX = axesXPos[axisNum+1];
         
         for (segNum = 0; segNum < 3; segNum++)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -70,7 +70,6 @@
 NavigateAxisArray::NavigateAxisArray(VisWindowInteractorProxy &v) : VisitInteractor(v)
 {
     shiftKeyDown = controlKeyDown = false;
-    VisWindow *win = v;
     axisOrientation = Vertical;
     domainOrientation = Horizontal;
 }
@@ -458,8 +457,8 @@ NavigateAxisArray::ZoomCamera(const int x, const int y)
         //
         double dyf = MotionFactor * (double)(y - OldY) /
                          (double)(Center[1]);
-        double dxf = MotionFactor * (double)(x - OldX) /
-                         (double)(Center[0]);
+        //double dxf = MotionFactor * (double)(x - OldX) /
+        //                 (double)(Center[0]);
 
         //
         // Perform zoom
@@ -522,8 +521,6 @@ NavigateAxisArray::ZoomCamera(const int x, const int y)
 void
 NavigateAxisArray::ZoomHorizontal(double f)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
     //
     // Calculate the zoom factor.
     //
@@ -561,8 +558,6 @@ NavigateAxisArray::ZoomHorizontal(double f)
 void
 NavigateAxisArray::ZoomHorizontalFixed(double f)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
     VisWindow *vw = proxy;
 
     avtViewAxisArray newViewAxisArray = vw->GetViewAxisArray();
@@ -594,8 +589,6 @@ NavigateAxisArray::ZoomHorizontalFixed(double f)
 void
 NavigateAxisArray::ZoomVertical(double f)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
     //
     // Calculate the zoom factor.
     //
@@ -633,8 +626,6 @@ NavigateAxisArray::ZoomVertical(double f)
 void
 NavigateAxisArray::ZoomVerticalFixed(double f)
 {
-    vtkRenderWindowInteractor *rwi = Interactor;
-
     VisWindow *vw = proxy;
 
     avtViewAxisArray newViewAxisArray = vw->GetViewAxisArray();

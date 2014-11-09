@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -274,15 +274,19 @@ avtWholeImageCompositerWithZ::~avtWholeImageCompositerWithZ()
 void
 avtWholeImageCompositerWithZ::Execute(void)
 {
-    int i, numRows, numCols;
-    float *ioz = NULL, *rioz = NULL;
-    unsigned char *iorgb = NULL, *riorgb = NULL;
-    vtkImageData *mergedLocalImage = NULL, *mergedGlobalImage = NULL;
+    int numRows = 0;
+    int numCols = 0;
+    float *ioz = NULL;
+    float *rioz = NULL;
+    unsigned char *iorgb = NULL;
+    unsigned char *riorgb = NULL;
+    vtkImageData *mergedLocalImage = NULL;
+    vtkImageData *mergedGlobalImage = NULL;
 
     // sanity checks
     if (inputImages.size() == 0)
        EXCEPTION0(ImproperUseException);
-    for (i = 0; i < inputImages.size(); i++)
+    for (size_t i = 0; i < inputImages.size(); i++)
     {
       inputImages[i]->GetImage().GetSize(&numRows, &numCols);
       if (numRows != outRows || numCols != outCols) 
@@ -313,7 +317,7 @@ avtWholeImageCompositerWithZ::Execute(void)
 
        // do the merges, accumulating results in ioz and iorgb
        int t3 = visitTimer->StartTimer();
-       for (i = 1; i < inputImages.size(); i++)
+       for (size_t i = 1; i < inputImages.size(); i++)
        {
            float *z = NULL;
            z = inputImages[i]->GetImage().GetZBuffer();

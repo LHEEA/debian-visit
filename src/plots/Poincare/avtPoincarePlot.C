@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -407,9 +407,10 @@ avtPoincarePlot::SetAtts(const AttributeGroup *a)
                     ? PICS_CONN_CMFE : PICS_POS_CMFE);
 
     poincareFilter->SetPathlines(atts.GetPathlines(),
-                                   atts.GetPathlinesOverrideStartingTimeFlag(),
-                                   atts.GetPathlinesOverrideStartingTime(),
-                                   CMFEType);
+                                 atts.GetPathlinesOverrideStartingTimeFlag(),
+                                 atts.GetPathlinesOverrideStartingTime(),
+                                 atts.GetPathlinesPeriod(),
+                                 CMFEType);
 
     poincareFilter->IssueWarningForMaxStepsTermination(atts.GetIssueTerminationWarnings());
     poincareFilter->IssueWarningForStiffness(atts.GetIssueStiffnessWarnings());

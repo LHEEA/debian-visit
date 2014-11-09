@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -78,8 +78,7 @@ class TestWindow(unittest.TestCase):
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
     def cleanup_windows(self):
-        for win in WindowManager.registered_windows():
-            win.remove()
+        WindowManager.cleanup_windows()
         visit.CloseDatabase(db)
         visit.CloseComputeEngine()
     @visit_test

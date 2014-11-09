@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -756,14 +756,14 @@ avtDatasetFileWriter::WriteCurveFile(const char *filename)
 
     ofstream ofile(filename, ios::out);
     vtkPoints *pts = pd->GetPoints();
-    for (int i = 0 ; i < line_segments.size() ; i++)
+    for (size_t i = 0 ; i < line_segments.size() ; i++)
     {
         if (line_segments.size() <= 1)
             ofile << "# curve" << endl;
         else
             ofile << "# curve" << i << endl;
 
-        for (int j = 0 ; j < line_segments[i].size() ; j++)
+        for (size_t j = 0 ; j < line_segments[i].size() ; j++)
         {
             double pt[3]; 
             pts->GetPoint(line_segments[i][j], pt);
@@ -877,6 +877,9 @@ avtDatasetFileWriter::CreateFilename(const char *base, bool family,
 //    Dave Pugmire, Tue Aug 24 11:32:12 EDT 2010
 //    Add compact domain options.
 //
+//    Kathleen Biagas, Fri Apr 18 13:24:32 MST 2014
+//    Ensure the Append filters are updated.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -932,6 +935,7 @@ avtDatasetFileWriter::GetSingleDataset(void)
         }
         else
         {
+            pmap.af->Update();
             rv = pmap.af->GetOutput();
         }
     }
@@ -943,12 +947,11 @@ avtDatasetFileWriter::GetSingleDataset(void)
         }
         else
         {
+            pmap.pf->Update();
             rv = pmap.pf->GetOutput();
         }
     }
     rv->Register(NULL);
-    // FIX_ME_VTK6.0, ESB, can we remove the update safely?
-    //rv->Update();
     pmap.af->Delete();
     pmap.pf->Delete();
     return rv;
@@ -1002,7 +1005,7 @@ avtDatasetFileWriter::GenerateName(const char *label, const char *desc,
             SNPRINTF(tmp, 1024, "%s%d", attempt, idx);
             idx++;
         }
-        for (int i = 0 ; i < namesUsed.size() ; i++)
+        for (size_t i = 0 ; i < namesUsed.size() ; i++)
         {
             if (namesUsed[i] == tmp)
             {

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -495,7 +495,6 @@ void
 avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     int timeState, bool forceReadAllCyclesTimes)
 {
-    int i, j;
 
     GenerateTimestepCounts();
 
@@ -522,7 +521,7 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     int tsGroup = GetTimestepGroupForTimestep(timeState);
     int localTS = GetTimestepWithinGroup(timeState);
     int offset = 0;
-    for (i = 0 ; i < nTimestepGroups ; i++)
+    for (size_t i = 0 ; i < (size_t)nTimestepGroups ; i++)
     {
         chunks[i][0]->SetTimeSliceOffset(offset);
         offset += tsPerGroup[i];
@@ -532,8 +531,8 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     else
         chunks[tsGroup][0]->SetReadAllCyclesAndTimes(false);
     chunks[tsGroup][0]->SetDatabaseMetaData(md, localTS);
-    for (i = 0 ; i < nTimestepGroups ; i++)
-        if (i != tsGroup)
+    for (size_t i = 0 ; i < (size_t)nTimestepGroups ; i++)
+        if (i != (size_t)tsGroup)
             chunks[i][0]->RegisterDatabaseMetaData(md);
 
     //
@@ -544,7 +543,7 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     if (md->AreAllCyclesAccurateAndValid(nTotalTimesteps) != true)
     {
         vector<int> cycles;
-        for (i=0; i<nTimestepGroups; i++)
+        for (size_t i=0; i<(size_t)nTimestepGroups; i++)
         {
             vector<int> tmp;
             chunks[i][0]->FormatGetCycles(tmp);
@@ -553,7 +552,7 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
         bool cyclesLookGood = true;
         if (!isEnsemble)
         {
-            for (i = 0; i < cycles.size(); i++)
+            for (size_t i = 0; i < cycles.size(); i++)
             {
                 if ((i != 0) && (cycles[i] <= cycles[i-1]))
                 {
@@ -562,13 +561,13 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
                 }
             }
         }
-        if (cycles.size() != nTotalTimesteps)
+        if (cycles.size() != (size_t)nTotalTimesteps)
             cyclesLookGood = false;
         if (cyclesLookGood == false)
         {
             std::vector<int> cyclesFromMassCall = cycles;
             cycles.clear();
-            for (i = 0; i < nTotalTimesteps; i++)
+            for (size_t i = 0; i < (size_t)nTotalTimesteps; i++)
             {
                 int tsg = GetTimestepGroupForTimestep(i);
                 int lts = GetTimestepWithinGroup(i);
@@ -601,7 +600,7 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     {
         // Set the times in the metadata.
         vector<double> times;
-        for (i=0; i<nTimestepGroups; i++)
+        for (size_t i=0; i<(size_t)nTimestepGroups; i++)
         {
             vector<double> tmp;
             chunks[i][0]->FormatGetTimes(tmp);
@@ -610,7 +609,7 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
         bool timesLookGood = true;
         if (!isEnsemble)
         {
-            for (i = 0; i < times.size(); i++)
+            for (size_t i = 0; i < times.size(); i++)
             {
                 if ((i != 0) && (times[i] <= times[i-1]))
                 {
@@ -619,7 +618,7 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
                 }
             }
         }
-        if (times.size() != nTotalTimesteps)
+        if (times.size() != (size_t)nTotalTimesteps)
             timesLookGood = false;
 
         if (0 && timesLookGood == false)
@@ -627,7 +626,7 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
             vector<double> timesFromMassCall = times;
 
             times.clear();
-            for (i = 0; i < nTotalTimesteps; i++)
+            for (size_t i = 0; i < (size_t)nTotalTimesteps; i++)
             {
                 int tsg = GetTimestepGroupForTimestep(i);
                 int lts = GetTimestepWithinGroup(i);
@@ -663,10 +662,10 @@ avtMTSDFileFormatInterface::SetDatabaseMetaData(avtDatabaseMetaData *md,
     // Each one of these domains thinks that it only has one domain.  Overwrite
     // that with the true number of domains.
     //
-    int nm = md->GetNumMeshes();
-    for (j = 0 ; j < nm ; j++)
+    size_t nm = md->GetNumMeshes();
+    for (size_t i = 0 ; i < nm ; i++)
     {
-        md->SetBlocksForMesh(j, nBlocks);
+        md->SetBlocksForMesh(i, nBlocks);
     }
 
     if (nBlocks > 1)
@@ -715,7 +714,7 @@ avtMTSDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
     bool cyclesLookGood = true;
     if (!isEnsemble)
     {
-        for (int i = 0; i < cycles.size(); i++)
+        for (size_t i = 0; i < cycles.size(); i++)
         {
             if ((i != 0) && (cycles[i] <= cycles[i-1]))
             {
@@ -724,7 +723,7 @@ avtMTSDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
             }
         }
     }
-    if (cycles.size() != nTotalTimesteps)
+    if (cycles.size() != (size_t)nTotalTimesteps)
         cyclesLookGood = false;
     if (cyclesLookGood == false)
     {
@@ -751,7 +750,7 @@ avtMTSDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
         times.insert(times.end(),tmp.begin(),tmp.end());
     }
     bool timesLookGood = true;
-    for (int i = 0; i < times.size(); i++)
+    for (size_t i = 0; i < times.size(); i++)
     {
         if ((i != 0) && (times[i] <= times[i-1]))
         {
@@ -759,7 +758,7 @@ avtMTSDFileFormatInterface::SetCycleTimeInDatabaseMetaData(
             break;
         }
     }
-    if (times.size() != nTotalTimesteps)
+    if (times.size() != (size_t)nTotalTimesteps)
         timesLookGood = false;
     if (timesLookGood == false)
     {
@@ -854,16 +853,24 @@ avtMTSDFileFormatInterface::ActivateTimestep(int ts)
 //    MTSD files can now be grouped not just into a faux MD format by having
 //    more than one block, but also into a longer sequence of MT files,
 //    each chunk with one or more timesteps.
+//
+//    Brad Whitlock, Thu Jun 19 11:07:28 PDT 2014
+//    Pass the mesh name.
+//
 // ****************************************************************************
-void
-avtMTSDFileFormatInterface::PopulateIOInformation(int ts, avtIOInformation &ioInfo)
+
+bool
+avtMTSDFileFormatInterface::PopulateIOInformation(int ts, const std::string &meshname,
+    avtIOInformation &ioInfo)
 {
     int tsGroup = GetTimestepGroupForTimestep(ts);
     int localTS = GetTimestepWithinGroup(ts);
+    bool retval = false;
     for (int i = 0 ; i < nBlocks ; i++)
     {
-        chunks[tsGroup][i]->PopulateIOInformation(localTS, ioInfo);
+        retval |= chunks[tsGroup][i]->PopulateIOInformation(localTS, meshname, ioInfo);
     }
+    return retval;
 }
 
 

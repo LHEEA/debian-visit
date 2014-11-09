@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,7 +58,7 @@ FileConnection::FileConnection(const char *filename, bool writeMode_) :
 {
     fileStream = 0;
     fileSize = 0;
-    writeMode = writeMode;
+    writeMode = writeMode_;
 
     if(writeMode)
     {
@@ -237,7 +237,7 @@ FileConnection::Size()
 // *******************************************************************
 
 void
-FileConnection::Append(unsigned char *address, int nChars)
+FileConnection::Append(const unsigned char *address, int nChars)
 {
     if(writeMode)
     {

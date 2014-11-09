@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -263,8 +263,7 @@ QvisTransformWindow::CreateWindowContents()
             this, SLOT(translateZProcessText()));
     mainLayout->addWidget(translateZ, 8,6);
     
-    transformVectors1 = new QCheckBox(tr("Transform vectors"),
-                                 firstPage);
+    transformVectors1 = new QCheckBox(tr("Transform vectors"), firstPage);
     mainLayout->addWidget(transformVectors1, 9, 0);
     connect(transformVectors1, SIGNAL(toggled(bool)),
             this, SLOT(transformVectorsChanged(bool)));
@@ -298,17 +297,27 @@ QvisTransformWindow::CreateWindowContents()
     secondPageLayout->addWidget(outputFrame);
 
     outputCoord = new QButtonGroup(outputFrame);
-    QVBoxLayout *outputCoordLayout = new QVBoxLayout(outputFrame);
+    QGridLayout *outputCoordLayout = new QGridLayout(outputFrame);
     outputCoordLayout->setSpacing(10);
     QRadioButton *oCart = new QRadioButton(tr("Cartesian (x,y,z)"), outputFrame);
     outputCoord->addButton(oCart, 0);
-    outputCoordLayout->addWidget(oCart);
+    outputCoordLayout->addWidget(oCart, 0, 0);
     QRadioButton *oCyl  = new QRadioButton(tr("Cylindrical (r,phi,z)"), outputFrame);
     outputCoord->addButton(oCyl, 1);
-    outputCoordLayout->addWidget(oCyl);
+    outputCoordLayout->addWidget(oCyl, 1, 0);
     QRadioButton *oSph  = new QRadioButton(tr("Spherical (r,theta,phi)"), outputFrame);
     outputCoord->addButton(oSph, 2);
-    outputCoordLayout->addWidget(oSph);
+    outputCoordLayout->addWidget(oSph, 2, 0);
+
+    continuousPhi = new QCheckBox(tr("phi on a semi-infinite domain"),
+                                  outputFrame);
+    outputCoordLayout->addWidget(continuousPhi, 1, 1);
+    connect(continuousPhi, SIGNAL(toggled(bool)),
+            this, SLOT(continuousPhiChanged(bool)));
+
+    continuousPhiLabel = new QLabel(tr("     (lines only)"), secondPage);
+    outputCoordLayout->addWidget(continuousPhiLabel, 2, 1);   
+
 
     QFrame *vectorMethodFrame = new QFrame(secondPage);
     secondPageLayout->addWidget(vectorMethodFrame);
@@ -395,8 +404,7 @@ QvisTransformWindow::CreateWindowContents()
     connect(linearInvert, SIGNAL(toggled(bool)),
             this, SLOT(linearInvertChanged(bool)));
 
-    transformVectors3 = new QCheckBox(tr("Transform vectors"),
-                                 thirdPage);
+    transformVectors3 = new QCheckBox(tr("Transform vectors"), thirdPage);
     thirdPageLayout->addWidget(transformVectors3, 5, 2, 1, 2);
     connect(transformVectors3, SIGNAL(toggled(bool)),
             this, SLOT(transformVectorsChanged(bool)));
@@ -594,13 +602,39 @@ QvisTransformWindow::UpdateWindow(bool doAll)
             inputCoord->blockSignals(true);
             inputCoord->button(atts->GetInputCoordSys())->setChecked(true);
             inputCoord->blockSignals(false);
+
+            continuousPhi->blockSignals(true);
+            continuousPhi->setEnabled( (atts->GetInputCoordSys()  ==
+                                        TransformAttributes::Cartesian &&
+                                        atts->GetOutputCoordSys() ==
+                                        TransformAttributes::Cylindrical) );
+            continuousPhi->blockSignals(false);
+            continuousPhiLabel->setEnabled( (atts->GetInputCoordSys()  ==
+                                             TransformAttributes::Cartesian &&
+                                             atts->GetOutputCoordSys() ==
+                                             TransformAttributes::Cylindrical) );
             break;
           case TransformAttributes::ID_outputCoordSys:
             outputCoord->blockSignals(true);
             outputCoord->button(atts->GetOutputCoordSys())->setChecked(true);
             outputCoord->blockSignals(false);
-            break;
 
+            continuousPhi->blockSignals(true);
+            continuousPhi->setEnabled( (atts->GetInputCoordSys()  ==
+                                        TransformAttributes::Cartesian &&
+                                        atts->GetOutputCoordSys() ==
+                                        TransformAttributes::Cylindrical) );
+            continuousPhi->blockSignals(false);
+            continuousPhiLabel->setEnabled( (atts->GetInputCoordSys()  ==
+                                             TransformAttributes::Cartesian &&
+                                             atts->GetOutputCoordSys() ==
+                                             TransformAttributes::Cylindrical) );
+            break;
+          case TransformAttributes::ID_continuousPhi:
+            continuousPhi->blockSignals(true);
+            continuousPhi->setChecked(atts->GetContinuousPhi());
+            continuousPhi->blockSignals(false);
+            break;
           case TransformAttributes::ID_m00:
             temp.setNum(atts->GetM00());
             m00->setText(temp);
@@ -1035,12 +1069,22 @@ QvisTransformWindow::pageTurned(int page)
 void QvisTransformWindow::inputCoordChanged(int v)
 {
     atts->SetInputCoordSys(TransformAttributes::CoordinateSystem(v));
+    Apply();
 }
 
 void QvisTransformWindow::outputCoordChanged(int v)
 {
     atts->SetOutputCoordSys(TransformAttributes::CoordinateSystem(v));
+    Apply();
 }
+
+void
+QvisTransformWindow::continuousPhiChanged(bool val)
+{
+    atts->SetContinuousPhi(val);
+    Apply();
+}
+
 
 void
 QvisTransformWindow::ltElementtChanged()

@@ -52,11 +52,12 @@ ${VISIT_INCLUDE_DIR}/avt/Pipeline/Sources
 ${VISIT_INCLUDE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_INCLUDE_DIR}/visit_vtk/full
 ${VISIT_INCLUDE_DIR}/visit_vtk/lightweight
+${EAVL_INCLUDE_DIR} 
 ${VTK_INCLUDE_DIRS} 
 )
 
 
-LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} )
+LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} )
 
 ADD_LIBRARY(IOpenFOAMDatabase ${LIBI_SOURCES})
 TARGET_LINK_LIBRARIES(IOpenFOAMDatabase visitcommon)
@@ -64,19 +65,19 @@ SET(INSTALLTARGETS IOpenFOAMDatabase)
 
 IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
     ADD_LIBRARY(MOpenFOAMDatabase ${LIBM_SOURCES}    )
-    TARGET_LINK_LIBRARIES(MOpenFOAMDatabase visitcommon avtdbatts avtdatabase_ser )
+    TARGET_LINK_LIBRARIES(MOpenFOAMDatabase visitcommon avtdbatts avtdatabase_ser ${vtkzlib_LIBRARIES} vtksys )
     ADD_TARGET_DEFINITIONS(MOpenFOAMDatabase MDSERVER)
     SET(INSTALLTARGETS ${INSTALLTARGETS} MOpenFOAMDatabase)
 ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
 
 ADD_LIBRARY(EOpenFOAMDatabase_ser ${LIBE_SOURCES})
-TARGET_LINK_LIBRARIES(EOpenFOAMDatabase_ser visitcommon avtdatabase_ser avtpipeline_ser )
+TARGET_LINK_LIBRARIES(EOpenFOAMDatabase_ser visitcommon avtdatabase_ser avtpipeline_ser ${vtkzlib_LIBRARIES} vtksys )
 ADD_TARGET_DEFINITIONS(EOpenFOAMDatabase_ser ENGINE)
 SET(INSTALLTARGETS ${INSTALLTARGETS} EOpenFOAMDatabase_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(EOpenFOAMDatabase_par ${LIBE_SOURCES})
-    TARGET_LINK_LIBRARIES(EOpenFOAMDatabase_par visitcommon avtdatabase_par avtpipeline_par )
+    TARGET_LINK_LIBRARIES(EOpenFOAMDatabase_par visitcommon avtdatabase_par avtpipeline_par ${vtkzlib_LIBRARIES} vtksys )
     ADD_TARGET_DEFINITIONS(EOpenFOAMDatabase_par ENGINE)
     SET(INSTALLTARGETS ${INSTALLTARGETS} EOpenFOAMDatabase_par)
 ENDIF(VISIT_PARALLEL)

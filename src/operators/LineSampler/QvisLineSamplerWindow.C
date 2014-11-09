@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1382,7 +1382,7 @@ QvisLineSamplerWindow::UpdateWindow(bool doAll)
               std::vector<double> pts = atts->GetWallList();
               wallList->clear();
 
-              for (int i = 0; i < pts.size(); i+= 2)
+              for (size_t i = 0; i < pts.size(); i+= 2)
               {
                 char tmp[256];
                 sprintf(tmp, "%lf %lf", pts[i], pts[i+1]);
@@ -1399,7 +1399,7 @@ QvisLineSamplerWindow::UpdateWindow(bool doAll)
               std::vector<double> channels = atts->GetChannelList();
               channelList->clear();
 
-              for (int i = 0; i < channels.size(); i+= 4)
+              for (size_t i = 0; i < channels.size(); i+= 4)
               {
                 char tmp[256];
                 sprintf(tmp, "%lf %lf %lf %lf",
@@ -1842,7 +1842,8 @@ QvisLineSamplerWindow::GetCurrentValues(int which_widget)
     if(which_widget == LineSamplerAttributes::ID_wallList || doAll)
     {
         std::vector<double> walls;
-        double r, z, phi, ang;
+        double r = 0.0;
+        double z = 0.0;
         for (int i = 0; i < wallList->count(); i++)
         {
             QListWidgetItem *item = wallList->item(i);

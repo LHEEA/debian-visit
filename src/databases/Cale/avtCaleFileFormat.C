@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -42,6 +42,7 @@
 
 #include <avtCaleFileFormat.h>
 
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -67,6 +68,7 @@
 
 #include <Expression.h>
 #include <DebugStream.h>
+#include <snprintf.h>
 
 #include <InvalidVariableException.h>
 #include <InvalidDBTypeException.h>
@@ -353,7 +355,7 @@ avtCaleFileFormat::GetPDBFile()
 void
 avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 {
-    const char *mName = "avtCaleFileFormat::PopulateDatabaseMetaData: ";
+    //const char *mName = "avtCaleFileFormat::PopulateDatabaseMetaData: ";
     //
     // CODE TO ADD A MESH
     //
@@ -415,7 +417,7 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 
     for ( i = 0 ; i < nfpa ; i++ )
     {
-        char  varname[10];
+        char  varname[128];
         char *name = palist[i].name;
 
         // debug4 << " i " << i << " name " << palist[i].name << " len "
@@ -425,7 +427,7 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         if (!strcmp(name, "z") || !strcmp(name, "r"))
             continue;
 
-        if ((palist[i].len == nnalls) | (palist[i].len == namix))
+        if ((palist[i].len == nnalls) || (palist[i].len == namix))
         {
             debug4 << " adding scalar variable " << palist[i].name << " len "
                    << palist[i].len << endl;
@@ -606,7 +608,7 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             cent = AVT_ZONECENT;
             for (int g = 0 ; g < npbin ; g++ )
             {
-                sprintf(varname,"%s_%02d",palist[i].name,g);
+                SNPRINTF(varname,128,"%s_%02d",palist[i].name,g);
                 debug4 << " adding scalar variable " << varname << " len "
                        << palist[i].len << endl;
                 // Add a scalar to the metadata.
@@ -622,7 +624,7 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             cent = AVT_ZONECENT;
             for (int g = 0 ; g < ngrps ; g++ )
             {
-                sprintf(varname,"%s_%02d",palist[i].name,g);
+                SNPRINTF(varname,128,"%s_%02d",palist[i].name,g);
                 debug4 << " adding scalar variable " << varname << " len "
                        << palist[i].len << endl;
                 // Add a scalar to the metadata.
@@ -766,7 +768,7 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         char sub_expr[33];
         for ( int g = 0 ; g < npbin ; g++ )
         {
-            sprintf(sub_expr,"pbin_%02d",g);
+            SNPRINTF(sub_expr,33,"pbin_%02d",g);
             if (g < npbin-1)
                 strcat(sub_expr,", ");
             expr += sub_expr;
@@ -783,7 +785,7 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         expr = "array_compose(";
         for ( int g = 0 ; g < npbin ; g++ )
         {
-            sprintf(sub_expr,"kbin_%02d",g);
+            SNPRINTF(sub_expr,33,"kbin_%02d",g);
             if (g < npbin-1)
                 strcat(sub_expr,", ");
             expr += sub_expr;
@@ -803,7 +805,7 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         char sub_expr[33] ;
         for ( int g = 0 ; g < ngrps ; g++ )
         {
-            sprintf(sub_expr,"nflux_%02d",g);
+            SNPRINTF(sub_expr,33,"nflux_%02d",g);
             if (g < ngrps-1)
                 strcat(sub_expr,", ");
             expr += sub_expr;
@@ -830,16 +832,16 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     for ( int i = 1 ; i <= ntp ; i++ )
     {
         char vname[128], label[128];
-        sprintf(vname, "/ppa/tpdata_%d/ncurs",i);
+        SNPRINTF(vname, 128,"/ppa/tpdata_%d/ncurs",i);
         pdberr = PD_read(GetPDBFile(),vname,&ncurves);
         debug4 << "section " << i << " has " << ncurves << " curves " << endl;
 
         for ( int icur = 1 ; icur < ncurves ; icur++ )
         {
-            sprintf(vname, "/ppa/tpdata_%d/tpcur_%d/tplab",i,icur);
+            SNPRINTF(vname, 128, "/ppa/tpdata_%d/tpcur_%d/tplab",i,icur);
             pdberr = PD_read(GetPDBFile(),vname,label);
             debug4 << "label '" << label << "'" << endl;
-            sprintf(vname, "/ppa/tpdata_%d/tpcur_%d/tplen",i,icur);
+            SNPRINTF(vname, 128, "/ppa/tpdata_%d/tpcur_%d/tplen",i,icur);
             pdberr = PD_read(GetPDBFile(),vname,&tplen);
             if (strlen(label) == 0)
                 break /*sprintf(label,"Curve %d",icur)*/;
@@ -858,18 +860,18 @@ avtCaleFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     for ( int i = 1 ; i <= ncp ; i++ )
     {
         char vname[128], label[128];
-        sprintf(vname, "/ppa/cpdata_%d/ncurs",i);
+        SNPRINTF(vname, 128, "/ppa/cpdata_%d/ncurs",i);
         pdberr = PD_read(GetPDBFile(),vname,&ncurves);
-        sprintf(vname, "/ppa/cpdata_%d/ntimes",i);
+        SNPRINTF(vname, 128, "/ppa/cpdata_%d/ntimes",i);
         pdberr = PD_read(GetPDBFile(),vname,&ntimes);
         debug4 << "section " << i << " has " << ncurves << " curves " << endl;
 
         for ( int icur = 1 ; icur < ncurves ; icur++ )
         {
-            sprintf(vname, "/ppa/cpdata_%d/cpcur_%d/tplab",i,icur);
+            SNPRINTF(vname, 128, "/ppa/cpdata_%d/cpcur_%d/tplab",i,icur);
             pdberr = PD_read(GetPDBFile(),vname,label);
             debug4 << "label '" << label << "'" << endl;
-            sprintf(vname, "/ppa/cpdata_%d/cpcur_%d/tplen",i,icur);
+            SNPRINTF(vname, 128, "/ppa/cpdata_%d/cpcur_%d/tplen",i,icur);
             pdberr = PD_read(GetPDBFile(),vname,&tplen);
             if (strlen(label) == 0)
                 break /*sprintf(label,"Curve %d",icur)*/;
@@ -919,7 +921,7 @@ avtCaleFileFormat::GetMesh(const char *meshname)
     if (strcmp(meshname, "hydro") == 0)
     {
         // Create a VTK object for "hydro" mesh
-        int ndims = 2;
+        //int ndims = 2;
         int dims[3] = {1,1,1};
         int kmax, lmax, lp, nnalls = 0, namix;
         int nk, nl, pdberr;
@@ -1046,7 +1048,7 @@ avtCaleFileFormat::GetMesh(const char *meshname)
     else // check for time or cycle plot
     {
         int ntp, ncp, ncurves, ntimes, tplen, foundit=0;
-        int pdberr;
+        int pdberr = 0; (void) pdberr;
         pdberr = PD_read(GetPDBFile(),(char*)"/parameters/ntp",&ntp);
         pdberr = PD_read(GetPDBFile(),(char*)"/parameters/ncp",&ncp);
         double *ttime, *data;
@@ -1054,21 +1056,21 @@ avtCaleFileFormat::GetMesh(const char *meshname)
         for ( int i = 1 ; i <= ntp ; i++ )
         {
             char vname[128], label[128];
-            sprintf(vname, "/ppa/tpdata_%d/ncurs",i);
+            SNPRINTF(vname, 128, "/ppa/tpdata_%d/ncurs",i);
             pdberr = PD_read(GetPDBFile(),vname,&ncurves);
-            sprintf(vname, "/ppa/tpdata_%d/ntimes",i);
+            SNPRINTF(vname, 128, "/ppa/tpdata_%d/ntimes",i);
             pdberr = PD_read(GetPDBFile(),vname,&ntimes);
             debug4 << "section " << i << " has " << ncurves
                    << " curves " << endl;
 
             for ( int icur = 1 ; icur < ncurves ; icur++ )
             {
-                sprintf(vname, "/ppa/tpdata_%d/tpcur_%d/tplab",i,icur);
+                SNPRINTF(vname, 128, "/ppa/tpdata_%d/tpcur_%d/tplab",i,icur);
                 pdberr = PD_read(GetPDBFile(),vname,label);
                 if (strcmp(meshname,label) == 0)
                 {
                     debug4 << "matched label '" << label << "'" << endl;
-                    sprintf(vname, "/ppa/tpdata_%d/tpcur_%d/tplen",i,icur);
+                    SNPRINTF(vname, 128, "/ppa/tpdata_%d/tpcur_%d/tplen",i,icur);
                     pdberr = PD_read(GetPDBFile(),vname,&tplen);
                     if (strlen(label) == 0)
                         break /*sprintf(label,"Curve %d",icur)*/;
@@ -1084,9 +1086,9 @@ avtCaleFileFormat::GetMesh(const char *meshname)
                     {
                         ttime = new double[tplen];
                         data  = new double[tplen];
-                        sprintf(vname, "/ppa/tpdata_%d/tpcur_0/tpdat",i);
+                        SNPRINTF(vname, 128, "/ppa/tpdata_%d/tpcur_0/tpdat",i);
                         pdberr = PD_read(GetPDBFile(),vname,ttime);
-                        sprintf(vname, "/ppa/tpdata_%d/tpcur_%d/tpdat",i,icur);
+                        SNPRINTF(vname, 128, "/ppa/tpdata_%d/tpcur_%d/tpdat",i,icur);
                         pdberr = PD_read(GetPDBFile(),vname,data);
                     }
                     foundit = 1;
@@ -1102,21 +1104,21 @@ avtCaleFileFormat::GetMesh(const char *meshname)
             for ( int i = 1 ; i <= ncp ; i++ )
             {
                 char vname[128], label[128];
-                sprintf(vname, "/ppa/cpdata_%d/ncurs",i);
+                SNPRINTF(vname, 128, "/ppa/cpdata_%d/ncurs",i);
                 pdberr = PD_read(GetPDBFile(),vname,&ncurves);
-                sprintf(vname, "/ppa/cpdata_%d/ntimes",i);
+                SNPRINTF(vname, 128, "/ppa/cpdata_%d/ntimes",i);
                 pdberr = PD_read(GetPDBFile(),vname,&ntimes);
                 debug4 << "section " << i << " has " << ncurves
                        << " curves " << endl;
 
                 for ( int icur = 1 ; icur < ncurves ; icur++ )
                 {
-                    sprintf(vname, "/ppa/cpdata_%d/cpcur_%d/tplab",i,icur);
+                    SNPRINTF(vname, 128, "/ppa/cpdata_%d/cpcur_%d/tplab",i,icur);
                     pdberr = PD_read(GetPDBFile(),vname,label);
                     if (strcmp(meshname,label) == 0)
                     {
                         debug4 << "matched label '" << label << "'" << endl;
-                        sprintf(vname, "/ppa/cpdata_%d/cpcur_%d/tplen",i,icur);
+                        SNPRINTF(vname, 128, "/ppa/cpdata_%d/cpcur_%d/tplen",i,icur);
                         pdberr = PD_read(GetPDBFile(),vname,&tplen);
                         if (strlen(label) == 0)
                             break /*sprintf(label,"Curve %d",icur)*/;
@@ -1132,9 +1134,9 @@ avtCaleFileFormat::GetMesh(const char *meshname)
                         {
                             ttime = new double[tplen];
                             data  = new double[tplen];
-                            sprintf(vname, "/ppa/cpdata_%d/cpcur_0/tpdat",i);
+                            SNPRINTF(vname, 128, "/ppa/cpdata_%d/cpcur_0/tpdat",i);
                             pdberr = PD_read(GetPDBFile(),vname,ttime);
-                            sprintf(vname, "/ppa/cpdata_%d/cpcur_%d/tpdat",i,icur);
+                            SNPRINTF(vname, 128, "/ppa/cpdata_%d/cpcur_%d/tpdat",i,icur);
                             pdberr = PD_read(GetPDBFile(),vname,data);
                         }
                         foundit = 1;
@@ -1211,6 +1213,7 @@ avtCaleFileFormat::GetVar(const char *varname)
     int kmax, lmax, lp, nnalls, namix, nvals, pdberr, nk, nl;
     int npbin, ngrps, rdifmix;
     int length, group, grplen;
+    (void) pdberr;
     pdberr = PD_read(GetPDBFile(),(char*)"/parameters/kmax",&kmax);
     pdberr = PD_read(GetPDBFile(),(char*)"/parameters/lmax",&lmax);
     pdberr = PD_read(GetPDBFile(),(char*)"/parameters/lp",&lp);
@@ -1245,7 +1248,7 @@ avtCaleFileFormat::GetVar(const char *varname)
     }
     else
     {
-        sprintf(vstring,"/arrays/%s",varname);
+        SNPRINTF(vstring,33,"/arrays/%s",varname);
         grplen = 1;
         length = namix;
         group = 0;
@@ -1413,7 +1416,7 @@ avtCaleFileFormat::GetVectorVar(const char *varname)
 int
 avtCaleFileFormat::GetCycle(void)
 {
-    int pdberr ;
+    int pdberr = 0; (void) pdberr;
     int cycle ;
 
     pdberr = PD_read(GetPDBFile(),(char*)"/parameters/cycle",&cycle) ;
@@ -1426,22 +1429,28 @@ avtCaleFileFormat::GetCycle(void)
 //
 //  Purpose: Return the cycle associated with this file
 //
+//  Modifications:
+//
+//    Burlen Loring, Fri Jul 11 10:13:52 PDT 2014
+//    fix global-buffer-overflow. This was caused by  underflow after
+//    subtraction using unsigned integers (occurs when passed in file
+//    name is an empty string). Also allocate the correct size buffer
+//    to hold cycle string during conversion to int and ensure that
+//    it's null terminated before calling atoi.
+//
 // ***************************************************************************
 
 int
 avtCaleFileFormat::GetCycleFromFilename(const char *f) const
 {
-    size_t i,j,n;
-    int c;
-    char cycstr[10];
-
-    n = strlen(f) - 4; // To get here there had to be a ".pdb" on the file
-
-    j = 0;
-
-    for ( i = n-1 ; i  >= 0 ; i-- )
+    // To get here there had to be a ".pdb" on the file
+    // and note: i is decremented before it's used below.
+    long n = static_cast<long>(strlen(f)) - 4;
+    long j = 0;
+    long i = n;
+    for (; i--  > 0 ;)
     {
-        if ((f[i] >= '0') && (f[i] <= '9'))
+        if ((f[i] >= '0') && (f[i] <= '9') && (j < 20))
         {
             j++;
         }
@@ -1451,17 +1460,19 @@ avtCaleFileFormat::GetCycleFromFilename(const char *f) const
         }
     }
 
+    int c = -1;
+    char *cycstr = NULL;
+
     if (j > 0)
     {
+        cycstr = static_cast<char*>(malloc(j+1*sizeof(char)));
+        cycstr[j] = '\0';
         strncpy(cycstr,f+i+1,j);
         c = atoi(cycstr);
-    }
-    else
-    {
-        c = -1;
+        debug4 << " cycle from name " << cycstr << endl;
+        free(cycstr);
     }
 
-    debug4 << " cycle from name " << cycstr << endl;
     return(c);
 }
 
@@ -1480,7 +1491,7 @@ avtCaleFileFormat::GetCycleFromFilename(const char *f) const
 double
 avtCaleFileFormat::GetTime(void)
 {
-    int pdberr ;
+    int pdberr = 0; (void) pdberr;
     double dtime ;
 
     pdberr = PD_read(GetPDBFile(),(char*)"/parameters/time",&dtime) ;
@@ -1509,7 +1520,7 @@ avtCaleFileFormat::GetAuxiliaryData(const char *var,
     debug4 << mName << "type " << type << " var " << var << endl;
     if(strcmp(type, AUXILIARY_DATA_MATERIAL) == 0)
     {
-        int i, kmax, lmax, lp, nnalls, namix, pdberr;
+        int i, kmax, lmax, lp, nnalls, namix, pdberr; (void) pdberr;
         int nreg, nregx, nk, nl, mixmax;
         int dims[3] = {1,1,1}, ndims = 2;
 
@@ -1805,6 +1816,7 @@ avtCaleFileFormat::GetUsedMeshLimits (void)
     int ibc, pdberr;
     int kmax, lmax, nbc, nbcx;
 
+    (void) pdberr;
     pdberr = PD_read(GetPDBFile(),(char*)"/parameters/kmax",&kmax);
     pdberr = PD_read(GetPDBFile(),(char*)"/parameters/lmax",&lmax);
     pdberr = PD_read(GetPDBFile(),(char*)"/parameters/nbc",&nbc);

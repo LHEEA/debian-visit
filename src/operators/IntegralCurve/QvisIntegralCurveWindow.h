@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -249,13 +249,11 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     void processCorrelationDistanceAngTolEditText();
     void processCorrelationDistanceMinDistEditText();
 
-    void showLinesChanged(bool val);
-    void showPointsChanged(bool val);
-    void geometryButtonGroupChanged(int val);
-
-    void coordinateButtonGroupChanged(int val);
-    void phiScalingToggled(bool);
-    void phiScalingProcessText();
+    void cropBeginFlagChanged(bool val);
+    void cropBeginProcessText();
+    void cropEndFlagChanged(bool val);
+    void cropEndProcessText();
+    void cropValueChanged(int val);
 
   // Advanced
     void parallelAlgorithmChanged(int val);
@@ -266,6 +264,7 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     void icButtonGroupChanged(int val);
     void pathlineOverrideStartingTimeFlagChanged(bool val);
     void pathlineOverrideStartingTimeProcessText();
+    void pathlinePeriodProcessText();
     void pathlineCMFEButtonGroupChanged(int val);
 
     void issueWarningForMaxStepsChanged(bool);
@@ -352,15 +351,11 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     QLineEdit *correlationDistanceAngTolEdit, *correlationDistanceMinDistEdit;
     QComboBox *correlationDistanceMinDistType;
 
-    QCheckBox    *showLines;
-    QCheckBox    *showPoints;
-
-    QLabel       *geometryLabel;
-    QButtonGroup *geometryButtonGroup;
-
-    QButtonGroup *coordinateButtonGroup;
-    QLineEdit *phiScaling;
-    QCheckBox *phiScalingToggle;
+    QCheckBox *cropBeginFlag;
+    QLineEdit *cropBegin;
+    QCheckBox *cropEndFlag;
+    QLineEdit *cropEnd;
+    QComboBox *cropValueComboBox;
 
   // Advanced
     QLabel    *parallelAlgoLabel;
@@ -375,6 +370,7 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     QButtonGroup *icButtonGroup;
     QCheckBox *pathlineOverrideStartingTimeFlag;
     QLineEdit *pathlineOverrideStartingTime;
+    QLineEdit *pathlinePeriod;
     QButtonGroup *pathlineCMFEButtonGroup;
 
     QCheckBox *issueWarningForMaxSteps;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,6 +76,10 @@
 //   Kathleen Bonnell, Thu Dec 12 15:12:36 PST 2002 
 //   Use RenderOverlay instead of RenderOpaqueGeometry, to match new VTK API. 
 //   
+//   Kathleen Biagas, Thu Apr 17 16:01:40 PDT 2014
+//   Fix interface to match vtk-6 requirements and prevent error messages in
+//   log files.
+//
 // ****************************************************************************
 
 class vtkHighlightActor2D : public vtkActor2D
@@ -89,8 +93,9 @@ public:
 
     // Description:
     // Draw the actor as per the vtkProp superclass' API.
-    virtual int RenderOpaqueGeometry(vtkViewport *viewport) { return 0; };
-    virtual int RenderTranslucentGeometry(vtkViewport *) {return 0; };
+    virtual int RenderOpaqueGeometry(vtkViewport *viewport) { return 0; }
+    virtual int RenderTranslucentPolygonalGeometry(vtkViewport *) { return 0; }
+    virtual int HasTranslucentPolygonalGeometry() { return 0; }
     virtual int RenderOverlay(vtkViewport *); 
 
     void SetToolPointer(VisitInteractiveTool **t);
@@ -444,7 +449,7 @@ VisWinTools::GetHotPoint(int x, int y, HotPoint &h) const
         if(tools[i]->IsEnabled())
         {
             const HotPointVector &pts = tools[i]->HotPoints();
-            for(int j = 0; j < pts.size(); ++j)
+            for(size_t j = 0; j < pts.size(); ++j)
             {
                 // Use the background renderer to compute the normalized
                 // device coordinate of the hotpoint from the world space
@@ -1050,7 +1055,7 @@ vtkHighlightActor2D::RegenerateHighlight()
         if(tools[i]->IsEnabled() && tools[i]->ShowsHotPointHighlights())
         {
             const HotPointVector &hpts = tools[i]->HotPoints();
-            for(int j = 0; j < hpts.size(); ++j)
+            for(size_t j = 0; j < hpts.size(); ++j)
             {
                 // Use the background renderer to compute the normalized
                 // device coordinate of the hotpoint from the world space

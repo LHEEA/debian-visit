@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,6 +51,8 @@
 /** included attributes for Poincare */
 #include <PoincareAttributes.h>
 
+#include <vtkPlane.h>
+
 #include <vector>
 
 
@@ -87,6 +89,9 @@ class avtPoincareFilter : public virtual avtPluginFilter,
                        int den, bool rand, int seed, int numPts);
 
     void SetPuncturePlane( unsigned int val ) { puncturePlane = val; }
+    void SetPuncturePlotType( unsigned int val ) { puncturePlotType = val; }
+    void SetPuncturePeriod( double val ) { puncturePeriod = val; }
+    void SetPuncturePeriodTolerance( double val ) { puncturePeriodTolerance = val; }
     void SetAnalysis( unsigned int val ) { analysis = val; }
 
     void SetMaxPunctures( double punctures ) { maxPunctures = punctures; }
@@ -136,7 +141,7 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     void SetShow1DPlots( bool val )   { show1DPlots = val; }
 
     // Methods to set the filter's attributes.
-    void                 SetIntersectionCriteria(vtkObject *obj, int);
+    void                 SetIntersectionCriteria();
 
     virtual void         SetAtts(const AttributeGroup*);
     virtual bool         Equivalent(const AttributeGroup*);
@@ -249,8 +254,6 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     int    sourceType;   
 
     int      maxSteps;
-    bool     doDistance;
-    double   maxDistance;
     bool     doTime;
     double   maxTime;
 
@@ -263,6 +266,9 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
 
     unsigned int puncturePlane;
+    unsigned int puncturePlotType;
+    double puncturePeriod;
+    double puncturePeriodTolerance;
     unsigned int analysis;
 
     double maxPunctures;
@@ -274,15 +280,15 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     double windingPairConfidence;
     double rationalSurfaceFactor;
 
-    unsigned int overlaps;
-
-    bool is_curvemesh;
     std::vector< double > planes;
     int adjust_plane;
 
+    unsigned int overlaps;
+    bool is_curvemesh;
+
     unsigned int dataValue;
   
-    vtkObject *intersectObj; 
+    vtkPlane *intPlane; 
     int maxIntersections;
 
     bool showRationalSurfaces, showOPoints, showXPoints, showIslands,

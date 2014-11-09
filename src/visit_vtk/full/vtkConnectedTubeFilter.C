@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -577,6 +577,7 @@ int vtkConnectedTubeFilter::RequestData(
         if (seq.length == 1)
             continue;
 
+        double prev_dir[3] = {0., 0., 0.}, prev_v1[3], prev_v2[3];
         for (int i=0; i<seq.length; i++)
         {
             bool firstPoint = (i==0);
@@ -589,7 +590,6 @@ int vtkConnectedTubeFilter::RequestData(
 
             // Use a centered difference approximation for direction
             double v0[3], v1[3], v2[3], dir[3], pt[3];
-            double prev_dir[3], prev_v1[3], prev_v2[3];
             inPts->GetPoint(ix2, v2);
             inPts->GetPoint(ix1, v1);
             vtkMath::Subtract(v2, v1, dir);

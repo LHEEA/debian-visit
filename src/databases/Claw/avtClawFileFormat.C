@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -71,15 +71,20 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <iostream>
 #include <map>
 #include <string>
 #include <vector>
+#include <limits>
+#include <algorithm>
+#include <sstream>
 
 using std::map;
 using std::string;
 using std::vector;
+using std::ostringstream;
 
 // ****************************************************************************
 //  Function: InitTimeHeader 
@@ -130,7 +135,7 @@ GetFilenames(string scanfStr, string regexStr, string rootDir,
     int nexpectedMatches = 0;
     if (scanfStr != "")
     {
-        for (int i = 0; i < scanfStr.size()-1; i++)
+        for (size_t i = 0; i < scanfStr.size()-1; i++)
         {
             // all '%' except '%%' indicate an argument conversion specifier
             if (scanfStr[i] == '%' && scanfStr[i+1] != '%')
@@ -338,7 +343,7 @@ ReadTimeStepHeader(string rootDir, string fileName, TimeHeader_t *hdr)
     string fullFileName = rootDir + "/" + fileName;
     int fd = open(fullFileName.c_str(), O_RDONLY);
     int nread = read(fd, buf, sizeof(buf)-1);
-    if (nread >= sizeof(buf)-1)
+    if (nread >= (int)sizeof(buf)-1)
     {
         char msg[256];
         SNPRINTF(msg, sizeof(msg), "Buffer size of %ld insufficient "
@@ -504,16 +509,19 @@ ReadGridHeader(int fd, int offset, const TimeHeader_t* thdr, GridHeader_t *ghdr,
     debug5 << "   AMR_level = " << ghdr->AMR_level << endl;
     debug5 << "   mx = " << ghdr->mx << endl;
     debug5 << "   my = " << ghdr->my << endl;
-    if (thdr->ndims == 3)
+    if (thdr->ndims == 3) {
         debug5 << "   mz = " << ghdr->mz << endl;
+    }
     debug5 << "   xlow = " << ghdr->xlow << endl;
     debug5 << "   ylow = " << ghdr->ylow << endl;
-    if (thdr->ndims == 3)
+    if (thdr->ndims == 3) {
         debug5 << "   zlow = " << ghdr->zlow << endl;
+    }
     debug5 << "   dx = " << ghdr->dx << endl;
     debug5 << "   dy = " << ghdr->dy << endl;
-    if (thdr->ndims == 3)
+    if (thdr->ndims == 3) {
         debug5 << "   dz = " << ghdr->dz << endl;
+    }
     debug5 << "   charsPerLine = " << ghdr->charsPerLine << endl;
     debug5 << "   dataOffset = " << ghdr->dataOffset << endl;
 }
@@ -533,7 +541,7 @@ ReadGridHeaders(string rootDir, string fileName, const TimeHeader_t *thdr,
     vector<GridHeader_t> &gridHeaders, map<int, GridHeader_t> &gridHeaderMap)
 {
     // open a grid file
-    char buf[2048];
+    //char buf[2048];
     string fullFileName = rootDir + "/" + fileName;
     int fd = open(fullFileName.c_str(), O_RDONLY);
     int offset = 0;
@@ -550,7 +558,7 @@ ReadGridHeaders(string rootDir, string fileName, const TimeHeader_t *thdr,
     close(fd);
 
     // Build gridHeaderMap, too 
-    for (int i = 0; i < gridHeaders.size(); i++)
+    for (size_t i = 0; i < gridHeaders.size(); i++)
     {
         const GridHeader_t &ghdr = gridHeaders[i];
         if (gridHeaderMap.find(ghdr.AMR_level) == gridHeaderMap.end())
@@ -615,18 +623,24 @@ avtClawFileFormat::avtClawFileFormat(const char *filename)
     fclose(bootFile);
 
     debug1 << "DIR=" << rootDir << endl;
-    if (timeScanf != "")
+    if (timeScanf != "") {
         debug1 << "TIME_FILES_SCANF=" << timeScanf << endl;
-    if (timeRegex != "")
+    }
+    if (timeRegex != "") {
         debug1 << "TIME_FILES_REGEX=" << timeRegex << endl;
-    if (gridScanf != "")
+    }
+    if (gridScanf != "") {
         debug1 << "GRID_FILES_SCANF=" << gridScanf << endl;
-    if (gridRegex != "")
+    }
+    if (gridRegex != "") {
         debug1 << "GRID_FILES_REGEX=" << gridRegex << endl;
-    if (cycleRegex != "")
+    }
+    if (cycleRegex != "") {
         debug1 << "CYCLE_REGEX=" << cycleRegex << endl;
-    if (optMode != "")
+    }
+    if (optMode != "") {
         debug1 << "OPTIMIZE_MODE=" << optMode << endl;
+    }
 }
 
 // ****************************************************************************
@@ -776,7 +790,7 @@ avtClawFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeSta
     const map<int, GridHeader_t> &levelsMap = gridHeaderMaps[timeState];
 
     // sanity check
-    if (timeHdr.ngrids != gridHeaders[timeState].size())
+    if (timeHdr.ngrids != (int)gridHeaders[timeState].size())
     {
         char msg[256];
         SNPRINTF(msg, sizeof(msg), "Time header's ngrid value, %d, doesn't agree "
@@ -894,6 +908,9 @@ avtClawFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeSta
 //    X, Y, and Z for calculating logical coordinates (we were getting
 //    negative logical coords before).
 //
+//    Burlen Loring, Fri Jul 11 17:41:14 PDT 2014
+//    fix out-of-bounds index of vector reported by gcc STL debug mode.
+//
 // ****************************************************************************
 
 void
@@ -908,17 +925,15 @@ avtClawFileFormat::BuildDomainAuxiliaryInfo(int timeState)
     map<int, GridHeader_t> levelsMap = gridHeaderMaps[timeState];
 
     int num_dims = timeHdr.ndims;
-    int num_levels = levelsMap.size();
-    int num_patches = gridHdrs.size();
+    size_t num_levels = levelsMap.size();
+    size_t num_patches = gridHdrs.size();
 
     // first, look to see if we don't already have it cached
     void_ref_ptr vrTmp = cache->GetVoidRef("any_mesh",
                                    AUXILIARY_DATA_DOMAIN_NESTING_INFORMATION,
                                   timeState, -1);
-    if (*vrTmp == NULL && num_patches > 0)
+    if ((*vrTmp == NULL) && (num_patches > 0))
     {
-        int i;
-
         //
         // build the avtDomainNesting object
         //
@@ -932,7 +947,7 @@ avtClawFileFormat::BuildDomainAuxiliaryInfo(int timeState)
         //
         vector<int> ratios(3,1);
         dn->SetLevelRefinementRatios(0, ratios);
-        for (i = 1; i < num_levels; i++)
+        for (size_t i = 1; i < num_levels; ++i)
         {
            ratios[0] = (int) (levelsMap[i-1].dx / levelsMap[i].dx+0.5);
            ratios[1] = (int) (levelsMap[i-1].dy / levelsMap[i].dy+0.5);
@@ -940,20 +955,20 @@ avtClawFileFormat::BuildDomainAuxiliaryInfo(int timeState)
            dn->SetLevelRefinementRatios(i, ratios);
         }
 
-        float lowestX = gridHdrs[i].xlow;
-        float lowestY = gridHdrs[i].ylow;
-        float lowestZ = gridHdrs[i].zlow;
-        for (i = 0 ; i < num_patches ; i++)
+        double lowestX = std::numeric_limits<double>::max();
+        double lowestY = std::numeric_limits<double>::max();
+        double lowestZ = std::numeric_limits<double>::max();
+        for (size_t i = 0; i < num_patches; ++i)
         {
-            lowestX = (lowestX < gridHdrs[i].xlow ? lowestX : gridHdrs[i].xlow);
-            lowestY = (lowestY < gridHdrs[i].ylow ? lowestY : gridHdrs[i].ylow);
-            lowestZ = (lowestZ < gridHdrs[i].zlow ? lowestZ : gridHdrs[i].zlow);
+            lowestX = std::min(lowestX, gridHdrs[i].xlow);
+            lowestY = std::min(lowestY, gridHdrs[i].ylow);
+            lowestZ = std::min(lowestZ, gridHdrs[i].zlow);
         }
 
         //
         // set each domain's level, children and logical extents
         //
-        for (i = 0; i < num_patches; i++)
+        for (size_t i = 0; i < num_patches; ++i)
         {
             vector<int> childPatches;
             float x0 = gridHdrs[i].xlow;
@@ -962,7 +977,7 @@ avtClawFileFormat::BuildDomainAuxiliaryInfo(int timeState)
             float y1 = y0 + gridHdrs[i].my * gridHdrs[i].dy;
             float z0 = gridHdrs[i].zlow;
             float z1 = z0 + gridHdrs[i].mz * gridHdrs[i].dz;
-            for (int j = 0; j < num_patches; j++)
+            for (size_t j = 0; j < num_patches; j++)
             {
                 if (gridHdrs[j].AMR_level != gridHdrs[i].AMR_level+1)
                     continue;
@@ -1014,7 +1029,7 @@ avtClawFileFormat::BuildDomainAuxiliaryInfo(int timeState)
         sdb = new avtRectilinearDomainBoundaries(canComputeNeighborsFromExtents);
 
         sdb->SetNumDomains(num_patches);
-        for (int i = 0 ; i < num_patches ; i++)
+        for (size_t i = 0 ; i < num_patches ; ++i)
         {
             int e[6];
             e[0] = (int) (gridHdrs[i].xlow / gridHdrs[i].dx + 0.5);
@@ -1142,6 +1157,11 @@ avtClawFileFormat::GetMesh(int timeState, int domain, const char *meshname)
 //  Modifications:
 //    Mark C. Miller, Tue Sep 18 11:08:52 PDT 2007
 //    Changed naux to ndims 
+//
+//    Burlen Loring, Fri Jul 11 18:32:43 PDT 2014
+//    fix invalid write when null terminating string, and handle
+//    failed file system operations.
+//
 // ****************************************************************************
 
 vtkDataArray *
@@ -1179,9 +1199,23 @@ avtClawFileFormat::GetVar(int timeState, int domain, const char *varname)
     char *buf = new char[dsLength+1];
     string fullFileName = rootDir + "/" + gridFilenames[timeState];
     int fd = open(fullFileName.c_str(), O_RDONLY);
+    if (fd < 0)
+    {
+        ostringstream oss;
+        oss << "open \"" << fullFileName
+          << "\" failed with error \"" << strerror(errno) << "\"";
+        EXCEPTION1(InvalidFilesException, oss.str().c_str());
+    }
     lseek(fd, dsOffset, SEEK_SET);
-    int nread = read(fd, buf, dsLength);
-    buf[nread+1] = '\0';
+    ssize_t nread = read(fd, buf, dsLength);
+    if (nread < 0)
+    {
+        ostringstream oss;
+        oss << "read " << dsLength << " from \"" << fullFileName
+          << "\" failed with error \"" << strerror(errno) << "\"";
+        EXCEPTION1(InvalidFilesException, oss.str().c_str());
+    }
+    buf[nread] = '\0';
     close(fd);
 
     // find the character offset within first line of desired column
@@ -1194,7 +1228,8 @@ avtClawFileFormat::GetVar(int timeState, int domain, const char *varname)
 
         // every transition from space to numeric characters is
         // beginning of a column
-        if (c0 == ' ' && (c1 >= '0' && c1 <= '9' || c1 == '.' || c1 =='-'))
+        /// TODO: check fix for the paranthesis warning
+        if (c0 == ' ' && ((c1 >= '0' && c1 <= '9') || c1 == '.' || c1 =='-'))
         {
             colCount++;
             if (colCount == colNeeded)
@@ -1209,7 +1244,8 @@ avtClawFileFormat::GetVar(int timeState, int domain, const char *varname)
     while (true)
     {
         char c0 = buf[lineOffset2];
-        if (c0 >= '0' && c0 <= '9' || 
+        /// TODO: fix for paranthesis warning
+        if ((c0 >= '0' && c0 <= '9') || 
             c0 == '.' || c0 =='-' || c0 == '+' || 
             c0 == 'e' || c0 == 'E')
             lineOffset2++;

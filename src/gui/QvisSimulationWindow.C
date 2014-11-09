@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -371,7 +371,7 @@ QvisSimulationWindow::GetUIFile(const QString &key) const
         const stringVector &names  = md->GetSimInfo().GetOtherNames();
         const stringVector &values = md->GetSimInfo().GetOtherValues();
 
-        for (int i=0; i<names.size(); i++)
+        for (size_t i=0; i<names.size(); i++)
         {
             if (names[i] == "uiFile")
                 uiFilename = QString(values[i].c_str());
@@ -905,7 +905,7 @@ QvisSimulationWindow::UpdateWindow(bool doAll)
         simCombo->clear();
         simulationToEngineListMap.clear();
         int current = -1;
-        for (int i = 0; i < host.size(); ++i)
+        for (size_t i = 0; i < host.size(); ++i)
         {
             if (!sim[i].empty())
             {
@@ -1073,7 +1073,7 @@ QvisSimulationWindow::MakeKey(const std::string &host, const std::string &sim) c
 int
 QvisSimulationWindow::GetEngineListIndex(const QString &key) const
 {
-    for(int i = 0; i < engines->GetEngineName().size(); ++i)
+    for(size_t i = 0; i < engines->GetEngineName().size(); ++i)
     {
         QString testkey(MakeKey(engines->GetEngineName()[i],
                                 engines->GetSimulationName()[i]));
@@ -1134,7 +1134,6 @@ QvisSimulationWindow::GetEngineListIndex(const QString &key) const
 void
 QvisSimulationWindow::UpdateInformation()
 {
-    const stringVector &s = engines->GetEngineName();
     debug5 << "Update Information was called" << endl;
 
     // Clear the sim information.
@@ -1157,7 +1156,7 @@ QvisSimulationWindow::UpdateInformation()
         int index = GetEngineListIndex(activeEngine);
         int np = 1;
         std::string sim;
-        if(index >= 0 && index < engines->GetEngineName().size())
+        if(index >= 0 && (size_t)index < engines->GetEngineName().size())
         {
             sim = engines->GetSimulationName()[index];
             np = engines->GetProperties(index).GetNumProcessors();
@@ -1166,11 +1165,11 @@ QvisSimulationWindow::UpdateInformation()
         // Use the metadata we looked up to populate the window.
         const avtDatabaseMetaData *md = pos.value();
         QString tmp1,tmp2;
-        QTreeWidgetItem *item;
+        QTreeWidgetItem *item = NULL;
 
         // Host
-        item = new QTreeWidgetItem(simInfo, 
-                                   QStringList(tr("Host")) + 
+        item = new QTreeWidgetItem(simInfo,
+                                   QStringList(tr("Host")) +
                                    QStringList(md->GetSimInfo().GetHost().c_str()));
 
         // Simulation name
@@ -1181,8 +1180,8 @@ QvisSimulationWindow::UpdateInformation()
         QString name = newsim.mid(firstDotPos+1,
                                   lastDotPos-firstDotPos-1);
         item = new QTreeWidgetItem(simInfo, 
-            QStringList(tr("Name")) + 
-            QStringList(name));
+                                   QStringList(tr("Name")) + 
+                                   QStringList(name));
 
         // Date
         QString timesecstr = newsim.left(firstDotPos);
@@ -1203,7 +1202,7 @@ QvisSimulationWindow::UpdateInformation()
         // Other values from the .sim2 file
         const vector<string> &names  = md->GetSimInfo().GetOtherNames();
         const vector<string> &values = md->GetSimInfo().GetOtherValues();
-        for (int i=0; i<names.size(); i++)
+        for (size_t i=0; i<names.size(); i++)
         {
             item = new QTreeWidgetItem(simInfo,
                 QStringList(names[i].c_str()) + 

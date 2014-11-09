@@ -1570,11 +1570,27 @@ static int Conn[8][3] = {{1,2,4}, {0,3,5}, {3,0,6}, {2,1,7},
 // *************************************************************************
 void vtkVisItCubeAxesActor::DetermineRenderAxes(vtkViewport *viewport)
 {
-  double bounds[6], slope = 0.0, minSlope, num, den;
-  double pts[8][3], d2, d2Min, min, max;
+  double bounds[6];
+  double slope = 0.0;
+  double minSlope;
+  double num;
+  double den;
+  double pts[8][3];
+  double d2;
+  double d2Min;
+  double min;
+  double max;
   int i, idx = 0;
-  int xIdx, yIdx = 0, zIdx = 0, zIdx2;
-  int xAxes = 0, yAxes, zAxes, xloc, yloc, zloc;
+  int xIdx; 
+  int yIdx = 0;
+  int zIdx = 0;
+  int zIdx2;
+  int xAxes = 0; 
+  int yAxes; 
+  int zAxes;
+  int xloc = 0; 
+  int yloc = 0; 
+  int zloc = 0;
  
   if (this->FlyMode == VTK_FLY_STATIC_EDGES) 
     {
@@ -1677,7 +1693,7 @@ void vtkVisItCubeAxesActor::DetermineRenderAxes(vtkViewport *viewport)
       } // furthest-triad
     else
       {
-      double e1[2], e2[2], e3[2];
+      double e1[3], e2[3], e3[3];
 
       // Find distance to origin
       d2Min = VTK_FLOAT_MAX;
@@ -1713,7 +1729,7 @@ void vtkVisItCubeAxesActor::DetermineRenderAxes(vtkViewport *viewport)
         }
 
       // find edge (connected to closest point) on opposite side
-      for ( i=0; i<2; i++)
+      for ( i=0; i<3; i++)
         {
         e1[i] = (pts[xIdx][i] - pts[idx][i]);
         e2[i] = (pts[yIdx][i] - pts[idx][i]);
@@ -2023,13 +2039,13 @@ vtkVisItCubeAxesActor::BuildLabels(vtkVisItAxisActor *axes[4])
   const double majorTickMinimum = axes[0]->GetMajorTickMinimum();
   const double majorTickMaximum = axes[0]->GetMajorTickMaximum();
   const double majorTickSpacing = axes[0]->GetMajorTickSpacing();
-  double firstVal, deltaVal, lastVal, val;
+  double firstVal, deltaVal, lastVal = 0, val;
   double extents = range[1] - range[0];
-  bool mustAdjustValue;
-  int lastPow;
+  bool mustAdjustValue = true;
+  int lastPow = 0;
   
   vector<string> labels; 
-  const char *format; 
+  const char *format = NULL;
   switch (axes[0]->GetAxisType())
     {
     case VTK_AXIS_TYPE_X : 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewFileOpenOptions(int);
 std::string
 PyFileOpenOptions_ToString(const FileOpenOptions *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const stringVector &typeNames = atts->GetTypeNames();
         SNPRINTF(tmpStr, 1000, "%stypeNames = (", prefix);
@@ -271,7 +271,7 @@ FileOpenOptions_GetOpenOptions(PyObject *self, PyObject *args)
     int index;
     if(!PyArg_ParseTuple(args, "i", &index))
         return NULL;
-    if(index < 0 || index >= obj->data->GetOpenOptions().size())
+    if(index < 0 || (size_t)index >= obj->data->GetOpenOptions().size())
     {
         char msg[200];
         if(obj->data->GetOpenOptions().size() == 0)
@@ -728,7 +728,6 @@ PyFileOpenOptions_GetLogString()
 static void
 PyFileOpenOptions_CallLogRoutine(Subject *subj, void *data)
 {
-    FileOpenOptions *atts = (FileOpenOptions *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

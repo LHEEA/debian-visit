@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,7 @@
 #include <DebugStream.h>
 #include <InstallationFunctions.h>
 #include <FileFunctions.h>
+#include <ViewerFileServer.h>
 #include <snprintf.h>
 
 // ****************************************************************************
@@ -550,6 +551,10 @@ ViewerConfigManager::ExportEntireState(const std::string &filename)
 //   the attributes only gets things confused.  Note that if we ever can
 //   load plugins dynamically, then we should revisit this policy.
 //
+//   Kathleen Biagas, Wed Jan 29 15:15:48 MST 2014
+//   When sources are provided, ensure we save a fully host-qualifed name in
+//   the sourceToDB map.
+//
 // ****************************************************************************
 
 void
@@ -606,7 +611,7 @@ ViewerConfigManager::ImportEntireState(const std::string &filename,
                     }
                     else
                     {
-                        int nSourceIds = sources.size();
+                        int nSourceIds = (int)sources.size();
                         DataNode *vsNode = viewerNode->GetNode("ViewerSubject");
                         DataNode *sourceMapNode = 0;
                         if(vsNode != 0 && 
@@ -616,6 +621,7 @@ ViewerConfigManager::ImportEntireState(const std::string &filename,
                                 nSourceIds = sourceMapNode->GetNumChildren();
                         }
 
+                        std::string tmpHost, tmpDB, source;
                         // Use the list of sources that the user provided
                         // so we can override what's in the sesssion file.
                         // This lets restore the session with new databases.
@@ -623,13 +629,18 @@ ViewerConfigManager::ImportEntireState(const std::string &filename,
                         {
                             char tmp[100];
                             SNPRINTF(tmp, 100, "SOURCE%02d", i);
-                            if(i < sources.size())
-                                sourceToDB[std::string(tmp)] = sources[i];
+                            if(i < (int)sources.size())
+                            {
+                                source = sources[i];
+                            }
                             else
                             {
                                 // pad the list of sources
-                                sourceToDB[std::string(tmp)] = sources[sources.size()-1];
+                                source = sources[sources.size()-1];
                             }
+                            // Ensure we save a fully host-qualified name.
+                            ViewerFileServer::SplitHostDatabase(source, tmpHost, tmpDB);
+                            sourceToDB[std::string(tmp)] = tmpHost + std::string(":") + tmpDB;
                         }
                     }
                 }

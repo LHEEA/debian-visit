@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -42,11 +42,13 @@
 
 #ifndef AVT_MESH_LOG_FILTER_H
 #define AVT_MESH_LOG_FILTER_H
+
 #include <filters_exports.h>
 
-
 #include <avtDataTreeIterator.h>
+
 #include <enumtypes.h>
+
 
 // ****************************************************************************
 //  Class: avtMeshLogFilter
@@ -58,6 +60,8 @@
 //  Creation:   March 6, 2007 
 //
 //  Modifications:
+//    Eric Brugger, Mon Jul 21 14:26:01 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -84,7 +88,7 @@ class AVTFILTERS_API avtMeshLogFilter : public avtDataTreeIterator
     bool                  useInvLogY;
 
     virtual void          PostExecute(void);
-    virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     virtual void          UpdateDataObjectInfo(void);
 
   private:

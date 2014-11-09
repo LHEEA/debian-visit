@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -227,7 +227,7 @@ avtOpenGLSLIVRVolumeRenderer::CreateColormap(const VolumeAttributes &atts, bool 
         context->cm = 0;
     }
     // Blow away the 2D transfer function
-    for(int c = 0; c < context->cmap2.size(); ++c)
+    for(size_t c = 0; c < context->cmap2.size(); ++c)
         delete context->cmap2[c];
     context->cmap2.clear();
 
@@ -364,6 +364,9 @@ avtOpenGLSLIVRVolumeRenderer::OnlyLightingFlagIsDifferent(
 //   Brad Whitlock, Wed Apr 22 12:10:06 PDT 2009
 //   I changed the interface.
 //
+//   Kathleen Biagas, Thu Jan 9 16:29:43 PST 2014
+//   Added early return and intel-specific warning message.
+//
 // ****************************************************************************
 
 void
@@ -372,13 +375,32 @@ avtOpenGLSLIVRVolumeRenderer::Render(
     const avtVolumeRendererImplementation::VolumeData &volume)
 {
     const char *mName = "avtOpenGLSLIVRVolumeRenderer::Render: ";
-
+    static bool haveIssuedWarning = false;
     // Initializes SLIVR shaders and GLEW.
     if(!slivrInit)
     {
         debug5 << mName << "Initializing SLIVR" << endl;
         SLIVR::ShaderProgramARB::init_shaders_supported();
         slivrInit = true;
+    }
+
+    if (SLIVR::ShaderProgramARB::shaders_supported() == false)
+    {
+        if (!haveIssuedWarning)
+        {
+            std::stringstream sstr;
+            if (SLIVR::ShaderProgramARB::isGFXIntel())
+            {
+                sstr << "SLIVR currently does not support Intel graphics cards.";
+            }
+            else
+            {
+                sstr << "SLIVR uses shaders which your graphics card does not support.";
+            }
+            avtCallback::IssueWarning(sstr.str().c_str());
+            haveIssuedWarning = true;
+        }
+        return;
     }
 
     // Get the sampling rate that the renderer will use.
@@ -495,7 +517,7 @@ avtOpenGLSLIVRVolumeRenderer::SlivrContext::~SlivrContext()
         nrrdNuke(cmap2_image);
     if(renderer != 0)
         delete renderer;
-    for(int i=0;i<planes.size();i++)
+    for(size_t i=0;i<planes.size();i++)
         delete planes[i];
 }
 
@@ -524,8 +546,12 @@ avtOpenGLSLIVRVolumeRenderer::CheckContext(SlivrContext* context,
         if(context != 0)
         {
             for(int i = 0; i < oldAtts.NumAttributes(); ++i)
+            {
                 if(!oldAtts.FieldsEqual(i, &atts))
+                {
                     debug5 << "Field " << i << " differs" << endl;
+                }
+            }
 
             if(oldAtts.AnyNonTransferFunctionMembersAreDifferent(atts))
             {
@@ -616,7 +642,7 @@ avtOpenGLSLIVRVolumeRenderer::CreateContext(vtkRectilinearGrid *grid,
     {
         debug5 << mName << "Creating nrrd for 2 variables." << endl;
         // Create uchar versions. Put var1 first then opac as var2.
-        int nvals = size[0]*size[1]*size[2];
+        size_t nvals = size[0]*size[1]*size[2];
         unsigned char *cdata = new unsigned char[nvals * size[3]];
         float *dptr[2];
         dptr[0] = (float *)data->GetVoidPointer(0);
@@ -627,7 +653,7 @@ avtOpenGLSLIVRVolumeRenderer::CreateContext(vtkRectilinearGrid *grid,
         for(int c = 0; c < 2; ++c)
         {
             float *fdata = dptr[c];
-            for(int k = 0; k < nvals; ++k)
+            for(size_t k = 0; k < nvals; ++k)
             {
                 if(fdata[k] < NO_DATA)
                     ccdata[k] = 0;
@@ -659,12 +685,12 @@ avtOpenGLSLIVRVolumeRenderer::CreateContext(vtkRectilinearGrid *grid,
       if (data->GetDataType()==VTK_FLOAT)
       {
 #ifdef CREATE_UCHAR_NRRD
-        int nvals = size[0]*size[1]*size[2];
+        size_t nvals = size[0]*size[1]*size[2];
         unsigned char *cdata = new unsigned char[nvals];
         float *fdata = (float *)data->GetVoidPointer(0);
         float d = vmax - vmin;
         float inv_d = 1.f / d;
-        for(int k = 0; k < nvals; ++k)
+        for(size_t k = 0; k < nvals; ++k)
         {
             if(fdata[k] < NO_DATA)
                 cdata[k] = 0;
@@ -695,12 +721,12 @@ avtOpenGLSLIVRVolumeRenderer::CreateContext(vtkRectilinearGrid *grid,
       else
       {
 #ifdef CREATE_UCHAR_NRRD
-        int nvals = size[0]*size[1]*size[2];
+        size_t nvals = size[0]*size[1]*size[2];
         unsigned char *cdata = new unsigned char[nvals];
         double *fdata = (double *)data->GetVoidPointer(0);
         double d = vmax - vmin;
         double inv_d = 1.f / d;
-        for(int k = 0; k < nvals; ++k)
+        for(size_t k = 0; k < nvals; ++k)
         {
             if(fdata[k] < NO_DATA)
                 cdata[k] = 0;

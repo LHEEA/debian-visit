@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -70,14 +70,19 @@ class PlotList;
 // Creation:   December 18, 2011
 //
 // Modifications:
+//   Jonathan Byrd, Mon Feb 4, 2013
+//   Add element and variable to record
+//
 // ****************************************************************************
 class PickRecord {
 public:
     int domain;
-    std::string simulation;
+    int element;
+    std::string variable;
+    std::string value;
 
     PickRecord();
-    PickRecord(int dom, std::string &sim);
+    PickRecord(int dom, std::string &variable, int element, std::string &value);
     void reset();
 };
 

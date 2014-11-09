@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1084,6 +1084,13 @@ ViewerQueryManager::GetQueryClientAtts()
 //    Brad Whitlock, Mon Nov  5 12:04:27 PST 2012
 //    Check for NULL reader from the plot.
 //
+//    Kathleen Biagas, Wed Feb 26 10:42:44 PST 2014
+//    Make sure XMLResults are reset, add queryClientAtt->Notify for more
+//    error conditions.
+//
+//    Kathleen Biagas, Tue Mar 25 07:56:00 PDT 2014
+//    Check if 'vars' is a single string.
+//
 // ****************************************************************************
 
 void
@@ -1096,6 +1103,7 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
 
     queryClientAtts->SetResultsMessage("");
     queryClientAtts->SetResultsValue(0.);
+    queryClientAtts->SetXmlResult("");
     if (!queryTypes->QueryExists(qName, QueryList::DatabaseQuery))
     {
         // we've reset some values, notify clients
@@ -1106,6 +1114,8 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
     }
     if (!doTimeQuery && !queryTypes->RegularQueryAvailable(qName))
     {
+        // we've reset some values, notify clients
+        queryClientAtts->Notify();
         QString msg = tr("Regular (non-time) query is not available for %1.").
                       arg(qName.c_str());
         Error(msg);
@@ -1136,7 +1146,7 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
         // for queries.  Regenerate them with SLB.
         //
         bool clearedActor = false;
-        for (int i = 0 ; i < plotIds.size() ; i++)
+        for (size_t i = 0 ; i < plotIds.size() ; i++)
         {
             int plotId = plotIds[i];
             ViewerPlot *plot = plist->GetPlot(plotId);
@@ -1202,8 +1212,16 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
         vars = queryParams.GetEntry("vars")->AsStringVector();
         if (vars.empty())
         {
-            debug3 << "'vars' parameter for " << qName << " Query was "
-                   << "specified, but could not be parsed correctly." << endl;
+            std::string v = queryParams.GetEntry("vars")->AsString();
+            if (v.empty())
+            {
+                debug3 << "'vars' parameter for " << qName << " Query was "
+                       << "specified, but could not be parsed correctly." << endl;
+            }
+            else
+            {
+                vars.push_back(v);
+            }
         }
     }
 
@@ -1223,12 +1241,20 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
         plotIds.clear();
         plotIds.push_back(firstPlot);
         if (!VerifySingleInputQuery(plist, firstPlot, qName, vars, qa))
+        {
+            // we've reset some values, notify clients
+            queryClientAtts->Notify();
             return;
+        }
     }
     else
     {
         if (!VerifyMultipleInputQuery(plist, numInputs, qName, vars, qa))
+        {
+            // we've reset some values, notify clients
+            queryClientAtts->Notify();
             return;
+        }
     }
 
     //
@@ -1246,7 +1272,7 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
     {
         retry = false;
         intVector networkIds;
-        for (int i = 0 ; i < plotIds.size() ; i++)
+        for (size_t i = 0 ; i < plotIds.size() ; i++)
         {
             int plotId = plotIds[i];
             ViewerPlot *oplot = plist->GetPlot(plotId);
@@ -1306,7 +1332,7 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
                 // is created. This situation requires re-execution of the
                 // plot that is being queried.
                 //
-                for (int i = 0 ; i < plotIds.size() ; i++)
+                for (size_t i = 0 ; i < plotIds.size() ; i++)
                     plist->GetPlot(plotIds[i])->ClearCurrentActor();
                 win->GetPlotList()->UpdateFrame();
                 numAttempts++;
@@ -1362,7 +1388,7 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
         ViewerPlotList *plist = win->GetPlotList();
         intVector plotIDs;
         plist->GetActivePlotIDs(plotIDs);
-        for (int i = 0 ; i < plotIDs.size() ; i++)
+        for (size_t i = 0 ; i < plotIDs.size() ; i++)
         {
             int plotId = plotIDs[i];
             ViewerPlot *plot = plist->GetPlot(plotId);
@@ -1411,6 +1437,9 @@ ViewerQueryManager::DatabaseQuery(const MapNode &queryParams)
 //
 //    Cyrus Harrison, Wed Jan  9 14:42:26 PST 2013
 //    Use new ToDoubleVector and IsNumeric helpers from the Variant class.
+//
+//    Kathleen Biagas, Tue Mar 25 07:56:00 PDT 2014
+//    Check if 'vars' is a single string.
 //
 // ****************************************************************************
 
@@ -1489,8 +1518,16 @@ ViewerQueryManager::StartLineQuery(const MapNode &queryParams)
             vars = queryParams.GetEntry("vars")->AsStringVector();
             if (vars.empty())
             {
-                debug3 << "'vars' parameter for Lineout was specified, "
-                       << "but could not be parsed correctly." << endl;
+                std::string v = queryParams.GetEntry("vars")->AsString();
+                if (v.empty())
+                {
+                    debug3 << "'vars' parameter for Lineout was specified, "
+                           << "but could not be parsed correctly." << endl;
+                }
+                else
+                {
+                    vars.push_back(v);
+                }
             }
         }
         stringVector uniqueVars;
@@ -2102,7 +2139,7 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
         GetUniqueVars(useTheseVars, activeVar, uniqueVars, plot->GetMetaData());
         stringVector validVars;
         stringVector invalidVars;
-        for (int i = 0; i < uniqueVars.size(); i++)
+        for (size_t i = 0; i < uniqueVars.size(); i++)
         {
             if (plot->GetVarType(uniqueVars[i]) != AVT_UNKNOWN_TYPE)
                 validVars.push_back(uniqueVars[i]);
@@ -2117,7 +2154,8 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
         //
         pickAtts->SetMatSelected(!usesAllMaterials ||
                                  plot->GetRealVarType() == AVT_MATERIAL);
-        if (!pickAtts->GetReusePickLetter()) pickAtts->SetPickLetter(designator);
+        if (!pickAtts->GetReusePickLetter())
+            pickAtts->SetPickLetter(designator);
         pickAtts->SetTimeStep(plot->GetState());
         pickAtts->SetDatabaseName(db);
         if (win->GetWindowMode() == WINMODE_CURVE)
@@ -2421,10 +2459,8 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
                 if (!GetPlotPluginManager()->PluginAvailable(
                                                             "Spreadsheet_1.0"))
                 {
-                    static bool issuedWarning = false;
                     Error(tr("Could not create a spreadsheet with the pick, "
                           "because the spreadsheet plugin is not available."));
-                    issuedWarning = true;
                     return retval;
                 }
 
@@ -2596,7 +2632,6 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
             }
             if (haveArray)
             {
-                int winId = win->GetWindowId();
                 ViewerWindow *resWin =
                        ViewerWindowManager::Instance()->GetTimeQueryWindow(-1);
                 if (resWin == NULL)
@@ -2609,11 +2644,9 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
                 if (!GetPlotPluginManager()->PluginAvailable(
                                                               "Histogram_1.0"))
                 {
-                    static bool issuedWarning = false;
                     Error(tr("Could not create a histogram of the array "
                              "variable, because the Histogram plugin is not "
                              "available."));
-                    issuedWarning = true;
                     return retval;
                 }
 
@@ -2725,6 +2758,12 @@ ViewerQueryManager::ComputePick(PICK_POINT_INFO *ppi, const int dom,
 //   Check whether reusePickLetter flag in PickAttributes is set and
 //   do not advance pick designtor if it is.
 //
+//   Jonathan Byrd, Fri Feb 1 2013
+//   Add DDT pick support for domain & element
+//
+//   Kathleen Biagas, Tue Jul 22 11:42:14 PDT 2014
+//   Don't create output string if output is suppressed.
+//
 // ****************************************************************************
 
 void
@@ -2761,13 +2800,37 @@ ViewerQueryManager::Pick(PICK_POINT_INFO *ppi, const int dom, const int el)
         // instead of picking it directly
         if (win->GetInteractionMode() == DDT_PICK)
         {
-            const int targetDomain = pickAtts->GetDomain();
+            const int targetDomain           = pickAtts->GetDomain();
+            const int targetElement          = pickAtts->GetElementNumber();
+            const std::string targetVariable = pickAtts->GetActiveVariable();
+
+            char buff[256];
+            buff[0] = '\0';
+
+            for (int i=0; i<pickAtts->GetNumVarInfos(); ++i)
+            {
+                const PickVarInfo  &info = pickAtts->GetVarInfo(i);
+                const doubleVector &values = info.GetValues();
+
+                // For the active variable only
+                if (info.GetVariableName() == targetVariable)
+                {
+                    if (info.GetVariableType() == "scalar" && values.size()==1)
+                    {
+                        SNPRINTF(buff, 256, info.GetFloatFormat().c_str(), values[0]);
+                    }
+                }
+            }
+            std::string targetValue(buff);
 
             DDTSession* ddt = DDTManager::getInstance()->getSession();
             if (ddt!=NULL)
-                ddt->setFocusOnDomain(targetDomain);
+                ddt->setFocusOnElement(targetDomain, targetVariable, targetElement, targetValue);
             else
-                Error(tr("Cannot focus on domain %0, unable to connect to DDT").arg(targetDomain));
+                Error(tr("Cannot focus on domain %0, element %1 of %2: unable to connect to DDT").arg(
+                            QString::number(targetDomain),
+                            QString::number(targetElement),
+                            QString::fromLatin1(targetVariable.c_str())));
         }
         else
         {
@@ -2781,33 +2844,35 @@ ViewerQueryManager::Pick(PICK_POINT_INFO *ppi, const int dom, const int el)
                 win->ValidateQuery(pickAtts, NULL);
             } // else no valid position could be determined, data was transformed
 
-            //
+            // Create output string if messages are not suppressed
+            if (!suppressQueryOutput)
+            {
+                string msg;
+                pickAtts->CreateOutputString(msg);
+                if ( pickAtts->GetPickPoint()[0] == FLT_MAX &&
+                     pickAtts->GetPickType() != PickAttributes::CurveNode &&
+                     pickAtts->GetPickType() != PickAttributes::CurveZone)
+                {
+                    string append;
+                    if (pickAtts->GetPickType() == PickAttributes::Zone  ||
+                        pickAtts->GetPickType() == PickAttributes::DomainZone)
+                    {
+                        append = "Mesh was transformed and chosen zone is not "
+                            "part of transformed mesh.\nNo pick letter will "
+                            "be displayed.";
+                    }
+                    else
+                    {
+                        append = "Mesh was transformed and chosen node is not "
+                            "part of transformed mesh.\nNo pick letter will "
+                            "be displayed.";
+                    }
+                    msg += append;
+                }
+                Message(msg.c_str(), false);
+            }
             // Send pick attributes to the client.
             //
-            string msg;
-            pickAtts->CreateOutputString(msg);
-            if ( pickAtts->GetPickPoint()[0] == FLT_MAX &&
-                 pickAtts->GetPickType() != PickAttributes::CurveNode &&
-                 pickAtts->GetPickType() != PickAttributes::CurveZone)
-            {
-                string append;
-                if (pickAtts->GetPickType() == PickAttributes::Zone  ||
-                    pickAtts->GetPickType() == PickAttributes::DomainZone)
-                {
-                    append = "Mesh was transformed and chosen zone is not "
-                        "part of transformed mesh.\nNo pick letter will "
-                        "be displayed.";
-                }
-                else
-                {
-                    append = "Mesh was transformed and chosen node is not "
-                        "part of transformed mesh.\nNo pick letter will "
-                        "be displayed.";
-                }
-                msg += append;
-            }
-            if (!suppressQueryOutput)
-                Message(msg.c_str(), false);
             UpdatePickAtts();
 
             //
@@ -3288,7 +3353,7 @@ void
 ViewerQueryManager::HandlePickCache()
 {
     handlingCache = true;
-    for (int i = 0; i < pickCache.size(); i++)
+    for (size_t i = 0; i < pickCache.size(); i++)
     {
         Pick(&pickCache[i]);
     }
@@ -3335,6 +3400,9 @@ ViewerQueryManager::HandlePickCache()
 //    Ensure that Zone Center and Node Coords query performed when preserving
 //    coordinates for a time pick do not have 'do_time' set to true.
 //
+//    Kathleen Biagas, Tue Mar 25 07:56:00 PDT 2014
+//    Check if 'vars' is a single string.
+//
 // ****************************************************************************
 
 void
@@ -3350,10 +3418,18 @@ ViewerQueryManager::PointQuery(const MapNode &queryParams)
     if (queryParams.HasEntry("vars"))
     {
         vars = queryParams.GetEntry("vars")->AsStringVector();
-        if (queryParams.HasEntry("vars"))
+        if (vars.empty())
         {
-            debug3 << "'vars' parameter for Pick was specified, "
-                   << " but could not be parsed correctly." << endl;
+            std::string v = queryParams.GetEntry("vars")->AsString();
+            if (v.empty())
+            {
+                debug3 << "'vars' parameter for Pick was specified, "
+                       << " but could not be parsed correctly." << endl;
+            }
+            else
+            {
+                vars.push_back(v);
+            }
         }
     }
 
@@ -3546,7 +3622,7 @@ ViewerQueryManager::PointQuery(const MapNode &queryParams)
         }
         PICK_POINT_INFO ppi;
         ppi.callbackData = win;
-        ppi.rayPt1[0] = ppi.rayPt2[0] = 0.;
+        ppi.rayPt1[0] = ppi.rayPt2[0] = FLT_MAX;;
         ppi.rayPt1[1] = ppi.rayPt2[1] = 0.;
         ppi.rayPt1[2] = ppi.rayPt2[2] = 0.;
         ppi.validPick = true;
@@ -3804,9 +3880,8 @@ GetUniqueVars(const stringVector &vars, const string &activeVar,
         uniqueVars.push_back(activeVar);
         return;
     }
-    int i, j;
     set<string> uniqueVarsSet;
-    for (i = 0; i < vars.size(); i++)
+    for (size_t i = 0; i < vars.size(); i++)
     {
         string v = vars[i];
         if (v == "default")
@@ -3818,7 +3893,7 @@ GetUniqueVars(const stringVector &vars, const string &activeVar,
             stringVector dbVars = md->GetAllVariableNames(activeVar);
             const ExpressionList *exprList = ParsingExprList::Instance()->GetList();
             stringVector exprVars = exprList->GetAllVarNames(md->GetDatabaseName());
-            for (j = 0; j < dbVars.size(); j++)
+            for (size_t j = 0; j < dbVars.size(); j++)
             {
                 if (uniqueVarsSet.count(dbVars[j]) == 0)
                 {
@@ -3826,7 +3901,7 @@ GetUniqueVars(const stringVector &vars, const string &activeVar,
                     uniqueVarsSet.insert(dbVars[j]);
                 }
             }
-            for (j = 0; j < exprVars.size(); j++)
+            for (size_t j = 0; j < exprVars.size(); j++)
             {
                 if (uniqueVarsSet.count(exprVars[j]) == 0)
                 {
@@ -4053,8 +4128,9 @@ ViewerQueryManager::InitializeQueryList()
     QueryList::WindowType xri  = QueryList::XRayImage;
     QueryList::WindowType sli  = QueryList::StreamlineInfo;
     QueryList::WindowType lsi  = QueryList::LineSamplerInfo;
-    QueryList::WindowType pick  = QueryList::Pick;
-    QueryList::WindowType line  = QueryList::Lineout;
+    QueryList::WindowType pick    = QueryList::Pick;
+    QueryList::WindowType line    = QueryList::Lineout;
+    QueryList::WindowType compact = QueryList::Compactness;
 
     QueryList::QueryMode qo = QueryList::QueryOnly;
     QueryList::QueryMode qt = QueryList::QueryAndTime;
@@ -4096,8 +4172,8 @@ ViewerQueryManager::InitializeQueryList()
     queryTypes->AddQuery("Moment of Inertia", dq, mr, basic, 1, 0, qo);
     queryTypes->AddQuery("Centroid", dq, mr, basic, 1, 0, qo);
     queryTypes->AddQuery("Localized Compactness Factor", dq, sr, basic, 1, 0, qt);
-    queryTypes->AddQuery("Elliptical Compactness Factor", dq, sr, basic, 1, 0, qt);
-    queryTypes->AddQuery("Spherical Compactness Factor", dq, sr, basic, 1, 0, qt);
+    queryTypes->AddQuery("Elliptical Compactness Factor", dq, sr, compact, 1, 0, qt);
+    queryTypes->AddQuery("Spherical Compactness Factor", dq, sr, compact, 1, 0, qt);
     queryTypes->AddQuery("Average Mean Curvature", dq, mr, basic, 1, 0, qt);
     queryTypes->AddQuery("Average Value", dq, vr, basic, 1, 0, qt);
     queryTypes->AddQuery("Variable Sum", dq, vr, basic, 1, 0, qt);
@@ -4179,7 +4255,7 @@ ViewerQueryManager::VerifyQueryVariables(const string &qName,
     int allowedTypes = queryTypes->AllowedVarsForQuery(qName);
     if (allowedTypes > 0)
     {
-        for (i = 0; i < varTypes.size() && badIndex == -1; i++)
+        for (i = 0; i < (int)varTypes.size() && badIndex == -1; i++)
         {
            int vt = (int) pow(2.0, varTypes[i]);
            if (!(allowedTypes & vt))
@@ -4523,6 +4599,9 @@ ViewerQueryManager::UpdateQueryOverTimeAtts()
 //    Kathleen Biagas, Wed Sep  7 16:20:32 PDT 2011
 //    Turn off the 'time' display in the legend for the time query window.
 //
+//    Kathleen Biagas, Tue Mar 25 07:56:00 PDT 2014
+//    Check if 'vars' is a single string.
+//
 // ***********************************************************************
 
 void
@@ -4567,8 +4646,23 @@ ViewerQueryManager::DoTimeQuery(ViewerWindow *origWin,
     if (qParams.HasEntry("vars"))
     {
         stringVector vars = qParams.GetEntry("vars")->AsStringVector();
-        if (vars.size() > 0)
+        if (vars.empty())
+        {
+            std::string v = qParams.GetEntry("vars")->AsString();
+            if (v.empty())
+            {
+                debug3 << "'vars' parameter for " << qName << " was specified,"
+                       << " but could not be parsed correctly." << endl;
+            }
+            else
+            {
+                qvarName = v;
+            }
+        }
+        else
+        {
             qvarName = vars[0];
+        }
     }
     //
     // For certain queries, if we are querying the plot's current variable,
@@ -5132,7 +5226,7 @@ ViewerQueryManager::VerifySingleInputQuery(ViewerPlotList *plist, const int plot
             // to be modified to potentially use a different state for each
             // dbname/var pair.
             //
-            for (int j = 0; j < uniqueVars.size(); j++)
+            for (size_t j = 0; j < uniqueVars.size(); j++)
             {
                 varTypes.push_back((int)
                     fs->DetermineVarType(host, dbname, uniqueVars[j], state));
@@ -5149,7 +5243,7 @@ ViewerQueryManager::VerifySingleInputQuery(ViewerPlotList *plist, const int plot
                 CATCH_RETURN2(1, false);
             }
         }
-        int nv = queryTypes->NumberOfVarsForQuery(qName);
+        size_t nv = queryTypes->NumberOfVarsForQuery(qName);
         if (nv > 1 && nv != uniqueVars.size())
         {
             queryClientAtts->Notify();
@@ -5237,7 +5331,7 @@ ViewerQueryManager::VerifyMultipleInputQuery(ViewerPlotList *plist,
         // Make sure the number of active plots jives with the expected number
         // of inputs for the query.
         //
-        if (plotIds.size() != numInputs)
+        if (plotIds.size() != (size_t)numInputs)
         {
             queryClientAtts->Notify();
             QString msg = tr("%1 requires exactly %2 plots to be selected, "
@@ -5252,7 +5346,7 @@ ViewerQueryManager::VerifyMultipleInputQuery(ViewerPlotList *plist,
         //
         // Determine if the engineKeys for all inputs match.
         //
-        for (int i = 0 ; i < plotIds.size() ; i++)
+        for (size_t i = 0 ; i < plotIds.size() ; i++)
         {
             int plotId = plotIds[i];
             ViewerPlot *oplot = plist->GetPlot(plotId);
@@ -5345,6 +5439,9 @@ ViewerQueryManager::DoSpatialExtentsQuery(ViewerPlot *oplot, bool actualData)
         for (int i = 0 ; i < 2*dim ; i++)
             d.push_back(ext[i]);
         queryClientAtts->SetResultsValue(d);
+        MapNode result_node;
+        result_node["extents"] = d;
+        queryClientAtts->SetXmlResult(result_node.ToXML());
         delete [] ext;
         queryClientAtts->Notify();
         if (!suppressQueryOutput)
@@ -5447,7 +5544,7 @@ ViewerQueryManager::FinishLineQuery()
 {
     if (lineoutCache.origWin != NULL)
     {
-        for (int i = 0; i < lineoutCache.vars.size(); i++)
+        for (size_t i = 0; i < lineoutCache.vars.size(); i++)
         {
             lineoutCache.line.SetVarName(lineoutCache.vars[i]);
             AddQuery(lineoutCache.origWin, &lineoutCache.line,
@@ -5630,15 +5727,22 @@ ViewerQueryManager::CloneQuery(ViewerQuery *toBeCloned, int newTS, int oldTS)
 //    Kathleen Biagas, Fri Jan 13 14:37:40 PST 2012
 //    Test for presense of query_name.
 //
+//    Kathleen Biagas, Wed Feb 26 10:44:01 PST 2014
+//    Clear prior query results and notify clients before early return.
+//
 // ****************************************************************************
 
 
 void
 ViewerQueryManager::Query(const MapNode &queryParams)
 {
+    queryClientAtts->SetResultsMessage("");
+    queryClientAtts->SetResultsValue(0.);
+    queryClientAtts->SetXmlResult("");
     if (!queryParams.HasEntry("query_name"))
     {
         debug3 << "VQM::Query, no query_name specified" << endl;
+        queryClientAtts->Notify();
         return;
     }
 
@@ -5646,6 +5750,7 @@ ViewerQueryManager::Query(const MapNode &queryParams)
     if (qName.empty())
     {
         debug3 << "VQM::Query, query_name should be a string." << endl;
+        queryClientAtts->Notify();
         return;
     }
 
@@ -5658,6 +5763,7 @@ ViewerQueryManager::Query(const MapNode &queryParams)
     {
         if (!EngineExistsForQuery(plist->GetPlot(plotIds[0])))
         {
+            queryClientAtts->Notify();
             return;
         }
     }
@@ -5692,6 +5798,7 @@ ViewerQueryManager::Query(const MapNode &queryParams)
     }
     else
     {
+        queryClientAtts->Notify();
         Error(tr("ViewerQueryManager could not determine query type."));
     }
 

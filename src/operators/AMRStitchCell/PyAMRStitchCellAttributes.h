@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define AMRSTITCHCELLATTRIBUTES_NMETH 14
+#define AMRSTITCHCELLATTRIBUTES_NMETH 4
 void           PyAMRStitchCellAttributes_StartUp(AMRStitchCellAttributes *subj, void *data);
 void           PyAMRStitchCellAttributes_CloseDown();
 PyMethodDef *  PyAMRStitchCellAttributes_GetMethodTable(int *nMethods);

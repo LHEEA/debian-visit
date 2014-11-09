@@ -35,6 +35,7 @@
 // ************************************************************************* //
 #ifndef _AVT_RESOLUTION_SELECTION_H_
 #define _AVT_RESOLUTION_SELECTION_H_
+#include <pipeline_exports.h>
 
 #include "avtDataSelection.h"
 
@@ -55,16 +56,14 @@
 //    Add method DescriptionString.
 //
 // ****************************************************************************
-class avtResolutionSelection : public avtDataSelection {
+class PIPELINE_API avtResolutionSelection : public avtDataSelection
+{
 public:
                          avtResolutionSelection() {}
     virtual              ~avtResolutionSelection() {}
     // base class api
     virtual const char*  GetType() const { return "avtResolutionSelection"; }
-    virtual std::string     DescriptionString(void)
-                               { char str[1024];  
-                                 sprintf(str, "avtResolutionSelection:%d", mResolution);
-                                 return std::string(str); };
+    virtual std::string     DescriptionString(void);
 
     // added functionality
     virtual void         setResolution(int r) { mResolution = r; }

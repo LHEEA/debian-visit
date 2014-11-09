@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,7 +86,7 @@ int  QvisWindowBase::windowAnchor[2] = {0,0};
 
 QvisWindowBase::QvisWindowBase(const QString &captionString, Qt::WindowFlags f) :
     QMainWindow(parentOfEveryWindow, 
-#if defined(Q_WS_WIN) || defined(Q_WS_MACX)
+#if defined(Q_WS_WIN) || defined(Q_WS_MACX) || defined(Q_OS_WIN) || defined(Q_OS_MAC)
                 Qt::Window | f)
 {
     // Make each window the child of the first window that is created
@@ -477,7 +477,7 @@ QvisWindowBase::StringToDoubleList(const char *str, doubleVector &dv, int max)
             if(strlen(buf) > 0)
             {
                 double dtemp = (double)atof(buf);
-                if(dv.size() < max)
+                if(dv.size() < (size_t)max)
                     dv.push_back(dtemp);
                 else
                     offset = length * 2;

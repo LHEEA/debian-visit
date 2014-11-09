@@ -63,13 +63,13 @@ function bv_vtk_force
 
 function bv_vtk_info
 {
-export VTK_FILE=${VTK_FILE:-"vtk-6.0.0.tar.gz"}
-export VTK_VERSION=${VTK_VERSION:-"6.0.0"}
-export VTK_SHORT_VERSION=${VTK_SHORT_VERSION:-"6.0"}
+export VTK_FILE=${VTK_FILE:-"VTK-6.1.0.tar.gz"}
+export VTK_VERSION=${VTK_VERSION:-"6.1.0"}
+export VTK_SHORT_VERSION=${VTK_SHORT_VERSION:-"6.1"}
 export VTK_COMPATIBILITY_VERSION=${VTK_SHORT_VERSION}
-export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"VTK6.0.0"}
+export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"VTK-6.1.0"}
 export VTK_INSTALL_DIR=${VTK_INSTALL_DIR:-"vtk"}
-export VTK_URL=${VTK_URL:-"http://www.vtk.org/files/release/6.0"}
+export VTK_URL=${VTK_URL:-"http://www.vtk.org/files/release/6.1"}
 export VTK_MD5_CHECKSUM=""
 export VTK_SHA256_CHECKSUM=""
 }
@@ -94,10 +94,11 @@ function bv_vtk_host_profile
     echo "## VTK" >> $HOSTCONF
     echo "##" >> $HOSTCONF
 
+    echo "SETUP_VTK_VERSION($VTK_VERSION)" >> $HOSTCONF
     if [[ "$USE_SYSTEM_VTK" == "yes" ]]; then
             echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR $SYSTEM_VTK_DIR)" >> $HOSTCONF
     else
-            echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR \${VISITHOME}/${VTK_INSTALL_DIR}/$VTK_VERSION/\${VISITARCH})" >> $HOSTCONF
+            echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR \${VISITHOME}/${VTK_INSTALL_DIR}/\${VTK_VERSION}/\${VISITARCH})" >> $HOSTCONF
     fi
 }
 
@@ -132,7 +133,40 @@ function bv_vtk_dry_run
 
 function apply_vtk_600_patch
 {
-    return 0
+# fix for 10.9 -- this fix is already in newer versions of VTK
+    info "Patching vtk-6"
+    patch -p0 << \EOF
+diff -c CMakeLists.txt.orig CMakeLists.txt
+*** CMakeLists.txt.orig	2014-05-30 15:54:16.000000000 -0700
+--- CMakeLists.txt	2014-05-30 15:54:25.000000000 -0700
+***************
+*** 4,13 ****
+  
+  # Objective-C++ compile flags, future CMake versions might make this obsolete
+  IF(APPLE)
+!   # Being a library, VTK may be linked in either GC (garbage collected)
+!   # processes or non-GC processes.  Default to "GC supported" so that both
+!   # GC and MRR (manual reference counting) are supported.
+!   SET(VTK_OBJCXX_FLAGS_DEFAULT "-fobjc-gc")
+    SET(VTK_REQUIRED_OBJCXX_FLAGS ${VTK_OBJCXX_FLAGS_DEFAULT} CACHE STRING "Extra flags for Objective-C++ compilation")
+    MARK_AS_ADVANCED(VTK_REQUIRED_OBJCXX_FLAGS)
+  ENDIF(APPLE)
+--- 4,10 ----
+  
+  # Objective-C++ compile flags, future CMake versions might make this obsolete
+  IF(APPLE)
+!   SET(VTK_OBJCXX_FLAGS_DEFAULT "")
+    SET(VTK_REQUIRED_OBJCXX_FLAGS ${VTK_OBJCXX_FLAGS_DEFAULT} CACHE STRING "Extra flags for Objective-C++ compilation")
+    MARK_AS_ADVANCED(VTK_REQUIRED_OBJCXX_FLAGS)
+  ENDIF(APPLE)
+
+EOF
+    if [[ $? != 0 ]] ; then
+      warn "vtk6 patch failed."
+      return 1
+    fi
+
+    return 0;
 }
 
 function apply_vtk_patch
@@ -143,210 +177,17 @@ function apply_vtk_patch
             return 1
         fi
     fi
-
-    return 0
-}
-
-function bv_vtk_fixup
-{
-    #
-    # If on Darwin, fix install names
-    #
-    if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
-        INSTALLNAMEPATH="$VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/$VISITARCH/lib"
-
-        # The list of VTK libraries that our build produces.
-        #
-        cat >> vtklibnames.txt <<EOF
-libvtkCommonComputationalGeometry
-libvtkCommonComputationalGeometryPython27D
-libvtkCommonCore
-libvtkCommonCorePython27D
-libvtkCommonDataModel
-libvtkCommonDataModelPython27D
-libvtkCommonExecutionModel
-libvtkCommonExecutionModelPython27D
-libvtkCommonMath
-libvtkCommonMathPython27D
-libvtkCommonMisc
-libvtkCommonMiscPython27D
-libvtkCommonSystem
-libvtkCommonSystemPython27D
-libvtkCommonTransforms
-libvtkCommonTransformsPython27D
-libvtkDICOMParser
-libvtkFiltersCore
-libvtkFiltersCorePython27D
-libvtkFiltersExtraction
-libvtkFiltersExtractionPython27D
-libvtkFiltersFlowPaths
-libvtkFiltersFlowPathsPython27D
-libvtkFiltersGeneral
-libvtkFiltersGeneralPython27D
-libvtkFiltersGeometry
-libvtkFiltersGeometryPython27D
-libvtkFiltersHybrid
-libvtkFiltersHybridPython27D
-libvtkFiltersModeling
-libvtkFiltersModelingPython27D
-libvtkFiltersSources
-libvtkFiltersSourcesPython27D
-libvtkFiltersStatistics
-libvtkFiltersStatisticsPython27D
-libvtkGUISupportQt
-libvtkGUISupportQtOpenGL
-libvtkGeovisCore
-libvtkGeovisCorePython27D
-libvtkIOCore
-libvtkIOCorePython27D
-libvtkIOEnSight
-libvtkIOEnSightPython27D
-libvtkIOGeometry
-libvtkIOGeometryPython27D
-libvtkIOImage
-libvtkIOImagePython27D
-libvtkIOLegacy
-libvtkIOLegacyPython27D
-libvtkIOPLY
-libvtkIOPLYPython27D
-libvtkIOXML
-libvtkIOXMLParser
-libvtkIOXMLParserPython27D
-libvtkIOXMLPython27D
-libvtkImagingColor
-libvtkImagingColorPython27D
-libvtkImagingCore
-libvtkImagingCorePython27D
-libvtkImagingFourier
-libvtkImagingFourierPython27D
-libvtkImagingGeneral
-libvtkImagingGeneralPython27D
-libvtkImagingHybrid
-libvtkImagingHybridPython27D
-libvtkImagingSources
-libvtkImagingSourcesPython27D
-libvtkInfovisCore
-libvtkInfovisCorePython27D
-libvtkInfovisLayout
-libvtkInfovisLayoutPython27D
-libvtkInteractionStyle
-libvtkInteractionStylePython27D
-libvtkInteractionWidgets
-libvtkInteractionWidgetsPython27D
-libvtkRenderingAnnotation
-libvtkRenderingAnnotationPython27D
-libvtkRenderingCore
-libvtkRenderingCorePython27D
-libvtkRenderingFreeType
-libvtkRenderingFreeTypeOpenGL
-libvtkRenderingFreeTypeOpenGLPython27D
-libvtkRenderingFreeTypePython27D
-libvtkRenderingOpenGL
-libvtkRenderingOpenGLPython27D
-libvtkRenderingVolume
-libvtkRenderingVolumePython27D
-libvtkViewsCore
-libvtkViewsCorePython27D
-libvtkWrappingPython27Core
-libvtkalglib
-libvtkexpat
-libvtkfreetype
-libvtkftgl
-libvtkjpeg
-libvtkjsoncpp
-libvtklibxml2
-libvtkmetaio
-libvtkpng
-libvtkproj4
-libvtksys
-libvtktiff
-libvtkzlib
-EOF
-
-        # first change the libraries name and identification by executing the
-        # following bourne shell script
-        VTK_LIB_NAMES="`cat vtklibnames.txt`"
-        rm -f vtklibnames.txt
-        for i in $VTK_LIB_NAMES
-        do
-            install_name_tool -id \
-                $INSTALLNAMEPATH/${i}-${VTK_COMPATIBILITY_VERSION}.$SO_EXT \
-                $VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/${VISITARCH}/lib/${i}-${VTK_COMPATIBILITY_VERSION}.$SO_EXT
-        done
-
-        #
-        # Next change the dependent libraries names and paths
-        for i in $VTK_LIB_NAMES
-        do
-            for j in $VTK_LIB_NAMES
-            do
-                install_name_tool -change \
-                    $j-${VTK_COMPATIBILITY_VERSION}.1.$SO_EXT \
-                    $INSTALLNAMEPATH/$j-${VTK_COMPATIBILITY_VERSION}.$SO_EXT \
-                    $VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/${VISITARCH}/lib/${i}-${VTK_COMPATIBILITY_VERSION}.$SO_EXT
-            done
-
-#            install_name_tool -change \
-#                libvtkNetCDF_cxx.dylib $INSTALLNAMEPATH/libvtkNetCDF_cxx.dylib \
-#                $VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/${VISITARCH}/lib/$i.$SO_EXT
-#        if [[ "$DO_R" == "yes" ]]; then
-#            install_name_tool -change \
-#                libR.dylib $VISITDIR/R/${R_VERSION}/${VISITARCH}/lib/R/lib/libR.dylib \
-#            install_name_tool -change \
-#                libRblas.dylib $VISITDIR/R/${R_VERSION}/${VISITARCH}/lib/R/lib/libRblas.dylib \
-#                $VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/${VISITARCH}/lib/$i.$SO_EXT
-#            install_name_tool -change \
-#                libRlapack.dylib $VISITDIR/R/${R_VERSION}/${VISITARCH}/lib/R/lib/libRlapack.dylib \
-#                $VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/${VISITARCH}/lib/$i.$SO_EXT
-#        fi
-        done
-
-        # Come up with the names of the Python modules
-        VTK_PYTHON_MOD_LIB_NAMES=""
-        for i in $VTK_LIB_NAMES
-        do
-            py=`echo $i | grep Python`
-            if [[ "x${i}" == "x${py}" ]]; then
-                for f in 26D 27D 30D 31D 32D 33D 26 27 30 31 32 33 
-                do
-                    py=`echo $py | sed "s/$f//g"`
-                done
-
-                VTK_PYTHON_MOD_LIB_NAMES="$VTK_PYTHON_MOD_LIB_NAMES $py.so"
-            fi
-        done
-
-        #
-        # Fix vtk python wrapper module install names.
-        #
-        for i in $VTK_PYTHON_MOD_LIB_NAMES
-        do
-            install_name_tool -id \
-                $INSTALLNAMEPATH/python${PYTHON_COMPATIBILITY_VERSION}/site-packages/${VTK_INSTALL_DIR}/$i \
-                $VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/${VISITARCH}/lib/python${PYTHON_COMPATIBILITY_VERSION}/site-packages/${VTK_INSTALL_DIR}/$i
-        done
-
-        #
-        # The vtk python module libs depend on the main vtk libs,
-        # resolve these install names.
-        #
-
-        # The vtk python libs have install names that point to an abs path
-        # below VTK_BUILD_DIR.
-        # We should be in ${VTK_BUILD_DIR}, we just need its abs path
-        VTK_BUILD_DIR_ABS=`pwd`
-        info "VTK build directory absolute path: $VTK_BUILD_DIR_ABS"
-        for i in $VTK_PYTHON_MOD_LIB_NAMES
-        do
-            for j in $VTK_LIB_NAMES
-            do
-                install_name_tool -change \
-                    $VTK_BUILD_DIR_ABS/bin/$j-${VTK_COMPATIBILITY_VERSION}.1.$SO_EXT \
-                    $INSTALLNAMEPATH/$j-${VTK_COMPATIBILITY_VERSION}.$SO_EXT \
-                    $VISITDIR/${VTK_INSTALL_DIR}/${VTK_VERSION}/${VISITARCH}/lib/python${PYTHON_COMPATIBILITY_VERSION}/site-packages/${VTK_INSTALL_DIR}/$i
-            done
-        done
+    
+    # also apply objc flag patch to 6.1.0
+    
+    if [[ ${VTK_VERSION} == 6.1.0 ]] ; then
+        apply_vtk_600_patch
+        if [[ $? != 0 ]] ; then
+            return 1
+        fi
     fi
+    
+    return 0
 }
 
 function build_vtk
@@ -423,6 +264,7 @@ function build_vtk
     # Apply patches
     #
     info "Patching VTK . . ."
+    cd $VTK_BUILD_DIR || error "Can't cd to VTK build dir."
     apply_vtk_patch
     if [[ $? != 0 ]] ; then
         if [[ $untarred_vtk == 1 ]] ; then
@@ -435,6 +277,8 @@ function build_vtk
                  "failing harmlessly on a second application."
         fi
     fi
+    # move back up to the start dir 
+    cd "$START_DIR"
 
     info "Configuring VTK . . ."
 
@@ -507,8 +351,10 @@ function build_vtk
     vopts="${vopts} -DCMAKE_EXE_LINKER_FLAGS:STRING=${lf}"
     vopts="${vopts} -DCMAKE_MODULE_LINKER_FLAGS:STRING=${lf}"
     vopts="${vopts} -DCMAKE_SHARED_LINKER_FLAGS:STRING=${lf}"
+    vopts="${vopts} -DVTK_REPORT_OPENGL_ERRORS:BOOL=false"
     if test "${OPSYS}" = "Darwin" ; then
         vopts="${vopts} -DVTK_USE_COCOA:BOOL=ON"
+        vopts="${vopts} -DCMAKE_INSTALL_NAME_DIR:PATH=${vtk_inst_path}/lib"
     fi
 
     # allow VisIt to override any of vtk's classes
@@ -548,6 +394,10 @@ function build_vtk
             if [[ "$DO_SERVER_COMPONENTS_ONLY" != "yes" ]]; then
                 vopts="${vopts} -DModule_vtkGUISupportQtOpenGL:BOOL=true"
                 vopts="${vopts} -DQT_QMAKE_EXECUTABLE:FILEPATH=${QT_BIN_DIR}/qmake"
+                if [[ ${IS_QT5} == "yes" ]]; then
+                    vopts="${vopts} -DVTK_QT_VERSION=5"
+                    vopts="${vopts} -DCMAKE_PREFIX_PATH=${QT_INSTALL_DIR}/lib/cmake"
+                fi
             fi
         fi
     fi
@@ -616,9 +466,6 @@ function build_vtk
     configdir="${vtk_inst_path}/lib/cmake/vtk-${VTK_SHORT_VERSION}"
     cat ${configdir}/VTKConfig.cmake | grep -v "vtkTestingMacros" > ${configdir}/VTKConfig.cmake.new
     mv ${configdir}/VTKConfig.cmake.new ${configdir}/VTKConfig.cmake
-
-    # Fix up the libraries for MacOS X.
-    bv_vtk_fixup
 
     chmod -R ug+w,a+rX ${VISITDIR}/${VTK_INSTALL_DIR}
     if [[ "$DO_GROUP" == "yes" ]] ; then

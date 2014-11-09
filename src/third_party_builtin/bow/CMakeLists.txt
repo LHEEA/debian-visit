@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -59,7 +59,7 @@ ${VTK_INCLUDE_DIRS}
 LINK_DIRECTORIES(${VTK_LIBRARY_DIRS})
 
 ADD_LIBRARY(bow ${BOW_SOURCES})
-TARGET_LINK_LIBRARIES(bow ${VTKZLIB_LIB})
+TARGET_LINK_LIBRARIES(bow ${vtkzlib_LIBRARIES})
 
 VISIT_INSTALL_TARGETS(bow)
 SET_TARGET_PROPERTIES(bow PROPERTIES FOLDER thirdparty_builtin/bow)

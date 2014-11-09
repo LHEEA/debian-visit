@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -42,14 +42,14 @@
 
 #ifndef AVT_WORLD_SPACE_TO_IMAGE_SPACE_TRANSFORM_H
 #define AVT_WORLD_SPACE_TO_IMAGE_SPACE_TRANSFORM_H
+
 #include <filters_exports.h>
 
-
-#include <vector>
-
 #include <avtTransform.h>
+
 #include <avtViewInfo.h>
 
+#include <vector>
 
 class   avtIntervalTree;
 
@@ -91,6 +91,9 @@ class   avtIntervalTree;
 //    Dave Pugmire, Fri May 14 08:04:43 EDT 2010
 //    Move vector transform flag into base class.
 //
+//    Eric Brugger, Tue Jul 22 12:32:20 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtWorldSpaceToImageSpaceTransform : public avtTransform
@@ -126,7 +129,7 @@ class AVTFILTERS_API avtWorldSpaceToImageSpaceTransform : public avtTransform
     bool                    passThruRectilinear;
 
     virtual vtkMatrix4x4   *GetTransform(void);
-    virtual vtkDataSet     *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
 
     static void             CalculatePerspectiveTransform(const avtViewInfo &,
                                                           vtkMatrix4x4 *);

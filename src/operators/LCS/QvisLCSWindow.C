@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -96,7 +96,7 @@ QvisLCSWindow::QvisLCSWindow(const int type,
     : QvisOperatorWindow(type, subj, caption, shortName, notepad)
 {
     plotType = type;
-    LCSAtts = subj;
+    atts = subj;
 }
 
 
@@ -394,7 +394,7 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
     terminationLayout->setMargin(5);
     terminationLayout->setSpacing(10);
 
-    // For FTLE or FDLE base the termintion on the time or distance,
+    // For FTLE or FLLE base the termintion on the time or distance,
     // respectively. While using the max steps as a back up. This is
     // opposite of streamlines/pathlines which optionally use the
     // termination.
@@ -403,8 +403,9 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
     // Create the operation of integration.
     terminationLayout->addWidget(new QLabel(tr("Operation type"),
                                             central), 0, 0);
+
     operationType = new QComboBox(central);
-    operationType->addItem(tr("Lyapunov"));
+    operationType->addItem(tr("Lyapunov Exponent"));
     operationType->addItem(tr("Integration time"));
     operationType->addItem(tr("Arc length"));
     operationType->addItem(tr("Average distance from seed"));
@@ -413,54 +414,66 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
     terminationLayout->addWidget(operationType, 0, 1);
 
 
+    // Create the operator of integrator.
+    operatorType = new QComboBox(central);
+    operatorType->addItem(tr("Base value"));
+    operatorType->addItem(tr("Gradient"));
+    connect(operatorType, SIGNAL(activated(int)),
+            this, SLOT(operatorTypeChanged(int)));
+    terminationLayout->addWidget(operatorType, 0, 2);
+
+    clampLogValues = new QCheckBox(tr("Clamp exponent values"), central);
+    connect(clampLogValues, SIGNAL(toggled(bool)), this, SLOT(clampLogValuesChanged(bool)));
+    terminationLayout->addWidget(clampLogValues, 0, 3);
+
     // Radio button termination type
     rb = new QRadioButton(tr("Limit maximum advection time i.e. FTLE"), terminationGroup);
     terminationTypeButtonGroup->addButton(rb, 0);
-    terminationLayout->addWidget(rb, 1,0);
+    terminationLayout->addWidget(rb, 1, 0, 1, 2);
 
     rb->setChecked(true);
 
-    rb = new QRadioButton(tr("Limit maximum advection distance i.e. FDLE"), terminationGroup);
+    rb = new QRadioButton(tr("Limit maximum advection distance i.e. FLLE"), terminationGroup);
     terminationTypeButtonGroup->addButton(rb, 1);
-    terminationLayout->addWidget(rb, 2,0);
+    terminationLayout->addWidget(rb, 2, 0, 1, 2);
 
     rb = new QRadioButton(tr("Limit maximum size i.e. FSLE"), terminationGroup);
     terminationTypeButtonGroup->addButton(rb, 2);
-    terminationLayout->addWidget(rb, 3,0);
+    terminationLayout->addWidget(rb, 3, 0, 1, 2);
 
     connect(terminationTypeButtonGroup, SIGNAL(buttonClicked(int)), this, SLOT(terminationTypeButtonGroupChanged(int)));
 
     // Check box termination type
     limitMaxTime = new QCheckBox(tr("Limit maximum advection time"), terminationGroup);
     connect(limitMaxTime, SIGNAL(toggled(bool)), this, SLOT(limitMaxTimeChanged(bool)));
-    terminationLayout->addWidget(limitMaxTime, 1,0);
+    terminationLayout->addWidget(limitMaxTime, 1, 0, 1, 2);
     limitMaxTime->hide();
 
     limitMaxDistance = new QCheckBox(tr("Limit maximum advection distance"), terminationGroup);
     connect(limitMaxDistance, SIGNAL(toggled(bool)), this, SLOT(limitMaxDistanceChanged(bool)));
-    terminationLayout->addWidget(limitMaxDistance, 2,0);
+    terminationLayout->addWidget(limitMaxDistance, 2, 0, 1, 2);
     limitMaxDistance->hide();
 
     // Termination values
     maxTime = new QLineEdit(central);
     connect(maxTime, SIGNAL(returnPressed()), this, SLOT(maxTimeProcessText()));
-    terminationLayout->addWidget(maxTime, 1,1);
+    terminationLayout->addWidget(maxTime, 1, 2);
 
     maxDistance = new QLineEdit(central);
     connect(maxDistance, SIGNAL(returnPressed()), this, SLOT(maxDistanceProcessText()));
-    terminationLayout->addWidget(maxDistance, 2,1);
+    terminationLayout->addWidget(maxDistance, 2, 2);
 
     maxSize = new QLineEdit(central);
     connect(maxSize, SIGNAL(returnPressed()), this, SLOT(maxSizeProcessText()));
-    terminationLayout->addWidget(maxSize, 3,1);
+    terminationLayout->addWidget(maxSize, 3, 2);
 
     // Max steps override
     QLabel *maxStepsLabel = new QLabel(tr("Maximum number of steps"), terminationGroup);
-    terminationLayout->addWidget(maxStepsLabel, 4,0);
+    terminationLayout->addWidget(maxStepsLabel, 4, 0, 1, 2);
     maxSteps = new QLineEdit(central);
     connect(maxSteps, SIGNAL(returnPressed()),
             this, SLOT(maxStepsProcessText()));
-    terminationLayout->addWidget(maxSteps, 4,1);
+    terminationLayout->addWidget(maxSteps, 4, 2);
 }
 
 
@@ -525,9 +538,17 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
             this, SLOT(pathlineOverrideStartingTimeProcessText()));
     pathlineOptionsGrpLayout->addWidget(pathlineOverrideStartingTime, 1, 2);
 
+    QLabel *pathlinePeriodLabel = new QLabel(tr("Period"), pathlineOptionsGrp);
+    pathlinePeriodLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
+    pathlineOptionsGrpLayout->addWidget(pathlinePeriodLabel, 1, 3);
+    pathlinePeriod = new QLineEdit(pathlineOptionsGrp);
+    connect(pathlinePeriod, SIGNAL(returnPressed()),
+            this, SLOT(pathlinePeriodProcessText()));
+    pathlineOptionsGrpLayout->addWidget(pathlinePeriod, 1, 4);
+
     QGroupBox *cmfeOptionsGrp = new QGroupBox(pathlineOptionsGrp);
     cmfeOptionsGrp->setTitle(tr("How to perform interpolation over time"));
-    pathlineOptionsGrpLayout->addWidget(cmfeOptionsGrp, 2, 0);
+    pathlineOptionsGrpLayout->addWidget(cmfeOptionsGrp, 2, 0, 2, 5);
 
     QGridLayout *cmfeOptionsGrpLayout = new QGridLayout(cmfeOptionsGrp);
     cmfeOptionsGrpLayout->setSpacing(10);
@@ -539,8 +560,8 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
     posButton->setChecked(true);
     pathlineCMFEButtonGroup->addButton(connButton, 0);
     pathlineCMFEButtonGroup->addButton(posButton, 1);
-    cmfeOptionsGrpLayout->addWidget(connButton, 2, 0);
-    cmfeOptionsGrpLayout->addWidget(posButton, 3, 0);
+    cmfeOptionsGrpLayout->addWidget(connButton, 2, 0, 1, 5);
+    cmfeOptionsGrpLayout->addWidget(posButton, 3, 0, 1, 5);
     connect(pathlineCMFEButtonGroup, SIGNAL(buttonClicked(int)), this, SLOT(pathlineCMFEButtonGroupChanged(int)));
 
 }
@@ -570,7 +591,6 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
 void
 QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 {
-    int row = 0;
     QGridLayout *mainLayout = new QGridLayout(pageAdvanced);
     mainLayout->setMargin(5);
     mainLayout->setSpacing(5);
@@ -687,11 +707,11 @@ QvisLCSWindow::UpdateWindow(bool doAll)
     QString       temp;
     QColor        tempcolor;
 
-    for(int i = 0; i < LCSAtts->NumAttributes(); ++i)
+    for(int i = 0; i < atts->NumAttributes(); ++i)
     {
         if(!doAll)
         {
-            if(!LCSAtts->IsSelected(i))
+            if(!atts->IsSelected(i))
             {
                 continue;
             }
@@ -702,10 +722,10 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             // Update lots of widget visibility and enabled states.
 
             sourceType->blockSignals(true);
-            sourceType->setCurrentIndex(LCSAtts->GetSourceType());
+            sourceType->setCurrentIndex(atts->GetSourceType());
             sourceType->blockSignals(false);
 
-            if (LCSAtts->GetSourceType() == LCSAttributes::RegularGrid)
+            if (atts->GetSourceType() == LCSAttributes::RegularGrid)
             {
                 Resolution->setEnabled(true);
                 ResolutionLabel->setEnabled(true);
@@ -713,9 +733,9 @@ QvisLCSWindow::UpdateWindow(bool doAll)
                 UseDataSetStart->button(1)->setEnabled(true);
                 UseDataSetEnd->button(0)->setEnabled(true);
                 UseDataSetEnd->button(1)->setEnabled(true);
-                StartPosition->setEnabled(LCSAtts->GetUseDataSetStart() ==
+                StartPosition->setEnabled(atts->GetUseDataSetStart() ==
                                           LCSAttributes::Subset);
-                EndPosition->setEnabled(LCSAtts->GetUseDataSetEnd() ==
+                EndPosition->setEnabled(atts->GetUseDataSetEnd() ==
                                         LCSAttributes::Subset);
             }
             else
@@ -733,44 +753,44 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             break;
 
         case LCSAttributes::ID_Resolution:
-            Resolution->setText(IntsToQString(LCSAtts->GetResolution(),3));
+            Resolution->setText(IntsToQString(atts->GetResolution(),3));
             break;
         case LCSAttributes::ID_UseDataSetStart:
             UseDataSetStart->blockSignals(true);
-            UseDataSetStart->button(LCSAtts->GetUseDataSetStart())->setChecked(true);
+            UseDataSetStart->button(atts->GetUseDataSetStart())->setChecked(true);
             UseDataSetStart->blockSignals(false);
 
-            StartPosition->setEnabled(LCSAtts->GetUseDataSetStart() ==
+            StartPosition->setEnabled(atts->GetUseDataSetStart() ==
                                       LCSAttributes::Subset);
 
             break;
         case LCSAttributes::ID_StartPosition:
-            StartPosition->setText(DoublesToQString(LCSAtts->GetStartPosition(), 3));
+            StartPosition->setText(DoublesToQString(atts->GetStartPosition(), 3));
             break;
         case LCSAttributes::ID_UseDataSetEnd:
             UseDataSetEnd->blockSignals(true);
-            UseDataSetEnd->button(LCSAtts->GetUseDataSetEnd())->setChecked(true);
+            UseDataSetEnd->button(atts->GetUseDataSetEnd())->setChecked(true);
             UseDataSetEnd->blockSignals(false);
 
-            EndPosition->setEnabled(LCSAtts->GetUseDataSetEnd() ==
+            EndPosition->setEnabled(atts->GetUseDataSetEnd() ==
                                     LCSAttributes::Subset);
             break;
         case LCSAttributes::ID_EndPosition:
-            EndPosition->setText(DoublesToQString(LCSAtts->GetEndPosition(), 3));
+            EndPosition->setText(DoublesToQString(atts->GetEndPosition(), 3));
             break;
         case LCSAttributes::ID_maxStepLength:
-            temp.setNum(LCSAtts->GetMaxStepLength());
+            temp.setNum(atts->GetMaxStepLength());
             maxStepLength->setText(temp);
             break;
         case LCSAttributes::ID_limitMaximumTimestep:
             limitMaxTimeStep->blockSignals(true);
-            limitMaxTimeStep->setChecked(LCSAtts->GetLimitMaximumTimestep());
+            limitMaxTimeStep->setChecked(atts->GetLimitMaximumTimestep());
             limitMaxTimeStep->blockSignals(false);
             maxTimeStep->blockSignals(true);
-            if (LCSAtts->GetIntegrationType() ==
+            if (atts->GetIntegrationType() ==
                 LCSAttributes::DormandPrince )
             {
-                maxTimeStep->setEnabled(LCSAtts->GetLimitMaximumTimestep());
+                maxTimeStep->setEnabled(atts->GetLimitMaximumTimestep());
             }
             else
             {
@@ -779,34 +799,34 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             maxTimeStep->blockSignals(false);
             break;
         case LCSAttributes::ID_maxTimeStep:
-            temp.setNum(LCSAtts->GetMaxTimeStep());
+            temp.setNum(atts->GetMaxTimeStep());
             maxTimeStep->setText(temp);
             break;
         case LCSAttributes::ID_maxSteps:
-            temp.setNum(LCSAtts->GetMaxSteps());
+            temp.setNum(atts->GetMaxSteps());
             maxSteps->setText(temp);
             break;
 
         case LCSAttributes::ID_terminateByDistance:
             limitMaxDistance->blockSignals(true);
-            limitMaxDistance->setChecked(LCSAtts->GetTerminateByDistance());
+            limitMaxDistance->setChecked(atts->GetTerminateByDistance());
             limitMaxDistance->blockSignals(false);
-            maxDistance->setEnabled(LCSAtts->GetTerminateByDistance());
+            maxDistance->setEnabled(atts->GetTerminateByDistance());
             break;
 
         case LCSAttributes::ID_terminateByTime:
             limitMaxTime->blockSignals(true);
-            limitMaxTime->setChecked(LCSAtts->GetTerminateByTime());
+            limitMaxTime->setChecked(atts->GetTerminateByTime());
             limitMaxTime->blockSignals(false);
-            maxTime->setEnabled(LCSAtts->GetTerminateByTime());
+            maxTime->setEnabled(atts->GetTerminateByTime());
             break;
 
         case LCSAttributes::ID_operationType:
             operationType->blockSignals(true);
-            operationType->setCurrentIndex(int(LCSAtts->GetOperationType()) );
+            operationType->setCurrentIndex(int(atts->GetOperationType()) );
             operationType->blockSignals(false);
 
-            if( LCSAtts->GetOperationType() == LCSAttributes::Lyapunov)
+            if( atts->GetOperationType() == LCSAttributes::Lyapunov)
             {
               terminationTypeButtonGroup->blockSignals(true);
               terminationTypeButtonGroup->button(0)->show();
@@ -816,9 +836,12 @@ QvisLCSWindow::UpdateWindow(bool doAll)
               limitMaxDistance->hide();
               limitMaxTime->hide();
 
-              LCSAtts->SetTerminateByTime( LCSAtts->GetTerminationType() == 0);
-              LCSAtts->SetTerminateByDistance( LCSAtts->GetTerminationType() == 1);
-              LCSAtts->SetTerminateBySize( LCSAtts->GetTerminationType() == 2);
+              atts->SetTerminateByTime(     atts->GetTerminationType() == LCSAttributes::Time);
+              atts->SetTerminateByDistance( atts->GetTerminationType() == LCSAttributes::Distance);
+              atts->SetTerminateBySize(     atts->GetTerminationType() == LCSAttributes::Size);
+
+              clampLogValues->show();
+              operatorType->hide();
 
               terminationTypeButtonGroup->blockSignals(false);
             }
@@ -830,69 +853,92 @@ QvisLCSWindow::UpdateWindow(bool doAll)
               maxSize->hide();
               limitMaxDistance->show();
               limitMaxTime->show();
+              operatorType->show();
+              if( atts->GetOperatorType() == LCSAttributes::BaseValue)
+                clampLogValues->hide();
+              else
+                clampLogValues->show();
             }
+            break;
+
+        case LCSAttributes::ID_operatorType:
+            operatorType->blockSignals(true);
+            operatorType->setCurrentIndex(int(atts->GetOperatorType()) );
+            operatorType->blockSignals(false);
+
+            if( atts->GetOperationType() == LCSAttributes::Lyapunov ||
+                atts->GetOperatorType() == LCSAttributes::Gradient)
+              clampLogValues->show();
+            else
+              clampLogValues->hide();
+            break;
+
+        case LCSAttributes::ID_clampLogValues:
+            clampLogValues->blockSignals(true);
+            clampLogValues->setChecked(atts->GetClampLogValues());
+            clampLogValues->blockSignals(false);
             break;
 
         case LCSAttributes::ID_terminationType:
             terminationTypeButtonGroup->blockSignals(true);
-            terminationTypeButtonGroup->button(LCSAtts->GetTerminationType())->setChecked(true);
+            terminationTypeButtonGroup->button(atts->GetTerminationType())->setChecked(true);
             terminationTypeButtonGroup->blockSignals(false);
 
-            maxTime->setEnabled(LCSAtts->GetTerminationType()==0);
-            maxDistance->setEnabled(LCSAtts->GetTerminationType()==1);
-            maxSize->setEnabled(LCSAtts->GetTerminationType()==2);
+            maxTime->setEnabled(atts->GetTerminationType()==0);
+            maxDistance->setEnabled(atts->GetTerminationType()==1);
+            maxSize->setEnabled(atts->GetTerminationType()==2);
             break;
         case LCSAttributes::ID_termSize:
-            temp.setNum(LCSAtts->GetTermSize());
+            temp.setNum(atts->GetTermSize());
             maxSize->setText(temp);
             break;
         case LCSAttributes::ID_termDistance:
-            temp.setNum(LCSAtts->GetTermDistance());
+            temp.setNum(atts->GetTermDistance());
             maxDistance->setText(temp);
             break;
         case LCSAttributes::ID_termTime:
-            temp.setNum(LCSAtts->GetTermTime(), 'g', 16);
+            temp.setNum(atts->GetTermTime(), 'g', 16);
             maxTime->setText(temp);
             break;
         case LCSAttributes::ID_velocitySource:
-            velocitySource->setText(DoublesToQString(LCSAtts->GetVelocitySource(),3));
+            velocitySource->setText(DoublesToQString(atts->GetVelocitySource(),3));
             break;
 
         case LCSAttributes::ID_integrationDirection:
             directionType->blockSignals(true);
-            directionType->setCurrentIndex(int(LCSAtts->GetIntegrationDirection()) );
+            directionType->setCurrentIndex(int(atts->GetIntegrationDirection()) );
             directionType->blockSignals(false);
             break;
         case LCSAttributes::ID_relTol:
-            temp.setNum(LCSAtts->GetRelTol());
+            temp.setNum(atts->GetRelTol());
             relTol->setText(temp);
             break;
         case LCSAttributes::ID_absTolSizeType:
             absTolSizeType->blockSignals(true);
-            absTolSizeType->setCurrentIndex((int) LCSAtts->GetAbsTolSizeType());
+            absTolSizeType->setCurrentIndex((int) atts->GetAbsTolSizeType());
             absTolSizeType->blockSignals(false);
-            if (LCSAtts->GetAbsTolSizeType() == LCSAttributes::FractionOfBBox)
+            if (atts->GetAbsTolSizeType() == LCSAttributes::FractionOfBBox)
             {
-                temp.setNum(LCSAtts->GetAbsTolBBox());
+                temp.setNum(atts->GetAbsTolBBox());
                 absTol->setText(temp);
             }
-            if (LCSAtts->GetAbsTolSizeType() == LCSAttributes::Absolute)
+            if (atts->GetAbsTolSizeType() == LCSAttributes::Absolute)
             {
-                temp.setNum(LCSAtts->GetAbsTolAbsolute());
+                temp.setNum(atts->GetAbsTolAbsolute());
                 absTol->setText(temp);
             }
             break;
         case LCSAttributes::ID_absTolBBox:
-            if (LCSAtts->GetAbsTolSizeType() == LCSAttributes::FractionOfBBox)
+            if (atts->GetAbsTolSizeType() == LCSAttributes::FractionOfBBox)
             {
-                temp.setNum(LCSAtts->GetAbsTolBBox());
+                temp.setNum(atts->GetAbsTolBBox());
                 absTol->setText(temp);
             }
             break;
         case LCSAttributes::ID_absTolAbsolute:
-            if (LCSAtts->GetAbsTolSizeType() == LCSAttributes::Absolute)
+            if (atts->GetAbsTolSizeType() == LCSAttributes::Absolute)
             {
-                temp.setNum(LCSAtts->GetAbsTolAbsolute());
+                temp.setNum(atts->GetAbsTolAbsolute());
                 absTol->setText(temp);
             }
             break;
@@ -901,25 +947,25 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             UpdateFieldAttributes();
 
             fieldType->blockSignals(true);
-            fieldType->setCurrentIndex(LCSAtts->GetFieldType());
+            fieldType->setCurrentIndex(atts->GetFieldType());
             fieldType->blockSignals(false);
 
             integrationType->blockSignals(true);
-            if (LCSAtts->GetFieldType() == LCSAttributes::M3DC12DField)
+            if (atts->GetFieldType() == LCSAttributes::M3DC12DField)
             {
-              LCSAtts->SetIntegrationType(LCSAttributes::M3DC12DIntegrator);
+              atts->SetIntegrationType(LCSAttributes::M3DC12DIntegrator);
               integrationType->setCurrentIndex(LCSAttributes::M3DC12DIntegrator);
               UpdateIntegrationAttributes();
             }
-            else if (LCSAtts->GetFieldType() == LCSAttributes::NIMRODField)
+            else if (atts->GetFieldType() == LCSAttributes::NIMRODField)
             {
-              LCSAtts->SetIntegrationType(LCSAttributes::AdamsBashforth);
+              atts->SetIntegrationType(LCSAttributes::AdamsBashforth);
               integrationType->setCurrentIndex(LCSAttributes::AdamsBashforth);
               UpdateIntegrationAttributes();
             }
-            else if (LCSAtts->GetIntegrationType() == LCSAttributes::M3DC12DIntegrator) 
+            else if (atts->GetIntegrationType() == LCSAttributes::M3DC12DIntegrator) 
             {
-              LCSAtts->SetIntegrationType(LCSAttributes::DormandPrince);
+              atts->SetIntegrationType(LCSAttributes::DormandPrince);
               integrationType->setCurrentIndex(LCSAttributes::DormandPrince);
               UpdateIntegrationAttributes();
             }
@@ -927,26 +973,26 @@ QvisLCSWindow::UpdateWindow(bool doAll)
 
             break;
         case LCSAttributes::ID_fieldConstant:
-            fieldConstant->setText(DoubleToQString(LCSAtts->GetFieldConstant()));
+            fieldConstant->setText(DoubleToQString(atts->GetFieldConstant()));
             break;
         case LCSAttributes::ID_integrationType:
             // Update lots of widget visibility and enabled states.
             UpdateIntegrationAttributes();
 
             integrationType->blockSignals(true);
-            integrationType->setCurrentIndex(LCSAtts->GetIntegrationType());
+            integrationType->setCurrentIndex(atts->GetIntegrationType());
             integrationType->blockSignals(false);
 
             fieldType->blockSignals(true);
-            if (LCSAtts->GetIntegrationType() == LCSAttributes::M3DC12DIntegrator)
+            if (atts->GetIntegrationType() == LCSAttributes::M3DC12DIntegrator)
             {
-              LCSAtts->SetFieldType(LCSAttributes::M3DC12DField);
+              atts->SetFieldType(LCSAttributes::M3DC12DField);
               fieldType->setCurrentIndex(LCSAttributes::M3DC12DField);
               UpdateFieldAttributes();
             }
-            else if (LCSAtts->GetFieldType() == LCSAttributes::M3DC12DField)
+            else if (atts->GetFieldType() == LCSAttributes::M3DC12DField)
             {
-              LCSAtts->SetFieldType(LCSAttributes::Default);
+              atts->SetFieldType(LCSAttributes::Default);
               fieldType->setCurrentIndex(LCSAttributes::Default);
               UpdateFieldAttributes();
             }
@@ -957,79 +1003,84 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             // Update lots of widget visibility and enabled states.
             UpdateAlgorithmAttributes();
             parallelAlgo->blockSignals(true);
-            parallelAlgo->setCurrentIndex(LCSAtts->GetParallelizationAlgorithmType());
+            parallelAlgo->setCurrentIndex(atts->GetParallelizationAlgorithmType());
             parallelAlgo->blockSignals(false);
             break;
 
         case LCSAttributes::ID_maxProcessCount:
             maxSLCount->blockSignals(true);
-            maxSLCount->setValue(LCSAtts->GetMaxProcessCount());
+            maxSLCount->setValue(atts->GetMaxProcessCount());
             maxSLCount->blockSignals(false);
             break;
         case LCSAttributes::ID_maxDomainCacheSize:
             maxDomainCache->blockSignals(true);
-            maxDomainCache->setValue(LCSAtts->GetMaxDomainCacheSize());
+            maxDomainCache->setValue(atts->GetMaxDomainCacheSize());
             maxDomainCache->blockSignals(false);
             break;
         case LCSAttributes::ID_workGroupSize:
             workGroupSize->blockSignals(true);
-            workGroupSize->setValue(LCSAtts->GetWorkGroupSize());
+            workGroupSize->setValue(atts->GetWorkGroupSize());
             workGroupSize->blockSignals(false);
             break;
         case LCSAttributes::ID_pathlines:
             icButtonGroup->blockSignals(true);
-            icButtonGroup->button(LCSAtts->GetPathlines()?1:0)->setChecked(true);
-            pathlineOverrideStartingTimeFlag->setEnabled(LCSAtts->GetPathlines());
+            icButtonGroup->button(atts->GetPathlines()?1:0)->setChecked(true);
+            pathlineOverrideStartingTimeFlag->setEnabled(atts->GetPathlines());
             if( pathlineOverrideStartingTimeFlag->isChecked() && ! icButtonGroup->button(1)->isChecked() )
                 pathlineOverrideStartingTimeFlag->setChecked(false);
-            pathlineOverrideStartingTime->setEnabled(LCSAtts->GetPathlines() && LCSAtts->GetPathlinesOverrideStartingTimeFlag());
-            pathlineCMFEButtonGroup->button(0)->setEnabled(LCSAtts->GetPathlines());
-            pathlineCMFEButtonGroup->button(1)->setEnabled(LCSAtts->GetPathlines());
+            pathlineOverrideStartingTime->setEnabled(atts->GetPathlines() && atts->GetPathlinesOverrideStartingTimeFlag());
+            pathlinePeriod->setEnabled(atts->GetPathlines());
+            pathlineCMFEButtonGroup->button(0)->setEnabled(atts->GetPathlines());
+            pathlineCMFEButtonGroup->button(1)->setEnabled(atts->GetPathlines());
             icButtonGroup->blockSignals(false);
             break;
         case LCSAttributes::ID_pathlinesOverrideStartingTimeFlag:
             pathlineOverrideStartingTimeFlag->blockSignals(true);
-            pathlineOverrideStartingTimeFlag->setChecked(LCSAtts->GetPathlinesOverrideStartingTimeFlag());
-            pathlineOverrideStartingTime->setEnabled(LCSAtts->GetPathlines() && LCSAtts->GetPathlinesOverrideStartingTimeFlag());
+            pathlineOverrideStartingTimeFlag->setChecked(atts->GetPathlinesOverrideStartingTimeFlag());
+            pathlineOverrideStartingTime->setEnabled(atts->GetPathlines() && atts->GetPathlinesOverrideStartingTimeFlag());
             pathlineOverrideStartingTimeFlag->blockSignals(false);
             break;
         case LCSAttributes::ID_pathlinesOverrideStartingTime:
-            temp.setNum(LCSAtts->GetPathlinesOverrideStartingTime(), 'g', 16);
+            temp.setNum(atts->GetPathlinesOverrideStartingTime(), 'g', 16);
             pathlineOverrideStartingTime->setText(temp);
+            break;
+        case LCSAttributes::ID_pathlinesPeriod:
+            temp.setNum(atts->GetPathlinesPeriod(), 'g', 16);
+            pathlinePeriod->setText(temp);
             break;
         case LCSAttributes::ID_pathlinesCMFE:
             pathlineCMFEButtonGroup->blockSignals(true);
-            pathlineCMFEButtonGroup->button(LCSAtts->GetPathlinesCMFE())->setChecked(true);
+            pathlineCMFEButtonGroup->button(atts->GetPathlinesCMFE())->setChecked(true);
             pathlineCMFEButtonGroup->blockSignals(false);
             break;
 
         // case LCSAttributes::ID_forceNodeCenteredData:
         //     forceNodal->blockSignals(true);
-        //     forceNodal->setChecked(LCSAtts->GetForceNodeCenteredData());
+        //     forceNodal->setChecked(atts->GetForceNodeCenteredData());
         //     forceNodal->blockSignals(false);
         //     break;
 
         case LCSAttributes::ID_issueTerminationWarnings:
             issueWarningForMaxSteps->blockSignals(true);
-            issueWarningForMaxSteps->setChecked(LCSAtts->GetIssueTerminationWarnings());
+            issueWarningForMaxSteps->setChecked(atts->GetIssueTerminationWarnings());
             issueWarningForMaxSteps->blockSignals(false);
             break;
             
         case LCSAttributes::ID_issueCriticalPointsWarnings:
             issueWarningForCriticalPoints->blockSignals(true);
-            issueWarningForCriticalPoints->setChecked(LCSAtts->GetIssueCriticalPointsWarnings());
-            criticalPointThreshold->setEnabled(LCSAtts->GetIssueCriticalPointsWarnings());
-            criticalPointThresholdLabel->setEnabled(LCSAtts->GetIssueCriticalPointsWarnings());
+            issueWarningForCriticalPoints->setChecked(atts->GetIssueCriticalPointsWarnings());
+            criticalPointThreshold->setEnabled(atts->GetIssueCriticalPointsWarnings());
+            criticalPointThresholdLabel->setEnabled(atts->GetIssueCriticalPointsWarnings());
             issueWarningForCriticalPoints->blockSignals(false);
             break;
 
         case LCSAttributes::ID_issueStiffnessWarnings:
             issueWarningForStiffness->blockSignals(true);
-            issueWarningForStiffness->setChecked(LCSAtts->GetIssueStiffnessWarnings());
+            issueWarningForStiffness->setChecked(atts->GetIssueStiffnessWarnings());
             issueWarningForStiffness->blockSignals(false);
             break;
         case LCSAttributes::ID_criticalPointThreshold:
-            temp.setNum(LCSAtts->GetCriticalPointThreshold());
+            temp.setNum(atts->GetCriticalPointThreshold());
             criticalPointThreshold->setText(temp);
             break;
         }
@@ -1051,10 +1102,10 @@ QvisLCSWindow::UpdateWindow(bool doAll)
 void
 QvisLCSWindow::UpdateFieldAttributes()
 {
-    switch( LCSAtts->GetFieldType() )
+    switch( atts->GetFieldType() )
     {
     case LCSAttributes::M3DC12DField:
-      if( LCSAtts->GetIntegrationType() ==
+      if( atts->GetIntegrationType() ==
           LCSAttributes::M3DC12DIntegrator ) 
         TurnOn(fieldConstant, fieldConstantLabel);
       else
@@ -1106,7 +1157,7 @@ QvisLCSWindow::UpdateIntegrationAttributes()
     absTolLabel->hide();
     absTolSizeType->hide();
 
-    switch( LCSAtts->GetIntegrationType() )
+    switch( atts->GetIntegrationType() )
     {
     case LCSAttributes::Euler:
     case LCSAttributes::Leapfrog:
@@ -1157,11 +1208,11 @@ QvisLCSWindow::UpdateIntegrationAttributes()
 void
 QvisLCSWindow::UpdateAlgorithmAttributes()
 {
-    bool useLoadOnDemand = (LCSAtts->GetParallelizationAlgorithmType() ==
+    bool useLoadOnDemand = (atts->GetParallelizationAlgorithmType() ==
                             LCSAttributes::LoadOnDemand);
-    bool useStaticDomains = (LCSAtts->GetParallelizationAlgorithmType() ==
+    bool useStaticDomains = (atts->GetParallelizationAlgorithmType() ==
                              LCSAttributes::ParallelStaticDomains);
-    bool useMasterSlave = (LCSAtts->GetParallelizationAlgorithmType() ==
+    bool useMasterSlave = (atts->GetParallelizationAlgorithmType() ==
                            LCSAttributes::MasterSlave);
     
     //Turn off everything.
@@ -1217,12 +1268,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         int val[3];
         if(LineEditGetInts(Resolution, val, 3))
-            LCSAtts->SetResolution(val);
+            atts->SetResolution(val);
         else
         {
             ResettingError(tr("Resolution"),
-                IntsToQString(LCSAtts->GetResolution(), 3));
-            LCSAtts->SetResolution(LCSAtts->GetResolution());
+                IntsToQString(atts->GetResolution(), 3));
+            atts->SetResolution(atts->GetResolution());
         }
     }
 
@@ -1231,12 +1282,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         double val[3];
         if(LineEditGetDoubles(StartPosition, val, 3))
-            LCSAtts->SetStartPosition(val);
+            atts->SetStartPosition(val);
         else
         {
             ResettingError(tr("StartPosition"),
-                DoublesToQString(LCSAtts->GetStartPosition(), 3));
-            LCSAtts->SetStartPosition(LCSAtts->GetStartPosition());
+                DoublesToQString(atts->GetStartPosition(), 3));
+            atts->SetStartPosition(atts->GetStartPosition());
         }
     }
 
@@ -1245,12 +1296,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         double val[3];
         if(LineEditGetDoubles(EndPosition, val, 3))
-            LCSAtts->SetEndPosition(val);
+            atts->SetEndPosition(val);
         else
         {
             ResettingError(tr("EndPosition"),
-                DoublesToQString(LCSAtts->GetEndPosition(), 3));
-            LCSAtts->SetEndPosition(LCSAtts->GetEndPosition());
+                DoublesToQString(atts->GetEndPosition(), 3));
+            atts->SetEndPosition(atts->GetEndPosition());
         }
     }
 
@@ -1260,12 +1311,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(fieldConstant, val))
-            LCSAtts->SetFieldConstant(val);
+            atts->SetFieldConstant(val);
         else
         {
             ResettingError(tr("field constant"),
-                DoubleToQString(LCSAtts->GetFieldConstant()));
-            LCSAtts->SetFieldConstant(LCSAtts->GetFieldConstant());
+                DoubleToQString(atts->GetFieldConstant()));
+            atts->SetFieldConstant(atts->GetFieldConstant());
         }
     }
 
@@ -1274,12 +1325,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(maxStepLength, val))
-            LCSAtts->SetMaxStepLength(val);
+            atts->SetMaxStepLength(val);
         else
         {
             ResettingError(tr("step length"),
-                DoubleToQString(LCSAtts->GetMaxStepLength()));
-            LCSAtts->SetMaxStepLength(LCSAtts->GetMaxStepLength());
+                DoubleToQString(atts->GetMaxStepLength()));
+            atts->SetMaxStepLength(atts->GetMaxStepLength());
         }
     }
 
@@ -1288,12 +1339,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(maxTimeStep, val))
-            LCSAtts->SetMaxTimeStep(val);
+            atts->SetMaxTimeStep(val);
         else
         {
             ResettingError(tr("step length"),
-                DoubleToQString(LCSAtts->GetMaxTimeStep()));
-            LCSAtts->SetMaxTimeStep(LCSAtts->GetMaxTimeStep());
+                DoubleToQString(atts->GetMaxTimeStep()));
+            atts->SetMaxTimeStep(atts->GetMaxTimeStep());
         }
     }
 
@@ -1302,60 +1353,72 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         int val;
         if(LineEditGetInt(maxSteps, val))
-            LCSAtts->SetMaxSteps(val);
+            atts->SetMaxSteps(val);
         else
         {
             ResettingError(tr("maxsteps"),
-                IntToQString(LCSAtts->GetMaxSteps()));
-            LCSAtts->SetMaxSteps(LCSAtts->GetMaxSteps());
+                IntToQString(atts->GetMaxSteps()));
+            atts->SetMaxSteps(atts->GetMaxSteps());
         }
     }
     if(which_widget == LCSAttributes::ID_termTime || doAll)
     {
         double val;
         if(LineEditGetDouble(maxTime, val))
-            LCSAtts->SetTermTime(val);
+            atts->SetTermTime(val);
         else
         {
             ResettingError(tr("maxtime"),
-                DoubleToQString(LCSAtts->GetTermTime()));
-            LCSAtts->SetTermTime(LCSAtts->GetTermTime());
+                DoubleToQString(atts->GetTermTime()));
+            atts->SetTermTime(atts->GetTermTime());
         }
     }
     if(which_widget == LCSAttributes::ID_termDistance || doAll)
     {
         double val;
         if(LineEditGetDouble(maxDistance, val))
-            LCSAtts->SetTermDistance(val);
+            atts->SetTermDistance(val);
         else
         {
             ResettingError(tr("maxdistance"),
-                DoubleToQString(LCSAtts->GetTermDistance()));
-            LCSAtts->SetTermDistance(LCSAtts->GetTermDistance());
+                DoubleToQString(atts->GetTermDistance()));
+            atts->SetTermDistance(atts->GetTermDistance());
         }
     }
     if(which_widget == LCSAttributes::ID_termSize || doAll)
     {
         double val;
         if(LineEditGetDouble(maxSize, val))
-            LCSAtts->SetTermSize(val);
+            atts->SetTermSize(val);
         else
         {
             ResettingError(tr("maxsize"),
-                DoubleToQString(LCSAtts->GetTermSize()));
-            LCSAtts->SetTermSize(LCSAtts->GetTermSize());
+                DoubleToQString(atts->GetTermSize()));
+            atts->SetTermSize(atts->GetTermSize());
         }
     }
     if(which_widget == LCSAttributes::ID_pathlinesOverrideStartingTime || doAll)
     {
         double val;
         if(LineEditGetDouble(pathlineOverrideStartingTime, val))
-            LCSAtts->SetPathlinesOverrideStartingTime(val);
+            atts->SetPathlinesOverrideStartingTime(val);
         else
         {
             ResettingError(tr("Pathlines Override Starting Time"),
-                DoubleToQString(LCSAtts->GetPathlinesOverrideStartingTime()));
-            LCSAtts->SetPathlinesOverrideStartingTime(LCSAtts->GetPathlinesOverrideStartingTime());
+                DoubleToQString(atts->GetPathlinesOverrideStartingTime()));
+            atts->SetPathlinesOverrideStartingTime(atts->GetPathlinesOverrideStartingTime());
+        }
+    }
+    if(which_widget == LCSAttributes::ID_pathlinesPeriod || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(pathlinePeriod, val))
+            atts->SetPathlinesPeriod(val);
+        else
+        {
+            ResettingError(tr("Pathlines Period"),
+                DoubleToQString(atts->GetPathlinesPeriod()));
+            atts->SetPathlinesPeriod(atts->GetPathlinesPeriod());
         }
     }
 
@@ -1365,40 +1428,40 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(relTol, val))
-            LCSAtts->SetRelTol(val);
+            atts->SetRelTol(val);
         else
         {
             ResettingError(tr("relative tolerance"),
-                DoubleToQString(LCSAtts->GetRelTol()));
-            LCSAtts->SetRelTol(LCSAtts->GetRelTol());
+                DoubleToQString(atts->GetRelTol()));
+            atts->SetRelTol(atts->GetRelTol());
         }
     }
 
     // Do absTol
     if ((which_widget == LCSAttributes::ID_absTolBBox || doAll)
-        && LCSAtts->GetAbsTolSizeType() == LCSAttributes::FractionOfBBox)
+        && atts->GetAbsTolSizeType() == LCSAttributes::FractionOfBBox)
     {
         double val;
         if(LineEditGetDouble(absTol, val))
-            LCSAtts->SetAbsTolBBox(val);
+            atts->SetAbsTolBBox(val);
         else
         {
             ResettingError(tr("absolute tolerance"),
-                DoubleToQString(LCSAtts->GetAbsTolBBox()));
-                LCSAtts->SetAbsTolBBox(LCSAtts->GetAbsTolBBox());
+                DoubleToQString(atts->GetAbsTolBBox()));
+                atts->SetAbsTolBBox(atts->GetAbsTolBBox());
         }
     }
     if ((which_widget == LCSAttributes::ID_absTolAbsolute || doAll)
-        && LCSAtts->GetAbsTolSizeType() == LCSAttributes::Absolute)
+        && atts->GetAbsTolSizeType() == LCSAttributes::Absolute)
     {
         double val;
         if(LineEditGetDouble(absTol, val))
-            LCSAtts->SetAbsTolAbsolute(val);
+            atts->SetAbsTolAbsolute(val);
         else
         {
             ResettingError(tr("absolute tolerance"),
-                DoubleToQString(LCSAtts->GetAbsTolAbsolute()));
-                LCSAtts->SetAbsTolAbsolute(LCSAtts->GetAbsTolAbsolute());
+                DoubleToQString(atts->GetAbsTolAbsolute()));
+                atts->SetAbsTolAbsolute(atts->GetAbsTolAbsolute());
         }
     }
 
@@ -1407,27 +1470,15 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         double val[3];
         if(LineEditGetDoubles(velocitySource, val, 3))
-            LCSAtts->SetVelocitySource(val);
+            atts->SetVelocitySource(val);
         else
         {
             ResettingError(tr("velocity source"),
-                DoublesToQString(LCSAtts->GetVelocitySource(), 3));
-            LCSAtts->SetVelocitySource(LCSAtts->GetVelocitySource());
+                DoublesToQString(atts->GetVelocitySource(), 3));
+            atts->SetVelocitySource(atts->GetVelocitySource());
         }
     }
 
-    if(which_widget == LCSAttributes::ID_pathlinesOverrideStartingTime || doAll)
-    {
-        double val;
-        if(LineEditGetDouble(pathlineOverrideStartingTime, val))
-            LCSAtts->SetPathlinesOverrideStartingTime(val);
-        else
-        {
-            ResettingError(tr("Pathlines Override Starting Time"),
-                DoubleToQString(LCSAtts->GetPathlinesOverrideStartingTime()));
-            LCSAtts->SetPathlinesOverrideStartingTime(LCSAtts->GetPathlinesOverrideStartingTime());
-        }
-    }
 
     // maxProcessCount
     if (which_widget == LCSAttributes::ID_maxProcessCount || doAll)
@@ -1435,7 +1486,7 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
         // This can only be an integer, so no error checking is needed.
         int val = maxSLCount->value();
         if (val >= 1)
-            LCSAtts->SetMaxProcessCount(val);
+            atts->SetMaxProcessCount(val);
     }
 
     // workGroupSize
@@ -1444,7 +1495,7 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
         // This can only be an integer, so no error checking is needed.
         int val = workGroupSize->value();
         if (val >= 2)
-            LCSAtts->SetWorkGroupSize(val);
+            atts->SetWorkGroupSize(val);
     }
     
     // criticalPointThreshold
@@ -1452,12 +1503,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(criticalPointThreshold, val))
-            LCSAtts->SetCriticalPointThreshold(val);
+            atts->SetCriticalPointThreshold(val);
         else
         {
             ResettingError(tr("Speed cutoff for critical points"),
-                DoubleToQString(LCSAtts->GetCriticalPointThreshold()));
-            LCSAtts->SetCriticalPointThreshold(LCSAtts->GetCriticalPointThreshold());
+                DoubleToQString(atts->GetCriticalPointThreshold()));
+            atts->SetCriticalPointThreshold(atts->GetCriticalPointThreshold());
         }
     }
 }
@@ -1466,9 +1517,9 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
 void
 QvisLCSWindow::sourceTypeChanged(int val)
 {
-    if(val != LCSAtts->GetSourceType())
+    if(val != atts->GetSourceType())
     {
-        LCSAtts->SetSourceType(LCSAttributes::SourceType(val));
+        atts->SetSourceType(LCSAttributes::SourceType(val));
         Apply();
     }
 }
@@ -1485,7 +1536,7 @@ QvisLCSWindow::ResolutionProcessText()
 void
 QvisLCSWindow::UseDataSetStartChanged(int val)
 {
-    LCSAtts->SetUseDataSetStart(LCSAttributes::Extents(val));
+    atts->SetUseDataSetStart(LCSAttributes::Extents(val));
     Apply();
 }
 
@@ -1501,7 +1552,7 @@ QvisLCSWindow::StartPositionProcessText()
 void
 QvisLCSWindow::UseDataSetEndChanged(int val)
 {
-  LCSAtts->SetUseDataSetEnd(LCSAttributes::Extents(val));
+  atts->SetUseDataSetEnd(LCSAttributes::Extents(val));
     Apply();
 }
 
@@ -1517,9 +1568,9 @@ QvisLCSWindow::EndPositionProcessText()
 void
 QvisLCSWindow::directionTypeChanged(int val)
  {
-    if(val != LCSAtts->GetIntegrationDirection())
+    if(val != atts->GetIntegrationDirection())
     {
-        LCSAtts->SetIntegrationDirection(LCSAttributes::IntegrationDirection(val));
+        atts->SetIntegrationDirection(LCSAttributes::IntegrationDirection(val));
         Apply();
     }
 }   
@@ -1527,9 +1578,9 @@ QvisLCSWindow::directionTypeChanged(int val)
 void
 QvisLCSWindow::fieldTypeChanged(int val)
  {
-    if(val != LCSAtts->GetFieldType())
+    if(val != atts->GetFieldType())
     {
-        LCSAtts->SetFieldType(LCSAttributes::FieldType(val));
+        atts->SetFieldType(LCSAttributes::FieldType(val));
         Apply();
     }
 }   
@@ -1544,9 +1595,9 @@ QvisLCSWindow::fieldConstantProccessText()
 void
 QvisLCSWindow::integrationTypeChanged(int val)
 {
-    if(val != LCSAtts->GetIntegrationType())
+    if(val != atts->GetIntegrationType())
     {
-        LCSAtts->SetIntegrationType(LCSAttributes::IntegrationType(val));
+        atts->SetIntegrationType(LCSAttributes::IntegrationType(val));
         Apply();
     }
 }   
@@ -1554,9 +1605,9 @@ QvisLCSWindow::integrationTypeChanged(int val)
 void
 QvisLCSWindow::parallelAlgorithmChanged(int val)
 {
-    if(val != LCSAtts->GetParallelizationAlgorithmType())
+    if(val != atts->GetParallelizationAlgorithmType())
     {
-        LCSAtts->SetParallelizationAlgorithmType(LCSAttributes::ParallelizationAlgorithmType(val));
+        atts->SetParallelizationAlgorithmType(LCSAttributes::ParallelizationAlgorithmType(val));
         Apply();
     }
 }   
@@ -1585,9 +1636,9 @@ QvisLCSWindow::maxStepsProcessText()
 void
 QvisLCSWindow::limitMaxTimeChanged(bool val)
 {
-    if(val != LCSAtts->GetTerminateByTime())
+    if(val != atts->GetTerminateByTime())
     {
-        LCSAtts->SetTerminateByTime(val);
+        atts->SetTerminateByTime(val);
         Apply();
     }
 }
@@ -1595,9 +1646,9 @@ QvisLCSWindow::limitMaxTimeChanged(bool val)
 void
 QvisLCSWindow::limitMaxDistanceChanged(bool val)
 {
-    if(val != LCSAtts->GetTerminateByDistance())
+    if(val != atts->GetTerminateByDistance())
     {
-        LCSAtts->SetTerminateByDistance(val);
+        atts->SetTerminateByDistance(val);
         Apply();
     }
 }
@@ -1605,20 +1656,37 @@ QvisLCSWindow::limitMaxDistanceChanged(bool val)
 void
 QvisLCSWindow::operationTypeChanged(int val)
  {
-    if(val != LCSAtts->GetOperationType())
+    if(val != atts->GetOperationType())
     {
-        LCSAtts->SetOperationType(LCSAttributes::OperationType(val));
+        atts->SetOperationType(LCSAttributes::OperationType(val));
         Apply();
     }
 }   
 
 void
+QvisLCSWindow::operatorTypeChanged(int val)
+ {
+    if(val != atts->GetOperatorType())
+    {
+        atts->SetOperatorType(LCSAttributes::OperatorType(val));
+        Apply();
+    }
+}   
+
+void
+QvisLCSWindow::clampLogValuesChanged(bool val)
+{
+    atts->SetClampLogValues(val);
+    Apply();
+}
+
+void
 QvisLCSWindow::terminationTypeButtonGroupChanged(int index)
 {
-    LCSAtts->SetTerminationType( (LCSAttributes::TerminationType) index );
-    LCSAtts->SetTerminateByTime( index == 0);
-    LCSAtts->SetTerminateByDistance( index == 1);
-    LCSAtts->SetTerminateBySize( index == 2);
+    atts->SetTerminationType( (LCSAttributes::TerminationType) index );
+    atts->SetTerminateByTime( index == 0);
+    atts->SetTerminateByDistance( index == 1);
+    atts->SetTerminateBySize( index == 2);
     Apply();
 }
 
@@ -1653,21 +1721,21 @@ QvisLCSWindow::relTolProcessText()
 void
 QvisLCSWindow::maxSLCountChanged(int val)
 {
-    LCSAtts->SetMaxProcessCount(val);
+    atts->SetMaxProcessCount(val);
     Apply();
 }
 
 void
 QvisLCSWindow::maxDomainCacheChanged(int val)
 {
-    LCSAtts->SetMaxDomainCacheSize(val);
+    atts->SetMaxDomainCacheSize(val);
     Apply();
 }
 
 void
 QvisLCSWindow::workGroupSizeChanged(int val)
 {
-    LCSAtts->SetWorkGroupSize(val);
+    atts->SetWorkGroupSize(val);
     Apply();
 }
 
@@ -1677,10 +1745,10 @@ QvisLCSWindow::icButtonGroupChanged(int val)
     switch( val )
     {
         case 0: // Streamline
-            LCSAtts->SetPathlines(false);
+            atts->SetPathlines(false);
             break;
         case 1: // Pathline
-            LCSAtts->SetPathlines(true);
+            atts->SetPathlines(true);
             break;
     }
     Apply();
@@ -1689,7 +1757,7 @@ QvisLCSWindow::icButtonGroupChanged(int val)
 void
 QvisLCSWindow::pathlineOverrideStartingTimeFlagChanged(bool val)
 {
-    LCSAtts->SetPathlinesOverrideStartingTimeFlag(val);
+    atts->SetPathlinesOverrideStartingTimeFlag(val);
     Apply();
 }
 
@@ -1701,9 +1769,16 @@ QvisLCSWindow::pathlineOverrideStartingTimeProcessText()
 }
 
 void
+QvisLCSWindow::pathlinePeriodProcessText()
+{
+    GetCurrentValues(LCSAttributes::ID_pathlinesPeriod);
+    Apply();
+}
+
+void
 QvisLCSWindow::pathlineCMFEButtonGroupChanged(int val)
 {
-    LCSAtts->SetPathlinesCMFE((LCSAttributes::PathlinesCMFE)val);
+    atts->SetPathlinesCMFE((LCSAttributes::PathlinesCMFE)val);
     Apply();
 }
 
@@ -1718,21 +1793,21 @@ QvisLCSWindow::absTolProcessText()
 void
 QvisLCSWindow::absTolSizeTypeChanged(int val)
 {
-    LCSAtts->SetAbsTolSizeType((LCSAttributes::SizeType) val);
+    atts->SetAbsTolSizeType((LCSAttributes::SizeType) val);
     Apply();
 }
 
 void
 QvisLCSWindow::limitMaxTimeStepChanged(bool val)
 {
-    LCSAtts->SetLimitMaximumTimestep(val);
+    atts->SetLimitMaximumTimestep(val);
     Apply();
 }
 
 // void
 // QvisLCSWindow::forceNodalChanged(bool val)
 // {
-//     LCSAtts->SetForceNodeCenteredData(val);
+//     atts->SetForceNodeCenteredData(val);
 //     Apply();
 // }
 
@@ -1746,21 +1821,21 @@ QvisLCSWindow::velocitySourceProcessText()
 void
 QvisLCSWindow::issueWarningForMaxStepsChanged(bool val)
 {
-    LCSAtts->SetIssueTerminationWarnings(val);
+    atts->SetIssueTerminationWarnings(val);
     Apply();
 }
 
 void
 QvisLCSWindow::issueWarningForStiffnessChanged(bool val)
 {
-    LCSAtts->SetIssueStiffnessWarnings(val);
+    atts->SetIssueStiffnessWarnings(val);
     Apply();
 }
 
 void
 QvisLCSWindow::issueWarningForCriticalPointsChanged(bool val)
 {
-    LCSAtts->SetIssueCriticalPointsWarnings(val);
+    atts->SetIssueCriticalPointsWarnings(val);
     Apply();
 }
 

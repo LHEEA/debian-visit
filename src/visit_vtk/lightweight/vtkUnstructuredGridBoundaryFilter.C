@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2674,7 +2674,7 @@ vtkUnstructuredGridBoundaryFilter::RequestData(
     // This does the work of looping over all the cells and storing them in
     // our hash table.
     //
-    bool isSingleValue;
+    bool isSingleValue = true;
     int numCopyCells = LoopOverAllCells(input, list, list2d, isSingleValue);
 
     //

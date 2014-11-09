@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -155,6 +155,7 @@ class IVP_API avtPICSFilter :
     virtual public avtDatasetOnDemandFilter,
     virtual public avtDatasetToDatasetFilter
 {
+    using avtDatasetOnDemandFilter::GetDomain;
   public:
     enum CommunicationPattern
     {
@@ -191,7 +192,7 @@ class IVP_API avtPICSFilter :
     void SetFieldConstant(double val);
     void SetMaxStepLength(double len);
     void SetPathlines(bool pathlines, bool overrideTime,
-                      double time0, int _pathlineCMFE);
+                      double time0, double period, int _pathlineCMFE);
     void SetIntegrationType(int algo);
     void SetParallelizationAlgorithm(int algo, int maxCnt,
                                      int domainCache,
@@ -240,11 +241,14 @@ class IVP_API avtPICSFilter :
     double seedTime0;
     int    seedTimeStep0;
 
+    double period, baseTime, timeSliceInterval;
+    bool   rollover;
+
     avtIntervalTree *intervalTree;
     bool             specifyPoint;
     avtIVPSolver *solver;
 
-    int numDomains, numTimeSteps, cacheQLen;
+    int numDomains, cacheQLen;
     std::vector<int> domainToRank;
     std::vector<vtkDataSet*>dataSets;
     std::map<BlockIDType, avtCellLocator_p> domainToCellLocatorMap;
@@ -310,6 +314,7 @@ class IVP_API avtPICSFilter :
     virtual void              PurgeDomain( const int domain, const int timeStep );
 
     // Helper functions.
+    void                      CheckStagger(vtkDataSet *ds, bool &isEdge, bool &isFace);
     int                       DomainToRank(BlockIDType &domain);
     void                      ComputeDomainToRankMapping();
     bool                      OwnDomain(BlockIDType &domain);
@@ -338,5 +343,4 @@ class IVP_API avtPICSFilter :
 
     friend class avtICAlgorithm;
 };
-
 #endif

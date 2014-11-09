@@ -70,7 +70,7 @@ ShaderProgramARB::valid()
 }
 
 bool
-ShaderProgramARB::init_shaders_supported(std::string& error)
+ShaderProgramARB::init_shaders_supported(std::string& error, bool forceIntel)
 {
   if (!init_)
   {
@@ -105,7 +105,8 @@ ShaderProgramARB::init_shaders_supported(std::string& error)
     // support shaders but crash when you try to use them.  This
     // covers the Intel integrated chipsets in most laptops.
     const GLubyte* glRendererString = glGetString(GL_RENDERER);
-    if (strncmp((const char *)glRendererString, "Intel", 5) == 0)
+    if (strncmp((const char *)glRendererString, "Intel", 5) == 0 &&
+        !forceIntel)
     {
       supported_ = false;
     }
@@ -125,8 +126,6 @@ ShaderProgramARB::init_shaders_supported(std::string& error)
       {
         GLint width = 0;
         if( glTexImage3D == NULL ) {
-          const GLubyte* glVersionString;
-          glVersionString = glGetString(GL_VERSION);
 
           // Removed exit() statement, a library should never call exit()
           // Report an error and let the user of the slivr library decide what
@@ -182,7 +181,16 @@ ShaderProgramARB::init_shaders_supported(std::string& error)
   }
   return (true);
 }
-  
+ 
+bool
+ShaderProgramARB::isGFXIntel()
+{
+  const GLubyte* glRendererString = glGetString(GL_RENDERER);
+  if (strncmp((const char *)glRendererString, "Intel", 5) == 0)
+    return true;
+  else
+    return false;
+}
 
 bool
 ShaderProgramARB::shaders_supported()

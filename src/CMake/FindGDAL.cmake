@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -63,7 +63,7 @@ IF (WIN32)
             INSTALL(FILES ${GDAL_LIBRARY_DIR}/gdal${VER}.dll
                 DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
                 PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
-                CONFIGURATIONS "";None;Debug;Release;RelWithDebInfo;MinSizeRel
+                CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
                 )
         ENDIF(EXISTS ${GDAL_LIBRARY_DIR}/gdal${VER}.dll)
     ENDFOREACH(VER)

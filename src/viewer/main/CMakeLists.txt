@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -194,7 +194,7 @@ ${QT_QTNETWORK_INCLUDE_DIR}
 ${VTK_INCLUDE_DIRS}
 )
 
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${QT_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${MESA_LIBRARY_DIR} ${VTK_LIBRARY_DIRS})
+LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${QT_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${MESA_LIBRARY_DIR} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS})
 
 
 #*************************** The viewer library ******************************
@@ -255,11 +255,18 @@ ELSE(NOT APPLE)
         MACOSX_PACKAGE_LOCATION Resources
     )
 
-    CONFIGURE_FILE(${VISIT_SOURCE_DIR}/include/ViewerInfo.plist.in
-                   ${VISIT_BINARY_DIR}/include/ViewerInfo.plist @ONLY IMMEDIATE)
     ADD_EXECUTABLE(viewer_exe MACOSX_BUNDLE viewer.C ${VIEWER_STATIC_SOURCES} ${VISIT_SOURCE_DIR}/common/icons/${VIEWER_ICON_FILE})
-    SET_TARGET_PROPERTIES(viewer_exe PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${VISIT_BINARY_DIR}/include/ViewerInfo.plist)
-
+    
+    SET_TARGET_PROPERTIES( viewer_exe PROPERTIES MACOSX_BUNDLE_INFO_PLIST ${VISIT_SOURCE_DIR}/include/ViewerInfo.plist.in)
+    SET(MACOSX_BUNDLE_BUNDLE_NAME          "VisIt ${VISIT_VERSION}")
+    SET(MACOSX_BUNDLE_INFO_STRING          "Graphical viewer for VisIt")
+    SET(MACOSX_BUNDLE_ICON_FILE            ${GUI_ICON_FILE})
+    SET(MACOSX_BUNDLE_GUI_IDENTIFIER       VISI)
+    SET(MACOSX_BUNDLE_LONG_VERSION_STRING  "VisIt version ${VISIT_VERSION}")
+    SET(MACOSX_BUNDLE_SHORT_VERSION_STRING "VisIt ${VISIT_VERSION}")
+    SET(MACOSX_BUNDLE_BUNDLE_VERSION       ${VISIT_VERSION})
+    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC")
+    
     IF(VISIT_STATIC)
         MAC_NIB_INSTALL(viewer)
     ENDIF(VISIT_STATIC)

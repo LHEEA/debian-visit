@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -42,6 +42,8 @@
 #include <QWidget>
 
 // Forward declarations.
+class QCheckBox;
+class QLabel;
 class QLineEdit;
 class MapNode;
 
@@ -57,6 +59,8 @@ class MapNode;
 // Creation:   June 9, 2011 
 //
 // Modifications:
+//    Kathleen Biagas, Fri Nov 15 17:14:54 PST 2013
+//    Add sampling options.
 //
 // ****************************************************************************
 
@@ -74,6 +78,9 @@ private:
     bool                 GetPoint(int, double *pt);
     QLineEdit           *startPoint;
     QLineEdit           *endPoint;
+    QCheckBox           *samplingOn;
+    QLineEdit           *numSamples;
+    QLabel              *numSamplesLabel;
 
 };
 

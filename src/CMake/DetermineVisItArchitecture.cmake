@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -80,6 +80,8 @@ MACRO(DETERMINE_VISIT_ARCHITECTURE ARCH)
             ELSE(${_OSX_MAJOR_VERSION} STREQUAL "1")
                 SET(${ARCH} darwin-i386)
             ENDIF(${_OSX_MAJOR_VERSION} STREQUAL "1")
+        ELSEIF(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+            SET(${ARCH} darwin-x86_64)
         ELSE(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i386")
             SET(${ARCH} darwin-ppc)
         ENDIF(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "i386")

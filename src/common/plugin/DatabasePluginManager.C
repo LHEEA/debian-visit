@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -453,7 +453,7 @@ DatabasePluginManager::PluginHasWriter(const string &id)
     if(allindexmap.find(id) != allindexmap.end())
     {
         int index = allindexmap[id];
-        if(index < names.size())
+        if((size_t)index < names.size())
             retval = haswriter[index];
     }
 
@@ -480,7 +480,7 @@ DatabasePluginManager::PluginFilePatterns(const string &id)
     if(allindexmap.find(id) != allindexmap.end())
     {
         int index = allindexmap[id];
-        if(index < names.size())
+        if((size_t)index < names.size())
             retval = filePatterns[index];
     }
 
@@ -508,7 +508,7 @@ DatabasePluginManager::PluginFilePatternsAreStrict(const string &id)
     if(allindexmap.find(id) != allindexmap.end())
     {
         int index = allindexmap[id];
-        if(index < names.size())
+        if((size_t)index < names.size())
             retval = filePatternsAreStrict[index];
     }
 
@@ -536,7 +536,7 @@ DatabasePluginManager::PluginOpensWholeDirectory(const string &id)
     if(allindexmap.find(id) != allindexmap.end())
     {
         int index = allindexmap[id];
-        if(index < names.size())
+        if((size_t)index < names.size())
             retval = opensWholeDirectory[index];
     }
 

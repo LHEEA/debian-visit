@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,6 +55,16 @@
 #include <sstream>
 #include <sys/stat.h>
 #include <silo.h>
+#ifndef _WIN32
+#include <errno.h>
+#endif
+
+// supress the following since silo uses char * in its API
+#if defined(__clang__)
+# pragma GCC diagnostic ignored "-Wdeprecated-writable-strings"
+#elif defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
 
 #ifdef _WIN32
   #ifndef S_ISDIR
@@ -89,11 +99,16 @@ void write_root(int driver)
     
     // create the directory to hold the silo files for our domains.
     struct stat buf;
-    int stat_return = stat("mmadj_rect_2d_data/", &buf);
+    stat("mmadj_rect_2d_data/", &buf);
     if (S_ISDIR(buf.st_mode))
-        system("rm -rf mmadj_rect_2d_data/");
-#ifndef _WIN32   
-    mkdir("mmadj_rect_2d_data/", S_IRWXU | S_IRWXG | S_IRWXO);
+    {
+        int ierr = system("rm -rf mmadj_rect_2d_data/"); (void) ierr;
+    }
+#ifndef _WIN32
+    if (mkdir("mmadj_rect_2d_data/", S_IRWXU|S_IRWXG|S_IRWXO) && (errno!=EEXIST))
+    {
+        cerr << "ERROR: failed to mkdir mmadj_rect_2d_data" << endl;
+    }
 #else
     _mkdir("mmadj_rect_2d_data/");
 #endif

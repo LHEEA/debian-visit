@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,7 +54,7 @@
 #include <avtVector.h>
 
 #include <BadNodeException.h>
-
+#include <float.h>
 
 
 // ****************************************************************************
@@ -133,6 +133,9 @@ avtPickByNodeQuery::~avtPickByNodeQuery()
 //
 //    Kathleen Bonnell, Mon Oct  8 18:54:53 PDT 2007 
 //    Completed support for node origin. 
+//
+//    Kathleen Biagas, Tue Jul 22 11:38:50 MST 2014
+//    Don't convert to Global ids unless user wants ids shown as global.
 //
 // ****************************************************************************
 
@@ -219,7 +222,8 @@ avtPickByNodeQuery::Execute(vtkDataSet *ds, const int dom)
     {
         nodeid = GetCurrentNodeForOriginal(ds, pickAtts.GetElementNumber());
         usernodeid = nodeid;
-        ConvertElNamesToGlobal();
+        if (pickAtts.GetShowGlobalIds())
+            ConvertElNamesToGlobal();
     }
     pickAtts.SetElementNumber(usernodeid + nodeOrigin);
     if (pickAtts.GetMatSelected())
@@ -267,8 +271,18 @@ avtPickByNodeQuery::Execute(vtkDataSet *ds, const int dom)
     // transformed space, so  ????????
     //
     double coord[3];
-    ds->GetPoint(nodeid, coord);
-    pickAtts.SetCellPoint(coord);
+    double *p = pickAtts.GetCellPoint();
+    if (p[0] == FLT_MAX)
+    {
+        ds->GetPoint(nodeid, coord);
+        pickAtts.SetCellPoint(coord);
+    }
+    else
+    {
+        coord[0] = p[0];
+        coord[1] = p[1];
+        coord[2] = p[2];
+    }
     if (transform != NULL)
     {
         avtVector v1(coord);

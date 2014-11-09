@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -83,7 +83,7 @@ QvisDialogLineEdit::QvisDialogLineEdit(QWidget *parent)
             this, SIGNAL(textChanged(const QString &)));
     hLayout->addWidget(lineEdit);
     pushButton = new QPushButton("...", this);
-#ifndef Q_WS_MACX
+#if !(defined(Q_WS_MACX) || defined(Q_OS_MAC))
     pushButton->setMaximumWidth(
         fontMetrics().boundingRect("...").width() + 6);
 #endif
@@ -198,7 +198,7 @@ QvisDialogLineEdit::setFallbackPath(const QString &p)
 void
 QvisDialogLineEdit::changeEvent(QEvent *e)
 {
-#ifndef Q_WS_MACX
+#if !(defined(Q_WS_MACX) || defined(Q_OS_MAC))
     if(e->type() == QEvent::FontChange)
     {
         pushButton->setMaximumWidth(

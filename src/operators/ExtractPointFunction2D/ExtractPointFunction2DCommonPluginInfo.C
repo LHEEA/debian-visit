@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -116,7 +116,7 @@ ExtractPointFunction2DCommonPluginInfo::GetCreatedExpressions(const avtDatabaseM
         e.SetType(Expression::ScalarMeshVar);
         e.SetFromOperator(true);
         e.SetOperatorName("ExtractPointFunction2D");
-        sprintf(defn, "cell_constant(%s, 0)", mesh);
+        sprintf(defn, "cell_constant(<%s>, 0)", mesh);
         e.SetDefinition(defn);
         el->AddExpressions(e);
     }

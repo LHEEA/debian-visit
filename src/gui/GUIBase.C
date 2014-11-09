@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -728,7 +728,7 @@ GUIBase::GetStateForSource(const QualifiedFilename &source) const
                 // the correlation that we just found and the active time
                 // state for that correlation.
                 //
-                for(int i = 0; i < windowInfo->GetTimeSliders().size(); ++i)
+                for(size_t i = 0; i < windowInfo->GetTimeSliders().size(); ++i)
                 {
                     if(tsNames[i] == sourceStr)
                     {
@@ -780,8 +780,6 @@ GUIBase::GetTimeSliderStateForDatabaseState(const std::string &activeTSName,
 
     if(activeTSName != "")
     {
-        WindowInformation *windowInfo = GetViewerState()->GetWindowInformation();
-
         // Try and find a correlation for the active time slider so we
         // can get the number of states in the correlation.
         DatabaseCorrelationList *cL = GetViewerState()->GetDatabaseCorrelationList();

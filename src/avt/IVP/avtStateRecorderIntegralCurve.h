@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -95,15 +95,18 @@ public:
     // historyMask and the *Sample* member functions.
     enum Attribute
     {
-        SAMPLE_TIME       = 1,
-        SAMPLE_POSITION   = 2,
-        SAMPLE_VELOCITY   = 4,
-        SAMPLE_VORTICITY  = 8,
-        SAMPLE_ARCLENGTH  = 16,
-        SAMPLE_SCALAR0    = 32,
-        SAMPLE_SCALAR1    = 64,
-        SAMPLE_SCALAR2    = 128,
-        SAMPLE_UNUSED     = 256,
+        SAMPLE_TIME       = 0x0001,
+        SAMPLE_POSITION   = 0x0002,
+        SAMPLE_VELOCITY   = 0x0004,
+        SAMPLE_VORTICITY  = 0x0008,
+        SAMPLE_ARCLENGTH  = 0x0010,
+        SAMPLE_VARIABLE   = 0x0020,
+        SAMPLE_SECONDARY0 = 0x0040,
+        SAMPLE_SECONDARY1 = 0x0080,
+        SAMPLE_SECONDARY2 = 0x0100,
+        SAMPLE_SECONDARY3 = 0x0200,
+        SAMPLE_SECONDARY4 = 0x0400,
+        SAMPLE_SECONDARY5 = 0x0800
     };
 
     struct Sample
@@ -113,14 +116,13 @@ public:
         avtVector velocity;
         double    vorticity;
         double    arclength;
-        double    scalar0;
-        double    scalar1;
-        double    scalar2;
+        double    variable;
+        double    secondarys[6];
     };
 
     // ----
 
-    avtStateRecorderIntegralCurve( unsigned char mask,
+    avtStateRecorderIntegralCurve( unsigned int mask,
                                    const avtIVPSolver* model, 
                                    Direction dir,
                                    const double& t_start, 
@@ -166,11 +168,13 @@ public:
   public:
     SerializeFlags      _serializeFlags;
     long                sequenceCnt;
-    unsigned char       historyMask;
+    unsigned int        historyMask;
 
   protected:
     double time;
     double distance;
+
+    unsigned int variableIndex;
 
     std::vector<double>  history;
     static const double epsilon;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -442,6 +442,31 @@ class VIEWER_API ReleaseToDDTAction : public ViewerAction
 public:
     ReleaseToDDTAction(ViewerWindow *win);
     virtual ~ReleaseToDDTAction(){}
+
+    virtual void Execute();
+    virtual bool Enabled() const;
+};
+
+// ****************************************************************************
+// Class: PlotDDTVispointVariablesAction
+//
+// Purpose:
+//   Action to automatically plot variables at the current DDT vispoint.
+//
+// Notes:
+//
+// Programmer: Jonathan Byrd (Allinea Software)
+// Creation:   July 15, 2013
+//
+// Modifications:
+//
+// ****************************************************************************
+
+class VIEWER_API PlotDDTVispointVariablesAction : public ViewerAction
+{
+public:
+    PlotDDTVispointVariablesAction(ViewerWindow *win);
+    virtual ~PlotDDTVispointVariablesAction(){}
 
     virtual void Execute();
     virtual bool Enabled() const;

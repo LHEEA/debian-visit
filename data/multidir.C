@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -52,6 +52,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
 #endif
 
 #define MAX_CYCLES  10
@@ -60,6 +61,13 @@
 #define YMAX 5
 #define ZMAX 5
 #define MAX_DOMAINS 4
+
+// supress the following since silo uses char * in its API
+#if defined(__clang__)
+# pragma GCC diagnostic ignored "-Wdeprecated-writable-strings"
+#elif defined(__GNUC__)
+# pragma GCC diagnostic ignored "-Wwrite-strings"
+#endif
 
 // global
 float g_Center[2];
@@ -121,8 +129,11 @@ GetCurrentDirectory()
     // For now...
     return std::string();
 #else
-    char buf[1000];
-    getcwd(buf, 1000);
+    char buf[1000] = {'\0'};
+    if (!getcwd(buf, 1000))
+    {
+        cerr << "getcwd failed" << endl;
+    }
     return std::string(buf);
 #endif
 }
@@ -149,8 +160,11 @@ GotoDirectory(const std::string &dirname)
 #ifdef WIN32
     cerr << "GotoDirectory not implemented" << endl;
 #else
-    mkdir(dirname.c_str(), S_IRWXU);
-    chdir(dirname.c_str());
+    if ( (mkdir(dirname.c_str(), S_IRWXU) && (errno!=EEXIST))
+      || chdir(dirname.c_str()) )
+    {
+        cerr << "GotoDirectory " << dirname << " failed!" << endl;
+    }
 #endif
 }
 

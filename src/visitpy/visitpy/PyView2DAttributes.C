@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewView2DAttributes(int);
 std::string
 PyView2DAttributes_ToString(const View2DAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const double *windowCoords = atts->GetWindowCoords();
         SNPRINTF(tmpStr, 1000, "%swindowCoords = (", prefix);
@@ -819,7 +819,6 @@ PyView2DAttributes_GetLogString()
 static void
 PyView2DAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    View2DAttributes *atts = (View2DAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1472,7 +1472,7 @@ avtOpenGLMoleculeRenderer::DrawRectangleBetweenTwoPoints(double *p0,
                                                          double *p1,
                                                          float r)
 {
-    float v[3] = {p0[1]-p1[1], p1[0]-p0[0], 0};
+    float v[3] = {(float)(p0[1]-p1[1]), (float)(p1[0]-p0[0]), 0.f};
     float v_len = vtkMath::Normalize(v);
     if (v_len == 0)
         return;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -584,9 +584,9 @@ vtkVisItPolyDataNormals::ExecutePointWithSplitting(vtkPolyData *input,
         if (length == 0) continue;
 
         // Store the normalized version separately
-        float nnormal[3] = {nx/length,
-                            ny/length,
-                            nz/length};
+        float nnormal[3] = {(float)(nx/length),
+                            (float)(ny/length),
+                            (float)(nz/length)};
 
         // Loop over all points of the cell, deciding if we need
         // to split it or can merge with an old one.  Use the feature

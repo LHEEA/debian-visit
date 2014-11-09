@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -111,6 +111,38 @@ avtSphericalCompactnessFactorQuery::~avtSphericalCompactnessFactorQuery()
 
 
 // ****************************************************************************
+//  Method: avtSphericalCompactnessFactorQuery::SetInputParams
+//
+//  Purpose:
+//    Set the input parameters.
+//
+//  Programmer: Cyrus Harrison
+//  Creation: Wed Jul 16 15:58:54 PDT 2014
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtSphericalCompactnessFactorQuery::SetInputParams(const MapNode &params)
+{
+    if(params.HasNumericVectorEntry("centroid"))
+    {
+        overrideCentroid = true;
+
+        doubleVector cvals;
+        params.GetEntry("centroid")->ToDoubleVector(cvals);
+        centroid[0] = cvals[0];
+        centroid[1] = cvals[1];
+        centroid[2] = cvals[2];
+    }else
+    {
+      overrideCentroid = false;
+    }
+}
+
+
+// ****************************************************************************
 //  Method: avtSphericalCompactnessFactorQuery::PreExecute
 //
 //  Purpose:
@@ -123,6 +155,9 @@ avtSphericalCompactnessFactorQuery::~avtSphericalCompactnessFactorQuery()
 //    Jeremy Meredith, Thu Feb 15 11:55:03 EST 2007
 //    Call inherited PreExecute before everything else.
 //
+//    Cyrus Harrison, Wed Jul 16 15:52:57 PDT 2014
+//    Added support for user selected center.
+//
 // ****************************************************************************
 
 void
@@ -130,8 +165,13 @@ avtSphericalCompactnessFactorQuery::PreExecute(void)
 {
     avtTwoPassDatasetQuery::PreExecute();
 
-    for (int i = 0 ; i < 3 ; i++)
-        centroid[i] = 0.;
+    if(!overrideCentroid)
+    {
+        centroid[0] = 0.;
+        centroid[1] = 0.;
+        centroid[2] = 0.;
+    }
+
     total_volume = 0.;
 }
 
@@ -145,23 +185,30 @@ avtSphericalCompactnessFactorQuery::PreExecute(void)
 //  Programmer: Hank Childs
 //  Creation:   July 14, 2005
 //
+//  Modifications:
+//    Cyrus Harrison, Wed Jul 16 15:52:57 PDT 2014
+//    Added support for user selected center.
+//
 // ****************************************************************************
 
 void
 avtSphericalCompactnessFactorQuery::MidExecute(void)
 {
     SumDoubleAcrossAllProcessors(total_volume);
-    double C_tmp[3] = { 0, 0, 0 };
-    SumDoubleArrayAcrossAllProcessors(centroid, C_tmp, 3);
-    if (total_volume != 0.)
+    if(!overrideCentroid)
     {
-        C_tmp[0] /= total_volume;
-        C_tmp[1] /= total_volume;
-        C_tmp[2] /= total_volume;
+        double C_tmp[3] = { 0, 0, 0 };
+        SumDoubleArrayAcrossAllProcessors(centroid, C_tmp, 3);
+        if (total_volume != 0.)
+        {
+            C_tmp[0] /= total_volume;
+            C_tmp[1] /= total_volume;
+            C_tmp[2] /= total_volume;
+        }
+        centroid[0] = C_tmp[0];
+        centroid[1] = C_tmp[1];
+        centroid[2] = C_tmp[2];
     }
-    centroid[0] = C_tmp[0];
-    centroid[1] = C_tmp[1];
-    centroid[2] = C_tmp[2];
 
     volume_inside = 0.;
     radius = pow(total_volume*0.75/M_PI, 0.3333333);
@@ -194,6 +241,12 @@ avtSphericalCompactnessFactorQuery::MidExecute(void)
 //    Cyrus Harrison, Tue Sep 18 13:45:35 PDT 2007
 //    Added support for user settable floating point format string
 //
+//    Kathleen Biagas, Tue Feb 25 16:16:13 PST 2014
+//    Add Xml results.
+//
+//    Cyrus Harrison, Wed Jul 16 15:52:57 PDT 2014
+//    Added support for user selected center.
+//
 // ****************************************************************************
 
 void
@@ -224,6 +277,18 @@ avtSphericalCompactnessFactorQuery::PostExecute(void)
                        radius);
     SetResultMessage(msg);
     SetResultValue(volume_inside / total_volume);
+    MapNode result_node;
+    result_node["radius"] = radius;
+
+    doubleVector sc(3);
+    sc[0] = sphere_center[0];
+    sc[1] = sphere_center[1];
+    sc[2] = sphere_center[2];
+
+    result_node["override_centroid"] = overrideCentroid;
+    result_node["centroid"] = sc;
+    result_node["spherical_compactness_factor"] = volume_inside / total_volume;
+    SetXmlResult(result_node.ToXML());
 }
 
 
@@ -236,6 +301,10 @@ avtSphericalCompactnessFactorQuery::PostExecute(void)
 //
 //  Programmer: Hank Childs
 //  Creation:   July 14, 2005
+//
+//  Modifications:
+//    Kathleen Biagas, Tue Apr 22 07:54:11 MST 2014
+//    Use double instead of float.
 //
 // ****************************************************************************
 
@@ -256,11 +325,16 @@ avtSphericalCompactnessFactorQuery::Execute1(vtkDataSet *ds, const int dom)
         vtkCell *cell = ds->GetCell(i);
         double center[3];
         vtkVisItUtility::GetCellCenter(cell, center);
-        float volume = var->GetTuple1(i);
+        double volume = var->GetTuple1(i);
         volume = (volume < 0 ? -volume : volume);
-        centroid[0] += volume*center[0];
-        centroid[1] += volume*center[1];
-        centroid[2] += volume*center[2];
+
+        if(!overrideCentroid)
+        {
+            centroid[0] += volume*center[0];
+            centroid[1] += volume*center[1];
+            centroid[2] += volume*center[2];
+        }
+
         total_volume += volume;
     }
 }
@@ -276,6 +350,10 @@ avtSphericalCompactnessFactorQuery::Execute1(vtkDataSet *ds, const int dom)
 //  Programmer: Hank Childs
 //  Creation:   July 14, 2005
 //
+//  Modifications:
+//    Kathleen Biagas, Tue Apr 22 07:54:11 MST 2014
+//    Use double instead of float.
+//
 // ****************************************************************************
 
 void
@@ -288,7 +366,7 @@ avtSphericalCompactnessFactorQuery::Execute2(vtkDataSet *ds, const int dom)
     {
         EXCEPTION0(ImproperUseException);
     }
-    float rad_squared = radius*radius;
+    double rad_squared = radius*radius;
     for (int i = 0 ; i < nCells ; i++)
     {
         if (ghosts != NULL && ghosts->GetTuple1(i) != 0.)
@@ -296,12 +374,12 @@ avtSphericalCompactnessFactorQuery::Execute2(vtkDataSet *ds, const int dom)
         vtkCell *cell = ds->GetCell(i);
         double center[3];
         vtkVisItUtility::GetCellCenter(cell, center);
-        float dist = (center[0]-sphere_center[0])*(center[0]-sphere_center[0])
+        double dist = (center[0]-sphere_center[0])*(center[0]-sphere_center[0])
                    + (center[1]-sphere_center[1])*(center[1]-sphere_center[1])
                    + (center[2]-sphere_center[2])*(center[2]-sphere_center[2]);
         if (dist > rad_squared)
             continue;  // Not inside.
-        float volume = var->GetTuple1(i);
+        double volume = var->GetTuple1(i);
         volume = (volume < 0 ? -volume : volume);
         volume_inside += volume;
     }

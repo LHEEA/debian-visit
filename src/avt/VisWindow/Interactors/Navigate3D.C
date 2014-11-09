@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -65,7 +65,7 @@
 
 Navigate3D::Navigate3D(VisWindowInteractorProxy &v) : VisitInteractor(v)
 {
-    ctrlOrShiftPushed = false;
+    ctrlOrShiftPressed = false;
     shouldSpin = false;
 }
 
@@ -208,15 +208,15 @@ Navigate3D::StartLeftButtonAction()
     // did so we can issue the proper "End.." statement when the button is
     // released.
     //
-    if (Interactor->GetControlKey()|| Interactor->GetShiftKey())
+    if (Interactor->GetControlKey() || Interactor->GetShiftKey())
     {
         StartPan();
-        ctrlOrShiftPushed = true;
+        ctrlOrShiftPressed = true;
     }
     else
     {
         StartRotate();
-        ctrlOrShiftPushed = false;
+        ctrlOrShiftPressed = false;
     }
 }
 
@@ -252,11 +252,10 @@ Navigate3D::StartLeftButtonAction()
 void
 Navigate3D::EndLeftButtonAction()
 {
-    //
-    // We must issue the proper end state for either pan or rotate depending
-    // on whether the shift or ctrl button was pushed.
-    //
-    if (ctrlOrShiftPushed)
+    // We must issue the proper end state for either pan or rotate
+    // depending on whether the shift or ctrl button was pushed.  The
+    // shift left mouse pan action matches the Navigate2D/3D modes.
+    if (ctrlOrShiftPressed)
     {
         EndPan();
     }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -295,13 +295,13 @@ QvisHelpWindow::CreateWindowContents()
     homeAction->setShortcut(QKeySequence(Qt::Key_Control, Qt::Key_Home));
 
     // buttons to change the font size.
-    QAction *upFontAction = tb->addAction(QIcon(fontUpIcon), tr("Larger font"), 
+    tb->addAction(QIcon(fontUpIcon), tr("Larger font"),
         this, SLOT(increaseFontSize()));
 
-    QAction *downFontAction = tb->addAction(QIcon(fontDownIcon), tr("Smaller font"), 
+    tb->addAction(QIcon(fontDownIcon), tr("Smaller font"),
         this, SLOT(decreaseFontSize()));
 
-    QAction *addBookmarkAction = tb->addAction(QIcon(openBookIcon), tr("Add bookmark"), 
+    tb->addAction(QIcon(openBookIcon), tr("Add bookmark"),
         this, SLOT(addBookmark()));
 
     // Create the Dismiss button

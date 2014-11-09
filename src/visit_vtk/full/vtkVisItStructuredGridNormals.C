@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -175,7 +175,6 @@ vtkVisItStructuredGridNormals::ExecutePoint(vtkStructuredGrid *input,
         for (i = 0 ; i < fastDim ; i++)
         {
             float normal[3] = { 0, 0, 0 };
-            int nQuads = 0;
 
             double anchor[3];
             int idx = j*fastDim + i;
@@ -273,8 +272,6 @@ vtkVisItStructuredGridNormals::ExecuteCell(vtkStructuredGrid *input,
     // Get all the input and output objects we'll need to reference
     output->ShallowCopy(input);
 
-    vtkPoints    *inPts = input->GetPoints();
-
     int dims[3];
     input->GetDimensions(dims);
     int nCells  = input->GetNumberOfCells();
@@ -285,7 +282,6 @@ vtkVisItStructuredGridNormals::ExecuteCell(vtkStructuredGrid *input,
     newNormals->SetNumberOfComponents(3);
     newNormals->SetNumberOfTuples(nCells);
     newNormals->SetName("Normals");
-    float *newNormalPtr = (float*)newNormals->GetPointer(0);
 
     int fastDim, slowDim;
     if (dims[0] <= 1)

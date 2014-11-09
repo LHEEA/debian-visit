@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -213,7 +213,7 @@ avtArrayComposeWithBinsExpression::ProcessArguments(ArgsExpr *args,
                    " size 3: [L0, L1, L2].  V1's bin goes from L0 to L1, "
                    "and V2's bin goes from L1 to L2.");
     }
-    for (int i = 0 ; i < elems->size() ; i++)
+    for (size_t i = 0 ; i < elems->size() ; i++)
     {
         if ((*elems)[i]->GetEnd())
         {

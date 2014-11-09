@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -92,7 +92,7 @@ Split(const std::string &varName, stringVector &pieces)
     int         parenthesis = 0;
 
     // Iterate through the characters in the word splitting
-    for(int i = 0; i < varName.size(); ++i)
+    for(size_t i = 0; i < varName.size(); ++i)
     {
         char c = varName[i];
         if(c == '(')
@@ -494,12 +494,12 @@ VariableMenuPopulator::PopulateVariableLists(const std::string &dbName,
     // in the top sets.
     int roleCount[9] = { 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
-    for(i = 0; i < topSets.size(); ++i)
+    for(size_t ii = 0; ii < topSets.size(); ++ii)
     {
-        int tsIndex = topSets[i];
+        int tsIndex = topSets[ii];
         avtSILSet_p pTopset = sil->GetSILSet(tsIndex);
         const intVector &maps = pTopset->GetMapsOut();
-        for (int j = 0; j < maps.size(); ++j)
+        for (size_t j = 0; j < maps.size(); ++j)
         {
             int idx = maps[j];
             int role = (int)sil->GetSILCollection(idx)->GetRole();
@@ -508,9 +508,9 @@ VariableMenuPopulator::PopulateVariableLists(const std::string &dbName,
         }
     }
 
-    for(i = 0; i < topSets.size(); ++i)
+    for(size_t ii = 0; ii < topSets.size(); ++ii)
     {
-        int tsIndex = topSets[i];
+        int tsIndex = topSets[ii];
         avtSILSet_p pTopset = sil->GetSILSet(tsIndex);
         const intVector &maps = pTopset->GetMapsOut();
         string meshName = sil->GetSILSet(tsIndex)->GetName();
@@ -529,7 +529,7 @@ VariableMenuPopulator::PopulateVariableLists(const std::string &dbName,
 
         
         string setName("(" + meshName + ")");
-        for(int j = 0; j < maps.size(); ++j)
+        for(size_t j = 0; j < maps.size(); ++j)
         {
             int     idx = maps[j];
 
@@ -768,6 +768,8 @@ VariableMenuPopulator::GetRelevantExpressions(ExpressionList &newExpressionList,
 //   Give operator plugins the existing expressions as well so they can
 //   work on those too.
 //
+//   Mark C. Miller, Tue Jun 24 11:41:03 PDT 2014
+//   Send message for created expression to debug5 instead of debug1.
 // ****************************************************************************
 
 void
@@ -801,7 +803,7 @@ VariableMenuPopulator::GetOperatorCreatedExpressions(ExpressionList &newExpressi
                 Expression *e = globalExpr->operator[](opExpr.GetName().c_str());
                 if(e == 0)
                 {
-                    debug1 << "GetOperatorCreatedExpressions: Adding "
+                    debug5 << "GetOperatorCreatedExpressions: Adding "
                               "operator-created expression " << opExpr.GetName()
                            << " to the global expression list." << endl;
                     globalExpr->AddExpressions(opExpr);
@@ -1122,7 +1124,7 @@ VariableMenuPopulator::UpdateSingleMenu(QvisVariablePopupMenu *menu,
 
     // Add each variable to the variable menu.
     std::map <std::string, QvisVariablePopupMenu *> popups;
-    int j;
+    size_t j;
     std::string var;
     bool        validVar;
     const StringStringMap &originalNameToGroupedName = ginfo->grouping;
@@ -1436,7 +1438,7 @@ VariableMenuPopulator::VariableList::Contains(const std::string &var) const
         return (sortedVariables.find(var) != sortedVariables.end());
     else
     {
-        for(int i = 0; i < unsortedVariableNames.size(); ++i)
+        for(size_t i = 0; i < unsortedVariableNames.size(); ++i)
             if(unsortedVariableNames[i] == var)
                 return true;
     }
@@ -1500,7 +1502,7 @@ VariableMenuPopulator::VariableList::GetNextVariable(std::string &var, bool &val
     }
     else
     {
-        retval = (unsortedVariableIndex < unsortedVariableNames.size());
+        retval = ((size_t)unsortedVariableIndex < unsortedVariableNames.size());
         if(retval)
         {
             var = unsortedVariableNames[unsortedVariableIndex];
@@ -1614,7 +1616,7 @@ VariableMenuPopulator::VariableList::IsGroupingRequired(
             }
             else if(pathvar.size() > 1)
             {
-                for (int j = 0; j < pathvar.size()-1; j++)
+                for (int j = 0; j < (int)pathvar.size()-1; j++)
                     path = path + "/" + pathvar[j];
                 INCPATH
             }
@@ -1649,7 +1651,7 @@ VariableMenuPopulator::VariableList::IsGroupingRequired(
         Split(var, pathvar);
 
         string path;
-        for (int j = 0; j < pathvar.size(); j++)
+        for (size_t j = 0; j < pathvar.size(); j++)
         {
             // Get an iterator to the named set.
             StringStringSetMap::iterator p2 = entriesAtPath.find(path);
@@ -1708,7 +1710,7 @@ VariableMenuPopulator::VariableList::IsGroupingRequired(
             // If the set of strings at path is greater than the curoff then
             // we should break up entriesAtPath[path] into a list of smaller
             // groups of names so we can have smaller menus.
-            if (entriesAtPath[path].size() > GROUPING_CUTOFF)
+            if (entriesAtPath[path].size() > (size_t)GROUPING_CUTOFF)
             {
                 if (groupsAtPath.find(path) == groupsAtPath.end())
                 {
@@ -1726,7 +1728,7 @@ VariableMenuPopulator::VariableList::IsGroupingRequired(
                     // pathvar[j]. If we find a StringSet that contains 
                     // pathvar[j] then we need to augment the path because 
                     // some grouping has taken place.
-                    for(int k = 0; k < g->second.size(); ++k)
+                    for(size_t k = 0; k < g->second.size(); ++k)
                     {
                         if(g->second[k].find(pathvar[j]) != g->second[k].end())
                         {

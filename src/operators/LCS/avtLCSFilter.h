@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -147,9 +147,9 @@ protected:
                                          std::vector<avtIntegralCurve*> &,
                                          int &, int, double &, double & );
 
-    void          ComputeFTLE( vtkDataArray* jacobian[3], 
-                               vtkDataArray* result );
-
+    void ComputeEigenValueLyapunovExponent( vtkDataArray* jacobian[3], 
+                                            vtkDataArray* result );
+  
     // Iterative cacluation methods for FSLE, and similar methods
     bool RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics );
     bool NativeMeshIterativeCalc( std::vector<avtIntegralCurve*> &ics );
@@ -172,14 +172,11 @@ protected:
                                                int &, int, double &, double &,
                                                int & );
 
-    void ComputeFSLE( vtkDataArray* jacobian[3], 
-                      vtkDataArray* times,
-                      vtkDataArray* lengths,
-                      vtkDataArray* result,
-                      vtkDataArray* mask,
-                      int, int, int );
+    void ComputeFSLE( vtkDataArray *component,
+                      vtkDataArray *times,
+                      vtkDataArray *exponents );
 
-    bool Value( int x, int y, int z, vtkDataArray *array,
+    double Value( int x, int y, int z, vtkDataArray *array,
                 int x_max, int y_max, int z_max );
     void Increment( int x, int y, int z, vtkDataArray *mask,
                     int x_max, int y_max, int z_max );

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -377,7 +377,7 @@ VisWinLegends::UpdateDBInfo(vector<avtActor_p> &lst)
     //
     // Determine if the plots have the same database information.
     //
-    int    cycle;
+    int    cycle = 0;
     double dtime;
     string filename;
     bool   haveSetData = false;
@@ -438,7 +438,7 @@ VisWinLegends::UpdateDBInfo(vector<avtActor_p> &lst)
             dbname = VisWinPathTracker::Instance()
                         ->GetSmartDirectory(atts.GetFullDBName());
         }
-        bool hasTime = CreateDatabaseInfo(info,dbname,atts);
+        CreateDatabaseInfo(info,dbname,atts);
         dbInfoActor->SetInput(info);
         dbInfoActor->SetTextHeight(dbInfoHeight * dbInfoTextAttributes.scale);    
         

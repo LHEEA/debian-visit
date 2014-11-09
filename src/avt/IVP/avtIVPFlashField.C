@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,8 +45,6 @@
 #include <DebugStream.h>
 
 #include <vtkCellData.h>
-#include <vtkIntArray.h>
-#include <vtkFloatArray.h>
 
 // ****************************************************************************
 //  Method: avtIVPFlashField constructor
@@ -60,7 +58,7 @@ avtIVPFlashField::avtIVPFlashField( vtkDataSet* dataset,
                                     avtCellLocator* locator,
                                     double fact) : 
   avtIVPVTKField( dataset, locator ),
-  B_vtkDataArray(0), E_vtkDataArray(0), factor(1.0/fact)
+  factor(1.0/fact), B_vtkDataArray(0), E_vtkDataArray(0)
 {
   order = 2;
 

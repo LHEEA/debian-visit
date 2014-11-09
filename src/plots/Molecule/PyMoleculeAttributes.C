@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewMoleculeAttributes(int);
 std::string
 PyMoleculeAttributes_ToString(const MoleculeAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *drawAtomsAs_names = "NoAtoms, SphereAtoms, ImposterAtoms";
     switch (atts->GetDrawAtomsAs())
@@ -1291,7 +1291,6 @@ PyMoleculeAttributes_GetLogString()
 static void
 PyMoleculeAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    MoleculeAttributes *atts = (MoleculeAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

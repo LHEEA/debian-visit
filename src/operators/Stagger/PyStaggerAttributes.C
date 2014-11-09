@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewStaggerAttributes(int);
 std::string
 PyStaggerAttributes_ToString(const StaggerAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     SNPRINTF(tmpStr, 1000, "%soffsetX = %g\n", prefix, atts->GetOffsetX());
     str += tmpStr;
@@ -390,7 +390,6 @@ PyStaggerAttributes_GetLogString()
 static void
 PyStaggerAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    StaggerAttributes *atts = (StaggerAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

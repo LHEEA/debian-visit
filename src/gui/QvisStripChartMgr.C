@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,8 +89,8 @@ QvisStripChartMgr::QvisStripChartMgr(QWidget *parent, ViewerProxy *theViewer,
     engines = engineList;
     addLayoutStretch = false;
     CreateEntireWindow();
-    isPosted = FALSE;
-    postEnabled = TRUE;
+    isPosted = false;
+    postEnabled = true;
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -117,7 +117,8 @@ QvisPluginManagerAttributesDataModel::~QvisPluginManagerAttributesDataModel()
 void
 QvisPluginManagerAttributesDataModel::Update(Subject *)
 {
-    reset();
+    beginResetModel();
+    endResetModel();
 }
 
 // ****************************************************************************
@@ -324,7 +325,7 @@ QvisPluginManagerAttributesDataModel::data(const QModelIndex &index, int role) c
                 retval = QVariant(QString(pluginAtts->GetVersion()[op].c_str()));
             else if(index.column() == 2)
                 retval = QVariant(QString(pluginAtts->GetName()[op].c_str()));
-            else if(index.column() == 3 && op < pluginAtts->GetCategory().size())
+            else if(index.column() == 3 && (size_t)op < pluginAtts->GetCategory().size())
                 retval = QVariant(QString(pluginAtts->GetCategory()[op].c_str()));
         }
         else if(role == Qt::CheckStateRole)
@@ -369,7 +370,7 @@ QvisPluginManagerAttributesDataModel::setData(const QModelIndex &index,
     if(index.isValid())
     {
         int pIndex = getPluginI(index.row());
-        if(pIndex >= 0 && pIndex < pluginAtts->GetCategory().size())
+        if(pIndex >= 0 && (size_t)pIndex < pluginAtts->GetCategory().size())
         {
             // If we're editing the 3rd column, poke a new category name
             // into the pluginAtts.
@@ -482,7 +483,7 @@ QvisPluginManagerAttributesDataModel::getPluginI(int index) const
     int c = 0;
     std::string pt((pluginType == OperatorPlugin) ? "operator" : "plot");
     const stringVector &types = pluginAtts->GetType();
-    for(int i = 0; i < types.size(); ++i)
+    for(size_t i = 0; i < types.size(); ++i)
     {
         if(types[i] == pt)
         {

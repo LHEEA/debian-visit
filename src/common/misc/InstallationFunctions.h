@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,7 +74,8 @@ typedef enum {
     VISIT_RESOURCES_HELP,
     VISIT_RESOURCES_HOSTS,
     VISIT_RESOURCES_TRANSLATIONS,
-    VISIT_RESOURCES_MOVIETEMPLATES
+    VISIT_RESOURCES_MOVIETEMPLATES,
+    VISIT_RESOURCES_IMAGES
 } VisItResourceDirectoryType;
 
 std::string MISC_API GetVisItResourcesDirectory(VisItResourceDirectoryType t);

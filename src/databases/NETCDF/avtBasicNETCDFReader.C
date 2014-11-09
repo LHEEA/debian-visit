@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -92,8 +92,7 @@
 // ****************************************************************************
 
 avtBasicNETCDFReader::avtBasicNETCDFReader(const char *filename) :
-    avtNETCDFReaderBase(filename), meshNameToDimensionsSizes(), varToDimensionsSizes(),
-    meshNameToNCDimensions()
+    avtNETCDFReaderBase(filename), meshNameToDimensionsSizes(), meshNameToNCDimensions(), varToDimensionsSizes()
 {
     meshNamesCreated = false;
     procNum = 0;
@@ -105,8 +104,7 @@ avtBasicNETCDFReader::avtBasicNETCDFReader(const char *filename) :
 }
 
 avtBasicNETCDFReader::avtBasicNETCDFReader(const char *filename, NETCDFFileObject *f) :
-    avtNETCDFReaderBase(filename, f), meshNameToDimensionsSizes(), varToDimensionsSizes(),
-    meshNameToNCDimensions()
+    avtNETCDFReaderBase(filename, f), meshNameToDimensionsSizes(), meshNameToNCDimensions(), varToDimensionsSizes()
 {
     meshNamesCreated = false;
     procNum = 0;
@@ -238,6 +236,9 @@ avtBasicNETCDFReader::CreateGlobalAttributesString(int nGlobalAtts, std::string 
 //    Brad Whitlock, Wed Jan  4 15:47:43 PST 2012
 //    Handle missing data conventions.
 //
+//    Mark C. Miller, Wed Nov 20 14:42:56 PST 2013
+//    Two passes to add original (node-centered) variables and also an
+//    "as_zonal/" submenu for the same variables handled as zone centered. 
 // ****************************************************************************
 
 void
@@ -453,7 +454,7 @@ avtBasicNETCDFReader::PopulateDatabaseMetaData(int timeState, avtDatabaseMetaDat
                         // Filter out time from the dimensions so time varying and static
                         // variables can share the same mesh.
                         intVector meshDimsWithoutTime, meshDimSizesWithoutTime;
-                        for(int dim = 0; dim < meshDimSizes.size(); ++dim)
+                        for(size_t dim = 0; dim < meshDimSizes.size(); ++dim)
                             if(meshDimSizes[dim] != TIME_DIMENSION)
                             {
                                 meshDimSizesWithoutTime.push_back(meshDimSizes[dim]);
@@ -465,35 +466,39 @@ avtBasicNETCDFReader::PopulateDatabaseMetaData(int timeState, avtDatabaseMetaDat
                         if(md != 0)
                         {
                             md->SetFormatCanDoDomainDecomposition(true);
-                            avtMeshMetaData *mmd = new avtMeshMetaData(meshName, 
-                                1, 1, 1, 0, nSpatialDims, nSpatialDims,
-                                AVT_RECTILINEAR_MESH);
-                            mmd->validVariable = nSpatialDims <= 3;
-                            // Provide the dimension names as the axis labels.
-                            char dimName[NC_MAX_NAME+1];
-                            size_t sz;
-                            if((status = nc_inq_dim(fileObject->GetFileHandle(), vDims[0], dimName,
-                                &sz)) == NC_NOERR)
+                            for (int pass = 0; pass < 2; pass++)
                             {
-                                mmd->xLabel = dimName;
-                                fileObject->ReadStringAttribute(dimName, "units", mmd->xUnits);
-                            }
-                            if((status = nc_inq_dim(fileObject->GetFileHandle(), vDims[1], dimName,
-                                &sz)) == NC_NOERR)
-                            {
-                                mmd->yLabel = dimName;
-                                fileObject->ReadStringAttribute(dimName, "units", mmd->yUnits);
-                            }
-                            if(nSpatialDims == 3)
-                            {
-                                if((status = nc_inq_dim(fileObject->GetFileHandle(), vDims[2], dimName,
+                                avtMeshMetaData *mmd = new avtMeshMetaData(
+                                    (pass?meshName:("as_zonal/"+meshName)), 
+                                    1, 1, 1, 0, nSpatialDims, nSpatialDims,
+                                    AVT_RECTILINEAR_MESH);
+                                mmd->validVariable = nSpatialDims <= 3;
+                                // Provide the dimension names as the axis labels.
+                                char dimName[NC_MAX_NAME+1];
+                                size_t sz;
+                                if((status = nc_inq_dim(fileObject->GetFileHandle(), vDims[0], dimName,
                                     &sz)) == NC_NOERR)
                                 {
-                                    mmd->zLabel = dimName;
-                                    fileObject->ReadStringAttribute(dimName, "units", mmd->zUnits);
+                                    mmd->xLabel = dimName;
+                                    fileObject->ReadStringAttribute(dimName, "units", mmd->xUnits);
                                 }
+                                if((status = nc_inq_dim(fileObject->GetFileHandle(), vDims[1], dimName,
+                                    &sz)) == NC_NOERR)
+                                {
+                                    mmd->yLabel = dimName;
+                                    fileObject->ReadStringAttribute(dimName, "units", mmd->yUnits);
+                                }
+                                if(nSpatialDims == 3)
+                                {
+                                    if((status = nc_inq_dim(fileObject->GetFileHandle(), vDims[2], dimName,
+                                        &sz)) == NC_NOERR)
+                                    {
+                                        mmd->zLabel = dimName;
+                                        fileObject->ReadStringAttribute(dimName, "units", mmd->zUnits);
+                                    }
+                                }
+                                md->Add(mmd);
                             }
-                            md->Add(mmd);
                         }
                     }
 
@@ -501,13 +506,18 @@ avtBasicNETCDFReader::PopulateDatabaseMetaData(int timeState, avtDatabaseMetaDat
                     varToDimensionsSizes[varname] = meshDimSizes;
                     if(md != 0)
                     {
-                        avtScalarMetaData *smd = new avtScalarMetaData(varname, meshName,
-                            AVT_NODECENT);
-                        smd->hasUnits = fileObject->ReadStringAttribute(
-                            varname, "units", smd->units);
-                        smd->validVariable = nSpatialDims <= 3;
-                        HandleMissingData(varname, smd);
-                        md->Add(smd);
+                        for (int pass = 0; pass < 2; pass++)
+                        {
+                            avtScalarMetaData *smd = new avtScalarMetaData(
+                                (pass?varname:("as_zonal/"+std::string(varname))),
+                                (pass?meshName:("as_zonal/"+meshName)),
+                                pass?AVT_NODECENT:AVT_ZONECENT);
+                            smd->hasUnits = fileObject->ReadStringAttribute(
+                                varname, "units", smd->units);
+                            smd->validVariable = nSpatialDims <= 3;
+                            HandleMissingData(varname, smd);
+                            md->Add(smd);
+                        }
                     }
                 } 
             }
@@ -534,7 +544,7 @@ avtBasicNETCDFReader::PopulateDatabaseMetaData(int timeState, avtDatabaseMetaDat
 bool
 avtBasicNETCDFReader::ReturnSpatialDimensionIndices(const intVector &dims, int sDims[3], int &nSDims) const
 {
-    int i;
+    size_t i;
     const char *mName = "avtBasicNETCDFReader::ReturnValidDimensions: ";
 
     // Look for up to 3 valid spatial dimensions.
@@ -550,7 +560,7 @@ avtBasicNETCDFReader::ReturnSpatialDimensionIndices(const intVector &dims, int s
     // Count the number of cells that comprise the spatial dimensions
     int nCells = 1;
     debug5 << mName << "validDims=(";
-    for(i = 0; i < nSDims; ++i)
+    for(i = 0; i < (size_t)nSDims; ++i)
     {
         nCells *= dims[sDims[i]];
         debug5 << dims[sDims[i]] << ", ";
@@ -601,7 +611,7 @@ avtBasicNETCDFReader::ReturnDimStartsAndCounts(int timeState, const intVector &d
     //
     dimStarts.clear();
     dimCounts.clear();
-    for (int i = 0; i < dims.size(); i++)
+    for (size_t i = 0; i < dims.size(); i++)
     {
         if(dims[i] == TIME_DIMENSION)
         {
@@ -716,6 +726,15 @@ avtBasicNETCDFReader::ReturnDimStartsAndCounts(int timeState, const intVector &d
 //   Brad Whitlock, Thu Jul 15 12:13:30 PDT 2010
 //   I added support for curves over time.
 //
+//   Mark C. Miller, Wed Nov 20 14:42:56 PST 2013
+//   Handle mesh construction for zone centered variants of variables too. 
+//
+//   Burlen Loring, Mon Jul 14 13:03:55 PDT 2014
+//   fix out of bounds index into vector of dimension id's. added a check
+//   to prevent out of bounds access into coordvals array (x-axis values)
+//   when it's a different length than the variable (y-axis values). In
+//   that case id values are used instead.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -724,17 +743,24 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
     const char *mName = "avtBasicNETCDFReader::GetMesh: ";
     debug4 << mName << "var=" << var << endl;
     vtkDataSet *retval = 0;
+    char const *bare_var = var;
+    if (!strncmp(var, "as_zonal/", sizeof("as_zonal/")-1))
+        bare_var = &var[sizeof("as_zonal/")-1];
+
+    avtCentering centering = AVT_NODECENT;
+    if (!strncmp(var, "as_zonal/", sizeof("as_zonal/")-1))
+        centering = AVT_ZONECENT;
  
     // Populate the mesh names if we've not done so yet.
     if(!meshNamesCreated)
         PopulateDatabaseMetaData(timeState, 0);
 
-    StringIntVectorMap::const_iterator mesh = meshNameToDimensionsSizes.find(var);
+    StringIntVectorMap::const_iterator mesh = meshNameToDimensionsSizes.find(bare_var);
     if(mesh != meshNameToDimensionsSizes.end())
     {
         if(mesh->second.size() == 1)
         {
-            StringIntVectorMap::const_iterator meshDims = meshNameToNCDimensions.find(var);
+            StringIntVectorMap::const_iterator meshDims = meshNameToNCDimensions.find(bare_var);
             if(meshDims != meshNameToNCDimensions.end())
             {
                 // Time varying curves
@@ -743,11 +769,11 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
                 // get it then we just use indices.
                 float *coordvals = 0;                
                 int status;
-                size_t sz;
+                size_t sz = 0;
                 char dimName[NC_MAX_NAME+1];
                 debug4 << mName << "Looking for X coordinate dimension name" << endl;
-                if((status = nc_inq_dim(fileObject->GetFileHandle(), 
-                    meshDims->second[meshDims->second[0]], dimName, &sz)) == NC_NOERR)
+                if((status = nc_inq_dim(fileObject->GetFileHandle(),
+                    meshDims->second[0], dimName, &sz)) == NC_NOERR)
                 {
                     TypeEnum dvart = NO_TYPE;
                     int dvarndims = 0;
@@ -755,7 +781,7 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
                     debug4 << mName << "Looking for " << dimName << " array as X coordinate" << endl;
                     if(fileObject->InqVariable(dimName, &dvart, &dvarndims, &dvardims))
                     {
-                        if(dvarndims == 1 && dvardims[0] == sz)
+                        if(dvarndims == 1 && (size_t)dvardims[0] == sz)
                             coordvals = ReadArray(dimName);
                         delete [] dvardims;
                     }
@@ -768,10 +794,10 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
                 // Assemble the curve.
                 int nPts = mesh->second[0];
                 vtkRectilinearGrid *rg = vtkVisItUtility::Create1DRGrid(nPts, VTK_FLOAT);
-                vtkFloatArray *xc = vtkFloatArray::SafeDownCast(
-                    rg->GetXCoordinates());
-                for (int j = 0 ; j < nPts ; j++)
-                    xc->SetValue(j, (coordvals != 0) ? coordvals[j] : (float)j); 
+                vtkFloatArray *xc = vtkFloatArray::SafeDownCast(rg->GetXCoordinates());
+                bool validCoords = coordvals && (sz == static_cast<size_t>(nPts));
+                for (int j = 0 ; j < nPts ; ++j)
+                    xc->SetValue(j, validCoords ? coordvals[j] : (float)j);
 
                 rg->GetPointData()->SetScalars(yv);
                 retval = rg;
@@ -834,7 +860,7 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
                     // it for the mesh's coordinate values.
                     float *coordvals = 0;
                     char dimName[NC_MAX_NAME+1];
-                    StringIntVectorMap::const_iterator meshDims = meshNameToNCDimensions.find(var);
+                    StringIntVectorMap::const_iterator meshDims = meshNameToNCDimensions.find(bare_var);
                     if(meshDims != meshNameToNCDimensions.end())
                     {
                         int status;
@@ -851,7 +877,7 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
                                    << xyzname[i] << " coordinate" << endl;
                             if(fileObject->InqVariable(dimName, &dvart, &dvarndims, &dvardims))
                             {
-                                if(dvarndims == 1 && dvardims[0] == sz)
+                                if(dvarndims == 1 && (size_t)dvardims[0] == sz)
                                     coordvals = ReadArray(dimName);
                                 delete [] dvardims;
                             }
@@ -859,15 +885,47 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
                     }
 
                     // Populate the coordinates
-                    dims[i] = dimCounts[spatialDimIndices[i]];
-                    coords[i]->SetNumberOfTuples(dims[i]);
+                     dims[i] = dimCounts[spatialDimIndices[i]];
+                    if (centering == AVT_NODECENT)
+                        coords[i]->SetNumberOfTuples(dims[i]);
+                    else
+                        coords[i]->SetNumberOfTuples(dims[i]+1);
                     if(coordvals != 0)
                     {
                         debug4 << mName << "Using " << dimName << " array as "
                                    << xyzname[i] << " coordinate" << endl;
                         int start = dimStarts[spatialDimIndices[i]];
-                        for (int j = 0 ; j < dims[i] ; j++)
-                            coords[i]->SetComponent(j, 0, coordvals[start + j]);
+                        if (centering == AVT_NODECENT)
+                        {
+                            for (int j = 0 ; j < dims[i] ; j++)
+                                coords[i]->SetComponent(j, 0, coordvals[start + j]);
+                        }
+                        else // mesh coords for zone-centered variants
+                        {
+                            float width_of_first_zone =
+                                coordvals[start+1] - coordvals[start];
+                            float half_step_before_first =
+                                coordvals[start] - width_of_first_zone / 2.0;
+                            coords[i]->SetComponent(0, 0, half_step_before_first);
+
+                            // Coords for zone-centered variant are midway between
+                            // coords for the normal case
+                            for (int j = 0 ; j < dims[i]-1 ; j++)
+                            {
+                                float midway =
+                                    (coordvals[start+j] + coordvals[start+j+1]) / 2.0;
+                                coords[i]->SetComponent(j+1, 0, midway);
+                            }
+
+                            float width_of_last_zone =
+                                coordvals[start+dims[i]-1] - coordvals[start+dims[i]-2];
+                            float half_step_after_last =
+                                coordvals[start+dims[i]-1] + width_of_last_zone / 2.0;
+                            coords[i]->SetComponent(dims[i], 0, half_step_after_last);
+
+                            // Don't forget to adjust dims sizes up by 1
+                            dims[i] = dimCounts[spatialDimIndices[i]]+1;
+                        }
                     }
                     else
                     {
@@ -899,7 +957,7 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
     }
     else
     {
-        EXCEPTION1(InvalidVariableException, var);
+        EXCEPTION1(InvalidVariableException, bare_var);
     }
 
     return retval;
@@ -948,6 +1006,8 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
 //   Brad Whitlock, Fri Jan  6 13:35:00 PST 2012
 //   Apply scaling and offset attributes to transform data.
 //
+//   Mark C. Miller, Wed Nov 20 14:47:30 PST 2013
+//   Handle zone centered variants of variables too.
 // ****************************************************************************
 
 #define READVAR(VTKTYPE) \
@@ -960,12 +1020,12 @@ avtBasicNETCDFReader::GetMesh(int timeState, const char *var)
                    << " of " << nValues << " elements" << endl; \
             int *rdimStarts = new int[dimStarts.size()]; \
             int *rdimCounts = new int[dimCounts.size()]; \
-            for (int kk = 0; kk < dimStarts.size(); kk++)\
+            for (size_t kk = 0; kk < dimStarts.size(); kk++)\
             {\
                 rdimStarts[ndims-kk-1] = dimStarts[kk];\
                 rdimCounts[ndims-kk-1] = dimCounts[kk];\
             }\
-            if(fileObject->ReadVariableInto(var, t, rdimStarts, rdimCounts,\
+            if(fileObject->ReadVariableInto(bare_var, t, rdimStarts, rdimCounts,\
                                             arr->GetVoidPointer(0)))\
                 retval = arr;\
             else\
@@ -980,6 +1040,9 @@ avtBasicNETCDFReader::GetVar(int timeState, const char *var)
 {
     const char *mName = "avtBasicNETCDFReader::GetVar: ";
     debug4 << mName << "var=" << var << endl;
+    char const *bare_var = var;
+    if (!strncmp(var, "as_zonal/", sizeof("as_zonal/")-1))
+        bare_var = &var[sizeof("as_zonal/")-1];
 
     vtkDataArray *retval = 0;
 
@@ -987,14 +1050,14 @@ avtBasicNETCDFReader::GetVar(int timeState, const char *var)
     TypeEnum t = NO_TYPE;
     int ndims = 0;
     int *dims = 0;
-    if(!fileObject->InqVariable(var, &t, &ndims, &dims))
+    if(!fileObject->InqVariable(bare_var, &t, &ndims, &dims))
     {
         EXCEPTION1(InvalidVariableException, var);
     }
     delete [] dims;
 
     // Look up the mesh dimensions for the mesh.
-    StringIntVectorMap::const_iterator minfo = varToDimensionsSizes.find(var);
+    StringIntVectorMap::const_iterator minfo = varToDimensionsSizes.find(bare_var);
     if(minfo != varToDimensionsSizes.end())
     {
         // Get the dim starts and counts.
@@ -1003,16 +1066,18 @@ avtBasicNETCDFReader::GetVar(int timeState, const char *var)
 
         // Compute how many values that makes.
         unsigned long nValues = 1;
-        for(int i = 0; i < dimCounts.size(); ++i)
+        for(size_t i = 0; i < dimCounts.size(); ++i)
             nValues *= (unsigned long)dimCounts[i];
 
         debug4 << mName << "dimStarts = {";
-        for(int i = 0; i < dimStarts.size(); ++i)
+        for(size_t i = 0; i < dimStarts.size(); ++i) {
             debug4 << dimStarts[i] << ", ";
+        }
         debug4 << "}\n";
         debug4 << mName << "dimCounts = {";
-        for(int i = 0; i < dimCounts.size(); ++i)
+        for(size_t i = 0; i < dimCounts.size(); ++i) {
             debug4 << dimCounts[i] << ", ";
+        }
         debug4 << "}\n";
 
         if(t == CHARARRAY_TYPE || t == UCHARARRAY_TYPE)

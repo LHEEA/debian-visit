@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,12 +43,9 @@
 #ifndef AVT_InverseGhostZone_FILTER_H
 #define AVT_InverseGhostZone_FILTER_H
 
-
 #include <avtPluginDataTreeIterator.h>
+
 #include <InverseGhostZoneAttributes.h>
-
-
-class vtkDataSet;
 
 
 // ****************************************************************************
@@ -63,6 +60,9 @@ class vtkDataSet;
 //  Modifications:
 //    Cyrus Harrison, Thu Jul  8 13:08:24 PDT 2010
 //    Added ModifyContract.
+//
+//    Eric Brugger, Wed Jul 30 18:28:57 PDT 2014
+//    Modified the class to work with avtDataRepresentation.
 //
 // ****************************************************************************
 
@@ -87,7 +87,7 @@ class avtInverseGhostZoneFilter : public avtPluginDataTreeIterator
     virtual avtContract_p
                           ModifyContract(avtContract_p);
 
-    virtual vtkDataSet   *ExecuteData(vtkDataSet *, int, std::string);
+    virtual avtDataRepresentation *ExecuteData(avtDataRepresentation *);
     virtual void          UpdateDataObjectInfo(void);
 };
 

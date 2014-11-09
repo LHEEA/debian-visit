@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -237,7 +237,6 @@ avtIsenburgSGG::StreamDataset(vtkDataSet *ds)
     Ghost3Dblock *block = blocks + curBlock;
     int origin_out[3];
     int size_out[3];
-    int sz = ds->GetNumberOfPoints();
     
     vtkDataArray *in_array  = rg_in->GetPointData()->GetScalars();
     void *data = in_array->GetVoidPointer(0);

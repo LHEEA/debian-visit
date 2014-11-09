@@ -97,7 +97,6 @@ MshData::Open(const std::string &filename)
             // Read the connectivity
             //
             int iconn[10];
-            vtkIdType conn[10];
             ifile.getline(line, 1024);
             int nNodesPerCell = sscanf(line, "%d %d %d %d %d %d %d %d %d %d", 
                 &iconn[0], &iconn[1], &iconn[2], &iconn[3], &iconn[4], 
@@ -115,6 +114,7 @@ MshData::Open(const std::string &filename)
             debug4 << mName << "cellType = " << cellType << endl;
 
 #ifndef MDSERVER
+            vtkIdType conn[10];
             vtkIdType *connectivity = new vtkIdType[nNodesPerCell * nCells];
             for(int n = 0; n < nNodesPerCell; ++n)
                 connectivity[n] = (vtkIdType)iconn[n];
@@ -369,7 +369,7 @@ MshData::ReleaseData()
 vtkDataSet *
 MshData::GetMesh(int domain)
 {
-    if(domain >= 0 && domain < domains.size())
+    if(domain >= 0 && (size_t)domain < domains.size())
     {
         domains[domain]->Register(NULL);
         return domains[domain];

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2044,7 +2044,7 @@ VisWinPlots::GetTransparencyActor()
 void
 VisWinPlots::SuspendOpaqueGeometry()
 {
-    for(int i=0; i<plots.size(); i++)
+    for(size_t i=0; i<plots.size(); i++)
     {
         if( plots[i]->IsVisible() )
         {
@@ -2089,7 +2089,7 @@ VisWinPlots::SuspendTranslucentGeometry()
 void
 VisWinPlots::ResumeOpaqueGeometry()
 {
-    for(int i=0; i<plots.size(); i++)
+    for(size_t i=0; i<plots.size(); i++)
     {
         if( plots[i]->IsVisible() )
         {
@@ -2205,10 +2205,9 @@ VisWinPlots::GetMaxZShift()
 bool
 VisWinPlots::DoAllPlotsAxesHaveSameUnits()
 {
-    int i;
     bool first = true;
     std::string theUnits = "";
-    for (i = 0; i < plots.size(); i++)
+    for (size_t i = 0; i < plots.size(); i++)
     {
         if (plots[i]->IsVisible())
         {

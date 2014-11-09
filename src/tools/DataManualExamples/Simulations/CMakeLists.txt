@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -61,6 +61,25 @@
 #   Brad Whitlock, Mon Aug 13 11:37:49 PDT 2012
 #   Added multiblock.c
 #
+#   Kathleen Biagas, Fri Jun  6 11:16:01 PDT 2014
+#   Remove no-longer use SIMV1 functions.  Copy python examples when
+#   doing out-of-source builds.
+#
+#   Kathleen Biagas, Thu Jun 12 13:24:08 PDT 2014
+#   Added mechanism for creating a simV2_static archive containing all
+#   visit symbols necessary for compiling these examples statically.
+#
+#   Brad Whitlock, Fri Jun 13 14:03:00 PDT 2014
+#   Add globalids example.
+#
+#   Kathleen Biagas, Wed Jul 16 11:49:03 MST 2014
+#   Use 'project' on Windows instead of 'all_simulations' when
+#   VISIT_DATA_MANUAL_EXAMPLES not turned on.
+#
+#   Kathleen Biagas, Wed Sep 3 17:23:47 MST 2014
+#   Change target location on Windows, to be relative to in the exe dir,
+#   will aid running sim examples via test suite.
+#
 #****************************************************************************/
 
 INCLUDE_DIRECTORIES(
@@ -70,33 +89,70 @@ ${CMAKE_CURRENT_SOURCE_DIR}
 # This target depends on all the simulations so we make this target if we want
 # to build any of the simulations.
 IF(NOT VISIT_DATA_MANUAL_EXAMPLES)
-    ADD_CUSTOM_TARGET(all_simulations)
+    IF (WIN32)
+        PROJECT(VISIT_SIMULATION_EXAMPLES)
+    ELSE()
+        ADD_CUSTOM_TARGET(all_simulations)
+    ENDIF()
 ENDIF(NOT VISIT_DATA_MANUAL_EXAMPLES)
+
+IF(VISIT_STATIC)
+  # Create a single static simV2 archive containing all relevant visit libraries
+
+  # create a library that depends on a dummy source file
+  set(SIMV2_STATIC_SRC ${CMAKE_CURRENT_BINARY_DIR}/simv2_static_dummy.c)
+  set(SIMV2_STATIC_SER ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libsimV2_static_ser.a)
+  set(SIMV2_STATIC_PAR ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libsimV2_static_par.a)
+  add_library(simV2_static_ser STATIC ${SIMV2_STATIC_SRC})
+
+  # create the dummy source file
+  add_custom_command(OUTPUT ${SIMV2_STATIC_SRC} 
+                     COMMAND ${CMAKE_COMMAND} -E touch ${SIMV2_STATIC_SRC}
+  )
+
+  configure_file(${VISIT_SOURCE_DIR}/CMake/CreateStaticSimV2.cmake.in
+                 ${CMAKE_CURRENT_BINARY_DIR}/CreateStaticSimV2.cmake
+                 @ONLY
+  )
+  add_custom_command(TARGET simV2_static_ser POST_BUILD
+                     COMMAND ${CMAKE_COMMAND} -P
+                     ${CMAKE_CURRENT_BINARY_DIR}/CreateStaticSimV2.cmake
+                     COMMENT "CREATING SIMV2 STATIC ARCHIVE"
+  )
+
+  if (VISIT_PARALLEL)
+      add_library(simV2_static_par STATIC ${SIMV2_STATIC_SRC})
+  endif()
+
+ENDIF()
 
 # The simulation will be built here but not added to the "all" target. This means
 # it won't be built unless we explicitly build it or make the "all_simulations"
 # target.
 FUNCTION(SET_SIMULATION_PROPERTIES target)
-    SET_TARGET_PROPERTIES(sim_${target} PROPERTIES
-        OUTPUT_NAME ${target}
-        RUNTIME_OUTPUT_DIRECTORY ${VISIT_BINARY_DIR}/tools/DataManualExamples/Simulations
-        FOLDER tools/DataManualExamples/Simulations
-    )
-    IF(NOT VISIT_DATA_MANUAL_EXAMPLES)
+    IF(NOT WIN32)
         SET_TARGET_PROPERTIES(sim_${target} PROPERTIES
-            EXCLUDE_FROM_ALL TRUE
+            OUTPUT_NAME ${target}
+            RUNTIME_OUTPUT_DIRECTORY ${VISIT_BINARY_DIR}/tools/DataManualExamples/Simulations
+            FOLDER tools/DataManualExamples/Simulations
         )
-        ADD_DEPENDENCIES(all_simulations sim_${target})
-    ENDIF(NOT VISIT_DATA_MANUAL_EXAMPLES)
+        IF(NOT VISIT_DATA_MANUAL_EXAMPLES)
+            SET_TARGET_PROPERTIES(sim_${target} PROPERTIES
+                EXCLUDE_FROM_ALL TRUE
+            )
+            ADD_DEPENDENCIES(all_simulations sim_${target})
+        ENDIF()
+    ELSE()
+        SET_TARGET_PROPERTIES(sim_${target} PROPERTIES
+            OUTPUT_NAME ${target}
+            RUNTIME_OUTPUT_DIRECTORY_RELEASE ${VISIT_EXECUTABLE_DIR}/tools/DataManualExamples/Simulations
+            RUNTIME_OUTPUT_DIRECTORY_DEBUG ${VISIT_EXECUTABLE_DIR}/tools/DataManualExamples/Simulations
+            RUNTIME_OUTPUT_DIRECTORY_REWITHDEBINFO ${VISIT_EXECUTABLE_DIR}/tools/DataManualExamples/Simulations
+            RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL ${VISIT_EXECUTABLE_DIR}/tools/DataManualExamples/Simulations
+            FOLDER tools/DataManualExamples/Simulations
+        )
+    ENDIF()
 ENDFUNCTION(SET_SIMULATION_PROPERTIES)
-
-# Add the --export-dynamic flag for Linux gcc so SimV1 simulations will expose 
-# their callback functions.
-FUNCTION(ADD_EXPORT_DYNAMIC_LINK_FLAGS target)
-    SET_TARGET_PROPERTIES(sim_${target} PROPERTIES
-        ENABLE_EXPORTS ON
-    )
-ENDFUNCTION(ADD_EXPORT_DYNAMIC_LINK_FLAGS)
 
 # We need more libraries on Linux and Windows
 IF(WIN32)
@@ -107,54 +163,6 @@ ELSE(WIN32)
     ENDIF(NOT APPLE)
 ENDIF(WIN32)
 
-##
-## SimV1 functions
-##
-
-FUNCTION(ADD_SIMV1_SIMULATION target)
-    ADD_EXECUTABLE(sim_${target} ${ARGN})
-    SET_SIMULATION_PROPERTIES(${target})
-    TARGET_LINK_LIBRARIES(sim_${target} sim ${EXTRA_SIM_LIBS})
-    ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V1/lib
-        ${VISIT_SOURCE_DIR}/databases/SimV1
-    )
-    ADD_EXPORT_DYNAMIC_LINK_FLAGS(${target})
-ENDFUNCTION(ADD_SIMV1_SIMULATION)
-
-FUNCTION(ADD_FORTRAN_SIMV1_SIMULATION target)
-    IF(VISIT_FORTRAN)
-        ADD_EXECUTABLE(sim_${target} ${ARGN} simulationexample.f)
-        SET_SIMULATION_PROPERTIES(${target})
-        TARGET_LINK_LIBRARIES(sim_${target} simf sim ${EXTRA_SIM_LIBS})
-        ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V1/lib
-            ${VISIT_SOURCE_DIR}/databases/SimV1
-        )
-        ADD_EXPORT_DYNAMIC_LINK_FLAGS(${target})
-    ENDIF(VISIT_FORTRAN)
-ENDFUNCTION(ADD_FORTRAN_SIMV1_SIMULATION)
-
-FUNCTION(ADD_PARALLEL_SIMV1_SIMULATION target)
-    ADD_PARALLEL_EXECUTABLE(sim_${target} ${ARGN})
-    SET_SIMULATION_PROPERTIES(${target})
-    SET_TARGET_PROPERTIES(sim_${target} PROPERTIES HAS_CXX ON)
-    TARGET_LINK_LIBRARIES(sim_${target} sim ${EXTRA_SIM_LIBS})
-    ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V1/lib
-        ${VISIT_SOURCE_DIR}/databases/SimV1
-    )
-    ADD_EXPORT_DYNAMIC_LINK_FLAGS(${target})
-ENDFUNCTION(ADD_PARALLEL_SIMV1_SIMULATION)
-
-FUNCTION(ADD_PARALLEL_FORTRAN_SIMV1_SIMULATION target)
-    IF(VISIT_FORTRAN)
-        ADD_PARALLEL_FORTRAN_EXECUTABLE(sim_${target} ${ARGN} simulationexample.f)
-        SET_SIMULATION_PROPERTIES(${target})
-        TARGET_LINK_LIBRARIES(sim_${target} simf sim ${EXTRA_SIM_LIBS})
-        ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V1/lib
-            ${VISIT_SOURCE_DIR}/databases/SimV1
-        )
-        ADD_EXPORT_DYNAMIC_LINK_FLAGS(${target})
-    ENDIF(VISIT_FORTRAN)
-ENDFUNCTION(ADD_PARALLEL_FORTRAN_SIMV1_SIMULATION)
 
 ##
 ## SimV2 functions
@@ -164,7 +172,15 @@ FUNCTION(ADD_SIMV2_SIMULATION target)
     ADD_EXECUTABLE(sim_${target} ${ARGN})
     SET_SIMULATION_PROPERTIES(${target})
     SET_TARGET_PROPERTIES(sim_${target} PROPERTIES HAS_CXX ON)
-    TARGET_LINK_LIBRARIES(sim_${target} simV2 ${EXTRA_SIM_LIBS})
+    IF(NOT VISIT_STATIC)
+        TARGET_LINK_LIBRARIES(sim_${target} simV2 ${EXTRA_SIM_LIBS})
+    ELSE()
+        SET(VTK_LIBS vtkCommonCore vtkImagingCore vtkRenderingCore vtkIOLegacy vtkIOPLY
+                     vtkInteractionStyle vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL
+                     vtkFiltersHybrid vtkFiltersModeling vtkGeovisCore)
+        TARGET_LINK_LIBRARIES(sim_${target} simV2_static_ser ${VTK_LIBS} ${ZLIB_LIB}
+                                                             ${EXTRA_SIM_LIBS})
+    ENDIF()
     ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V2/lib)
 ENDFUNCTION(ADD_SIMV2_SIMULATION)
 
@@ -182,7 +198,11 @@ FUNCTION(ADD_PARALLEL_SIMV2_SIMULATION target)
         ADD_PARALLEL_EXECUTABLE(sim_${target} ${ARGN})
         SET_SIMULATION_PROPERTIES(${target})
         SET_TARGET_PROPERTIES(sim_${target} PROPERTIES HAS_CXX ON)
-        TARGET_LINK_LIBRARIES(sim_${target} simV2 ${EXTRA_SIM_LIBS})
+        IF(NOT VISIT_STATIC)
+            TARGET_LINK_LIBRARIES(sim_${target} simV2 ${EXTRA_SIM_LIBS})
+        ELSE()
+            TARGET_LINK_LIBRARIES(sim_${target} simV2_static_par ${EXTRA_SIM_LIBS})
+        ENDIF()
         ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V2/lib)
     ENDIF(VISIT_PARALLEL)
 ENDFUNCTION(ADD_PARALLEL_SIMV2_SIMULATION)
@@ -195,6 +215,12 @@ FUNCTION(ADD_PARALLEL_FORTRAN_SIMV2_SIMULATION target)
         ADD_TARGET_INCLUDE(sim_${target} ${VISIT_SOURCE_DIR}/sim/V2/lib)
     ENDIF(VISIT_PARALLEL AND VISIT_FORTRAN)
 ENDFUNCTION(ADD_PARALLEL_FORTRAN_SIMV2_SIMULATION)
+
+FUNCTION(ADD_PYTHON_SIMV2_SIMULATION target)
+    EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy
+        ${CMAKE_CURRENT_SOURCE_DIR}/${target} ${CMAKE_CURRENT_BINARY_DIR})
+ENDFUNCTION(ADD_PYTHON_SIMV2_SIMULATION)
+
 
 ##
 ## Simulation targets
@@ -214,6 +240,9 @@ ADD_PARALLEL_SIMV2_SIMULATION(domainbounds_par domainbounds.c)
 
 ADD_SIMV2_SIMULATION(ghostcells ghostcells.c)
 ADD_PARALLEL_SIMV2_SIMULATION(ghostcells_par ghostcells.c)
+
+ADD_SIMV2_SIMULATION(globalids globalids.c)
+ADD_PARALLEL_SIMV2_SIMULATION(globalids_par globalids.c)
 
 ADD_SIMV2_SIMULATION(interleave interleave.c)
 
@@ -297,3 +326,10 @@ ADD_SIMV2_SIMULATION(var var.c)
 
 ADD_SIMV2_SIMULATION(writeback writeback.c)
 ADD_PARALLEL_SIMV2_SIMULATION(writeback_par writeback.c)
+
+# copy python examples to simulation examples build dir
+IF(VISIT_OUT_OF_SOURCE_BUILD)
+    ADD_PYTHON_SIMV2_SIMULATION(material.py)
+    ADD_PYTHON_SIMV2_SIMULATION(updateplots.py)
+    ADD_PYTHON_SIMV2_SIMULATION(var.py)
+ENDIF()

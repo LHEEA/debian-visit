@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,7 +41,6 @@
 #include "SimV2Tracing.h"
 #include "DeclareDataCallbacks.h"
 #include "SimUI.h"
-
 
 #ifdef _WIN32
 #if _MSC_VER < 1600
@@ -1527,6 +1526,9 @@ visit_get_runtime_function(const char *name)
 *   Brad Whitlock, Mon Oct 24 09:44:38 PDT 2011
 *   Wrap it all with VISIT_STATIC since we don't use them in that case.
 *
+*   Cyrus Harrison, Tue Nov 26 10:53:52 PST 2013
+*   Support new osmesa setup for visit post 2.7.0
+*
 *******************************************************************************/
 #ifndef VISIT_STATIC
 #ifdef _WIN32
@@ -1572,6 +1574,40 @@ LIBSIM_MESSAGE1("Error: %x", GetLastError());
     return (dl_handle != NULL) ? VISIT_OKAY : VISIT_ERROR;
 }
 #else
+/*******************************************************************************
+*
+* Name: Preload_OSMesaGL
+*
+* Purpose: Loads OSMesa (from VISIT_MESA_LIB) as libGL.
+*
+* Author: Cyrus Harrison
+*
+* Modifications:
+*   Burlen Loring, Sat May  3 10:52:13 PDT 2014
+*   fix bug, return a value. report if the env var is not found
+*
+*******************************************************************************/
+int Preload_OSMesaGL(void)
+{
+    /* load library */
+    void *gl_dl_handle = NULL;
+    if(getenv("VISIT_MESA_LIB") != NULL)
+    {
+        char *osmesa_lib_path = getenv("VISIT_MESA_LIB");
+        LIBSIM_MESSAGE1("Attempting to preload osmesa as libGL -- calling dlopen(%s)", osmesa_lib_path);
+        gl_dl_handle = dlopen(osmesa_lib_path, RTLD_LAZY | RTLD_GLOBAL);
+        if(gl_dl_handle == NULL)
+        {
+            LIBSIM_MESSAGE1("dlopen error: %s", dlerror());
+            LIBSIM_MESSAGE1("failed to preload osmesa from VISIT_MESA_LIB: %s",osmesa_lib_path);
+            return -1;
+        }
+        return 0;
+    }
+    LIBSIM_MESSAGE("Not preloading osmesa, VISIT_MESA_LIB was not set");
+    return -1;
+}
+
 static int LoadVisItLibrary_UNIX(void)
 {
     char lib[256];
@@ -1584,6 +1620,14 @@ static int LoadVisItLibrary_UNIX(void)
     const char *extension = "so";
     const char *LD_LIBRARY_PATH = "LD_LIBRARY_PATH";
 #endif
+    /*
+       If VISIT_MESA_LIB is set we want to use osmesa instead of system gl.
+       For this case: load osmesa as libGL before the rest of libsim.
+    */
+    if(getenv("VISIT_MESA_LIB") != NULL)
+    {
+        Preload_OSMesaGL();
+    }
 
     if (isParallel)
     {
@@ -1595,7 +1639,7 @@ static int LoadVisItLibrary_UNIX(void)
     }
 
     LIBSIM_MESSAGE1("Calling dlopen(%s)", lib);
-    dl_handle = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
+    dl_handle = dlopen(lib, RTLD_LAZY | RTLD_GLOBAL);
 
     if (dl_handle == NULL)
     {
@@ -1624,7 +1668,7 @@ static int LoadVisItLibrary_UNIX(void)
                 else
                     sprintf(lib, "%s/libsimV2runtime_ser.%s", libpath, extension);
                 LIBSIM_MESSAGE1("Calling dlopen(%s)", lib);
-                dl_handle = dlopen(lib, RTLD_NOW | RTLD_GLOBAL);
+                dl_handle = dlopen(lib, RTLD_LAZY | RTLD_GLOBAL);
                 if(dl_handle == NULL)
                 {
                      LIBSIM_MESSAGE1("dlopen error: %s", dlerror());
@@ -1786,6 +1830,7 @@ static int LoadVisItLibrary(void)
         CONTROL_DLSYM(set_command_callback,       void,   (void*,void (*)(const char*,const char*,void*),void*));
         CONTROL_DLSYM(save_window,                int,    (void*,const char *,int,int,int));
         CONTROL_DLSYM(debug_logs,                 void,   (int,const char *));
+        CONTROL_DLSYM(set_mpicomm,                int,    (void *));
 
         CONTROL_DLSYM_OPTIONAL(add_plot,             int,    (void *, const char *, const char *, const char *, int *));
         CONTROL_DLSYM_OPTIONAL(add_operator,         int,    (void *, int, const char *, int *));
@@ -2957,7 +3002,7 @@ VisItGetSockets(VISIT_SOCKET *lSocket, VISIT_SOCKET *cSocket)
 *******************************************************************************/
 int VisItAttemptToCompleteConnection(void)
 {
-    VISIT_SOCKET socket;
+    VISIT_SOCKET socket = -1; //TODO: verify initialization is safe
 
     LIBSIM_API_ENTER(VisItAttemptToCompleteConnection);
 
@@ -3755,25 +3800,22 @@ VisItAddPlot(const char *plotType, const char *var, int *plotID)
 
     if(plotType == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the plot type.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddPlot,
+                         "VisItAddPlot: NULL was passed for the plot type.");
         return VISIT_ERROR;
     }
 
     if(var == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the variable.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddPlot,
+                         "VisItAddPlot: NULL was passed for the variable.");
         return VISIT_ERROR;
     }
 
     if(plotID == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the plotID pointer.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddPlot,
+                         "VisItAddPlot: NULL was passed for the plotID pointer.");
         return VISIT_ERROR;
     }
 
@@ -3819,17 +3861,15 @@ VisItAddOperator(int plotID, const char *operatorType, int *operatorID)
 
     if(operatorType == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddOperator,
-                         "VisItAddOperator: NULL was passed for the operator type.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddOperator,
+                         "VisItAddOperator: NULL was passed for the operator type.");
         return VISIT_ERROR;
     }
 
     if(operatorID == NULL)
     {
-        LIBSIM_API_LEAVE1(VisItAddOperator,
-                         "VisItAddOperator: NULL was passed for the operatorID pointer.", 
-                          VISIT_ERROR);
+        LIBSIM_API_LEAVE0(VisItAddOperator,
+                         "VisItAddOperator: NULL was passed for the operatorID pointer.");
         return VISIT_ERROR;
     }
 
@@ -3892,7 +3932,6 @@ VisItGetMemory(double *m_size, double *m_rss)
 {
   int retval = VISIT_ERROR;
     
-    unsigned long tmp1, tmp2;
     LIBSIM_API_ENTER(VisItGetMemory);
     /* Make sure the function exists before using it. - not sure if this is required, need to talk to
      Brad */
@@ -3910,6 +3949,7 @@ VisItGetMemory(double *m_size, double *m_rss)
     *m_rss = (unsigned long)m.bytes_total; // not quite accurate but this should be the total
                                            // amount allocated by malloc.
 #elif !defined(_WIN32)
+    unsigned long tmp1, tmp2;
     FILE *file = fopen("/proc/self/statm", "r");
     if (file == NULL)
     {

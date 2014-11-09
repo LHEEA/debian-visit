@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewCartographicProjectionAttributes(int);
 std::string
 PyCartographicProjectionAttributes_ToString(const CartographicProjectionAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     const char *projectionID_names = "aitoff, eck4, eqdc, hammer, laea, "
         "lcc, merc, mill, moll, "
@@ -443,7 +443,6 @@ PyCartographicProjectionAttributes_GetLogString()
 static void
 PyCartographicProjectionAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    CartographicProjectionAttributes *atts = (CartographicProjectionAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

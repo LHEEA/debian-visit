@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -321,6 +321,16 @@ class SelectionProperties;
 //    Kathleen Biagas, Wed Aug  7 13:01:55 PDT 2013
 //    Added UpdatePrecisionType.
 //
+//    Brad Whitlock, Fri Jan 24 16:34:24 PST 2014
+//    Allow exporting of multiple plots.
+//    Work partially supported by DOE Grant SC0007548.
+//
+//    Brad Whitlock, Thu Jul 24 21:52:34 EDT 2014
+//    Pass in the export attributes to ExportDatabases.
+//
+//    Cameron Christensen, Wednesday, June 11, 2014
+//    Added UpdateBackendType.
+//
 // ****************************************************************************
 
 class VIEWER_API ViewerEngineManager : public ViewerServerManager,
@@ -407,6 +417,7 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
 
     void UpdateDefaultFileOpenOptions(FileOpenOptions*);
     void UpdatePrecisionType(const int);
+    void UpdateBackendType(const int);
 
     //
     // Engine RPCs
@@ -447,7 +458,9 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
     bool ReleaseData(const EngineKey &ek, int id);
     bool CloneNetwork(const EngineKey &ek, int id, 
                       const QueryOverTimeAttributes *qatts);
-    bool ExportDatabase(const EngineKey &ek, int id);
+    bool ExportDatabases(const EngineKey &ek, const intVector &ids,
+                         const ExportDBAttributes &expAtts, 
+                         const std::string &timeSuffix);
     bool ConstructDataBinning(const EngineKey &ek, int id);
 
     bool CreateNamedSelection(const EngineKey &ek, int, const SelectionProperties &);
@@ -456,7 +469,7 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
     bool LoadNamedSelection(const EngineKey &ek, const std::string &);
     bool SaveNamedSelection(const EngineKey &ek, const std::string &);
 
-    void CreateNode(DataNode *) const;
+    void CreateNode(DataNode *, bool detailed) const;
     void SetFromNode(DataNode *, const std::string &);
 
     bool UpdateExpressions(const EngineKey &ek, const ExpressionList &eL);
@@ -482,7 +495,6 @@ class VIEWER_API ViewerEngineManager : public ViewerServerManager,
 
     bool                       executing;
     bool                       inLaunch;
-    int                        nEngines;
     EngineMap                  engines;
 
     std::map<EngineKey,stringVector>  restartArguments;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,8 +79,7 @@ pty_fork(int &fdm, void (*sigchld_handler)(int), char *slave_name)
     char        pts_name[20];
 
     if ( (fdm = ptym_open(pts_name)) < 0)
-        fprintf(stderr,"can't open master pty: %s", pts_name);
-
+        fprintf(stderr,"can't open master pty: %s, returned %d\n", pts_name, fdm);
     if (slave_name != NULL)
         strcpy(slave_name, pts_name);   // return name of slave
 

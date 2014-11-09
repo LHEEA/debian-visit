@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,9 +40,8 @@
 #define VTK_MULTI_SPLITTER_H
 #include <visit_vtk_exports.h>
 
+#include "vtkCSGFixedLengthBitField.h"
 #include "vtkUnstructuredGridAlgorithm.h"
-
-#include <FixedLengthBitField.h>
 
 #include <vector>
 
@@ -63,6 +62,9 @@ class vtkUnstructuredGrid;
 //  Creation:    July 23, 2012
 //
 //  Modifications:
+//    Eric Brugger, Thu Apr  3 08:20:06 PDT 2014
+//    I converted the class to use vtkCSGFixedLengthBitField instead of
+//    FixedLengthBitField.
 //
 // ****************************************************************************
 
@@ -75,7 +77,7 @@ class VISIT_VTK_API vtkMultiSplitter :
 
     static vtkMultiSplitter *New();
 
-    virtual void SetTagBitField(std::vector<FixedLengthBitField<64> > *);
+    virtual void SetTagBitField(std::vector<vtkCSGFixedLengthBitField> *);
     virtual void SetClipFunctions(double *, int);
 
   protected:
@@ -90,7 +92,7 @@ class VISIT_VTK_API vtkMultiSplitter :
   private:
     double *bounds;
     int    nBounds;
-    std::vector<FixedLengthBitField<64> > *newTags;
+    std::vector<vtkCSGFixedLengthBitField> *newTags;
 
     vtkMultiSplitter(const vtkMultiSplitter&);  // Not implemented.
     void operator=(const vtkMultiSplitter&);    // Not implemented.

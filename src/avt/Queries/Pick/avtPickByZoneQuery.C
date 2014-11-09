@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,6 +49,7 @@
 #include <vtkIntArray.h>
 #include <vtkVisItUtility.h>
 #include <PickVarInfo.h>
+#include <float.h>
 
 #include <avtMatrix.h>
 #include <avtOriginatingSource.h>
@@ -127,6 +128,14 @@ avtPickByZoneQuery::~avtPickByZoneQuery()
 //    Kathleen Bonnell, Tue Jan 30 16:25:23 PST 2007 
 //    Send zoneid to RetrieveVarInfo.
 //
+//    Kathleen Biagas, Tue Jul 22 11:40:28 MST 2014
+//    Don't convert element names to global unless user requested them to be
+//    shown in global.
+//
+//    Kathleen Biagas, Thu Aug 14 09:43:20 PDT 2014
+//    Use the center found by the DB when available.  Fixes a PickByZone bug
+//    where the returned 'point' didn't match the zone center.
+//
 // ****************************************************************************
 
 void
@@ -136,7 +145,7 @@ avtPickByZoneQuery::Execute(vtkDataSet *ds, const int dom)
     {
         return;
     }
-    int userZoneId = pickAtts.GetElementNumber();
+
     if (!pickAtts.GetElementIsGlobal())
     {
         if (dom != pickAtts.GetDomain()) 
@@ -153,6 +162,7 @@ avtPickByZoneQuery::Execute(vtkDataSet *ds, const int dom)
         return; 
     }
 
+    int userZoneId = pickAtts.GetElementNumber();
     int zoneid = userZoneId;
     int maxEls = ds->GetNumberOfCells();
     if (pickAtts.GetMatSelected() &&  !pickAtts.GetElementIsGlobal())
@@ -213,7 +223,8 @@ avtPickByZoneQuery::Execute(vtkDataSet *ds, const int dom)
     {
        zoneid =  GetCurrentZoneForOriginal(ds, pickAtts.GetElementNumber());
        userZoneId = zoneid;
-       ConvertElNamesToGlobal();
+       if (pickAtts.GetShowGlobalIds())
+           ConvertElNamesToGlobal();
     }
 
     pickAtts.SetElementNumber(userZoneId+cellOrigin);
@@ -244,8 +255,21 @@ avtPickByZoneQuery::Execute(vtkDataSet *ds, const int dom)
     // Use the cell center as the place to position the pick letter.
     //
     double center[3];
-    vtkVisItUtility::GetCellCenter(ds->GetCell(zoneid), center);
-    pickAtts.SetCellPoint(center); 
+    double *p = pickAtts.GetPickPoint();
+    if (p[0] == FLT_MAX)
+    {
+        // Didn't get the center from the DB, so determine it now
+        vtkVisItUtility::GetCellCenter(ds->GetCell(zoneid), center);
+        pickAtts.SetCellPoint(center); 
+    }
+    else
+    {
+        // Use the center provided by the DB.
+        center[0] = p[0];
+        center[1] = p[1];
+        center[2] = p[2];
+        pickAtts.SetCellPoint(center);
+    }
     //
     // If the points of this dataset have been transformed, and we know the
     // transform matrix, transform the center point that will be used to place 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,8 +74,8 @@ static PyObject *NewRenderingAttributes(int);
 std::string
 PyRenderingAttributes_ToString(const RenderingAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     if(atts->GetAntialiasing())
         SNPRINTF(tmpStr, 1000, "%santialiasing = 1\n", prefix);
@@ -1436,7 +1436,6 @@ PyRenderingAttributes_GetLogString()
 static void
 PyRenderingAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    RenderingAttributes *atts = (RenderingAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -77,7 +77,7 @@ using     rclib::Point;
  
 avtparaDISFileFormat::avtparaDISFileFormat(const char *filename,
                                            DBOptionsAttributes *rdatts)
-  : avtSTSDFileFormat(filename), mDumpfile(filename, rdatts),mParallelData(filename) {
+  : avtSTSDFileFormat(filename), mParallelData(filename), mDumpfile(filename, rdatts) {
 
   cerr << "using avtparaDISFileFormat::avtparaDISFileFormat version 2.3.4" << endl; 
   if (filename) {

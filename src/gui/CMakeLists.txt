@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -90,6 +90,7 @@ QvisAppearanceWindow.C
 QvisApplication.C
 QvisAxisAttributesWidget.C
 QvisCMFEWizard.C
+QvisCollapsibleFrame.C
 QvisColorButton.C
 QvisColorGridWidget.C
 QvisColorManagerWidget.C
@@ -292,7 +293,7 @@ QvisPluginManagerAttributesDataModel.h
 QvisPointControl.h
 QvisPlotManagerWidget.h
 QvisPluginWindow.h
-QvisPostableMainWindow.h
+#QvisPostableMainWindow.h #nothing to moc
 QvisPostableWindow.h
 QvisPostableWindowObserver.h
 QvisPostableWindowSimpleObserver.h
@@ -329,6 +330,7 @@ QvisSimulationMessageWindow.h
 QvisSimulationCommandWindow.h
 QvisFileOpenDialog.h
 QvisCMFEWizard.h
+QvisCollapsibleFrame.h
 QvisColorManagerWidget.h
 QvisColorSwatchListWidget.h
 QvisSILSetSelector.h

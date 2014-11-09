@@ -8,11 +8,13 @@
 # Date:   October 26, 1996
 #
 # Usage
-#    visit-install [-c anag | anl | llnl_open | llnl_open_rz | llnl_open_cz |
-#                      llnl_closed | nersc | ornl | princeton | sandia | 
-#                      tacc | umich | nics | lsu]
-#                  [-g group] [-gw] [-l] [-dmg] [-beta | -private]
-#                  version platform directory
+#    visit-install    [-c anag | anl | arl | asu | awe | clemson | cscs |"
+#                         eth_zurich | llnl_open | llnl_open_rz |"
+#                         llnl_open_cz | llnl_closed | lsu | ncar |"
+#                         nersc | nics | ornl | princeton | sandia |"
+#                         sandia_closed | tacc | umich | utah]"
+#                      [-g group] [-b bank] [-gw] [-l] [-dmg] [-test]"
+#                      [-beta | -private] version platform directory"
 #
 #    The default is to install this version as the current version.
 #    The -beta flag makes this version the current beta version instead.
@@ -342,7 +344,19 @@
 #    to do so recursively. I modified a couple of loops that change the
 #    mode to executable for all the files in the directories of the form
 #    "archicture_name/bin" to exclude "usagelog".
+#   
+#    Cyrus Harrison, Wed Oct 30 18:37:53 EDT 2013
+#    Added option for Clemson network. 
 #
+#    Mark C. Miller, Wed Jan  8 11:25:02 PST 2014
+#    Made handling of 'data' directory conditional
+#
+#    Eric Brugger, Tue Mar 11 10:21:58 PDT 2014
+#    I added missing -c options and added a -test argument that tests
+#    all the -c options.
+#
+#    Cyrus Harrison, Fri May 30 10:42:10 PDT 2014
+#    Added option for Swiss National Supercomputing Center (CSCS). 
 #-----------------------------------------------------------------------
 
 Compress=COMPRESS
@@ -356,6 +370,7 @@ group_ownership=none
 dir_permission=755
 file_permission=644
 dmg=false
+test=false
 
 # Figure out the platform so if we're on a platform for which we need to
 # perform extra steps, we know it.
@@ -401,6 +416,10 @@ while [ "$option_found" = "true" ]; do
          dmg=true
          shift
          ;;
+      -test)
+         test=true
+         shift
+         ;;
       *)
          option_found=false
          ;;
@@ -408,14 +427,16 @@ while [ "$option_found" = "true" ]; do
 done
 
 if [ "$#" != "3" ]; then
-   echo "Usage: visit-install [-c anag | anl | llnl_open | llnl_open_rz | llnl_open_cz | llnl_closed | nersc | ornl | princeton | sandia | sandia_closed | tacc | umich | nics | lsu | awe]"
-   echo "                     [-g group] [-b bank] [-gw] [-l] [-dmg]"
+   echo "Usage: visit-install [-c anag | anl | arl | asu | awe | clemson | cscs |"
+   echo "                         eth_zurich | llnl_open | llnl_open_rz |"
+   echo "                         llnl_open_cz | llnl_closed | lsu | ncar |"
+   echo "                         nersc | nics | ornl | princeton | sandia |"
+   echo "                         sandia_closed | tacc | umich | utah]"
+   echo "                     [-g group] [-b bank] [-gw] [-l] [-dmg] [-test]"
    echo "                     [-beta | -private] version platform directory"
    echo ""
-   echo "                     This will install all of its files and"
-   echo "                     subdirectories directly in the specified"
-   echo "                     directory."
-   echo "                     (So use /usr/local/visit, not /usr/local)"
+   echo "This will install all of its files and subdirectories directly in"
+   echo "the specified directory. (So use /usr/local/visit, not /usr/local)"
    exit 1
 fi
 
@@ -515,31 +536,239 @@ else
    fi
 fi
 
+#
+# If the user specified test, then test all the config options.
+#
+if [ "$test" = "true" ]; then
+    echo "Testing none configuration..."
+    rm -rf $dir
+    $0 -c none $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts` 
+    if [ "$files" != "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing anag configuration..."
+    rm -rf $dir
+    $0 -c anag $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/bin/customlauncher` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing anl configuration..."
+    rm -rf $dir
+    $0 -c anl $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_anl*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing arl configuration..."
+    rm -rf $dir
+    $0 -c arl $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/bin/customlauncher` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing asu configuration..."
+    rm -rf $dir
+    $0 -c asu $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/bin/customlauncher` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing awe configuration..."
+    rm -rf $dir
+    $0 -c awe $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_awe*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing clemson configuration..."
+    rm -rf $dir
+    $0 -c clemson $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_clemson*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing cscs configuration..."
+    rm -rf $dir
+    $0 -c cscs $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_cscs*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing eth_zurich configuration..."
+    rm -rf $dir
+    $0 -c eth_zurich $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/bin/customlauncher` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing llnl_open configuration..."
+    rm -rf $dir
+    $0 -c llnl_open $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_llnl_rzgw*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing llnl_open_rz configuration..."
+    rm -rf $dir
+    $0 -c llnl_open_rz $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_llnl_rz*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing llnl_open_cz configuration..."
+    rm -rf $dir
+    $0 -c llnl_open_cz $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_llnl*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing llnl_closed configuration..."
+    rm -rf $dir
+    $0 -c llnl_closed $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_llnl_closed*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing lsu configuration..."
+    rm -rf $dir
+    $0 -c lsu $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_lsu*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing ncar configuration..."
+    rm -rf $dir
+    $0 -c ncar $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_ncar*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing nersc configuration..."
+    rm -rf $dir
+    $0 -c nersc $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_nersc*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing nics configuration..."
+    rm -rf $dir
+    $0 -c nics $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_nics*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing ornl configuration..."
+    rm -rf $dir
+    $0 -c ornl $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_ornl*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing princeton configuration..."
+    rm -rf $dir
+    $0 -c princeton $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_princeton*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing sandia configuration..."
+    rm -rf $dir
+    $0 -c sandia $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_sandia*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing sandia_closed configuration..."
+    rm -rf $dir
+    $0 -c sandia_closed $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_sandia_closed*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing tacc configuration..."
+    rm -rf $dir
+    $0 -c tacc $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_tacc*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing umich configuration..."
+    rm -rf $dir
+    $0 -c umich $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_umich*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    echo "Testing utah configuration..."
+    rm -rf $dir
+    $0 -c utah $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_utah*` 
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
+    exit 0
+fi
+
+#
+# If the user hasn't specified a config file, then prompt for one.
+#
 while [ "$config" = "prompt" ]; do
    echo "Choose a system configuration file.  A system configuration"
    echo "file contains profiles that make it easy to access VisIt on"
    echo "remote computers."
    echo ""
-   echo "   1) No system configuration"
-   echo "   2) Configuration for ANAG/APDEC collaborators."
-   echo "   3) ANL network"
-   echo "   4) LLNL open network (CZ and RZ)"
-   echo "   5)   LLNL open network (CZ only)"
-   echo "   6)   LLNL open network (RZ only)"
-   echo "   7) LLNL closed network"
-   echo "   8) NERSC network"
-   echo "   9) ORNL network"
-   echo "   10) Princeton network"
-   echo "   11) Sandia network"
-   echo "   12) Sandia closed network"
-   echo "   13) TACC network"
-   echo "   14) U of Michigan Center for Advanced Computing network"
-   echo "   15) NICS at University of Tennessee at Knoxville"
-   echo "   16) Lousiana State University network"
-   echo "   17) ETH Zurich"
-   echo "   18) AWE network"
+   echo "   1)  No system configuration"
+   echo "   2)  Configuration for ANAG/APDEC collaborators."
+   echo "   3)  ANL network"
+   echo "   4)  ARL network"
+   echo "   5)  ASU network"
+   echo "   6)  AWE network"
+   echo "   7)  Clemson University network"
+   echo "   8)  ETH Zurich network"
+   echo "   9)  LLNL open network (CZ and RZ)"
+   echo "   10) LLNL open network (CZ only)"
+   echo "   11) LLNL open network (RZ only)"
+   echo "   12) LLNL closed network"
+   echo "   13) Lousiana State University network"
+   echo "   14) NCAR network"
+   echo "   15) NERSC network"
+   echo "   16) NICS at University of Tennessee at Knoxville"
+   echo "   17) ORNL network"
+   echo "   18) Princeton network"
+   echo "   19) Sandia network"
+   echo "   20) Sandia closed network"
+   echo "   21) Swiss National Supercomputing Center (CSCS) network"
+   echo "   22) TACC network"
+   echo "   23) U of Michigan Center for Advanced Computing network"
+   echo "   24) U of Utah Center for High Performance Computing network"
    echo ""
-   echo "Enter (1-18):"
+   echo "Enter (1-24):"
 
    read config
    case "$config" in
@@ -553,49 +782,67 @@ while [ "$config" = "prompt" ]; do
          config=anl
          ;;
       4)
-         config=llnl_open
+         config=arl
          ;;
       5)
-         config=llnl_open_cz
+         config=asu
          ;;
       6)
-         config=llnl_open_rz
+         config=awe
          ;;
       7)
-         config=llnl_closed
+         config=clemson
          ;;
       8)
-         config=nersc
-         ;;
-      9)
-         config=ornl
-         ;;
-      10)
-         config=princeton
-         ;;
-      11)
-         config=sandia
-         ;;
-      12)
-         config=sandia_closed
-         ;;
-      13)
-         config=tacc
-         ;;
-      14)
-         config=umich
-         ;;
-      15)
-         config=nics
-         ;;
-      16)
-         config=lsu
-         ;;
-      17)
          config=eth_zurich
          ;;
+      9)
+         config=llnl_open
+         ;;
+      10)
+         config=llnl_open_cz
+         ;;
+      11)
+         config=llnl_open_rz
+         ;;
+      12)
+         config=llnl_closed
+         ;;
+      13)
+         config=lsu
+         ;;
+      14)
+         config=ncar
+         ;;
+      15)
+         config=nersc
+         ;;
+      16)
+         config=nics
+         ;;
+      17)
+         config=ornl
+         ;;
       18)
-         config=awe
+         config=princeton
+         ;;
+      19)
+         config=sandia
+         ;;
+      20)
+         config=sandia_closed
+         ;;
+      21)
+         config=cscs
+         ;;
+      22)
+         config=tacc
+         ;;
+      23)
+         config=umich
+         ;;
+      24)
+         config=utah
          ;;
       *)
          config=prompt
@@ -610,6 +857,16 @@ case "$config" in
       ;;
    anl)
       ;;
+   arl)
+      ;;
+   asu)
+      ;;
+   awe)
+      ;;
+   clemson)
+      ;;
+   eth_zurich)
+      ;;
    llnl_open)
       ;;
    llnl_open_cz)
@@ -618,8 +875,14 @@ case "$config" in
       ;;
    llnl_closed)
       ;;
+   lsu)
+      ;;
+   ncar)
+      ;;
    nersc)
       ;;
+   nics)
+      ;; 
    ornl)
       ;;
    princeton)
@@ -628,22 +891,19 @@ case "$config" in
       ;;
    sandia_closed)
       ;;
+   cscs)
+      ;;
    tacc)
       ;;
    umich)
       ;;
-   nics)
-      ;; 
-   lsu)
-      ;;
-   eth_zurich)
-      ;;
-   awe)
+   utah)
       ;;
    *)
       echo "Illegal configuration option, choices are none, anag, anl,"
-      echo "llnl_open, llnl_open_cz, llnl_open_rz, llnl_closed, nersc, ornl, "
-      echo "princeton, sandia, sandia_closed, tacc, umich, nics, lsu, eth_zurich, awe."
+      echo "arl, asu, awe, clemson, cscs, eth_zurich, llnl_open, llnl_open_rz,"
+      echo "llnl_open_cz, llnl_closed, lsu, ncar, nersc, nics, ornl, princeton,"
+      echo "sandia, sandia_closed, tacc, umich, utah"
       exit 4
       ;;
 esac
@@ -696,9 +956,11 @@ distributiondir=distribution/`ls distribution`
 #
 # If the installation directory doesn't exist, create it.
 #
-[ ! -e "$dir" ] &&                mkdir "$dir"
-[ ! -e "$dir"/bin ] &&            mkdir "$dir"/bin
-[ ! -e "$dir"/data ] &&           mkdir "$dir"/data
+[ ! -e "$dir" ] &&          mkdir "$dir"
+[ ! -e "$dir"/bin ] &&      mkdir "$dir"/bin
+if [ -e "$distributiondir"/data ]; then
+    [ ! -e "$dir"/data ] && mkdir "$dir"/data
+fi
 
 #
 # Copy in the new files.  We are careful to leave the current
@@ -733,8 +995,10 @@ for f in `echo $platformPath | tr "/" " "`; do
 done
 # Copy the files
 find . -print | cpio -pmud "$dir"/$version+
-cd ../data
-find . -print | cpio -pmud "$dir"/data
+if [ -e "$dir"/data ]; then
+    cd ../data
+    find . -print | cpio -pmud "$dir"/data
+fi
 cd ../../..
 
 #
@@ -749,16 +1013,36 @@ echo "1;$config;$bank;$platform" > "$dir"/$version+/$platformDir/.installinfo
 rm -rf "$dir"/$version+/.visit
 mkdir  "$dir"/$version+/.visit
 mkdir  "$dir"/$version+/.visit/hosts
-if [ "$config" = "anl" ]; then
+if [ "$config" = "anag" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/anag/config                 "$dir"/$version+/.visit/
+   cp "$dir"/$version+/$platformDir/resources/hosts/anag/guiconfig              "$dir"/$version+/.visit/
+   cp "$dir"/$version+/$platformDir/resources/hosts/anag/visitrc                "$dir"/$version+/.visit/
+   cp "$dir"/$version+/$platformDir/resources/hosts/anag/customlauncher         "$dir"/$version+/bin/
+elif [ "$config" = "anl" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
-elif [ "$config" = "llnl_closed" ]; then
+elif [ "$config" = "arl" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
+elif [ "$config" = "asu" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
+elif [ "$config" = "awe" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
-   cp "$dir"/$version+/$platformDir/resources/hosts/$config/config              "$dir"/$version+/.visit/
+elif [ "$config" = "clemson" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
+elif [ "$config" = "cscs" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
+elif [ "$config" = "eth_zurich" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
 elif [ "$config" = "llnl_open" ]; then
    # Install both cz hosts and rzgw hosts. We're most likely in a client
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/*.xml                  "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/customlauncher         "$dir"/$version+/bin/
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/config                 "$dir"/$version+/.visit/
+elif [ "$config" = "llnl_open_rz" ]; then
+   # We're most likely installing on an rz machine.
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl_rz/*.xml               "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/customlauncher         "$dir"/$version+/bin/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/config                 "$dir"/$version+/.visit/
 elif [ "$config" = "llnl_open_cz" ]; then
@@ -773,12 +1057,20 @@ elif [ "$config" = "llnl_open_cz" ]; then
 
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/customlauncher         "$dir"/$version+/bin/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/config                 "$dir"/$version+/.visit/
-elif [ "$config" = "llnl_open_rz" ]; then
-   # We're most likely installing on an rz machine.
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl_rz/*.xml               "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/customlauncher         "$dir"/$version+/bin/
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/config                 "$dir"/$version+/.visit/
+elif [ "$config" = "llnl_closed" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/config              "$dir"/$version+/.visit/
+elif [ "$config" = "lsu" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
+elif [ "$config" = "ncar" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
 elif [ "$config" = "nersc" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
+elif [ "$config" = "nics" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
 elif [ "$config" = "ornl" ]; then
@@ -799,22 +1091,8 @@ elif [ "$config" = "tacc" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
 elif [ "$config" = "umich" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
-elif [ "$config" = "nics" ]; then
+elif [ "$config" = "utah" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
-elif [ "$config" = "anag" ]; then
-   cp "$dir"/$version+/$platformDir/resources/hosts/anag/config                 "$dir"/$version+/.visit/
-   cp "$dir"/$version+/$platformDir/resources/hosts/anag/guiconfig              "$dir"/$version+/.visit/
-   cp "$dir"/$version+/$platformDir/resources/hosts/anag/visitrc                "$dir"/$version+/.visit/
-   cp "$dir"/$version+/$platformDir/resources/hosts/anag/customlauncher         "$dir"/$version+/bin/
-elif [ "$config" = "lsu" ]; then
-   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
-elif [ "$config" = "eth_zurich" ]; then
-   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
-elif [ "$config" = "awe" ]; then
-   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
 fi
 
 # Do the bank fixup
@@ -860,8 +1138,10 @@ chmod $dir_permission "$dir"/bin/frontendlauncher.py+
 chmod $dir_permission "$dir"/bin/xml2plugin+
 chmod $dir_permission "$dir"/bin/visit_plugin+
 chmod $dir_permission "$dir"/bin/mkgrdbl+
-chmod $dir_permission "$dir"/data
-find "$dir"/data -type f -exec chmod $file_permission {} \;
+if [ -e "$dir"/data ]; then
+    chmod $dir_permission "$dir"/data
+    find "$dir"/data -type f -exec chmod $file_permission {} \;
+fi
 
 #
 # Note that there is a short period of time when the second command
@@ -899,7 +1179,11 @@ fi
 # Set the group ownership properly
 #
 if [ "$group_ownership" != "none" ]; then
-    chgrp -R $group_ownership "$dir"/bin "$dir"/data "$dir"/$version+
+    if [ -e "$dir"/data ]; then
+        chgrp -R $group_ownership "$dir"/bin "$dir"/data "$dir"/$version+
+    else
+        chgrp -R $group_ownership "$dir"/bin "$dir"/$version+
+    fi
 fi
 
 #

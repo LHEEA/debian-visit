@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -74,10 +74,6 @@ Colleagues/avtText2DColleague.C
 Colleagues/avtText3DColleague.C
 Colleagues/avtTimeSliderColleague.C
 )
-IF(APPLE)
-    SET(COLLEAGUES_SOURCES ${COLLEAGUES_SOURCES} Colleagues/VisWinRenderingCocoaHideWindow.mm)
-    SET(OBJC_LIBS objC)
-ENDIF(APPLE)
 
 IF (NOT WIN32)
     IF(MESA_FOUND)
@@ -197,7 +193,7 @@ ${VTK_INCLUDE_DIRS}
 )
 
 # Add link directories
-LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR})
+LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR})
 
 #********************************* SERIAL ************************************
 ADD_LIBRARY(avtviswindow_ser ${AVTVISWINDOW_SOURCES})

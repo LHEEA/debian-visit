@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -408,7 +408,7 @@ avtMFIXFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     AddScalarVarToMetaData(md, "flagclass_var", "Mesh", AVT_ZONECENT);
 
     // The actual variables go here
-    for (int i =0; i < this->VariableNames->GetMaxId(); ++i) {
+    for (int i =0; i <= this->VariableNames->GetMaxId(); ++i) {
         const char *name = this->VariableNames->GetValue(i);
         if (this->VariableComponents->GetValue(i) == 1)
             AddScalarVarToMetaData(md, name, "Mesh", AVT_ZONECENT);
@@ -641,7 +641,7 @@ avtMFIXFileFormat::GetMesh(int timestate, int domain, const char *meshname)
 int
 avtMFIXFileFormat::get_var_index(const char *varname)
 {
-    for (int i = 0; i < this->VariableNames->GetMaxId(); ++i)
+    for (int i = 0; i <= this->VariableNames->GetMaxId(); ++i)
         if (strcmp(VariableNames->GetValue(i), varname) == 0)
             return (i);
     EXCEPTION1(InvalidVariableException, varname);
@@ -1941,48 +1941,64 @@ void avtMFIXFileFormat::GetInt(istream& in, int &val)
 //----------------------------------------------------------------------------
 void avtMFIXFileFormat::SwapInt(int &value)
 {
+    union {
+    char Swapped[4];
+    int  SwapInt;
+    } swapIntOrder;
     if (this->SwapByteOrder) {
-        static char Swapped[4];
+        //static char Swapped[4];
         int * Addr = &value;
-        Swapped[0] =*((char*)Addr+3);
-        Swapped[1] =*((char*)Addr+2);
-        Swapped[2] =*((char*)Addr+1);
-        Swapped[3] =*((char*)Addr  );
-        value = *(reinterpret_cast<int*>(Swapped));
+        swapIntOrder.Swapped[0] =*((char*)Addr+3);
+        swapIntOrder.Swapped[1] =*((char*)Addr+2);
+        swapIntOrder.Swapped[2] =*((char*)Addr+1);
+        swapIntOrder.Swapped[3] =*((char*)Addr  );
+        //value = *(reinterpret_cast<int*>(Swapped));
+        value = swapIntOrder.SwapInt;
     }
 }
 
 //----------------------------------------------------------------------------
 void avtMFIXFileFormat::SwapDouble(double &value)
 {
+    union {
+    char Swapped[8];
+    double SwapDouble;
+    } swapDoubleOrder;
+
     if (this->SwapByteOrder) {
-        static char Swapped[8];
+        //static char Swapped[8];
         double * Addr = &value;
 
-        Swapped[0] =*((char*)Addr+7);
-        Swapped[1] =*((char*)Addr+6);
-        Swapped[2] =*((char*)Addr+5);
-        Swapped[3] =*((char*)Addr+4);
-        Swapped[4] =*((char*)Addr+3);
-        Swapped[5] =*((char*)Addr+2);
-        Swapped[6] =*((char*)Addr+1);
-        Swapped[7] =*((char*)Addr  );
-        value = *(reinterpret_cast<double*>(Swapped));
+        swapDoubleOrder.Swapped[0] =*((char*)Addr+7);
+        swapDoubleOrder.Swapped[1] =*((char*)Addr+6);
+        swapDoubleOrder.Swapped[2] =*((char*)Addr+5);
+        swapDoubleOrder.Swapped[3] =*((char*)Addr+4);
+        swapDoubleOrder.Swapped[4] =*((char*)Addr+3);
+        swapDoubleOrder.Swapped[5] =*((char*)Addr+2);
+        swapDoubleOrder.Swapped[6] =*((char*)Addr+1);
+        swapDoubleOrder.Swapped[7] =*((char*)Addr  );
+        //value = *(reinterpret_cast<double*>(Swapped));
+        value = swapDoubleOrder.SwapDouble;
     }
 }
 
 //----------------------------------------------------------------------------
 void avtMFIXFileFormat::SwapFloat(float &value)
 {
+    union {
+    char Swapped[4];
+    float SwapFloat;
+    } swapOrder;
     if (this->SwapByteOrder) {
-        static char Swapped[4];
+        //static char Swapped[4];
         float * Addr = &value;
 
-        Swapped[0] =*((char*)Addr+3);
-        Swapped[1] =*((char*)Addr+2);
-        Swapped[2] =*((char*)Addr+1);
-        Swapped[3] =*((char*)Addr  );
-        value = *(reinterpret_cast<float*>(Swapped));
+        swapOrder.Swapped[0] =*((char*)Addr+3);
+        swapOrder.Swapped[1] =*((char*)Addr+2);
+        swapOrder.Swapped[2] =*((char*)Addr+1);
+        swapOrder.Swapped[3] =*((char*)Addr  );
+        //value = *(reinterpret_cast<float*>(Swapped));
+        value = swapOrder.SwapFloat;
     }
 }
 
@@ -2432,12 +2448,12 @@ void avtMFIXFileFormat::GetNumberOfVariablesInSPXFiles()
 
     //initialize VariablesToSkipTable to 0
     //for windows
-    for(int i =0;i<this->VariableNames->GetMaxId()+1;i++) {
+    for(int i =0;i<=this->VariableNames->GetMaxId(); i++) {
         this->VariableToSkipTable->InsertValue(i,0);
     }
 
     for (int j =1; j<this->NumberOfSPXFilesUsed; j++) {
-        for(int i =0;i<this->VariableNames->GetMaxId()+1;i++) {
+        for(int i =0;i<=this->VariableNames->GetMaxId();i++) {
             if ((this->VariableIndexToSPX->GetValue(i) == j)
                 && (this->VariableComponents->GetValue(i) == 1)) {
                 NumberOfVariablesInSPX++;
@@ -2591,7 +2607,7 @@ avtMFIXFileFormat::GetSubBlock(void *buf, const char *fname, DataType datatype,
     void* runner = buf;
     for (int k =0; k<zVals; k++) {
         for (int j =0; j<yVals; j++) {
-            fread(runner, wordSize, xVals, this->GSB_file);
+            size_t res = fread(runner, wordSize, xVals, this->GSB_file);(void) res;
             runner = (void*)((char*)runner + wordSize*xVals);
             fseek( this->GSB_file, (xStrideVals-xVals)*wordSize, SEEK_CUR );
         }

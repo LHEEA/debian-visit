@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,8 +73,8 @@ static PyObject *NewDBOptionsAttributes(int);
 std::string
 PyDBOptionsAttributes_ToString(const DBOptionsAttributes *atts, const char *prefix)
 {
-    std::string str; 
-    char tmpStr[1000]; 
+    std::string str;
+    char tmpStr[1000];
 
     {   const intVector &types = atts->GetTypes();
         SNPRINTF(tmpStr, 1000, "%stypes = (", prefix);
@@ -379,7 +379,6 @@ PyDBOptionsAttributes_GetLogString()
 static void
 PyDBOptionsAttributes_CallLogRoutine(Subject *subj, void *data)
 {
-    DBOptionsAttributes *atts = (DBOptionsAttributes *)subj;
     typedef void (*logCallback)(const std::string &);
     logCallback cb = (logCallback)data;
 

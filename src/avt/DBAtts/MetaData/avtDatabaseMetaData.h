@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -149,6 +149,7 @@ public:
     void SetMustRepopulateOnStateChange(bool mustRepopulateOnStateChange_);
     void SetMustAlphabetizeVariables(bool mustAlphabetizeVariables_);
     void SetFormatCanDoDomainDecomposition(bool formatCanDoDomainDecomposition_);
+    void SetFormatCanDoMultires(bool formatCanDoMultires_);
     void SetUseCatchAllMesh(bool useCatchAllMesh_);
     void SetTimeStepPath(const std::string &timeStepPath_);
     void SetTimeStepNames(const stringVector &timeStepNames_);
@@ -174,6 +175,7 @@ public:
     bool                           GetMustRepopulateOnStateChange() const;
     bool                           GetMustAlphabetizeVariables() const;
     bool                           GetFormatCanDoDomainDecomposition() const;
+    bool                           GetFormatCanDoMultires() const;
     bool                           GetUseCatchAllMesh() const;
     const std::string              &GetTimeStepPath() const;
           std::string              &GetTimeStepPath();
@@ -312,6 +314,13 @@ public:
     avtDefaultPlotMetaData &GetDefaultPlots(int i);
     const avtDefaultPlotMetaData &GetDefaultPlots(int i) const;
 
+
+    // Keyframing methods
+    virtual std::string               GetFieldName(int index) const;
+    virtual AttributeGroup::FieldType GetFieldType(int index) const;
+    virtual std::string               GetFieldTypeName(int index) const;
+    virtual bool                      FieldsEqual(int index, const AttributeGroup *rhs) const;
+
     // User-defined methods
     void         SetTemporalExtents(double, double);
     void         SetCycle(int, int);
@@ -363,6 +372,7 @@ public:
     void         SetContainsOriginalNodes(std::string name, bool);
     void         SetContainsGlobalNodeIds(std::string name, bool);
     void         SetContainsGlobalZoneIds(std::string name, bool);
+    void         SetZonesWereSplit(std::string name, bool);
     void         AddGroupInformation(int nGroups, int nBlocks, intVector &blockIds);
     void         SetExtents(std::string, const double *);
     void         UnsetExtents();
@@ -411,6 +421,7 @@ public:
         ID_mustRepopulateOnStateChange,
         ID_mustAlphabetizeVariables,
         ID_formatCanDoDomainDecomposition,
+        ID_formatCanDoMultires,
         ID_useCatchAllMesh,
         ID_timeStepPath,
         ID_timeStepNames,
@@ -452,6 +463,7 @@ private:
     bool                     mustRepopulateOnStateChange;
     bool                     mustAlphabetizeVariables;
     bool                     formatCanDoDomainDecomposition;
+    bool                     formatCanDoMultires;
     bool                     useCatchAllMesh;
     std::string              timeStepPath;
     stringVector             timeStepNames;
@@ -484,6 +496,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define AVTDATABASEMETADATA_TMFS "bddibbbbbss*i*i*d*i*sssaa*a*a*a*a*a*a*a*a*a*a*a*bas*i"
+#define AVTDATABASEMETADATA_TMFS "bddibbbbbbss*i*i*d*i*sssaa*a*a*a*a*a*a*a*a*a*a*a*bas*i"
 
 #endif

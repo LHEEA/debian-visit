@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -68,11 +68,14 @@ avtIVPM3DC1Field::avtIVPM3DC1Field( vtkDataSet* dataset,
                                     avtCellLocator* locator,
                                     double fact) : 
   avtIVPVTKField( dataset, locator ),
-  elements(0), trigtable(0), neighbors(0),
-  f0(0), psi0(0), fnr(0), fni(0), psinr(0), psini(0),
+  elements(0), trigtable(0), neighbors(0), tElements(0),
+  element_dimension(0), nplanes(0),
+  element_size(0), scalar_size(0),
+  reparameterize(false), factor(fact),
+  psi0(0), f0(0), psinr(0), psini(0), fnr(0), fni(0),
   I0(0), f(0), psi(0), I(0),
-  eqsubtract(0), linflag(0), tmode(0), bzero(0), rzero(0), F0(0), factor(fact),
-  nelms(0), element_dimension(0), nplanes(0), reparameterize(false)
+  eqsubtract(0), linflag(0), nelms(0), tmode(0),
+  bzero(0), rzero(0), F0(0)
 {
   vtkFieldData *fieldData = dataset->GetFieldData();
 
@@ -191,10 +194,12 @@ avtIVPM3DC1Field::avtIVPM3DC1Field( float *elementsPtr,
                                     int nelements, int dim, int planes )
   : avtIVPVTKField( 0, 0 ),
     elements( elementsPtr ), neighbors(0),
-    f0(0), psi0(0), fnr(0), fni(0), psinr(0), psini(0),
+    element_dimension(dim), nplanes(planes),
+    psi0(0), f0(0), psinr(0), psini(0), fnr(0), fni(0),
     I0(0), f(0), psi(0), I(0),
-    eqsubtract(0), linflag(0), tmode(0), bzero(0), rzero(0), F0(0),
-    nelms(nelements), element_dimension(dim), nplanes(planes)
+    eqsubtract(0),linflag(0),nelms(nelements), tmode(0),
+    bzero(0), rzero(0), F0(0)
+
 {
   if( element_dimension == 2 )
   {
@@ -286,9 +291,11 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
   if( array == 0 )
   {
     if (DebugStream::Level1())
+    {
         debug1 << "Variable " << varname
                << " does not exist"
                << endl;
+    }
     return 0;
   }
 
@@ -298,9 +305,11 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
   if( ntuples != nelms || ncomponents != component_size )
   {
     if (DebugStream::Level1())
+    {
         debug1 << "Variable " << varname
                << " size does not equal the number elements and/or components"
                << endl;
+    }
     return 0;
   }
 
@@ -315,7 +324,9 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
   if( newptr == 0 )
   {
     if (DebugStream::Level1())
+    {
         debug1 << "Variable " << varname << " can not allocated" << endl;
+    }
     return 0;
   }
 
@@ -358,10 +369,12 @@ type* avtIVPM3DC1Field::SetDataPointer( vtkDataSet *ds,
   else
   {
     if (DebugStream::Level1())
+    {
         debug1 << "avtIVPM3DC1Field::SetDataPointer "
                << "Variable " << varname
-               << " is not of type float - can not safely down cast"
+               << " is not of type int/float/double - can not safely down cast"
                << endl;
+    }
     if( newptr )
         delete [] newptr;
     return 0;
@@ -416,7 +429,8 @@ void avtIVPM3DC1Field::findElementNeighbors()
 
   /* Allocate, initialize neighbor table */
   neighbors = (int *) malloc(3 * tElements * sizeof(int));
-  if (neighbors == NULL) {
+  if (neighbors == NULL)
+  {
     EXCEPTION1( InvalidVariableException,
                 "M3DC1 findElementNeighbors - Insufficient memory for neighbors" );
   }
@@ -426,7 +440,8 @@ void avtIVPM3DC1Field::findElementNeighbors()
 
   /* Allocate trig table */
   trigtable = (double *)malloc(2 * nplanes*tElements * sizeof(double));
-  if (trigtable == NULL) {
+  if (trigtable == NULL)
+  {
     EXCEPTION1( InvalidVariableException,
                 "M3DC1 findElementNeighbors - Insufficient memory for trigtable" );
   }
@@ -441,7 +456,8 @@ void avtIVPM3DC1Field::findElementNeighbors()
 
   if( element_dimension == 2 )
   {
-    for (el=0; el<tElements; el++) {
+    for (el=0; el<tElements; el++)
+    {
       ptr = elements + element_size*el;
       trigtable[2*el]     = cos(ptr[3]);
       trigtable[2*el + 1] = sin(ptr[3]);
@@ -468,7 +484,8 @@ void avtIVPM3DC1Field::findElementNeighbors()
   }
   else //if( element_dimension == 3 )
   {
-    for (el=0; el<nplanes*tElements; el++) {
+    for (el=0; el<nplanes*tElements; el++)
+    {
       ptr = elements + element_size*el;
       trigtable[2*el]     = cos(ptr[3]);
       trigtable[2*el + 1] = sin(ptr[3]);
@@ -505,7 +522,7 @@ int avtIVPM3DC1Field::register_vert(std::vector< vertex > &vlist,
 {
   const double tol=2.5e-13;
 
-  for( int i=0; i<vlist.size(); i++ )
+  for( size_t i=0; i<vlist.size(); i++ )
   {
     double dx = x - vlist[i].x;
     double dy = y - vlist[i].y;
@@ -616,7 +633,8 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout) const
       /* "Outside" side 0? */
       if ((flag0 = ((tri[0] + tri[1])*xout[1] < 0.0)))
       {
-        if ((next = neighbors[3*el]) >= 0) {
+        if ((next = neighbors[3*el]) >= 0)
+        {
           if (next != last) // not on the boundary so continue;
           {
             last = el;
@@ -631,7 +649,8 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout) const
       /* "Outside" side 1? */
       if ((flag1 = (tri[0]*xout[1] > tri[2]*(*tri - xout[0]))))
       {
-        if ((next = neighbors[3*el + 1]) >= 0) {
+        if ((next = neighbors[3*el + 1]) >= 0)
+        {
           if (next != last) // not on the boundary so continue;
             {
               last = el;
@@ -646,7 +665,8 @@ int avtIVPM3DC1Field::get_tri_coords2D(double *xin, double *xout) const
       /* "Outside" side 2? */
       if ((flag2 = (tri[2]*xout[0] < tri[1]*(xout[1] - tri[2]))))
       {
-        if ((next = neighbors[3*el + 2]) >= 0) {
+        if ((next = neighbors[3*el + 2]) >= 0)
+        {
           if (next != last) // on the boundary so continue;
           {
             last = el;

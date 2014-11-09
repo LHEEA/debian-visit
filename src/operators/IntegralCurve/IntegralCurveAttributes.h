@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2013, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -85,17 +85,17 @@ public:
         Difference,
         Variable
     };
+    enum CropValue
+    {
+        Distance,
+        Time,
+        StepNumber
+    };
     enum DisplayGeometry
     {
         Lines,
         Tubes,
         Ribbons
-    };
-    enum CoordinateSystem
-    {
-        AsIs,
-        CylindricalToCartesian,
-        CartesianToCylindrical
     };
     enum IntegrationDirection
     {
@@ -219,13 +219,14 @@ public:
     void SetPathlines(bool pathlines_);
     void SetPathlinesOverrideStartingTimeFlag(bool pathlinesOverrideStartingTimeFlag_);
     void SetPathlinesOverrideStartingTime(double pathlinesOverrideStartingTime_);
+    void SetPathlinesPeriod(double pathlinesPeriod_);
     void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
     void SetDisplayGeometry(DisplayGeometry displayGeometry_);
-    void SetCoordinateSystem(CoordinateSystem coordinateSystem_);
-    void SetPhiScalingFlag(bool phiScalingFlag_);
-    void SetPhiScaling(double phiScaling_);
-    void SetShowLines(bool showLines_);
-    void SetShowPoints(bool showPoints_);
+    void SetCropBeginFlag(bool cropBeginFlag_);
+    void SetCropBegin(double cropBegin_);
+    void SetCropEndFlag(bool cropEndFlag_);
+    void SetCropEnd(double cropEnd_);
+    void SetCropValue(CropValue cropValue_);
     void SetSampleDistance0(double sampleDistance0_);
     void SetSampleDistance1(double sampleDistance1_);
     void SetSampleDistance2(double sampleDistance2_);
@@ -297,13 +298,14 @@ public:
     bool               GetPathlines() const;
     bool               GetPathlinesOverrideStartingTimeFlag() const;
     double             GetPathlinesOverrideStartingTime() const;
+    double             GetPathlinesPeriod() const;
     PathlinesCMFE      GetPathlinesCMFE() const;
     DisplayGeometry    GetDisplayGeometry() const;
-    CoordinateSystem   GetCoordinateSystem() const;
-    bool               GetPhiScalingFlag() const;
-    double             GetPhiScaling() const;
-    bool               GetShowLines() const;
-    bool               GetShowPoints() const;
+    bool               GetCropBeginFlag() const;
+    double             GetCropBegin() const;
+    bool               GetCropEndFlag() const;
+    double             GetCropEnd() const;
+    CropValue          GetCropValue() const;
     double             GetSampleDistance0() const;
     double             GetSampleDistance1() const;
     double             GetSampleDistance2() const;
@@ -338,15 +340,15 @@ public:
 protected:
     static std::string DataValue_ToString(int);
 public:
+    static std::string CropValue_ToString(CropValue);
+    static bool CropValue_FromString(const std::string &, CropValue &);
+protected:
+    static std::string CropValue_ToString(int);
+public:
     static std::string DisplayGeometry_ToString(DisplayGeometry);
     static bool DisplayGeometry_FromString(const std::string &, DisplayGeometry &);
 protected:
     static std::string DisplayGeometry_ToString(int);
-public:
-    static std::string CoordinateSystem_ToString(CoordinateSystem);
-    static bool CoordinateSystem_FromString(const std::string &, CoordinateSystem &);
-protected:
-    static std::string CoordinateSystem_ToString(int);
 public:
     static std::string IntegrationDirection_ToString(IntegrationDirection);
     static bool IntegrationDirection_FromString(const std::string &, IntegrationDirection &);
@@ -431,13 +433,14 @@ public:
         ID_pathlines,
         ID_pathlinesOverrideStartingTimeFlag,
         ID_pathlinesOverrideStartingTime,
+        ID_pathlinesPeriod,
         ID_pathlinesCMFE,
         ID_displayGeometry,
-        ID_coordinateSystem,
-        ID_phiScalingFlag,
-        ID_phiScaling,
-        ID_showLines,
-        ID_showPoints,
+        ID_cropBeginFlag,
+        ID_cropBegin,
+        ID_cropEndFlag,
+        ID_cropEnd,
+        ID_cropValue,
         ID_sampleDistance0,
         ID_sampleDistance1,
         ID_sampleDistance2,
@@ -500,13 +503,14 @@ private:
     bool         pathlines;
     bool         pathlinesOverrideStartingTimeFlag;
     double       pathlinesOverrideStartingTime;
+    double       pathlinesPeriod;
     int          pathlinesCMFE;
     int          displayGeometry;
-    int          coordinateSystem;
-    bool         phiScalingFlag;
-    double       phiScaling;
-    bool         showLines;
-    bool         showPoints;
+    bool         cropBeginFlag;
+    double       cropBegin;
+    bool         cropEndFlag;
+    double       cropEnd;
+    int          cropValue;
     double       sampleDistance0;
     double       sampleDistance1;
     double       sampleDistance2;
@@ -529,6 +533,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define INTEGRALCURVEATTRIBUTES_TMFS "iDDDDDDdDDbd*iiiisiibdbddbddiddidDiiiiibbdiiibdbbdddbbiibbbbddddis"
+#define INTEGRALCURVEATTRIBUTES_TMFS "iDDDDDDdDDbd*iiiisiibdbddbddiddidDiiiiibbddiibdbdidddbbiibbbbddddis"
 
 #endif
