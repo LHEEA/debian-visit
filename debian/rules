@@ -2,7 +2,7 @@
 
 # The magic debhelper rule:
 %:
-	dh $@ --buildsystem cmake
+	dh $@ --buildsystem cmake --with python2
 
 DEB_HOST_MULTIARCH ?= $(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
 PYVERS ?= $(shell pyversions -d)
@@ -11,9 +11,9 @@ TOPDIR :=$(shell pwd)
 export DH_VERBOSE:=1
 
 override_dh_auto_configure:
-	sed -e 's/@DEB_HOST_MULTIARCH@/$(DEB_HOST_MULTIARCH)/' < debian/debian.cmake.in | \
-	sed -e 's/@PYVERS@/$(PYVERS)/' | \
-	sed -e 's/@VISITHOME@/$(TOPDIR)/' > src/config-site/debian.cmake
+	sed -e 's%@DEB_HOST_MULTIARCH@%${DEB_HOST_MULTIARCH}%' < debian/debian.cmake.in | \
+	sed -e 's%@PYVERS@%${PYVERS}%' | \
+	sed -e 's%@VISITHOME@%${TOPDIR}%' > src/config-site/debian.cmake
 	dh_auto_configure --sourcedirectory=src 
 
 override_dh_auto_build:
