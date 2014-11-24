@@ -3,13 +3,13 @@ Description: Find certain libraries in the /usr/lib/* multiarch directory on Deb
 Last-Updated: 2011-09-14
 Forwarded: no
 
-Index: visit-2.7.0/src/CMake/FindVisItMesa.cmake
+Index: visit-2.8.1/src/CMake/FindVisItMesa.cmake
 ===================================================================
---- visit-2.7.0.orig/src/CMake/FindVisItMesa.cmake	2014-01-22 12:13:37.000000000 +0000
-+++ visit-2.7.0/src/CMake/FindVisItMesa.cmake	2014-01-22 12:13:37.000000000 +0000
-@@ -57,7 +57,7 @@
+--- visit-2.8.1.orig/src/CMake/FindVisItMesa.cmake
++++ visit-2.8.1/src/CMake/FindVisItMesa.cmake
+@@ -60,7 +60,7 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpT
  IF (WIN32)
-     SET_UP_THIRD_PARTY(MESA lib/${VISIT_MSVC_VERSION} include MesaGL32 osmesa32)
+     SET_UP_THIRD_PARTY(MESA lib include MesaGL32 osmesa32)
  ELSEIF(DEBIAN)
 -    SET_UP_THIRD_PARTY(MESA lib include GL OSMesa)
 +    SET_UP_THIRD_PARTY(MESA lib/${DEB_HOST_MULTIARCH} include GL OSMesa)

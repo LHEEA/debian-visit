@@ -1,11 +1,11 @@
-Index: visit-2.7.0/src/CMake/FindHDF4.cmake
+Index: visit-2.8.1/src/CMake/FindHDF4.cmake
 ===================================================================
---- visit-2.7.0.orig/src/CMake/FindHDF4.cmake	2014-01-22 12:03:50.000000000 +0000
-+++ visit-2.7.0/src/CMake/FindHDF4.cmake	2014-01-22 12:05:00.000000000 +0000
-@@ -46,6 +46,8 @@
- 
- IF (WIN32)
-   SET_UP_THIRD_PARTY(HDF4 lib include hdfdll mfhdfdll xdrdll)
+--- visit-2.8.1.orig/src/CMake/FindHDF4.cmake
++++ visit-2.8.1/src/CMake/FindHDF4.cmake
+@@ -56,6 +56,8 @@ IF (WIN32)
+   else()
+       SET_UP_THIRD_PARTY(HDF4 lib include hdf mfhdf xdr)
+   endif()
 -ELSE (WIN32)
 -  SET_UP_THIRD_PARTY(HDF4 lib include mfhdf df)
 +ELSEIF(DEBIAN)
