@@ -1,5 +1,5 @@
-visit (2.8.1-1) UNRELEASED; urgency=low
+visit (2.8.2-1) UNRELEASED; urgency=low
 
   * Initial release. (Closes: #395573).
 
- -- Alastair McKinstry <mckinstry@debian.org>  Sun,  9 Sep 2014 10:38:07 +0000
+ -- Alastair McKinstry <mckinstry@debian.org>  Wed, 10 Dec 2014 08:38:07 +0000
