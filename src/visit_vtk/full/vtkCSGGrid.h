@@ -105,6 +105,17 @@
 //    discretization where it would do the wrong thing if a region 
 //    referenced the same boundary multiple times.
 //
+//    Eric Brugger, Mon Nov 24 15:37:13 PST 2014
+//    I added an argument to DiscretizeSpaceMultiPass to control if all the
+//    regions are discretized at once. I added PrintRegionTree. 
+//
+//    Eric Brugger, Tue Dec  2 17:29:30 PST 2014
+//    I modified the multipass discretization to partition space for a
+//    specific region with only the unique boundaries. It now finds all the
+//    unique boundaries, then creates a new region tree for the specific
+//    region that uses only the unique boundaries and then uses it to
+//    discretize the region.
+//
 
 // .SECTION See Also
 // vtkImplicitFunction, vtkQuadric, vtkUnstructuredGrid, vtkDataSet
@@ -208,24 +219,25 @@ public:
   // sampled to a specific number of samples in x, y and z
   //
   vtkUnstructuredGrid *DiscretizeSpaceMultiPass(int specificZone,
-                                   const double bnds[6], const int dims[3],
-                                   const int subRegion[6]);
+                          bool DiscretizeAllRegionsAtOnce, const double bnds[6],
+                          const int dims[3], const int subRegion[6]);
 
   vtkUnstructuredGrid *DiscretizeSpace(int specificZone = -1, double tol = 0.01,
-                                   double minX = -10.0, double maxX = 10.0,
-                                   double minY = -10.0, double maxY = 10.0,
-                                   double minZ = -10.0, double maxZ = 10.0);
+                          double minX = -10.0, double maxX = 10.0,
+                          double minY = -10.0, double maxY = 10.0,
+                          double minZ = -10.0, double maxZ = 10.0);
 
   //
   // A discretize method that returns the entire spatial bounding
   // box, meshed adaptively, though discontinuously to a specified
   // tolerance (smallest edge length)
   //
-  vtkUnstructuredGrid *DiscretizeSpace3(int specificZone = -1, int rank=0, int nprocs=1,
-                                       double discTol = 0.01, double flatTol = 0.01,
-                                       double minX = -10.0, double maxX = 10.0,
-                                       double minY = -10.0, double maxY = 10.0,
-                                       double minZ = -10.0, double maxZ = 10.0);
+  vtkUnstructuredGrid *DiscretizeSpace3(int specificZone = -1,
+                          int rank=0, int nprocs=1,
+                          double discTol = 0.01, double flatTol = 0.01,
+                          double minX = -10.0, double maxX = 10.0,
+                          double minY = -10.0, double maxY = 10.0,
+                          double minZ = -10.0, double maxZ = 10.0);
 
   // Description:
   // Return the actual size of the data in kilobytes. This number
@@ -319,9 +331,14 @@ protected:
                                             const int subRegion[6]);
   vtkUnstructuredGrid *SplitGrid(vtkRectilinearGrid *rgrid,
                                  const int nBounds, double *bounds);
+  bool ExtractRegionBounds(int specificZone, int &nRegionBounds,
+                           double *&regionBounds);
 
-  bool EvaluateRegionBits(int region, vtkCSGFixedLengthBitField &bits);
+  bool EvaluateRegionBits(int reg, vtkCSGFixedLengthBitField &bits);
   void GetRegionBounds(int reg, std::vector<int> &bounds);
+  void PrintRegionTree(int reg, int *leftIds, int *rightIds,
+                        int *regTypeFlags, int indent);
+  void GetRegionTree(int reg);
 
   //
   // We put this in the protected part of the interface because
@@ -357,6 +374,13 @@ protected:
   int numZones;
   int *gridZones;
   int *zoneMap;
+
+  // These are used to store the region and boundary information for
+  // a specific region when using the multipass algorithm.
+  int numRegions2;
+  int *leftIds2, *rightIds2, *regTypeFlags2;
+  int *zoneMap2;
+  double *regionBounds2;
 private:
 
 
