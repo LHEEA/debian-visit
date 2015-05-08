@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -5451,6 +5451,40 @@ visit_SetPrecisionType(PyObject *self, PyObject *args)
     int errorFlag = Synchronize();
 
     // Return the success value.
+    return PyLong_FromLong(long(errorFlag == 0));
+}
+
+
+// ****************************************************************************
+// Function: visit_SetRemoveDuplicateNodes
+//
+// Purpose:
+//   Sets the removal of duplicate nodes for the pipeline.
+//
+// Notes:
+//
+// Programmer: Kathleen Biagas
+// Creation:   December 16, 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_SetRemoveDuplicateNodes(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    int flag;
+    if (!PyArg_ParseTuple(args, "i", &flag))
+        return NULL;
+
+    MUTEX_LOCK();
+        GetViewerMethods()->SetRemoveDuplicateNodes(flag);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    int errorFlag = Synchronize();
     return PyLong_FromLong(long(errorFlag == 0));
 }
 
@@ -15794,6 +15828,39 @@ visit_SuppressMessages(PyObject *self, PyObject *args)
 }
 
 // ****************************************************************************
+// Function: visit_ReadHostProfilesFromDirectory
+//
+// Purpose:
+//   Reads host profiles from a directory.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Dec 15 15:14:17 PST 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_ReadHostProfilesFromDirectory(PyObject *self, PyObject *args)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    //
+    // Get the name of the time slider that we want to use.
+    //
+    char *dirName = NULL; int flag = 0;
+    if(!PyArg_ParseTuple(args, "si", &dirName, &flag))
+        return NULL;
+
+    MUTEX_LOCK();
+        GetViewerMethods()->ReadHostProfilesFromDirectory(dirName, flag != 0);
+    MUTEX_UNLOCK();
+
+    // Return the success value.
+    return IntReturnValue(Synchronize());
+}
+
+// ****************************************************************************
 // Method: ENSURE_CALLBACK_MANAGER_EXISTS
 //
 // Purpose:
@@ -16910,6 +16977,9 @@ AddMethod(const char *methodName,
 //   Brad Whitlock, Wed Jul 16 11:52:54 PDT 2014
 //   Add GetEngineProperties.
 //
+//   Kathleen Biagas, Mon Dec 22 10:29:52 PST 2014
+//   Added SetRemoveDuplicateNodes to Proxy methods.
+//
 // ****************************************************************************
 
 static void
@@ -17157,6 +17227,7 @@ AddProxyMethods()
     AddMethod("QueryOverTime", visit_QueryOverTime, visit_QueryOverTime_doc);
     AddMethod("PythonQuery", visit_PythonQuery,visit_PythonQuery_doc);
     AddMethod("DefinePythonExpression", visit_DefinePythonExpression,visit_DefinePythonExpression_doc);
+    AddMethod("ReadHostProfilesFromDirectory", visit_ReadHostProfilesFromDirectory, visit_ReadHostProfilesFromDirectory_doc);
     AddMethod("RecenterView", visit_RecenterView, visit_RecenterView_doc);
     AddMethod("RedrawWindow", visit_RedrawWindow, visit_RedrawWindow_doc);
     AddMethod("RemoveAllOperators", visit_RemoveAllOperators,
@@ -17266,6 +17337,9 @@ AddProxyMethods()
               visit_SetPreferredFileFormats_doc);
     AddMethod("SetPrinterAttributes", visit_SetPrinterAttributes,
                                                visit_SetPrinterAttributes_doc);
+    AddMethod("SetRemoveDuplicateNodes",
+               visit_SetRemoveDuplicateNodes,
+               visit_SetRemoveDuplicateNodes_doc);
     AddMethod("SetRenderingAttributes", visit_SetRenderingAttributes,
                                              visit_SetRenderingAttributes_doc);
     AddMethod("SetSaveWindowAttributes", visit_SetSaveWindowAttributes,

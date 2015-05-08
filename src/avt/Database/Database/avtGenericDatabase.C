@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,6 +84,7 @@
 #include <avtDomainBoundaries.h>
 #include <avtDomainNesting.h>
 #include <avtFileFormatInterface.h>
+#include <avtMemory.h>
 #include <avtMixedVariable.h>
 #include <avtParallel.h>
 #include <avtSILGenerator.h>
@@ -127,6 +128,9 @@ void                 AddGhostNodesForSimplifiedNesting(bool *hasNeighbor,
 
 // used to track if the matvf/specmv ghost zones warning has been issued.
 bool avtGenericDatabase::issuedOriginalConnectivityWarning = false;
+
+// Percent of memory allowed for the cache.
+const float avtGenericDatabase::maxCachePercent = 0.1f;
 
 // ****************************************************************************
 //  Method: avtGenericDatabase constructor
@@ -2270,7 +2274,7 @@ avtGenericDatabase::GetScalarVariable(const char *varname, int ts, int domain,
             //
             // Cache the variable if we can
             //
-            if (Interface->CanCacheVariable(real_varname))
+            if (CachingRecommended(var) && Interface->CanCacheVariable(real_varname))
             {
                 std::string cache_varname =
                         Interface->CreateCacheNameIncludingSelections(varname, 
@@ -2391,7 +2395,7 @@ avtGenericDatabase::GetVectorVariable(const char *varname, int ts, int domain,
         var = Interface->GetVectorVar(ts, domain, real_varname);
         if (var != NULL)
         {
-            if (Interface->CanCacheVariable(real_varname))
+            if (CachingRecommended(var) && Interface->CanCacheVariable(real_varname))
             {
                 std::string cache_varname =
                        Interface->CreateCacheNameIncludingSelections(varname, 
@@ -2503,7 +2507,7 @@ avtGenericDatabase::GetTensorVariable(const char *varname, int ts, int domain,
         var = Interface->GetVectorVar(ts, domain, real_varname);
         if (var != NULL)
         {
-            if (Interface->CanCacheVariable(real_varname))
+            if (CachingRecommended(var) && Interface->CanCacheVariable(real_varname))
             {
                 std::string cache_varname =
                        Interface->CreateCacheNameIncludingSelections(varname, ts, domain);
@@ -2618,7 +2622,7 @@ avtGenericDatabase::GetSymmetricTensorVariable(const char *varname, int ts,
             //
             // Cache the variable if we can
             //
-            if (Interface->CanCacheVariable(real_varname))
+            if (CachingRecommended(var) && Interface->CanCacheVariable(real_varname))
             {
                 std::string cache_varname =
                        Interface->CreateCacheNameIncludingSelections(varname, ts, domain);
@@ -2719,7 +2723,7 @@ avtGenericDatabase::GetArrayVariable(const char *varname, int ts, int domain,
         var = Interface->GetVectorVar(ts, domain, real_varname);
         if (var != NULL)
         {
-            if (Interface->CanCacheVariable(real_varname))
+            if (CachingRecommended(var) && Interface->CanCacheVariable(real_varname))
             {
                 std::string cache_varname =
                        Interface->CreateCacheNameIncludingSelections(varname, ts, domain);
@@ -2814,7 +2818,7 @@ avtGenericDatabase::GetLabelVariable(const char *varname, int ts, int domain,
         var = Interface->GetVar(ts, domain, real_varname);
         if (var != NULL)
         {
-            if (Interface->CanCacheVariable(real_varname))
+            if (CachingRecommended(var) && Interface->CanCacheVariable(real_varname))
             {
                 std::string cache_varname =
                        Interface->CreateCacheNameIncludingSelections(varname, ts, domain);
@@ -3035,7 +3039,7 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
 
         AssociateBounds(mesh);
 
-        if (Interface->CanCacheVariable(real_meshname))
+        if (CachingRecommended(mesh) && Interface->CanCacheVariable(real_meshname))
         {
             std::string cache_meshname =
                    Interface->CreateCacheNameIncludingSelections(meshname, ts, domain);
@@ -3105,6 +3109,103 @@ avtGenericDatabase::GetMesh(const char *meshname, int ts, int domain,
     return rv;
 }
 
+// ****************************************************************************
+// Method: avtGenericDatabase::CachingRecommended
+//
+// Purpose:
+//   Determines whether the array plus the current cache size will still be
+//   under a given threshold, in which case, we allow the array to be cached.
+//
+// Arguments:
+//   arr : The array we're checking to see if it fits.
+//
+// Returns:    True if we can cache and still fit.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Oct 29 17:54:55 PDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+avtGenericDatabase::CachingRecommended(vtkDataArray *arr) const
+{
+    bool retval = true;
+
+#ifdef VISIT_BLUE_GENE_Q
+    // We need to be more frugal with what we cache. Let's limit the cache size
+    // to some percentage of the total memory size for this process.
+    unsigned long nBytes = cache.EstimateSize(arr, true);
+    unsigned long cacheSize = cache.EstimateCacheSize();
+    unsigned long mtotal = 0;
+    avtMemory::GetTotalMemorySize(mtotal);
+    if(mtotal > 0)
+    {
+        double newPercent = double(cacheSize + nBytes) / double(mtotal);
+        retval = newPercent < maxCachePercent;
+        if(!retval)
+        {
+            debug1 << "Caching data array not recommended. Cache would "
+                      "increase to " << newPercent << "% of " << mtotal
+                   << " bytes." << endl;
+        }
+    }
+#endif
+
+    return retval;
+}
+
+// ****************************************************************************
+// Method: avtGenericDatabase::CachingRecommended
+//
+// Purpose:
+//   Determines whether the dataset plus the current cache size will still be
+//   under a given threshold, in which case, we allow the dataset to be cached.
+//
+// Arguments:
+//   ds : The dataset we're checking to see if it fits.
+//
+// Returns:    True if we can cache and still fit.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Oct 29 17:54:55 PDT 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+avtGenericDatabase::CachingRecommended(vtkDataSet *ds) const
+{
+    bool retval = true;
+
+#ifdef VISIT_BLUE_GENE_Q
+    // We need to be more frugal with what we cache. Let's limit the cache size
+    // to some percentage of the total memory size for this process.
+    unsigned long nBytes = cache.EstimateSize(ds);
+    unsigned long cacheSize = cache.EstimateCacheSize();
+    unsigned long mtotal = 0;
+    avtMemory::GetTotalMemorySize(mtotal);
+    if(mtotal > 0)
+    {
+        double newPercent = double(cacheSize + nBytes) / double(mtotal);
+        retval = newPercent < maxCachePercent;
+        if(!retval)
+        {
+            debug1 << "Caching dataset not recommended. Cache would "
+                      "increase to " << newPercent << "% of " << mtotal
+                   << " bytes." << endl;
+        }
+    }
+#endif
+
+    return retval;
+}
 
 // ****************************************************************************
 //  Method: avtGenericDatabase::GetAuxiliaryData
@@ -3224,7 +3325,7 @@ avtGenericDatabase::GetAuxiliaryData(avtDataRequest_p spec,
     {
         int domain = domains[i];
         avtDatabaseMetaData *md = GetMetaData(ts);
-        md->ConvertCSGDomainToBlockAndRegion(real_var, &domain, 0);
+        md->ConvertCSGDomainToBlockAndRegion(var, &domain, 0);
 
         //
         // See if we already have the data lying around for this timestep or
@@ -5045,6 +5146,10 @@ avtGenericDatabase::ActivateTimestep(int stateIndex)
 //    Mark C. Miller, Tue Feb 11 19:35:08 PST 2014
 //    Fix size_t/int type mixing in loop completion expression causing loop
 //    body to be executed for empty vectors.
+//
+//    Mark C. Miller, Thu Dec 18 12:55:50 PST 2014
+//    Incorporated changes from Jeremy to properly pass along labels for
+//    enum scalars. Thanks Jeremy!
 // ****************************************************************************
 
 void
@@ -5086,6 +5191,7 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
     intVector groupIdsBasedOnRange;
     int domOrigin = 0;
     int grpOrigin = 0;
+    string enumScalarLabel;
 
     avtSubsetType subT = GetMetaData(ts)->DetermineSubsetType(var);
     if (subT == AVT_DOMAIN_SUBSET || subT == AVT_GROUP_SUBSET)
@@ -5098,6 +5204,27 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
         gIds       =  GetMetaData(ts)->GetMesh(meshName)->groupIds;
         groupIdsBasedOnRange =  GetMetaData(ts)->GetMesh(meshName)->groupIdsBasedOnRange;
     }
+    else if (subT == AVT_ENUMSCALAR_SUBSET)
+    {
+        const avtScalarMetaData *smd = GetMetaData(ts)->GetScalar(var);
+        int n = smd->enumNames.size();
+        char tmp[100];
+        sprintf(tmp,"%d",n);
+        enumScalarLabel += tmp;
+        enumScalarLabel += ";";
+        for (int i=0; i<n; ++i)
+        {
+            string name = smd->enumNames[i];
+            int value = smd->enumRanges[2*i];
+            sprintf(tmp, "%d", value);
+            enumScalarLabel += tmp;
+            enumScalarLabel += ";";
+            enumScalarLabel += name;
+            enumScalarLabel += ";";
+        }
+        enumScalarLabel += "mixed";
+    }
+
 
     //
     // Some file formats have variables that are defined for only some of
@@ -5253,6 +5380,10 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
         else if (subT == AVT_MATERIAL_SUBSET)
         {
             labels = matnames;
+        }
+        else if (subT == AVT_ENUMSCALAR_SUBSET)
+        {
+            labels.push_back(enumScalarLabel);
         }
 
         ds.labels[i] = labels;
@@ -5547,6 +5678,10 @@ avtGenericDatabase::ReadDataset(avtDatasetCollection &ds, intVector &domains,
 //    Cyrus Harrison,Thu Feb  9 10:26:48 PST 2012
 //    Added logic to support presentGhostZoneTypes, which allows us to
 //    differentiate between ghost zones for boundaries & nesting.
+//
+//    Kevin Griffin, Tue Apr 21 17:41:51 PDT 2015
+//    Changed all calls from Exchange*Vector (* = Float, Double, etc) to
+//    ExchangeVector.
 //
 // ****************************************************************************
 
@@ -6182,7 +6317,7 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
             vectors.push_back(s);
         }
         vector<vtkDataArray *> vectorsOut;
-        vectorsOut = dbi->ExchangeFloatVector(doms, isPointData, vectors);
+        vectorsOut = dbi->ExchangeVector(doms, isPointData, vectors);
         for (i = 0 ; i < doms.size() ; i++)
         {
             vtkDataSet *ds1 = ds.GetDataset(i, 0);
@@ -6289,8 +6424,7 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
                     vectors.push_back(atts->GetArray(*curVar));
                 }
                 vector<vtkDataArray *> vectorsOut;
-                vectorsOut = dbi->ExchangeFloatVector(doms,isPointData,
-                                                      vectors);
+                vectorsOut = dbi->ExchangeVector(doms,isPointData,vectors);
                 for (j = 0 ; j < doms.size() ; j++)
                 {
                     vtkDataSet *ds1 = ds.GetDataset(j, 0);
@@ -6429,7 +6563,7 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
                                                 "avtOriginalNodeNumbers"));
         }
         vector<vtkDataArray *> nodeNumsOut;
-        nodeNumsOut = dbi->ExchangeIntVector(doms,true,nodeNums);
+        nodeNumsOut = dbi->ExchangeVector(doms,true,nodeNums);
         for (j = 0 ; j < doms.size() ; j++)
         {
             vtkDataSet *ds1 = ds.GetDataset(j, 0);
@@ -6451,7 +6585,7 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
                                                 "avtOriginalCellNumbers"));
         }
         vector<vtkDataArray *> cellNumsOut;
-        cellNumsOut = dbi->ExchangeIntVector(doms,false,cellNums);
+        cellNumsOut = dbi->ExchangeVector(doms,false,cellNums);
         for (j = 0 ; j < doms.size() ; j++)
         {
             vtkDataSet *ds1 = ds.GetDataset(j, 0);
@@ -6473,7 +6607,7 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
                                                 "avtGlobalNodeNumbers"));
         }
         vector<vtkDataArray *> nodeNumsOut;
-        nodeNumsOut = dbi->ExchangeIntVector(doms,true,nodeNums);
+        nodeNumsOut = dbi->ExchangeVector(doms,true,nodeNums);
         for (j = 0 ; j < doms.size() ; j++)
         {
             vtkDataSet *ds1 = ds.GetDataset(j, 0);
@@ -6495,7 +6629,7 @@ avtGenericDatabase::CommunicateGhostZonesFromDomainBoundaries(
                                                 "avtGlobalZoneNumbers"));
         }
         vector<vtkDataArray *> cellNumsOut;
-        cellNumsOut = dbi->ExchangeIntVector(doms,false,cellNums);
+        cellNumsOut = dbi->ExchangeVector(doms,false,cellNums);
         for (j = 0 ; j < doms.size() ; j++)
         {
             vtkDataSet *ds1 = ds.GetDataset(j, 0);

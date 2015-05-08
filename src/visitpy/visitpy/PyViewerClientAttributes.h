@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,7 +45,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define VIEWERCLIENTATTRIBUTES_NMETH 18
+#define VIEWERCLIENTATTRIBUTES_NMETH 20
 void VISITPY_API           PyViewerClientAttributes_StartUp(ViewerClientAttributes *subj, void *data);
 void VISITPY_API           PyViewerClientAttributes_CloseDown();
 VISITPY_API PyMethodDef *  PyViewerClientAttributes_GetMethodTable(int *nMethods);

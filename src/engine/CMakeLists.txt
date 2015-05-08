@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -39,7 +39,11 @@
 #****************************************************************************/
 
 ADD_SUBDIRECTORY(rpc)
-ADD_SUBDIRECTORY(proxy)
+
+IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
+    ADD_SUBDIRECTORY(proxy)
+ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
+
 IF(NOT VISIT_STATIC)
     # "main" is handled from the top level in the static case so it can be
     # created after we know which plugins are in use. This is needed for 

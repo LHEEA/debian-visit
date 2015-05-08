@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,6 +51,7 @@
 #include <avtFileDescriptorManager.h>
 
 #include <DebugStream.h>
+#include <FileFunctions.h>
 #include <ImproperUseException.h>
 #include <StringHelpers.h>
 
@@ -755,7 +756,7 @@ avtFileFormat::GuessCycleOrTime(const char *fname, const char *re)
     //
     // Take out any of the name that comes from the directory structure.
     //
-    fname = StringHelpers::Basename(fname);
+    fname = FileFunctions::Basename(fname);
 
     string substr = StringHelpers::ExtractRESubstr(fname, re);
     if (substr != "")

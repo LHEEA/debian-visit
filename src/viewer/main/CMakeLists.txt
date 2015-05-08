@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -41,73 +41,99 @@
 #  Brad Whitlock, Fri May 18 16:09:34 PST 2012
 #  Use different resource file.
 #
+#  Brad Whitlock, Thu Sep 11 10:45:23 PDT 2014
+#  Moved many files to viewercore.
+#
+#  Kathleen Biagas, Tue Apr 14 14:55:01 MST 2015
+#  Only add ViewerSubmitParallEngineToWindowsHPC if we actually have the
+#  HPC scheduler.
+#
 #****************************************************************************/
-IF(VISIT_PARALLEL AND WIN32)
+IF(VISIT_PARALLEL AND WIN32 AND HAVE_HPC_SCHEDULER)
     SET(VIEWERLIB_WIN32_SOURCES
         ViewerSubmitParallelEngineToWindowsHPC.cpp
     )
     SET_SOURCE_FILES_PROPERTIES(ViewerEngineManager.C PROPERTIES
         COMPILE_DEFINITIONS VISIT_SUPPORTS_WINDOWS_HPC
     )
-ENDIF(VISIT_PARALLEL AND WIN32)
+ENDIF(VISIT_PARALLEL AND WIN32 AND HAVE_HPC_SCHEDULER)
+
+IF(VISIT_DDT)
+SET(VIEWER_DDT
+ddt/DDTManager.C
+ddt/DDTSession.C
+ddt/DDTActions.C
+ddt/DDTActionsUI.C
+)
+
+SET(VIEWER_DDT_MOC
+ddt/DDTManager.h
+ddt/DDTSession.h
+)
+ENDIF(VISIT_DDT)
+
+SET(VIEWER_UI
+ui/AnimationActionsUI.C
+ui/LockActionsUI.C
+ui/PlotAndOperatorActionsUI.C
+ui/PrintWindowAction.C
+ui/SetAppearanceAction.C
+ui/ToolbarActionsUI.C
+ui/ViewActionsUI.C
+ui/ViewerActionManagerUI.C
+ui/ViewerActionUI.C
+ui/ViewerActionUIMultiple.C
+ui/ViewerActionUISingle.C
+ui/ViewerActionUIToggle.C
+ui/ViewerChangeUsernameUI.C
+ui/ViewerConnectionPrinterUI.C
+ui/ViewerConnectionProgressDialog.C
+ui/ViewerFactoryUI.C
+ui/ViewerHostProfileSelectorWithWin.C
+ui/ViewerMessagingUI.C
+ui/ViewerPasswordWindow.C
+ui/ViewerPopupMenu.C
+ui/ViewerToolbar.C
+ui/ViewerWindowUI.C
+ui/VisItChangeUsernameWindow.C
+ui/VisItPasswordWindow.C
+ui/WindowActionsUI.C
+)
+
+SET(VIEWER_UI_MOC
+ui/PlotAndOperatorActionsUI.h
+ui/ViewerActionUI.h
+ui/ViewerActionUIMultiple.h
+ui/ViewerActionUISingle.h
+ui/ViewerConnectionPrinterUI.h
+ui/ViewerConnectionProgressDialog.h
+ui/ViewerHostProfileSelectorWithWin.h
+ui/ViewerPasswordWindow.h
+ui/VisItChangeUsernameWindow.h
+ui/VisItPasswordWindow.h
+)
 
 SET(VIEWERLIB_SOURCES
-ActionGroupDescription.C
-AnimationActions.C
-DDTManager.C
-DDTSession.C
-EngineKey.C
-LineoutListItem.C
-LockActions.C
-NoEngineException.C
-PlotAndOperatorActions.C
+${VIEWER_UI}
+${VIEWER_DDT}
 #QWsSocket.C
 SharedDaemon.C
-ViewActions.C
-ViewStack.C
-ViewerAction.C
-ViewerActionBase.C
-ViewerActionManager.C
-ViewerBase.C
-ViewerChangeUsernameWindow.C
+ViewerBaseUI.C
 ViewerClientConnection.C
 ViewerCommandFromSimObserver.C
-ViewerConfigManager.C
-ViewerConnectionProgressDialog.C
 ViewerEngineManager.C
+ViewerEngineManagerImplementation.C
+ViewerFactoryMain.C
 ViewerFileServer.C
-ViewerHostProfileSelector.C
-ViewerHostProfileSelectorNoWin.C
-ViewerHostProfileSelectorWithWin.C
+ViewerFileServerImplementation.C
 ViewerMasterXfer.C
-ViewerMessageBuffer.C
 ViewerMetaDataObserver.C
-ViewerMultipleAction.C
 ViewerObserverToSignal.C
-ViewerOperator.C
-ViewerOperatorFactory.C
-ViewerPasswordWindow.C
-ViewerPlot.C
-ViewerPlotFactory.C
-ViewerPlotList.C
-ViewerPopupMenu.C
-ViewerProperties.C
-ViewerQuery.C
-ViewerQueryManager.C
-ViewerRemoteProcessChooser.C
 ViewerSILAttsObserver.C
 ViewerServerManager.C
 ViewerStateBuffered.C
 ViewerSubject.C
-ViewerToggleAction.C
-ViewerToolbar.C
-ViewerWindow.C
-ViewerWindowManager.C
-ViewerWindowManagerAttributes.C
-VisItChangeUsernameWindow.C
-VisItPasswordWindow.C
 VisItViewer.C
-WindowActions.C
 WebSocketConnection.C
 ${VIEWERLIB_WIN32_SOURCES}
 )
@@ -118,31 +144,18 @@ IF(VISIT_STATIC)
 ENDIF(VISIT_STATIC)
 
 SET(VIEWERLIB_MOC_SOURCES
-DDTManager.h
-DDTSession.h
-PlotAndOperatorActions.h
+${VIEWER_UI_MOC}
+${VIEWER_DDT_MOC}
 #QWsSocket.h
 SharedDaemon.h
-ViewerAction.h
-ViewerActionBase.h
-ViewerChangeUsernameWindow.h
+ViewerBaseUI.h
 ViewerClientConnection.h
 ViewerCommandFromSimObserver.h
-ViewerConnectionProgressDialog.h
-ViewerHostProfileSelectorWithWin.h
 ViewerMetaDataObserver.h
-ViewerMultipleAction.h
 ViewerObserverToSignal.h
-ViewerPasswordWindow.h
-ViewerPlot.h
-ViewerPlotList.h
 ViewerSILAttsObserver.h
-ViewerServerManager.h
 ViewerStateBuffered.h
 ViewerSubject.h
-ViewerWindowManager.h
-VisItChangeUsernameWindow.h
-VisItPasswordWindow.h
 WebSocketConnection.h
 )
 QT_WRAP_CPP(viewer VIEWERLIB_SOURCES ${VIEWERLIB_MOC_SOURCES})
@@ -154,8 +167,12 @@ ENDIF (NOT WIN32)
 
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
+${CMAKE_CURRENT_SOURCE_DIR}/ui
+${CMAKE_CURRENT_SOURCE_DIR}/ddt
 ${VISIT_COMMON_INCLUDES}
 ${VISIT_SOURCE_DIR}/viewer/rpc
+${VISIT_SOURCE_DIR}/viewer/core
+${VISIT_SOURCE_DIR}/viewer/core/actions
 ${VISIT_SOURCE_DIR}/avt/DBAtts/MetaData
 ${VISIT_SOURCE_DIR}/avt/DBAtts/SIL
 ${VISIT_SOURCE_DIR}/avt/Database/Database
@@ -221,6 +238,7 @@ ENDIF(VISIT_STATIC)
 
 TARGET_LINK_LIBRARIES(viewer 
 viewerrpc
+viewercore_ser
 visitcommon
 mdserverrpc
 mdserverproxy
@@ -265,7 +283,7 @@ ELSE(NOT APPLE)
     SET(MACOSX_BUNDLE_LONG_VERSION_STRING  "VisIt version ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_SHORT_VERSION_STRING "VisIt ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_BUNDLE_VERSION       ${VISIT_VERSION})
-    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC")
+    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC")
     
     IF(VISIT_STATIC)
         MAC_NIB_INSTALL(viewer)

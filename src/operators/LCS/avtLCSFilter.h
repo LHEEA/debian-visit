@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -147,8 +147,19 @@ protected:
                                          std::vector<avtIntegralCurve*> &,
                                          int &, int, double &, double & );
 
-    void ComputeEigenValueLyapunovExponent( vtkDataArray* jacobian[3], 
-                                            vtkDataArray* result );
+    void ComputeLyapunovExponent( vtkDataArray* jacobian[3], 
+                                  vtkDataArray* result );
+
+    void ComputeEigenValues( vtkDataArray* jacobian[3], 
+                              vtkDataArray* result );
+
+    void ComputeEigenVectors( vtkDataArray* jacobian[3], 
+                              vtkDataArray* result,
+                              vtkDataArray* secondary );
+
+    void ComputeRightCauchyGreenTensor(double **j);
+
+    int Jacobi(double **a, double *w);
   
     // Iterative cacluation methods for FSLE, and similar methods
     bool RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics );
@@ -208,8 +219,12 @@ protected:
                                  criticalPointThreshold = speed; };
 
   protected:
+    double timeCached;
+    int    cycleCached;
+
     LCSAttributes   atts;
     bool            needsRecalculation;
+    std::string     outVarRoot;
     std::string     outVarName;
     double          global_bounds[6];
     int             global_resolution[3];

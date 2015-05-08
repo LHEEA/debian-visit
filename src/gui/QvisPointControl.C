@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,6 +44,7 @@
 #include <QLayout>
 #include <QRadioButton>
 
+#include <GUIBase.h>
 #include <QNarrowLineEdit.h>
 #include <QvisVariableButton.h>
 
@@ -483,7 +484,10 @@ QvisPointControl::SetPointSizePixels(int val)
 // Creation:   Wed Jul 20 14:48:01 PST 2005
 //
 // Modifications:
-//   
+//   Kathleen Biagas, Thu Apr 9 07:19:54 MST 2015
+//   Use helper function DoubleToQString for consistency in formatting across
+//   all windows.
+//
 // ****************************************************************************
 
 void
@@ -491,15 +495,11 @@ QvisPointControl::UpdateSizeText()
 {
     if(lastGoodPointType < POINT_TYPE_POINTS)
     {
-        QString temp;
-        temp.sprintf("%g", lastGoodSize);
-        sizeLineEdit->setText(temp);
+        sizeLineEdit->setText(GUIBase::DoubleToQString(lastGoodSize));
     }
     else
     {
-        QString temp;
-        temp.sprintf("%d", lastGoodSizePixels);
-        sizeLineEdit->setText(temp);
+        sizeLineEdit->setText(GUIBase::IntToQString(lastGoodSizePixels));
     }
 }
 

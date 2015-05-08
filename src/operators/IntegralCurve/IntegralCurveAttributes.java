@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -96,6 +96,9 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
     public final static int INTEGRATIONDIRECTION_FORWARD = 0;
     public final static int INTEGRATIONDIRECTION_BACKWARD = 1;
     public final static int INTEGRATIONDIRECTION_BOTH = 2;
+    public final static int INTEGRATIONDIRECTION_FORWARDDIRECTIONLESS = 3;
+    public final static int INTEGRATIONDIRECTION_BACKWARDDIRECTIONLESS = 4;
+    public final static int INTEGRATIONDIRECTION_BOTHDIRECTIONLESS = 5;
 
     public final static int PARALLELIZATIONALGORITHMTYPE_LOADONDEMAND = 0;
     public final static int PARALLELIZATIONALGORITHMTYPE_PARALLELSTATICDOMAINS = 1;
@@ -107,7 +110,8 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
     public final static int FIELDTYPE_M3DC12DFIELD = 2;
     public final static int FIELDTYPE_M3DC13DFIELD = 3;
     public final static int FIELDTYPE_NEK5000FIELD = 4;
-    public final static int FIELDTYPE_NIMRODFIELD = 5;
+    public final static int FIELDTYPE_NEKTARPPFIELD = 5;
+    public final static int FIELDTYPE_NIMRODFIELD = 6;
 
     public final static int INTEGRATIONTYPE_EULER = 0;
     public final static int INTEGRATIONTYPE_LEAPFROG = 1;
@@ -1557,6 +1561,12 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
             str = str + "INTEGRATIONDIRECTION_BACKWARD";
         if(integrationDirection == INTEGRATIONDIRECTION_BOTH)
             str = str + "INTEGRATIONDIRECTION_BOTH";
+        if(integrationDirection == INTEGRATIONDIRECTION_FORWARDDIRECTIONLESS)
+            str = str + "INTEGRATIONDIRECTION_FORWARDDIRECTIONLESS";
+        if(integrationDirection == INTEGRATIONDIRECTION_BACKWARDDIRECTIONLESS)
+            str = str + "INTEGRATIONDIRECTION_BACKWARDDIRECTIONLESS";
+        if(integrationDirection == INTEGRATIONDIRECTION_BOTHDIRECTIONLESS)
+            str = str + "INTEGRATIONDIRECTION_BOTHDIRECTIONLESS";
         str = str + "\n";
         str = str + intToString("maxSteps", maxSteps, indent) + "\n";
         str = str + boolToString("terminateByDistance", terminateByDistance, indent) + "\n";
@@ -1586,6 +1596,8 @@ public class IntegralCurveAttributes extends AttributeSubject implements Plugin
             str = str + "FIELDTYPE_M3DC13DFIELD";
         if(fieldType == FIELDTYPE_NEK5000FIELD)
             str = str + "FIELDTYPE_NEK5000FIELD";
+        if(fieldType == FIELDTYPE_NEKTARPPFIELD)
+            str = str + "FIELDTYPE_NEKTARPPFIELD";
         if(fieldType == FIELDTYPE_NIMRODFIELD)
             str = str + "FIELDTYPE_NIMRODFIELD";
         str = str + "\n";

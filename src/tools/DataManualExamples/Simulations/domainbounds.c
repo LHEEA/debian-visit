@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -357,7 +357,7 @@ void SlaveProcessCallback(void *cbdata)
 /* Process commands from viewer on all processors. */
 int ProcessVisItCommand(simulation_data *sim)
 {
-    int command;
+    int command = VISIT_COMMAND_SUCCESS;
     if (sim->par_rank==0)
     {  
         int success = VisItProcessEngineCommand();
@@ -658,8 +658,6 @@ SimGetMetaData(void *cbdata)
         int i;
         visit_handle mmd = VISIT_INVALID_HANDLE;
         visit_handle vmd = VISIT_INVALID_HANDLE;
-        visit_handle cmd = VISIT_INVALID_HANDLE;
-        visit_handle emd = VISIT_INVALID_HANDLE;
 
         /* Set the simulation state. */
         VisIt_SimulationMetaData_setMode(md, (sim->runMode == SIM_STOPPED) ?

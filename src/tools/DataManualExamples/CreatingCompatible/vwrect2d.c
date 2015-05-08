@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,7 +48,7 @@ main(int argc, char *argv[])
     float y[] = {0., 2., 2.25, 2.55,  5.};
     float z[] = {0.};
     int dims[] = {NX, NY, 1};
-    int ndims = 2;
+
     /* Zonal and Nodal variable data. */
     float zonal[NY-1][NX-1], nodal[NY][NX];
     /* Info about the variables to pass to visit_writer. */

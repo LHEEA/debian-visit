@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -571,6 +571,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     fieldType->addItem(tr("M3D-C1 2D"));
     fieldType->addItem(tr("M3D-C1 3D"));
     fieldType->addItem(tr("Nek5000"));
+    fieldType->addItem(tr("Nektar++"));
     fieldType->addItem(tr("NIMROD"));
     connect(fieldType, SIGNAL(activated(int)),
             this, SLOT(fieldTypeChanged(int)));
@@ -617,6 +618,9 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     directionType->addItem(tr("Forward"));
     directionType->addItem(tr("Backward"));
     directionType->addItem(tr("Both"));
+    directionType->addItem(tr("Forward Directionless"));
+    directionType->addItem(tr("Backward Directionless"));
+    directionType->addItem(tr("Both Directionless"));
     connect(directionType, SIGNAL(activated(int)),
             this, SLOT(directionTypeChanged(int)));
     integrationLayout->addWidget(directionType, 0, 1);
@@ -1089,14 +1093,15 @@ QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 //   Dave Pugmire, Thu Mar 15 11:23:18 EDT 2012
 //   Add named selections as a seed source.
 //
+//   Kathleen Biagas, Thu Apr 9 07:19:54 MST 2015
+//   Use helper function DoubleToQString for consistency in formatting across
+//   all windows.
+//
 // ****************************************************************************
 
 void
 QvisIntegralCurveWindow::UpdateWindow(bool doAll)
 {
-    QString       temp;
-    QColor        tempcolor;
-
     for(int i = 0; i < atts->NumAttributes(); ++i)
     {
         if(!doAll)
@@ -1117,8 +1122,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             sourceType->blockSignals(false);
             break;
         case IntegralCurveAttributes::ID_maxStepLength:
-            temp.setNum(atts->GetMaxStepLength());
-            maxStepLength->setText(temp);
+            maxStepLength->setText(DoubleToQString(atts->GetMaxStepLength()));
             break;
         case IntegralCurveAttributes::ID_limitMaximumTimestep:
             limitMaxTimeStep->blockSignals(true);
@@ -1137,12 +1141,10 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             maxTimeStep->blockSignals(false);
             break;
         case IntegralCurveAttributes::ID_maxTimeStep:
-            temp.setNum(atts->GetMaxTimeStep());
-            maxTimeStep->setText(temp);
+            maxTimeStep->setText(DoubleToQString(atts->GetMaxTimeStep()));
             break;
         case IntegralCurveAttributes::ID_maxSteps:
-            temp.setNum(atts->GetMaxSteps());
-            maxSteps->setText(temp);
+            maxSteps->setText(IntToQString(atts->GetMaxSteps()));
             break;
         case IntegralCurveAttributes::ID_terminateByDistance:
             limitMaxDistance->blockSignals(true);
@@ -1151,8 +1153,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             maxDistance->setEnabled(atts->GetTerminateByDistance());
             break;
         case IntegralCurveAttributes::ID_termDistance:
-            temp.setNum(atts->GetTermDistance());
-            maxDistance->setText(temp);
+            maxDistance->setText(DoubleToQString(atts->GetTermDistance()));
             break;
         case IntegralCurveAttributes::ID_terminateByTime:
             limitMaxTime->blockSignals(true);
@@ -1161,8 +1162,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             maxTime->setEnabled(atts->GetTerminateByTime());
             break;
         case IntegralCurveAttributes::ID_termTime:
-            temp.setNum(atts->GetTermTime(), 'g', 16);
-            maxTime->setText(temp);
+            maxTime->setText(DoubleToQString(atts->GetTermTime()));
             break;
         case IntegralCurveAttributes::ID_velocitySource:
             velocitySource->setText(DoublesToQString(atts->GetVelocitySource(),3));
@@ -1186,8 +1186,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             planeUpAxis->setText(DoublesToQString(atts->GetPlaneUpAxis(),3));
             break;
         case IntegralCurveAttributes::ID_radius:
-            temp.setNum(atts->GetRadius());
-            radius->setText(temp);
+            radius->setText(DoubleToQString(atts->GetRadius()));
             break;
         case IntegralCurveAttributes::ID_sphereOrigin:
             sphereOrigin->setText(DoublesToQString(atts->GetSphereOrigin(),3));
@@ -1256,22 +1255,18 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             break;
 
         case IntegralCurveAttributes::ID_sampleDistance0:
-            temp.setNum(atts->GetSampleDistance0());
-            sampleDistance[0]->setText(temp);
+            sampleDistance[0]->setText(DoubleToQString(atts->GetSampleDistance0()));
             break;
         case IntegralCurveAttributes::ID_sampleDistance1:
-            temp.setNum(atts->GetSampleDistance1());
-            sampleDistance[1]->setText(temp);
+            sampleDistance[1]->setText(DoubleToQString(atts->GetSampleDistance1()));
             break;
         case IntegralCurveAttributes::ID_sampleDistance2:
-            temp.setNum(atts->GetSampleDistance2());
-            sampleDistance[2]->setText(temp);
+            sampleDistance[2]->setText(DoubleToQString(atts->GetSampleDistance2()));
             break;
 
         case IntegralCurveAttributes::ID_dataVariable:
             dataVariable->blockSignals(true);
-            temp = atts->GetDataVariable().c_str();
-            dataVariable->setText(temp);
+            dataVariable->setText(atts->GetDataVariable().c_str());
             dataVariable->blockSignals(false);
           break;
           
@@ -1316,8 +1311,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             break;
 
         case IntegralCurveAttributes::ID_cropBegin:
-            temp.setNum(atts->GetCropBegin(), 'g', 16);
-            cropBegin->setText(temp);
+            cropBegin->setText(DoubleToQString(atts->GetCropBegin()));
             break;
 
         case IntegralCurveAttributes::ID_cropEndFlag:
@@ -1328,8 +1322,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             break;
 
         case IntegralCurveAttributes::ID_cropEnd:
-            temp.setNum(atts->GetCropEnd(), 'g', 16);
-            cropEnd->setText(temp);
+            cropEnd->setText(DoubleToQString(atts->GetCropEnd()));
             break;
 
         case IntegralCurveAttributes::ID_cropValue:
@@ -1344,8 +1337,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             directionType->blockSignals(false);
             break;
         case IntegralCurveAttributes::ID_relTol:
-            temp.setNum(atts->GetRelTol());
-            relTol->setText(temp);
+            relTol->setText(DoubleToQString(atts->GetRelTol()));
             break;
         case IntegralCurveAttributes::ID_absTolSizeType:
             absTolSizeType->blockSignals(true);
@@ -1353,27 +1345,23 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             absTolSizeType->blockSignals(false);
             if (atts->GetAbsTolSizeType() == IntegralCurveAttributes::FractionOfBBox)
             {
-                temp.setNum(atts->GetAbsTolBBox());
-                absTol->setText(temp);
+                absTol->setText(DoubleToQString(atts->GetAbsTolBBox()));
             }
             if (atts->GetAbsTolSizeType() == IntegralCurveAttributes::Absolute)
             {
-                temp.setNum(atts->GetAbsTolAbsolute());
-                absTol->setText(temp);
+                absTol->setText(DoubleToQString(atts->GetAbsTolAbsolute()));
             }
             break;
         case IntegralCurveAttributes::ID_absTolBBox:
             if (atts->GetAbsTolSizeType() == IntegralCurveAttributes::FractionOfBBox)
             {
-                temp.setNum(atts->GetAbsTolBBox());
-                absTol->setText(temp);
+                absTol->setText(DoubleToQString(atts->GetAbsTolBBox()));
             }
             break;
         case IntegralCurveAttributes::ID_absTolAbsolute:
             if (atts->GetAbsTolSizeType() == IntegralCurveAttributes::Absolute)
             {
-                temp.setNum(atts->GetAbsTolAbsolute());
-                absTol->setText(temp);
+                absTol->setText(DoubleToQString(atts->GetAbsTolAbsolute()));
             }
             break;
         case IntegralCurveAttributes::ID_fieldType:
@@ -1474,12 +1462,10 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             pathlineOverrideStartingTimeFlag->blockSignals(false);
             break;
         case IntegralCurveAttributes::ID_pathlinesOverrideStartingTime:
-            temp.setNum(atts->GetPathlinesOverrideStartingTime(), 'g', 16);
-            pathlineOverrideStartingTime->setText(temp);
+            pathlineOverrideStartingTime->setText(DoubleToQString(atts->GetPathlinesOverrideStartingTime()));
             break;
         case IntegralCurveAttributes::ID_pathlinesPeriod:
-            temp.setNum(atts->GetPathlinesPeriod(), 'g', 16);
-            pathlinePeriod->setText(temp);
+            pathlinePeriod->setText(DoubleToQString(atts->GetPathlinesPeriod()));
             break;
         case IntegralCurveAttributes::ID_pathlinesCMFE:
             pathlineCMFEButtonGroup->blockSignals(true);
@@ -1538,14 +1524,12 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
               issueWarningForStiffness->blockSignals(false);
               break;
             case IntegralCurveAttributes::ID_criticalPointThreshold:
-              temp.setNum(atts->GetCriticalPointThreshold());
-              criticalPointThreshold->setText(temp);
+              criticalPointThreshold->setText(DoubleToQString(atts->GetCriticalPointThreshold()));
               break;
 
           case IntegralCurveAttributes::ID_correlationDistanceAngTol:
             correlationDistanceAngTolEdit->blockSignals(true);
-            temp.setNum(atts->GetCorrelationDistanceAngTol());
-            correlationDistanceAngTolEdit->setText(temp);
+            correlationDistanceAngTolEdit->setText(DoubleToQString(atts->GetCorrelationDistanceAngTol()));
             correlationDistanceAngTolEdit->blockSignals(false);
             break;
             
@@ -1553,8 +1537,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             if (atts->GetCorrelationDistanceMinDistType() == IntegralCurveAttributes::Absolute)
             {
                 correlationDistanceMinDistEdit->blockSignals(true);
-                temp.setNum(atts->GetCorrelationDistanceMinDistAbsolute());
-                correlationDistanceMinDistEdit->setText(temp);
+                correlationDistanceMinDistEdit->setText(DoubleToQString(atts->GetCorrelationDistanceMinDistAbsolute()));
                 correlationDistanceMinDistEdit->blockSignals(false);
             }
             break;
@@ -1562,8 +1545,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             if (atts->GetCorrelationDistanceMinDistType() == IntegralCurveAttributes::FractionOfBBox)
             {
                 correlationDistanceMinDistEdit->blockSignals(true);
-                temp.setNum(atts->GetCorrelationDistanceMinDistBBox());
-                correlationDistanceMinDistEdit->setText(temp);
+                correlationDistanceMinDistEdit->setText(DoubleToQString(atts->GetCorrelationDistanceMinDistBBox()));
                 correlationDistanceMinDistEdit->blockSignals(false);
             }
             break;
@@ -1574,13 +1556,11 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             correlationDistanceMinDistType->blockSignals(false);
             if (atts->GetCorrelationDistanceMinDistType() == IntegralCurveAttributes::FractionOfBBox)
             {
-                temp.setNum(atts->GetCorrelationDistanceMinDistBBox());
-                correlationDistanceMinDistEdit->setText(temp);
+                correlationDistanceMinDistEdit->setText(DoubleToQString(atts->GetCorrelationDistanceMinDistBBox()));
             }
             if (atts->GetCorrelationDistanceMinDistType() == IntegralCurveAttributes::Absolute)
             {
-                temp.setNum(atts->GetCorrelationDistanceMinDistAbsolute());
-                correlationDistanceMinDistEdit->setText(temp);
+                correlationDistanceMinDistEdit->setText(DoubleToQString(atts->GetCorrelationDistanceMinDistAbsolute()));
             }
             break;
 
@@ -2096,7 +2076,7 @@ void
 QvisIntegralCurveWindow::GetCurrentValues(int which_widget)
 {
     bool doAll = (which_widget == -1);
-    QString msg, temp;
+    QString msg;
 
     // Do fieldConstant
     if(which_widget == IntegralCurveAttributes::ID_fieldConstant || doAll)

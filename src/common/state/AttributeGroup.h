@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -123,20 +123,28 @@ class STATE_API AttributeGroup
 public:
     enum FieldType {
         FieldType_unknown,
-        FieldType_int,
-        FieldType_intArray,
-        FieldType_intVector,
         FieldType_bool,
         FieldType_boolVector,
-        FieldType_float,
-        FieldType_floatArray,
-        FieldType_double,
-        FieldType_doubleArray,
-        FieldType_doubleVector,
+        FieldType_char,
+        FieldType_charArray,
+        FieldType_charVector,
         FieldType_uchar,
         FieldType_ucharArray,
         FieldType_ucharVector,
+        FieldType_int,
+        FieldType_intArray,
+        FieldType_intVector,
+        FieldType_long,
+        FieldType_longArray,
+        FieldType_longVector,
+        FieldType_float,
+        FieldType_floatArray,
+        FieldType_floatVector,
+        FieldType_double,
+        FieldType_doubleArray,
+        FieldType_doubleVector,
         FieldType_string,
+        FieldType_stringArray,
         FieldType_stringVector,
         FieldType_colortable,
         FieldType_color,

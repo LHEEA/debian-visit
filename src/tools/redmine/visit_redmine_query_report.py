@@ -11,9 +11,14 @@
 #
 #
 
-import pyrmine,sys,os,datetime,logging
-import ho.pisa as pisa
 
+import sys
+import os
+import datetime
+import logging
+import ho.pisa as pisa
+import pyrmine
+from xml.sax.saxutils import escape
 
 class VisItIssue(pyrmine.Issue):
     """
@@ -26,6 +31,8 @@ class VisItIssue(pyrmine.Issue):
         Creates an html representation of a VisIt issue.
         """
         i = self.data._asdict()
+        for k,v in i.items():
+            i[k] = escape(v)
         res = "<h1># %s (%s) %s</h1>\n" % (i["id"],i["tracker"],i["subject"])
         res += "<table><tr><td>\n"
         for key in ["status","author","created","updated","priority","assigned_to","target_version"]:
@@ -54,7 +61,8 @@ class VisItIssue(pyrmine.Issue):
                 res += "<blockquote>\n<b>%s</b> (%s)<br>" % (u["author"],u["date"])
                 res += "%s\n</blockquote>\n" % u["content"]
         res += "</p><hr>\n"
-        return res
+        res = ''.join([i if ord(i) < 128 else ' ' for i in res])
+        return res 
     def __format_blank(self,txt):
         """
         Returns (unset) to indicate a blank field value.

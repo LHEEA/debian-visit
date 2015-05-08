@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -60,6 +60,9 @@
 #include <cstddef>
 #include <map>
 
+class ViewerWindow;
+class ViewerSubjectProxyFactory;
+
 // ****************************************************************************
 // Class: ViewerSubjectProxy
 //
@@ -89,6 +92,8 @@ class VIEWER_SUBJECT_PROXY_API ViewerSubjectProxy : public QObject, public Viewe
         virtual int  Fill(){ return 0; }
         virtual void Flush(){}
         virtual long Size(){ return 0; }
+        virtual void Reset() {}
+
         virtual void Write(unsigned char value) {}
         virtual void Read(unsigned char *address) {}
         virtual void Append(const unsigned char *buf, int count){}
@@ -164,7 +169,7 @@ class VIEWER_SUBJECT_PROXY_API ViewerSubjectProxy : public QObject, public Viewe
     virtual void LoadPlugins();
     virtual void InitializePlugins(PluginManager::PluginCategory t, const char *pluginDir);
 
- public:
+public:
     //SIL support
     virtual avtSILRestriction_p GetPlotSILRestriction();
     virtual avtSILRestriction_p GetPlotSILRestriction() const;
@@ -191,6 +196,8 @@ public slots:
     void windowDeleted(QObject*);
     void viewerWindowCreated(ViewerWindow*);
 private:
+    static void viewerWindowCreatedCallback(ViewerWindow *, void *);
+    ViewerSubjectProxyFactory *factory;
     static vtkQtRenderWindow* renderWindow(void* data);
 };
 

@@ -41,8 +41,8 @@
  * Optional libraries
  ******************************************************************************/
 
-/* Define if you have the boost interval template library. */
-#cmakedefine HAVE_BILIB
+/* Define if you have the boost library. */
+#cmakedefine HAVE_BOOST
 
 /* Define if you have the EAVL library. */
 #cmakedefine HAVE_LIBEAVL
@@ -221,6 +221,9 @@
 /* The size of `unsigned int', as computed by sizeof. */
 #cmakedefine SIZEOF_UNSIGNED_INT @SIZEOF_UNSIGNED_INT@
 
+/* The size of `size_t', as computed by sizeof. */
+#cmakedefine SIZEOF_SIZE_T @SIZEOF_SIZE_T@
+
 /* The size of `unsigned long', as computed by sizeof. */
 #cmakedefine SIZEOF_UNSIGNED_LONG @SIZEOF_UNSIGNED_LONG@
 
@@ -305,3 +308,6 @@
 
 /* Force WinMain entry point on applications. */
 #cmakedefine VISIT_WINDOWS_APPLICATION
+
+/* Define a uniform socket buffer size that we can use in various places. */
+#define VISIT_SOCKET_BUFFER_SIZE 1024

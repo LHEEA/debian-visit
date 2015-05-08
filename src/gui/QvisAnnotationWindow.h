@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -142,6 +142,9 @@ class QvisLineWidthWidget;
 //
 //   Kathleen Biagas, Wed Sep  7 16:17:23 PDT 2011
 //   Added timeInfo.
+//
+//   Kathleen Biagas, Wed Apr  8 07:52:35 PDT 2015
+//   Added labels for 3d: line width, tick location and axes type.
 //
 // ****************************************************************************
 
@@ -304,8 +307,11 @@ private:
     QCheckBox                *axes3DVisible;
     QCheckBox                *axesAutoSetTicksToggle;
     QCheckBox                *labelAutoSetScalingToggle;
+    QLabel                   *axesLineWidthLabel;
     QvisLineWidthWidget      *axesLineWidth;
+    QLabel                   *axes3DTickLocationLabel;
     QComboBox                *axes3DTickLocationComboBox;
+    QLabel                   *axes3DTypeLabel;
     QComboBox                *axes3DTypeComboBox;
     QCheckBox                *triadFlagToggle;
     QCheckBox                *bboxFlagToggle;

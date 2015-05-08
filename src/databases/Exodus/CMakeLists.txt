@@ -16,18 +16,19 @@ SET(LIBM_SOURCES
 ExodusMDServerPluginInfo.C
 ${COMMON_SOURCES}
 avtExodusFileFormat.C
+avtExodusOptions.C
 )
 
 SET(LIBE_SOURCES
 ExodusEnginePluginInfo.C
 ${COMMON_SOURCES}
 avtExodusFileFormat.C
+avtExodusOptions.C
 )
 
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
 ${NETCDF_INCLUDE_DIR}
-${BOOST_INCLUDE_DIR}
 ${VISIT_COMMON_INCLUDES}
 ${VISIT_INCLUDE_DIR}/avt/DBAtts/MetaData
 ${VISIT_INCLUDE_DIR}/avt/DBAtts/SIL

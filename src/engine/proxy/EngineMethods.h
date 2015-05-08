@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -153,11 +153,12 @@ public:
     void                     SetDefaultFileOpenOptions(const FileOpenOptions&);
     void                     SetPrecisionType(const int);
     void                     SetBackendType(const int);
+    void                     SetRemoveDuplicateNodes(bool);
 
     avtDataObjectReader_p    Render(bool, const intVector&, int, int, bool,
                                  void (*waitCB)(void *), void *cbData);
 
-    avtDataObjectReader_p    Execute(bool, void (*waitCB)(void*),void *cbData);
+    avtDataObjectReader_p    Execute(bool replyWithNullData, void (*waitCB)(void*),void *cbData);
 
     void                     ClearCache();
     void                     ClearCache(const std::string &);

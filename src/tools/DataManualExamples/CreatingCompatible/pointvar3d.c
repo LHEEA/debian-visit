@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,7 +47,7 @@ write_point3d(DBfile *dbfile)
 #define NPTS 100
     int i;
     float x[NPTS], y[NPTS], z[NPTS];
-    int dims[] = {NPTS, NPTS, NPTS}, ndims = 3;
+    int ndims = 3;
     float *coords[] = {(float*)x, (float*)y, (float*)z};
     for(i = 0; i < NPTS; ++i)
     {

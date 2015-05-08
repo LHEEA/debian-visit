@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -229,8 +229,8 @@ ptys_open(int fdm, char *pts_name)
 static bool
 ug_RW(const char *name)
 {
-    VisItStat_t s;
-    VisItStat(name, &s);
+    FileFunctions::VisItStat_t s;
+    FileFunctions::VisItStat(name, &s);
 
     bool uRW = ((s.st_mode & S_IRUSR) != 0) &&
                ((s.st_mode & S_IWUSR) != 0);

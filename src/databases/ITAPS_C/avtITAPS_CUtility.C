@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -553,7 +553,6 @@ avtITAPS_CUtility::TraverseSetHierarchy(iMesh_Instance aMesh, int level,
     if (tags_allocated)
         free(tags);
 
-funcEnd: ;
 }
 
 // Reset our overrided definition for debug5
@@ -723,7 +722,6 @@ avtITAPS_CUtility::GetTagsForEntity(iMesh_Instance aMesh, bool isEntitySet,
     if (tags_allocated)
         free(tags);
 
-funcEnd: ;
 }
 
 

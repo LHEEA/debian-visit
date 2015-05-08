@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -211,11 +211,6 @@ avtVectorDecomposeExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomai
 
     if (twoDVector)
     {
-        if ((which_comp > 1) || (which_comp < 0))
-        {
-            EXCEPTION2(ExpressionException, outputVariableName, 
-                       "The only valid indices for 2D vectors are 0 and 1.");
-        }
         if (arr->GetNumberOfComponents() == 3)
         {
             rv->SetNumberOfComponents(1);
@@ -273,19 +268,29 @@ avtVectorDecomposeExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomai
                 rv->SetTuple3(i, val1, val2, 0.);
             }
         }
-        else
+        else if ((which_comp < 0) || (arr->GetNumberOfComponents() <= which_comp))
         {
             EXCEPTION2(ExpressionException, outputVariableName, 
-                       "You can only decompose vectors and tensors.");
+                       "the indices for the 2D vector is out of range.");
         }
+        else
+        {
+            rv->SetNumberOfComponents(1);
+            rv->SetNumberOfTuples(ntuples);
+            for (vtkIdType i = 0 ; i < ntuples ; i++)
+            {
+                double val = arr->GetComponent(i, which_comp);
+                rv->SetTuple1(i, val);
+            }
+        }
+        // else
+        // {
+        //     EXCEPTION2(ExpressionException, outputVariableName, 
+        //                "You can only decompose vectors and tensors.");
+        // }
     }
     else
     {
-        if ((which_comp > 2) || (which_comp < 0))
-        {
-            EXCEPTION2(ExpressionException, outputVariableName, 
-                      "The only valid indices for 3D vectors are 0, 1, and 2");
-        }
         if (arr->GetNumberOfComponents() == 3)
         {
             //
@@ -351,14 +356,27 @@ avtVectorDecomposeExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomai
                 rv->SetTuple3(i, val1, val2, val3);
             }
         }
-        else
+        else if ((which_comp < 0) || (arr->GetNumberOfComponents() <= which_comp))
         {
             EXCEPTION2(ExpressionException, outputVariableName, 
-                       "You can only decompose vectors and tensors.");
+                       "the indices for the 3D vector is out of range.");
         }
+        else
+        {
+            rv->SetNumberOfComponents(1);
+            rv->SetNumberOfTuples(ntuples);
+            for (vtkIdType i = 0 ; i < ntuples ; i++)
+            {
+                double val = arr->GetComponent(i, which_comp);
+                rv->SetTuple1(i, val);
+            }
+        }
+        // else
+        // {
+        //     EXCEPTION2(ExpressionException, outputVariableName, 
+        //                "You can only decompose vectors and tensors.");
+        // }
     }
 
     return rv;
 }
-
-

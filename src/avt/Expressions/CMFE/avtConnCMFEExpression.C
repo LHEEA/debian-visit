@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,6 +48,7 @@
 #include <vtkDataArray.h>
 #include <vtkDataSet.h>
 #include <vtkPointData.h>
+#include <vtkLongArray.h>
 
 #include <avtSILRestrictionTraverser.h>
 
@@ -149,6 +150,7 @@ avtConnCMFEExpression::ExecuteTree(avtDataTree_p in1, avtDataTree_p in2,
     if (numNull == 2)
         return NULL;
 
+    debug5 << "avtConnCMFEExpression::ExecuteTree: numNull=" << numNull << std::endl;
     if (numNull == 1)
         EXCEPTION1(InvalidMergeException, "The databases cannot be compared "
                    "because they have a different number of domains.");
@@ -156,6 +158,7 @@ avtConnCMFEExpression::ExecuteTree(avtDataTree_p in1, avtDataTree_p in2,
     int nc1 = in1->GetNChildren();
     int nc2 = in1->GetNChildren();
 
+    debug5 << "avtConnCMFEExpression::ExecuteTree: nc1=" << nc1 << " nc2= " << nc2 << std::endl;
     if (nc1 != nc2)
         EXCEPTION1(InvalidMergeException, "The databases cannot be compared "
                    "because they have a different number of domains.");
@@ -167,6 +170,7 @@ avtConnCMFEExpression::ExecuteTree(avtDataTree_p in1, avtDataTree_p in2,
             numHaveData++;
         if (in2->HasData())
             numHaveData++;
+        debug5 << "avtConnCMFEExpression::ExecuteTree: numHaveData " << numHaveData << std::endl;
         if (numHaveData == 1)
             EXCEPTION1(InvalidMergeException, "The databases cannot be "
                   "compared because they have a different number of domains.");
@@ -258,6 +262,43 @@ avtConnCMFEExpression::ExecuteTree(avtDataTree_p in1, avtDataTree_p in2,
             EXCEPTION1(InvalidMergeException, msg);
         }
 
+        // 
+        // At this point copy field data from the second data set to
+        // the first data set. This is a backdoor method for time
+        // varying fields and moving higher element data that is
+        // stored in the field data.
+        //
+        vtkFieldData *fd1 = in_ds1->GetFieldData();
+        vtkFieldData *fd2 = in_ds2->GetFieldData();
+
+        if( fd1->GetNumberOfArrays() && fd2->GetNumberOfArrays() )
+        {
+          for( int i=0; i<fd1->GetNumberOfArrays(); ++i )
+          {
+            // Copy only arrays found in both datasets.
+            const char *name1 = fd1->GetArrayName(i);
+            vtkAbstractArray *fp2 = fd2->GetAbstractArray(name1);
+        
+            if( fp2 )
+            {
+              // Make a copy of the array found in dataset2
+              vtkAbstractArray *fp = (vtkAbstractArray *) fp2->NewInstance();
+              fp->DeepCopy( fp2 );
+
+              // Append '2' to the name so not to have any name conflicts.
+              char name[128];
+              sprintf( name, "%s2", name1);
+
+              fp->SetName(name);
+              in_ds1->GetFieldData()->AddArray(fp);
+              fp->Delete();
+            }
+          }
+        }
+
+        //
+        // 
+        //
         vtkDataArray *addvar = NULL;
         bool deleteAddvar = false;
         if (invar == outvar)
@@ -324,5 +365,3 @@ avtConnCMFEExpression::ExecuteTree(avtDataTree_p in1, avtDataTree_p in2,
         return (rv);
     }
 }
-
-

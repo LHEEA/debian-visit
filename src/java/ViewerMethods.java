@@ -1,6 +1,6 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -2436,6 +2436,22 @@ public class ViewerMethods
     }
 
     /**
+     * Tells the viewer to read host profiles from a specific directory.
+     *
+     * @param dir   The directory from which host profiles will be read.
+     * @param clear Whether to clear the list prior to reading
+     * @return      true on success; false otherwise.
+     */
+    public boolean ReadHostProfilesFromDirectory(String dir, boolean clear)
+    {
+        GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_READHOSTPROFILESFROMDIRECTORYRPC);
+        GetViewerState().GetViewerRPC().SetDatabase(dir);
+        GetViewerState().GetViewerRPC().SetBoolFlag(clear);
+        GetViewerState().GetViewerRPC().Notify();
+        return Synchronize();
+    }
+
+    /**
      * Sets the center of rotation, which is the point about which VisIt rotates 
      * plots when you interactively rotate using the mouse. This option is especially
      * useful when you have zoomed into a small area and want to rotate the plots.
@@ -3435,6 +3451,36 @@ public class ViewerMethods
     {
         GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_SETPRECISIONTYPERPC);
         GetViewerState().GetViewerRPC().SetIntArg1(flag);
+        GetViewerState().GetViewerRPC().Notify();
+        return Synchronize();
+    }
+
+    /**
+     * Sets the backend type used in the pipeline.
+     *
+     * @param flag  The requested backend type (0 = VTK, 1 = DAX, 2 = EAVL, 3 = PISTON)
+     * @return true on success; false otherwise.
+     */
+    public boolean SetBackendType(int flag)
+    {
+        GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_SETBACKENDTYPERPC);
+        GetViewerState().GetViewerRPC().SetIntArg1(flag);
+        GetViewerState().GetViewerRPC().Notify();
+        return Synchronize();
+    }
+
+
+    /**
+     * Sets whether VisIt will automatically remove duplicate nodes from 
+     * fully disconnected unstructured grids.
+     *
+     * @param flag  true means that duplicate nodes will be removed
+     * @return true on success; false otherwise.
+     */
+    public boolean SetRemoveDuplciateNodes(boolean flag)
+    {
+        GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_SETREMOVEDUPLICATENODESRPC);
+        GetViewerState().GetViewerRPC().SetBoolFlag(flag);
         GetViewerState().GetViewerRPC().Notify();
         return Synchronize();
     }

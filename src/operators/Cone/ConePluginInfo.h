@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ class ConeGUIPluginInfo : public virtual GUIOperatorPluginInfo, public virtual C
     virtual const char **XPMIconData() const;
 };
 
-class ConeViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual ConeCommonPluginInfo
+class ConeViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual ConeCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -96,14 +96,11 @@ class ConeViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public vir
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
-    virtual const char **XPMIconData() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -111,7 +108,13 @@ class ConeViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public vir
     static ConeAttributes *clientAtts;
 };
 
-class ConeEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual ConeCommonPluginInfo
+class ConeViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual ConeViewerEnginePluginInfo
+{
+  public:
+    virtual const char **XPMIconData() const;
+};
+
+class ConeEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual ConeViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

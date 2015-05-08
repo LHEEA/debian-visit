@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,16 +43,14 @@
 #include <ViewerBase.h>
 #include <vectortypes.h>
 #include <map>
-#include <QSocketNotifier>
 
 #include <MachineProfile.h>
 
 class Connection;
-class HostProfileList;
 class LauncherProxy;
 class RemoteProxyBase;
 class ViewerConnectionPrinter;
-class ViewerConnectionProgressDialog;
+class ViewerConnectionProgress;
 
 // ****************************************************************************
 // Class: ViewerServerManager
@@ -121,19 +119,20 @@ public:
     static void CloseLaunchers();
     static void SendKeepAlivesToLaunchers();
 
-    static void SetDebugLevel(int level, bool useBuf);
     static void SetArguments(const stringVector &arg);
     static void SetLocalHost(const std::string &hostName);
     static bool HostIsLocalHost(const std::string &hostName);
-    static void ForceSSHTunnelingForAllConnections();
 
-    static HostProfileList *GetClientAtts();
+    static void SetLaunchProgressCallback(bool (*cb)(void *, int),
+                                          void *cbdata);
+    static void SetOpenWithEngineCallback(void (*cb)(const std::string &, 
+                                                     const stringVector &,
+                                                     void *),
+                                          void *cbdata);
 protected:
-    static ViewerConnectionProgressDialog *
-        CreateConnectionProgressDialog(const std::string &host);
-    static void
-        SetupConnectionProgressDialog(RemoteProxyBase *component,
-                                      ViewerConnectionProgressDialog *dialog);
+    ViewerConnectionProgress *CreateConnectionProgress(const std::string &host);
+    void SetupConnectionProgress(RemoteProxyBase *component,
+                                 ViewerConnectionProgress *progress);
 
     MachineProfile GetMachineProfile(const std::string &host) const;
 
@@ -143,9 +142,6 @@ protected:
     static void OpenWithLauncher(const std::string &host,
                                  const stringVector &args, 
                                  void *data);
-    static void OpenWithEngine(const std::string &host,
-                               const stringVector &args, 
-                               void *data);
     static void SimConnectThroughLauncher(const std::string &host,
                                           const stringVector &args, 
                                           void *data);
@@ -154,49 +150,24 @@ protected:
 
     static std::map<int,int> GetPortTunnelMap(const std::string &host);
 
-    static HostProfileList         *clientAtts;
+    // Callback function when we need to launch a component using engine.
+    static void (*OpenWithEngineCB)(const std::string &, 
+                                    const stringVector &args,
+                                    void *);
+    static void *OpenWithEngineCBData;
+    // Callback function for launch progress.
+    static bool (*LaunchProgressCB)(void *, int);
+    static void *LaunchProgressCBData;
+
     static void                    *cbData[2];
 private:
     static void StartLauncher(const std::string &host,
                               const std::string &visitPath,
-                              ViewerConnectionProgressDialog *dialog);
+                              ViewerConnectionProgress *progress);
 
-    static int                      debugLevel;
-    static bool                     bufferDebug;
     static std::string              localHost;
     static stringVector             arguments;
     static LauncherMap              launchers;
-    static bool                     sshTunnelingForcedOn;
-};
-
-
-// ****************************************************************************
-// Class: ViewerConnectionPrinter
-//
-// Purpose:
-//   Subclass of QSocketNotifier that we use for printing VCL console output.
-//
-// Notes:      
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Nov 21 15:14:14 PST 2007
-//
-// Modifications:
-//   Brad Whitlock, Tue May 27 14:17:46 PDT 2008
-//   Removed name.
-//
-// ****************************************************************************
-
-class ViewerConnectionPrinter : public QSocketNotifier
-{
-    Q_OBJECT
-public:
-    ViewerConnectionPrinter(Connection *);
-    virtual ~ViewerConnectionPrinter();
-private slots:
-    void HandleRead(int);
-private:
-    Connection *conn;
 };
 
 #endif

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,10 +39,12 @@
 #include <cassert>
 #include <cstdio>
 #include <StringHelpers.h>
+#include <FileFunctions.h>
 #include <visitstream.h>
 #include <vector>
 
 using namespace StringHelpers;
+using namespace FileFunctions;
 using std::vector;
 using std::string;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -66,12 +66,12 @@ public:
     void operator = (const TypeRepresentation &);
     bool operator == (const TypeRepresentation &);
 
-    int CharSize();
-    int IntSize();
-    int LongSize();
-    int FloatSize();
-    int DoubleSize();
-    SupportedFormat GetSupportedFormat();
+    int CharSize() const;
+    int IntSize() const;
+    int LongSize() const;
+    int FloatSize() const;
+    int DoubleSize() const;
+    SupportedFormat GetSupportedFormat() const;
     void SetSupportedFormat(SupportedFormat format);
 
     unsigned char Format; /// toggle between ascii and binary..

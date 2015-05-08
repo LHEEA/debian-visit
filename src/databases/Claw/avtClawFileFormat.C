@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -288,8 +288,8 @@ SortFilenames(vector<string> &fnames, string cycleRegex, string rootDir)
         if (cycleRegex == "")
         {
             string fullFileName = rootDir + "/" + fnames[i];
-            VisItStat_t stbuf;
-            if (VisItStat(fullFileName.c_str(), &stbuf) == 0)
+            FileFunctions::VisItStat_t stbuf;
+            if (FileFunctions::VisItStat(fullFileName.c_str(), &stbuf) == 0)
                 rank = (double) stbuf.st_mtime;
         }
         else
@@ -593,7 +593,7 @@ avtClawFileFormat::avtClawFileFormat(const char *filename)
     char tmpStr[1024];
     FILE *bootFile = fopen(filename, "r");
 
-    string bootFileDir = StringHelpers::Dirname(filename);
+    string bootFileDir = FileFunctions::Dirname(filename);
     rootDir = ".";
     timeScanf = "";
     timeRegex = "";

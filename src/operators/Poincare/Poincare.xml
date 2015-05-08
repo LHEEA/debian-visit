@@ -26,6 +26,7 @@
         M3DC12DField
         M3DC13DField
         Nek5000Field
+        NektarPPField
         NIMRODField
       </Enum>
       <Enum name="IntegrationType">
@@ -363,7 +364,7 @@
       </Function>
       <Function name="PoincareAttsRequireRecalculation" user="true" member="true">
       </Function>
-      <Function name="PoincareViewerPluginInfo::GetOperatorVarDescription" user="false" member="true">
+      <Function name="PoincareViewerEnginePluginInfo::GetOperatorVarDescription" user="false" member="true">
       </Function>
       <Include file="source" quoted="false">
         PlaneAttributes.h

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,7 +78,7 @@
 // ****************************************************************************
 
 ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
-    QObject *parent, const QString &n,const bool _allState) : ViewerBase(parent),
+    QObject *parent, const QString &n,const bool _allState) : ViewerBaseUI(parent),
     SimpleObserver(), name(n)
 {
     notifier = 0;
@@ -131,7 +131,7 @@ ViewerClientConnection::ViewerClientConnection(const ViewerState *s,
 
 ViewerClientConnection::ViewerClientConnection(ParentProcess *p,
     QSocketNotifier *sn, const ViewerState *s, QObject *parent,
-    const QString &n, const bool _allState) : ViewerBase(parent), name(n)
+    const QString &n, const bool _allState) : ViewerBaseUI(parent), name(n)
 {
     notifier = sn;
     if(notifier != 0)
@@ -312,7 +312,8 @@ ViewerClientConnection::LaunchClient(const std::string &program,
             WebSocketConnection* conn = dynamic_cast<WebSocketConnection*>(remoteProcess->GetWriteConnection());
 
             if(conn) {
-                connect(conn, SIGNAL(activated(int)), this, SLOT(ReadFromClientAndProcess(int)));
+                connect(conn, SIGNAL(frameRead(int)), this, SLOT(ReadFromClientAndProcess(int)));
+                connect(conn, SIGNAL(disconnected()), this, SLOT(ForceDisconnectClient()));
             }
             else {
                 notifier = new QSocketNotifier(desc, QSocketNotifier::Read, 0);

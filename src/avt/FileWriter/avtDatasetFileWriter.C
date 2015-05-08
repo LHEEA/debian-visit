@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,6 +73,7 @@
 #include <avtCommonDataFunctions.h>
 
 #include <DebugStream.h>
+#include <FileFunctions.h>
 #include <ImproperUseException.h>
 #include <NoCurveException.h>
 #include <NoInputException.h>
@@ -1252,7 +1253,7 @@ avtDatasetFileWriter::WritePOVRayFamily(const char *filename)
     //
     // Get the dir name in case user's not saving in current directory
     //
-    string dirname(StringHelpers::Dirname(basename));
+    string dirname(FileFunctions::Dirname(basename));
 
     //
     // It's easiest and safest to collect data and spatial extents

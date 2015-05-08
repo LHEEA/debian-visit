@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -377,12 +377,24 @@
 #    Kathleen Biagas, Mon May 12 12:58:02 PDT 2014
 #    Add VISIT_SELECTED_PLUGIN_ERROR macro.
 #
+#    Kathleen Biagas, Wed Oct 22 16:31:49 MST 2014
+#    Always use -DNOMINMAX on Windows.
+#
+#    Cyrus Harrison, Tue Feb 10 20:06:07 PST 2015
+#    Change boost support.
+#
+#    Kathleen Biagas, Tue Apr 14 14:56:12 MST 2015
+#    Added find_file for MS HPC Scheduler.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
 
 IF (COMMAND cmake_policy)
     cmake_policy(SET CMP0003 NEW)
+    if(CMAKE_MAJOR_VERSION GREATER 2)
+        cmake_policy(SET CMP0033 OLD)
+    endif()
     IF(WIN32 AND VISIT_QT5)
         cmake_policy(SET CMP0020 OLD)
     ENDIF()
@@ -480,29 +492,18 @@ INCLUDE(${CMAKE_CURRENT_SOURCE_DIR}/CMake/SetupITAPS.cmake)
 
 SET(VTK_MINIMUM_VERSION "6.0.0" CACHE INTERNAL "minimum version of vtk that VisIt can use")
 
-FUNCTION(SETUP_VTK_VERSION  ver)
-  IF(${ver} VERSION_LESS ${VTK_MINIMUM_VERSION})
-      MESSAGE(FATAL_ERROR "VTK version must be at least ${VTK_MINIMUM_VERSION}")
+SET(NEKTAR++_MINIMUM_VERSION "4.0.0" CACHE INTERNAL "minimum version of Nektar++ that VisIt can use")
+
+FUNCTION(SETUP_APP_VERSION name ver )
+  IF(${ver} VERSION_LESS ${${name}_MINIMUM_VERSION}})
+      MESSAGE(FATAL_ERROR "${name} version must be at least ${${name}_MINIMUM_VERSION}}")
   ENDIF()
   STRING( REGEX REPLACE "([0-9]+).[0-9]+.[0-9]+" "\\1" vmaj ${ver} )
   STRING( REGEX REPLACE "[0-9]+.([0-9]+).[0-9]+" "\\1" vmin ${ver} )
-  SET(VTK_VERSION "${ver}"  CACHE INTERNAL "")
-  SET(VTK_MAJOR_VERSION   "${vmaj}" CACHE INTERNAL "")
-  SET(VTK_MINOR_VERSION   "${vmin}" CACHE INTERNAL "")
+  SET(${name}_VERSION "${ver}"  CACHE INTERNAL "")
+  SET(${name}_MAJOR_VERSION   "${vmaj}" CACHE INTERNAL "")
+  SET(${name}_MINOR_VERSION   "${vmin}" CACHE INTERNAL "")
 ENDFUNCTION()
-
-# Setup a default VTK version of 6.1.0.  Config-site files can override this
-IF(NOT VTK_VERSION)
-  IF(VISIT_VTK_VERSION)
-      IF(${VISIT_VTK_VERSION} VERSION_LESS ${VTK_MINIMUM_VERSION})
-          MESSAGE(FATAL_ERROR "VTK version must be at least ${VTK_MINIMUM_VERSION}")
-      ENDIF()
-      SETUP_VTK_VERSION(${VISIT_VTK_VERSION})
-  ELSE()
-      MESSAGE(STATUS "VISIT_VTK_VERSION NOT FOUND assuming 6.1.0")
-      SETUP_VTK_VERSION(6.1.0)
-  ENDIF()
-ENDIF()
 
 #-----------------------------------------------------------------------------
 # Include this computer's config-site if one exists
@@ -523,6 +524,40 @@ IF (NOT WIN32)
   ENDIF("${VISIT_CONFIG_SITE_FILE_FOUND}" STREQUAL  "NOTFOUND")
 
 ENDIF (NOT WIN32)
+
+#-----------------------------------------------------------------------------
+# If the config-site file above has not set a VTK version set a
+# default VTK version of 6.1.0.  
+#-----------------------------------------------------------------------------
+IF(NOT VTK_VERSION)
+  IF(VISIT_VTK_VERSION)
+      IF(${VISIT_VTK_VERSION} VERSION_LESS ${VTK_MINIMUM_VERSION})
+          MESSAGE(FATAL_ERROR "VTK version must be at least ${VTK_MINIMUM_VERSION}")
+      ENDIF()
+      SETUP_APP_VERSION(VTK ${VISIT_VTK_VERSION})
+  ELSE()
+      MESSAGE(STATUS "VISIT_VTK_VERSION NOT FOUND assuming 6.1.0")
+      SETUP_APP_VERSION(VTK 6.1.0)
+  ENDIF()
+ENDIF()
+
+
+#-----------------------------------------------------------------------------
+# If the config-site file above has not set a NEKTAR++ version set a
+# default NEKTAR++ version of 4.0.0.  
+#-----------------------------------------------------------------------------
+IF(NOT NEKTAR++_VERSION)
+  IF(VISIT_NEKTAR++_VERSION)
+      IF(${VISIT_NEKTAR++_VERSION} VERSION_LESS ${NEKTAR++_MINIMUM_VERSION})
+          MESSAGE(FATAL_ERROR "NEKTAR++ version must be at least ${NEKTAR++_MINIMUM_VERSION}")
+      ENDIF()
+      SETUP_APP_VERSION(NEKTAR++ ${VISIT_NEKTAR++_VERSION})
+  ELSE()
+      MESSAGE(STATUS "VISIT_NEKTAR++_VERSION NOT FOUND assuming 4.0.0")
+      SETUP_APP_VERSION(NEKTAR++ 4.0.0)
+  ENDIF()
+ENDIF()
+
 
 #-----------------------------------------------------------------------------
 # If not already set, we use a default build type of Release
@@ -630,6 +665,7 @@ OPTION(VISIT_BUILD_ALL_PLUGINS     "Build all of VisIt's plugins." OFF)
 OPTION(VISIT_BUILD_MINIMAL_PLUGINS "Build a minimal set of VisIt's plugins." OFF)
 OPTION(VISIT_ZLIB "Use VisIt's internal libz" OFF)
 OPTION(VISIT_JAVA "Build the VisIt Java client interface" OFF)
+OPTION(VISIT_PARADIS "Build the VisIt paraDIS client interface" OFF)
 OPTION(VISIT_SERVER_COMPONENTS_ONLY "Build only vcl, mdserver, engine and their plugins" OFF)
 OPTION(VISIT_ENGINE_ONLY "Build only the compute engine and its plugins" OFF)
 OPTION(VISIT_DBIO_ONLY "Build only visitconvert and engine plugins" OFF)
@@ -669,9 +705,10 @@ ELSE(APPLE OR WIN32)
     OPTION(VISIT_USE_X "Use X11" ON)
 ENDIF(APPLE OR WIN32)
 OPTION(VISIT_USE_GLEW "Use GLEW to call GL functions." ON)
-OPTION(VISIT_USE_BOOST "Use system boost library." ON)
 
 OPTION(VISIT_THREAD "Build VisIt with thread support." OFF)
+OPTION(VISIT_BUILD_AVTEXAMPLES  "Enable building of avtexamples" ON)
+OPTION(VISIT_BUILD_DIAGNOSTICS  "Enable building of diagnostices" ON)
 
 OPTION(VISIT_ENABLE_XDB "Enable Intelligent Light XDB database plugin." OFF) # OFF for now
 
@@ -734,6 +771,7 @@ ENDIF(WIN32)
 #       and link).
 VISIT_3RDPARTY_VAR(ADIOS_DIR     "Path containing the ADIOS library's include and lib")
 VISIT_3RDPARTY_VAR(ADVIO_DIR     "Path containing the AdvIO library's include and lib")
+VISIT_3RDPARTY_VAR(BOOST_DIR     "Path containing the BOOST library's include and lib")
 VISIT_3RDPARTY_VAR(BOXLIB_DIR    "Path containing the Boxlib library's include and lib")
 VISIT_3RDPARTY_VAR(CCMIO_DIR     "Path containing the CCMIO library's include and lib")
 VISIT_3RDPARTY_VAR(CFITSIO_DIR   "Path containing the CFITSIO library's include and lib")
@@ -751,6 +789,8 @@ VISIT_3RDPARTY_VAR(H5PART_DIR    "Path containing the H5Part library's include a
 VISIT_3RDPARTY_DEP(H5PART_LIBDEP "H5Part library dependencies")
 VISIT_3RDPARTY_VAR(MFEM_DIR      "Path containing the mfem library's include and lib")
 VISIT_3RDPARTY_VAR(MILI_DIR      "Path containing the Mili library's include and lib")
+VISIT_3RDPARTY_VAR(NEKTAR++_DIR  "Path containing the Nektar++ library's include and lib")
+VISIT_3RDPARTY_DEP(NEKTAR++_LIBDEP "Nektar++ library dependencies")
 VISIT_3RDPARTY_VAR(OPENGL_DIR    "Path containing the OpenGL library's include and lib")
 VISIT_3RDPARTY_VAR(NETCDF_DIR    "Path containing the NETCDF library's include and lib")
 VISIT_3RDPARTY_DEP(NETCDF_LIBDEP "NETCDF library dependencies")
@@ -972,9 +1012,7 @@ INCLUDE(${CMAKE_ROOT}/Modules/CMakeBackwardCompatibilityCXX.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckTypeSize.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckFunctionExists.cmake)
 INCLUDE(${CMAKE_ROOT}/Modules/CheckSymbolExists.cmake)
-IF(VISIT_USE_BOOST)
-    INCLUDE(${CMAKE_ROOT}/Modules/FindBoost.cmake)
-ENDIF(VISIT_USE_BOOST)
+
 IF(VISIT_USE_X)
     INCLUDE(${CMAKE_ROOT}/Modules/FindX11.cmake)
     IF(NOT X11_X11_LIB)
@@ -991,31 +1029,20 @@ ELSE(VISIT_USE_X)
 ENDIF(VISIT_USE_X)
 INCLUDE(${CMAKE_ROOT}/Modules/TestBigEndian.cmake)
 
-# Set Boost_USABLE_PARADIS if boost 1.36.0 or later is found. ParaDIS
-# uses make_shared, which was only introduced in boost 1.36.0.
-IF(Boost_VERSION)
-    MESSAGE(STATUS "  Boost_VERSION=${Boost_VERSION}")
 
-    # FindBoost.cmake does not always properly set the major, minor
-    # and subminor versions correctly, so do that ourselves.
-    STRING(REPLACE "." "0" Boost_VERSION_NUMERIC "${Boost_VERSION}")
-    SET(Boost_MAJOR_VERSION 0)
-    SET(Boost_MINOR_VERSION 0)
-    SET(Boost_SUBMINOR_VERSION 0)
-    IF(NOT "${Boost_VERSION_NUMERIC}" STREQUAL "0")
-        MATH(EXPR Boost_MAJOR_VERSION "${Boost_VERSION_NUMERIC} / 100000")
-        MATH(EXPR Boost_MINOR_VERSION "${Boost_VERSION_NUMERIC} / 100 % 1000")
-        MATH(EXPR Boost_SUBMINOR_VERSION "${Boost_VERSION_NUMERIC} % 100")
-    ENDIF(NOT "${Boost_VERSION_NUMERIC}" STREQUAL "0")
-    MESSAGE(STATUS "  Boost_MAJOR_VERSION=${Boost_MAJOR_VERSION}")
-    MESSAGE(STATUS "  Boost_MINOR_VERSION=${Boost_MINOR_VERSION}")
-    MESSAGE(STATUS "  Boost_SUBMINOR_VERSION=${Boost_SUBMINOR_VERSION}")
+# Configure Nektar++ support. 
+# Do it before the other libraries like boost because many can depend on it.
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindNektar++.cmake)
+IF(NEKTAR++_FOUND)
+    SET(HAVE_LIBNEKTAR++ 1)
+ENDIF(NEKTAR++_FOUND)
 
-    IF(Boost_MAJOR_VERSION GREATER 0 AND Boost_MINOR_VERSION GREATER 35)
-        SET(Boost_USABLE_PARADIS 1)
-        MESSAGE(STATUS "  Boost usable by paraDIS")
-    ENDIF(Boost_MAJOR_VERSION GREATER 0 AND Boost_MINOR_VERSION GREATER 35)
-ENDIF(Boost_VERSION)
+
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItBoost.cmake)
+IF(BOOST_FOUND)
+  SET(HAVE_BOOST 1)
+ENDIF(BOOST_FOUND)
+
 
 IF( (VISIT_PYTHON_SCRIPTING OR VISIT_PYTHON_FILTERS) AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItPython.cmake)
@@ -1057,13 +1084,12 @@ IF(NOT VISIT_DBIO_ONLY)
         SET(OPENGL_FOUND ON)
         SET(OPENGL_GLU_FOUND ON)
         SET(OPENGL_INCLUDE_DIR ${VISIT_OPENGL_DIR}/include)
-        # Hack for BG/Q. Assume if Mesa has been set and we're telling
-        # VisIt where to look for GL that we're using Mesa for GL.
-        IF(HAVE_OSMESA)
+        # Hack for BG/Q.
+        IF(BLUEGENEQ)
             SET(LIBGL OSMesa)
-        ELSE(HAVE_OSMESA)
+        ELSE(BLUEGENEQ)
             SET(LIBGL GL)
-        ENDIF(HAVE_OSMESA)
+        ENDIF(BLUEGENEQ)
         IF(VISIT_STATIC)
             SET(OPENGL_gl_LIBRARY ${VISIT_OPENGL_DIR}/lib/lib${LIBGL}.a)
             SET(OPENGL_glu_LIBRARY ${VISIT_OPENGL_DIR}/lib/libGLU.a)
@@ -1191,13 +1217,6 @@ ENDIF(VISIT_TUVOK)
 
 # Set up boost (interval) library
 SET(HAVE_BILIB 1)
-IF(Boost_USABLE_PARADIS)
-    SET(BOOST_INCLUDE_DIR ${Boost_INCLUDE_DIR} CACHE PATH "Path to boost lib")
-ELSE(Boost_USABLE_PARADIS)
-    SET(BOOST_INCLUDE_DIR ${VISIT_SOURCE_DIR}/third_party_builtin/bilib/boost_1_42_0 CACHE PATH "Path to boost lib")
-ENDIF(Boost_USABLE_PARADIS)
-
-
 
 # Set up the SLIVR library if it was enabled.
 IF(VISIT_SLIVR)
@@ -1540,6 +1559,7 @@ IF(VISIT_PARALLEL)
                       SET(VISIT_PARALLEL_LINKER_FLAGS "${MPI_LINK_FLAGS}"
                           CACHE STRING "Parallel LDFLAGS")
                   ENDIF(MPI_LINK_FLAGS)
+                  find_file(HAVE_HPC_SCHEDULER "Microsoft.Hpc.Scheduler.tlb")
                 ELSE(MPI_FOUND)
                   MESSAGE(FATAL_ERROR "To build parallel VisIt, you must at a "
                           "minimum define VISIT_MPI_COMPILER or VISIT_MPI_LIBS. "
@@ -1576,37 +1596,6 @@ IF(VISIT_PARALLEL)
 ELSE(VISIT_PARALLEL)
     MESSAGE(STATUS "Serial version of VisIt")
 ENDIF(VISIT_PARALLEL)
-
-FUNCTION(ADD_TARGET_INCLUDE target)
-    # Setting include_directories via set_target_properties overrides
-    # the current settings, but we want to append, so first retrieve
-    # the current values, then append the desired include.
-    GET_TARGET_PROPERTY(currentInc ${target} INCLUDE_DIRECTORIES)
-    LIST(APPEND currentInc ${ARGN})
-    SET_TARGET_PROPERTIES(${target} PROPERTIES
-                          INCLUDE_DIRECTORIES "${currentInc}")
-    UNSET(currentInc)
-ENDFUNCTION(ADD_TARGET_INCLUDE)
-
-FUNCTION(ADD_TARGET_DEFINITIONS target newDefs)
-    GET_TARGET_PROPERTY(currentDefs ${target} COMPILE_DEFINITIONS)
-    # if there truly are current definitions, and more than 1 in the list, then
-    # IF(${currentDefs} MATCHES NOTFOUND) causes a configure failure.
-    # Grab the first item in the list for comparison instead.
-    if (currentDefs)
-        LIST(GET currentDefs 0 firstItem )
-        IF(${firstItem} MATCHES NOTFOUND)
-            SET(allDefs ${newDefs})
-        ELSE(${firstItem} MATCHES NOTFOUND)
-            SET(allDefs ${currentDefs} ${newDefs})
-        ENDIF(${firstItem} MATCHES NOTFOUND)
-    else()
-        SET(allDefs ${newDefs})
-    endif()
-    SET_TARGET_PROPERTIES(${target} PROPERTIES
-            COMPILE_DEFINITIONS "${allDefs}"
-        )
-ENDFUNCTION(ADD_TARGET_DEFINITIONS)
 
 FUNCTION(ADD_PARALLEL_EXECUTABLE target)
     ADD_EXECUTABLE(${target} ${ARGN})
@@ -1702,50 +1691,6 @@ FUNCTION(PARALLEL_EXECUTABLE_LINK_LIBRARIES target)
     ENDIF(VISIT_NOLINK_MPI_WITH_LIBRARIES)
 ENDFUNCTION(PARALLEL_EXECUTABLE_LINK_LIBRARIES)
 
-FUNCTION(ADD_PARALLEL_LIBRARY target)
-    ADD_LIBRARY(${target} ${ARGN})
-
-    IF(UNIX)
-      IF(VISIT_PARALLEL_CXXFLAGS)
-        SET(PAR_COMPILE_FLAGS "")
-        FOREACH (X ${VISIT_PARALLEL_CXXFLAGS})
-            SET(PAR_COMPILE_FLAGS "${PAR_COMPILE_FLAGS} ${X}")
-        ENDFOREACH(X)
-        SET_TARGET_PROPERTIES(${target} PROPERTIES
-            COMPILE_FLAGS ${PAR_COMPILE_FLAGS}
-        )
-        IF(VISIT_PARALLEL_LINKER_FLAGS)
-            SET(PAR_LINK_FLAGS "")
-            FOREACH(X ${VISIT_PARALLEL_LINKER_FLAGS})
-                SET(PAR_LINK_FLAGS "${PAR_LINK_FLAGS} ${X}")
-            ENDFOREACH(X)
-            SET_TARGET_PROPERTIES(${target} PROPERTIES
-                LINK_FLAGS ${PAR_LINK_FLAGS}
-            )
-        ENDIF(VISIT_PARALLEL_LINKER_FLAGS)
-
-        IF(VISIT_PARALLEL_RPATH)
-            SET(PAR_RPATHS "")
-            FOREACH(X ${CMAKE_INSTALL_RPATH})
-                SET(PAR_RPATHS "${PAR_RPATHS} ${X}")
-            ENDFOREACH(X)
-            FOREACH(X ${VISIT_PARALLEL_RPATH})
-                SET(PAR_RPATHS "${PAR_RPATHS} ${X}")
-            ENDFOREACH(X)
-            SET_TARGET_PROPERTIES(${target} PROPERTIES
-                INSTALL_RPATH ${PAR_RPATHS}
-            )
-        ENDIF(VISIT_PARALLEL_RPATH)
-      ENDIF(VISIT_PARALLEL_CXXFLAGS)
-
-    ELSE(UNIX)
-      ADD_TARGET_INCLUDE(${target} ${VISIT_PARALLEL_INCLUDE})
-      ADD_TARGET_DEFINITIONS(${target} ${VISIT_PARALLEL_DEFS})
-    ENDIF(UNIX)
-    IF(NOT VISIT_NOLINK_MPI_WITH_LIBRARIES)
-        TARGET_LINK_LIBRARIES(${target} ${VISIT_PARALLEL_LIBS})
-    ENDIF(NOT VISIT_NOLINK_MPI_WITH_LIBRARIES)
-ENDFUNCTION(ADD_PARALLEL_LIBRARY)
 
 # Set up easy to use includes for the common directory
 SET(VISIT_COMMON_INCLUDES
@@ -1765,58 +1710,8 @@ SET(VISIT_COMMON_INCLUDES
     ${VISIT_SOURCE_DIR}/common/utility
     )
 
-# Windows-specific settings
-IF (WIN32)
-  ADD_DEFINITIONS(-D_USE_MATH_DEFINES)
-  IF(VISIT_QT5)
-    ADD_DEFINITIONS(-DNOMINMAX)
-  ENDIF()
-  # we want GTE 1400
-  IF (MSVC_VERSION GREATER 1399)
-      ADD_DEFINITIONS(-D_CRT_SECURE_NO_DEPRECATE -D_CRT_NONSTDC_NO_DEPRECATE)
-      ADD_DEFINITIONS(-D_SCL_NO_DEPRECATE -D_SCL_SECURE_NO_DEPRECATE)
-      ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS)
-  ENDIF (MSVC_VERSION GREATER 1399)
-
-  # cmake automatically uses _DEBUG and MDd for Debug flags, but our
-  # third-party libs are NOT debug versions, so we won't be able to
-  # link against them if those defines are used.  Replace those flags:
-  # When we allow users to supply their own third-party libs, then
-  # this will have to be rethought -- they may want to be able to c
-  # change them and this currently forces.
-
-  MACRO(REPLACE_FLAG OLD_FLAG NEW_FLAG FLAG_TYPE FLAG_STRING)
-      STRING(REPLACE "${OLD_FLAG}" "${NEW_FLAG}" TMP "${${FLAG_TYPE}}")
-      SET(${FLAG_TYPE} "${TMP}" CACHE STRING "${FLAG_STRING}" FORCE)
-  ENDMACRO(REPLACE_FLAG)
-
-  # Remove /_DEBUG From debug builds
-  REPLACE_FLAG("/D_DEBUG" "" CMAKE_CXX_FLAGS_DEBUG
-               "Flags used by the compiler during debug builds")
-  REPLACE_FLAG("/D_DEBUG" "" CMAKE_C_FLAGS_DEBUG
-               "Flags used by the compiler during debug builds")
-  REPLACE_FLAG("/D_DEBUG" "" CMAKE_EXE_LINKER_FLAGS_DEBUG
-               "Flags used by the linker during debug builds")
-  REPLACE_FLAG("/D_DEBUG" "" CMAKE_MODULE_LINKER_FLAGS_DEBUG
-               "Flags used by the linker during debug builds")
-  # Change /MDd to /MD for debug builds
-  REPLACE_FLAG("/MDd" "/MD" CMAKE_CXX_FLAGS_DEBUG
-               "Flags used by the compiler during debug builds")
-  REPLACE_FLAG("/MDd" "/MD" CMAKE_C_FLAGS_DEBUG
-               "Flags used by the compiler during debug builds")
-  REPLACE_FLAG("/MDd" "/MD" CMAKE_EXE_LINKER_FLAGS_DEBUG
-               "Flags used by the linker during debug builds")
-  REPLACE_FLAG("/MDd" "/MD" CMAKE_MODULE_LINKER_FLAGS_DEBUG
-               "Flags used by the linker during debug builds")
-
-  # Remove /machine:I386 from linker flags
-  REPLACE_FLAG("/machine:I386" "" CMAKE_EXE_LINKER_FLAGS
-               "Flags used by the linker")
-  REPLACE_FLAG("/machine:I386" "" CMAKE_MODULE_LINKER_FLAGS
-               "Flags used by the linker during creation of modules.")
-  REPLACE_FLAG("/machine:I386" "" CMAKE_SHARED_LINKER_FLAGS
-               "Flags used by the linker during creation of dll's.")
-ENDIF (WIN32)
+# macros/defines also needed by PluginVsInstall.cmake.in
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/VisItMacros.cmake)
 
 # Mac-specific function
 FUNCTION(MAC_NIB_INSTALL exename)
@@ -1945,6 +1840,7 @@ CHECK_TYPE_SIZE("long long"          SIZEOF_LONG_LONG)          # ${CMAKE_SIZEOF
 CHECK_TYPE_SIZE(short                SIZEOF_SHORT)              # ${CMAKE_SIZEOF_SHORT})
 CHECK_TYPE_SIZE("unsigned char"      SIZEOF_UNSIGNED_CHAR)      # ${CMAKE_SIZEOF_UNSIGNED_CHAR})
 CHECK_TYPE_SIZE("unsigned int"       SIZEOF_UNSIGNED_INT)       # ${CMAKE_SIZEOF_UNSIGNED_INT})
+CHECK_TYPE_SIZE("size_t"             SIZEOF_SIZE_T)             # ${CMAKE_SIZEOF_SIZE_T})
 CHECK_TYPE_SIZE("unsigned long"      SIZEOF_UNSIGNED_LONG)      # ${CMAKE_SIZEOF_UNSIGNED_LONG})
 CHECK_TYPE_SIZE("unsigned long long" SIZEOF_UNSIGNED_LONG_LONG) # ${CMAKE_SIZEOF_UNSIGNED_LONG_LONG})
 CHECK_TYPE_SIZE("unsigned short"     SIZEOF_UNSIGNED_SHORT)     # ${CMAKE_SIZEOF_UNSIGNED_SHORT})
@@ -2302,20 +2198,21 @@ ADD_SUBDIRECTORY(third_party_builtin)
 ADD_SUBDIRECTORY(common)
 ADD_SUBDIRECTORY(visit_vtk)
 ADD_SUBDIRECTORY(avt)
-ADD_SUBDIRECTORY(sim)
-IF(VISIT_DBIO_ONLY)
-    ADD_SUBDIRECTORY(tools)
-ELSE(VISIT_DBIO_ONLY)
-    ADD_SUBDIRECTORY(engine)
-ENDIF(VISIT_DBIO_ONLY)
-IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
-    ADD_SUBDIRECTORY(launcher)
-    ADD_SUBDIRECTORY(mdserver)
-ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
+
+IF(NOT VISIT_DBIO_ONLY)
+    ADD_SUBDIRECTORY(sim)
+    ADD_SUBDIRECTORY(viewer)   # sim depends on viewercore
+    ADD_SUBDIRECTORY(engine)   # sim depends on engine
+
+    IF(NOT VISIT_ENGINE_ONLY)
+        ADD_SUBDIRECTORY(launcher)
+        ADD_SUBDIRECTORY(mdserver)
+    ENDIF(NOT VISIT_ENGINE_ONLY)
+ENDIF(NOT VISIT_DBIO_ONLY)
+
 IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
     ADD_SUBDIRECTORY(vtkqt)
     ADD_SUBDIRECTORY(winutil)
-    ADD_SUBDIRECTORY(viewer)
     ADD_SUBDIRECTORY(gui)
     IF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND)
         IF(NOT VISIT_STATIC)
@@ -2369,18 +2266,27 @@ IF(NOT VISIT_DBIO_ONLY)
 ENDIF(NOT VISIT_DBIO_ONLY)
 ADD_SUBDIRECTORY(databases)
 
-IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
-    # Must come after plugins in case we're doing a static build
-    ADD_SUBDIRECTORY(tools)
-ENDIF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
+# Must come after plugins in case we're doing a static build
+ADD_SUBDIRECTORY(tools)
 
 # Now that plugins have been added, do the mains last if we're creating static
 # binaries. This is needed to link the plugins into the exe.
 IF(VISIT_STATIC)
     ADD_SUBDIRECTORY(engine/main)
+    ADD_SUBDIRECTORY(sim/V2/static)
+
+    # Make it possible to build some sim examples since we've created the 
+    # static sim library.
+    IF(NOT WIN32)
+        IF(VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
+            ADD_SUBDIRECTORY(tools/DataManualExamples/Simulations)
+        ENDIF(VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
+    ENDIF(NOT WIN32)
+
     IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
         ADD_SUBDIRECTORY(mdserver/main)
     ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
+
     IF(NOT VISIT_SERVER_COMPONENTS_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_DBIO_ONLY)
         ADD_SUBDIRECTORY(gui/main)
         ADD_SUBDIRECTORY(viewer/main)
@@ -2398,6 +2304,7 @@ ADD_SUBDIRECTORY(resources)
 #-----------------------------------------------------------------------------
 # Add the "data" directory if it exists
 #-----------------------------------------------------------------------------
+IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
     IF(WIN32)
         # Don't want the data dir files to be added to the main VISIT
@@ -2415,6 +2322,7 @@ IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
                          ${V_EX})
     ENDIF(VISIT_OUT_OF_SOURCE_BUILD)
 ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
+ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 
 #-----------------------------------------------------------------------------
@@ -2423,6 +2331,7 @@ ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../data)
 # I'm trying to make the new tetsing work hramoniously with the old testing
 # while it's evaluated. if the new testing were ever made permanent then
 # this code would be removed.
+IF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 IF (NOT BUILD_TESTING)
     IF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
         IF(VISIT_OUT_OF_SOURCE_BUILD)
@@ -2434,6 +2343,7 @@ IF (NOT BUILD_TESTING)
         ENDIF(VISIT_OUT_OF_SOURCE_BUILD)
     ENDIF(IS_DIRECTORY ${VISIT_SOURCE_DIR}/../test)
 ENDIF()
+ENDIF(NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 
 #-----------------------------------------------------------------------------
@@ -2692,3 +2602,10 @@ IF (NOT WIN32)
 ELSE (NOT WIN32)
     MESSAGE(STATUS "\n\nSearch for `CMAKE_INVOKE' in CMakeCache.txt to re-run CMake with the same arguments\n\n")
 ENDIF (NOT WIN32)
+
+INSTALL(FILES ${VISIT_SOURCE_DIR}/CMake/VisItMacros.cmake
+        DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}
+        PERMISSIONS OWNER_READ OWNER_WRITE
+                    GROUP_READ GROUP_WRITE
+                    WORLD_READ
+        )

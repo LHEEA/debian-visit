@@ -23,11 +23,13 @@ QvisLagrangianWindow.h
 )
 
 SET(LIBV_SOURCES
+LagrangianViewerEnginePluginInfo.C
 LagrangianViewerPluginInfo.C
 ${COMMON_SOURCES}
 )
 
 SET(LIBE_SOURCES
+LagrangianViewerEnginePluginInfo.C
 LagrangianEnginePluginInfo.C
 avtLagrangianFilter.C
 ${COMMON_SOURCES}
@@ -74,7 +76,9 @@ ${VISIT_INCLUDE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_INCLUDE_DIR}/gui
 ${VISIT_INCLUDE_DIR}/mdserver/proxy
 ${VISIT_INCLUDE_DIR}/mdserver/rpc
+${VISIT_INCLUDE_DIR}/viewer/core
 ${VISIT_INCLUDE_DIR}/viewer/main
+${VISIT_INCLUDE_DIR}/viewer/main/ui
 ${VISIT_INCLUDE_DIR}/viewer/proxy
 ${VISIT_INCLUDE_DIR}/viewer/rpc
 ${VISIT_INCLUDE_DIR}/winutil
@@ -89,7 +93,7 @@ ${PYINCLUDES}
 )
 
 
-LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${QT_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} )
+LINK_DIRECTORIES(${VISIT_LIBRARY_DIR} ${QT_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS} ${NEKTAR++_LIBRARY_DIR} ${NEKTAR++_LIBRARY_DIRS} ${NEKTAR++_TP_LIBRARY_DIRS} ${ACCELERATE_FRAMEWORK_LINK_FLAGS})
 
 ADD_LIBRARY(ILagrangianOperator ${LIBI_SOURCES})
 TARGET_LINK_LIBRARIES(ILagrangianOperator visitcommon)

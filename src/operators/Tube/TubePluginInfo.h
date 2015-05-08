@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ class TubeGUIPluginInfo : public virtual GUIOperatorPluginInfo, public virtual T
     virtual const char **XPMIconData() const;
 };
 
-class TubeViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual TubeCommonPluginInfo
+class TubeViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual TubeCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -96,14 +96,11 @@ class TubeViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public vir
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
-    virtual const char **XPMIconData() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -111,7 +108,13 @@ class TubeViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public vir
     static TubeAttributes *clientAtts;
 };
 
-class TubeEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual TubeCommonPluginInfo
+class TubeViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual TubeViewerEnginePluginInfo
+{
+  public:
+    virtual const char **XPMIconData() const;
+};
+
+class TubeEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual TubeViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

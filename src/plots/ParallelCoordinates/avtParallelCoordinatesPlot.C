@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -61,37 +61,6 @@
 #include <string>
 #include <vector>
 
-static const unsigned char multi_timestep_ctx_colors[PCP_MAX_TIMESTEPS*3] =
-{
-    255,0,0,
-    0,255,0,
-    0,0,255,
-    255,255,0,
-    255,0,255,
-    0,255,255,
-    255,128,0,
-    0,255,128,
-    128,0,255,
-    128,255,0,
-    0,128,255,
-    255,0,128
-};
-
-static const unsigned char multi_timestep_focus_colors[PCP_MAX_TIMESTEPS*3] =
-{
-    0,0,192,
-    0,100,192,
-    100,0,192,
-    100,100,192,
-    192,0,0,
-    192,0,100,
-    192,100,0,
-    192,100,100,
-    0,192,0,
-    100,192,0,
-    0,192,100,
-    100,192,100
-};
 
 
 // ****************************************************************************
@@ -227,6 +196,9 @@ avtParallelCoordinatesPlot::SetAtts(const AttributeGroup *a)
 //    Removed the time case since I couldn't test any changes this would
 //    have caused.
 //
+//    Kathleen Biagas, Thu Oct 16 09:12:03 PDT 2014
+//    Send 'needsRecalculation' flag to levelsMapper when setting colors.
+//
 // ****************************************************************************
 
 void
@@ -278,7 +250,7 @@ avtParallelCoordinatesPlot::SetColors()
         }
 
         avtLUT->SetLUTColorsWithOpacity(plotColors, 2*PCP_CTX_BRIGHTNESS_LEVELS);
-        levelsMapper->SetColors(colorAttList);
+        levelsMapper->SetColors(colorAttList, needsRecalculation);
         delete [] plotColors;
     }
     else

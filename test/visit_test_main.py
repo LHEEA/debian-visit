@@ -112,6 +112,10 @@ def out_path(*args):
 #
 #  Programmer: Cyrus Harrison
 #  Date:       Wed May 30 2012
+#
+#  Modifications:
+#    Brad Whitlock, Fri Dec 12 17:56:34 PST 2014
+#    Optionally prepend a remote host to the database path.
 # ----------------------------------------------------------------------------
 def data_path(*args):
     """
@@ -119,7 +123,10 @@ def data_path(*args):
     """
     rargs = [TestEnv.params["data_dir"]]
     rargs.extend(args)
-    return abs_path(*rargs)
+    dp = abs_path(*rargs)
+    if TestEnv.params["data_host"] != "localhost":
+        dp = TestEnv.params["data_host"] + ":" + dp
+    return dp
 
 
 # ----------------------------------------------------------------------------
@@ -953,7 +960,7 @@ def HTMLImageTestResult(case_name,status,
     elif (diffState == 'Skipped'):
         testcase.write("    <td>Skipped</td>\n")
     else:
-        testcase.write("""    <td><a href="" onMouseOver="document.c.src='b_%s.png'" onMouseOut="document.c.src='c_%s.png'"><img name="c" border=0 src="c_%s.png"></img></a></td>\n"""%(case_name,case_name,case_name))
+        testcase.write("""    <td><a href="c_%s.png"><img name="c" border=0 src="c_%s.png"></img></a></td>\n"""%(case_name,case_name))
     testcase.write("  </tr>\n")
     testcase.write("  <tr>\n")
     testcase.write("    <td align=center rowspan=7>Diff Map:</td>\n")
@@ -1953,6 +1960,9 @@ def TestParallelSimulation(sim, sim2, np):
 #    Brad Whitlock, Fri Jun 27 11:14:56 PDT 2014
 #    Added some parallel launch code.    
 #
+#    Brad Whitlock, Thu Sep  4 15:58:13 PDT 2014
+#    Added valgrind support for serial.
+#
 #    Kathleen Biagas, Thu Sep 4 16:43:27 MST 2014
 #    Set close_fds to False for windows.
 #
@@ -1971,6 +1981,10 @@ class Simulation(object):
         self.connected = False
         self.extraargs = []
         self.np = np
+        self.valgrind = False
+
+    def enablevalgrind(self):
+        self.valgrind = True
 
     def startsim(self):
         """
@@ -2008,6 +2022,12 @@ class Simulation(object):
                     args = ["srun", "-n", str(self.np)] + args
             else:
                 args = ["mpiexec", "-n", str(self.np)] + args
+        else:
+            # Serial
+            if self.valgrind:
+                logfile = GenFileNames("valgrind", ".txt")[0]
+                args = ["env", "GLIBCXX_FORCE_NEW=1", "valgrind", "--tool=memcheck", "--leak-check=full", "--log-file="+logfile] + args
+
         s="Running: "
         for a in args:
             s = s + a + " "
@@ -2033,14 +2053,28 @@ class Simulation(object):
         """
         self.extraargs = self.extraargs + [arg]
 
+    def wait(self):
+        for i in xrange(120): # Wait up to 2 minutes.
+            try:
+                s = os.stat(self.sim2)
+                return True
+            except:
+                time.sleep(1)
+        return False
+
     def connect(self):
         """
         Connect to the simulation."
         """
         print "Connecting to simulation ", self.simulation
-        ret = OpenDatabase(self.sim2)
-        if ret:
-            self.connected = True
+
+        # The sim might not have started by the time we get here.
+        # Wait for the sim2 file to exist.
+        ret = False
+        if self.wait():
+            ret = OpenDatabase(self.sim2)
+            if ret:
+                self.connected = True
         return ret
 
     def disconnect(self):
@@ -2139,6 +2173,51 @@ def TestSimMetaData(testname, md):
         txt = txt + outline + "\n"
     TestText(testname, txt)
 
+# ----------------------------------------------------------------------------
+#  Class: SimulationMemoryRecorder
+#
+#  Programmer: Brad Whitlock
+#  Date:       Thu Sep  4 15:57:33 PDT 2014
+#
+#  Modifications:
+#
+# ----------------------------------------------------------------------------
+class SimulationMemoryRecorder(object):
+    def __init__(self, filename):
+        self.filename = filename
+        self.samples = {}
+        self.times = []
+        self.iteration = 0
+
+    def AddSample(self):
+        #Query("Time")
+        #self.times = self.times + [GetQueryOutputValue()]
+        self.times = self.times + [self.iteration]
+        self.iteration = self.iteration + 1
+
+        engine = None
+        engines = GetEngineList(1)
+        for e in engines:
+            if ".sim2" in e[1]:
+                engine = e
+                break;
+
+        pa = GetProcessAttributes("engine", engine[0], engine[1])
+        for i in range(len(pa.pids)):
+            if self.samples.has_key(pa.pids[i]):
+                self.samples[pa.pids[i]] = self.samples[pa.pids[i]] + [pa.memory[i]]
+            else:
+                self.samples[pa.pids[i]] = [pa.memory[i]]
+        self.WriteFile()
+
+    def WriteFile(self):
+        f = open(self.filename, "wt")            
+        for k in self.samples.keys():
+            f.write("#pid_%s\n" % str(k))
+            for i in range(len(self.samples[k])):
+                f.write("%g %g\n" % (self.times[i], self.samples[k][i]))
+        f.close()
+
 #############################################################################
 #   Argument/Environment Processing
 #############################################################################
@@ -2164,7 +2243,7 @@ class TestEnv(object):
                "threshold_diff": False,
                "threshold_error": {},
                "avgdiff":     0.0,
-               "pixdiff":     0,
+               "pixdiff":     0.0,
                "numdiff":     0.0,
                "serial" :     True,
                "scalable":    False,
@@ -2272,6 +2351,8 @@ def AddSkipCase(case_name):
 #    Eric Brugger, Fri Aug 15 10:16:22 PDT 2014
 #    I added the ability to specify the parallel launch method.
 #
+#    Brad Whitlock, Fri Dec 12 18:03:31 PST 2014
+#    Use data_host for instead of "localhost" so we can do client/server to data.
 # ----------------------------------------------------------------------------
 def InitTestEnv():
     """
@@ -2299,19 +2380,52 @@ def InitTestEnv():
         ra = GetRenderingAttributes()
         ra.scalableActivationMode = ra.Never
         SetRenderingAttributes(ra)
-    # start parallel engine if parallel
-    haveParallelEngine = True
-    if TestEnv.params["parallel"]:
-        if TestEnv.params["parallel_launch"] == "mpirun":
-            haveParallelEngine = (OpenComputeEngine("localhost", ("-np", "2")) == 1)
-        elif TestEnv.params["parallel_launch"] == "srun":
-            haveParallelEngine = (OpenComputeEngine("localhost", ("-l", "srun", "-np", "2")) == 1)
+
+    # If we passed a directory to use for reading host profiles then let's 
+    # use the host profiles to launch the engine (since it has settings we
+    # probably want for the machine profile).
+    if TestEnv.params["host_profile_dir"] != "":
+        ReadHostProfilesFromDirectory(TestEnv.params["host_profile_dir"], 1)
+        if TestEnv.params["data_host"] in GetMachineProfileNames():
+            mp = GetMachineProfile(TestEnv.params["data_host"])
+            # Make some modifications to the machine profile.
+            if TestEnv.params["parallel_launch"] not in ("mpirun", "srun"):
+                plaunch = string.split(TestEnv.params["parallel_launch"], " ")
+                idx = 0
+                try:
+                    while idx < len(plaunch):
+                        if plaunch[idx] == "-dir":
+                            mp.directory = plaunch[idx+1]
+                            idx = idx + 2
+                        elif plaunch[idx] == "-b":
+                            bank = plaunch[idx+1]
+                            for i in range(mp.GetNumLaunchProfiles()):
+                                mp.GetLaunchProfiles(i).bank = bank
+                                mp.GetLaunchProfiles(i).bankSet = 1
+                            idx = idx + 2
+                        else:
+                            idx = idx + 1
+                except:
+                    pass    
+            #print mp
+
+            # Use the machine profile to start the engine.
+            OpenComputeEngine(mp)
         else:
-            haveParallelEngine = (OpenComputeEngine("localhost", ("-np", "2")) == 1)
-    if haveParallelEngine == False:
-        Exit()
+            Exit()
     else:
-        OpenComputeEngine("localhost")
+        # start parallel engine if parallel
+        haveParallelEngine = True
+        if TestEnv.params["parallel"]:
+            if TestEnv.params["parallel_launch"] == "mpirun":
+                haveParallelEngine = (OpenComputeEngine(TestEnv.params["data_host"], ("-np", "2")) == 1)
+            elif TestEnv.params["parallel_launch"] == "srun":
+                haveParallelEngine = (OpenComputeEngine(TestEnv.params["data_host"], ("-l", "srun", "-np", "2")) == 1)
+        if haveParallelEngine == False:
+            Exit()
+        else:
+            OpenComputeEngine(TestEnv.params["data_host"])
+
     # Automatically turn off all annotations
     # This is to prevent new tests getting committed that
     # are unnecessarily dependent on annotations.

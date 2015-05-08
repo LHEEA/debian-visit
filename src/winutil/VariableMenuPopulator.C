@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -341,6 +341,8 @@ VariableMenuPopulator::ClearGroupingInfo()
 //    on meshes whose hideFromGUI flag  was true. I added logic to
 //    prevent that.
 //
+//    Mark C. Miller, Thu Dec 18 13:20:17 PST 2014
+//    Allow enum scalars in the Subset plot menu.
 // ****************************************************************************
 
 bool
@@ -576,7 +578,7 @@ VariableMenuPopulator::PopulateVariableLists(const std::string &dbName,
             //
             if (role == SIL_MATERIAL)
                 materialVars.AddVariable(varName, validVariable);
-            else if (role != SIL_ENUMERATION)
+            else
                 subsetVars.AddVariable(varName, validVariable);
         }
     }

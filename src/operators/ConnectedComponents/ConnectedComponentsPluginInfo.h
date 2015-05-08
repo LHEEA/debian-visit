@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ class ConnectedComponentsGUIPluginInfo : public virtual GUIOperatorPluginInfo, p
         QvisNotepadArea *notepad);
 };
 
-class ConnectedComponentsViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual ConnectedComponentsCommonPluginInfo
+class ConnectedComponentsViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual ConnectedComponentsCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -96,13 +96,11 @@ class ConnectedComponentsViewerPluginInfo : public virtual ViewerOperatorPluginI
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -110,7 +108,12 @@ class ConnectedComponentsViewerPluginInfo : public virtual ViewerOperatorPluginI
     static ConnectedComponentsAttributes *clientAtts;
 };
 
-class ConnectedComponentsEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual ConnectedComponentsCommonPluginInfo
+class ConnectedComponentsViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual ConnectedComponentsViewerEnginePluginInfo
+{
+  public:
+};
+
+class ConnectedComponentsEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual ConnectedComponentsViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

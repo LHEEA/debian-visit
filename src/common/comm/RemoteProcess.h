@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -210,6 +210,7 @@ private:
     bool                   (*progressCallback)(void *, int);
     void                    *progressCallbackData;
     std::map<int,int>        portTunnelMap;
+    bool                     fixedBufferMode;
 
     static void            (*getAuthentication)(const char *, const char *, const char *, int);
     static bool            (*changeUsername)(const std::string &, std::string&);

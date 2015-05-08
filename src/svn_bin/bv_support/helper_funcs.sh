@@ -274,6 +274,8 @@ function uncompress_untar
         COMPRESSTYPE="bzip"
     elif [[ $(echo $1 | egrep "\.tgz$" ) != "" ]] ; then
         COMPRESSTYPE="targzip"
+    elif [[ $(echo $1 | egrep "\.tar.gz$" ) != "" ]] ; then
+        COMPRESSTYPE="targzip"
     else
         warn "unsupported uncompression method"
         return 1
@@ -843,7 +845,6 @@ function check_more_options
            "Symbol"    "enable debug compiling"                 $ON_DEBUG \
            "Group"     "specify group name for install"         $ON_GROUP \
            "HostConf"  "create host.conf file"                  $ON_HOSTCONF \
-           "Boost"     "if possible use the system boost"       $ON_BOOST \
            "Path"      "specify library path [$THIRD_PARTY_PATH]" $ON_PATH \
            "Trace"     "enable SHELL debugging"      $ON_VERBOSE 3>&1 1>&2 2>&3)
         retval=$?
@@ -859,7 +860,6 @@ function check_more_options
             DO_DEBUG="no"
             DO_GROUP="no"
             DO_HOSTCONF="no"
-            DO_BOOST="no"
             DO_PATH="no"
             DO_VERBOSE="no"
             for OPTION in $choice
@@ -886,8 +886,6 @@ function check_more_options
                      DO_GROUP="yes";;
                   HostConf)
                       DO_HOSTCONF="yes";;
-                  Boost)
-                      DO_BOOST="yes";;
                   Path)
                      result=$($DLG --backtitle "$DLG_BACKTITLE" \
                         --nocancel --inputbox \
@@ -1342,10 +1340,10 @@ function build_hostconf
         echo "VISIT_OPTION_DEFAULT(VISIT_USE_X            OFF)" >> $HOSTCONF
         echo "VISIT_OPTION_DEFAULT(VISIT_USE_GLEW         OFF)" >> $HOSTCONF
         echo "VISIT_OPTION_DEFAULT(VISIT_SLIVR            OFF)" >> $HOSTCONF
-        echo "VISIT_OPTION_DEFAULT(VISIT_USE_BOOST        OFF)" >> $HOSTCONF
         echo "VISIT_OPTION_DEFAULT(VISIT_DISABLE_SELECT   ON)" >> $HOSTCONF
         echo "VISIT_OPTION_DEFAULT(VISIT_USE_NOSPIN_BCAST OFF)" >> $HOSTCONF
         echo "VISIT_OPTION_DEFAULT(VISIT_OPENGL_DIR       \${VISITHOME}/mesa/$MESA_VERSION/\${VISITARCH})" >> $HOSTCONF
+        echo "ADD_DEFINITIONS(-DVISIT_BLUE_GENE_Q)" >> $HOSTCONF
         echo >> $HOSTCONF
     fi
 
@@ -1358,12 +1356,21 @@ function build_hostconf
         # we either set an mpi wrapper compiler in the host conf
         if [[ "$VISIT_MPI_COMPILER" != "" ]] ; then
             if [[ "$BUILD_VISIT_BGQ" == "yes" ]] ; then
-                echo "## (inserted by build_visit for BG/Q. Some adjustment may be needed)" >> $HOSTCONF
+                echo "## (inserted by build_visit for BG/Q. Configuration as of 10/8/2014.)" >> $HOSTCONF
+                echo "## (LC rolled back this ppcfloor configuration from V1R2M2 to V1R2M0 10/16/2014.)" >> $HOSTCONF
+                echo "#SET(BLUEGENEQ /bgsys/drivers/ppcfloor)" >> $HOSTCONF
+                echo "#VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)" >> $HOSTCONF
+                echo "#VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"-I\${BLUEGENEQ} -I\${BLUEGENEQ}/comm/include -I\${BLUEGENEQ}/spi/include -I\${BLUEGENEQ}/spi/include/kernel/cnk\" TYPE STRING)" >> $HOSTCONF
+                echo "#VISIT_OPTION_DEFAULT(VISIT_MPI_C_FLAGS   \"-I\${BLUEGENEQ} -I\${BLUEGENEQ}/comm/include -I\${BLUEGENEQ}/spi/include -I\${BLUEGENEQ}/spi/include/kernel/cnk\" TYPE STRING)" >> $HOSTCONF
+                echo "#VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"-L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/lib -R/opt/ibmcmp/lib64/bg/bglib64\" TYPE STRING)" >> $HOSTCONF
+                echo "#VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS     mpich-xl opa-xl mpl-xl pami-gcc SPI SPI_cnk rt pthread stdc++ pthread TYPE STRING)" >> $HOSTCONF
+                echo "" >> $HOSTCONF
+                echo "## (inserted by build_visit for BG/Q. Configuration as of 10/15/2014.)" >> $HOSTCONF
                 echo "SET(BLUEGENEQ /bgsys/drivers/V1R2M0/ppc64)" >> $HOSTCONF
                 echo "VISIT_OPTION_DEFAULT(VISIT_PARALLEL ON TYPE BOOL)" >> $HOSTCONF
                 echo "VISIT_OPTION_DEFAULT(VISIT_MPI_CXX_FLAGS \"-I\${BLUEGENEQ} -I\${BLUEGENEQ}/comm/sys/include -I\${BLUEGENEQ}/spi/include -I\${BLUEGENEQ}/spi/include/kernel/cnk -I\${BLUEGENEQ}/comm/xl/include\" TYPE STRING)" >> $HOSTCONF
                 echo "VISIT_OPTION_DEFAULT(VISIT_MPI_C_FLAGS   \"-I\${BLUEGENEQ} -I\${BLUEGENEQ}/comm/sys/include -I\${BLUEGENEQ}/spi/include -I\${BLUEGENEQ}/spi/include/kernel/cnk -I\${BLUEGENEQ}/comm/xl/include\" TYPE STRING)" >> $HOSTCONF
-                echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"-L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/sys/lib -L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/sys/lib -L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/xl/lib -R/opt/ibmcmp/lib64/bg\" TYPE STRING)" >> $HOSTCONF
+                echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LD_FLAGS  \"-L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/sys/lib -L\${BLUEGENEQ}/spi/lib -L\${BLUEGENEQ}/comm/xl/lib -R/opt/ibmcmp/lib64/bg/bglib64\" TYPE STRING)" >> $HOSTCONF
                 echo "VISIT_OPTION_DEFAULT(VISIT_MPI_LIBS     mpich opa mpl pami SPI SPI_cnk rt pthread stdc++ pthread TYPE STRING)" >> $HOSTCONF
             else
                 echo "## (configured w/ mpi compiler wrapper)" >> $HOSTCONF
@@ -1396,16 +1403,6 @@ function build_hostconf
         echo "VISIT_OPTION_DEFAULT(VISIT_THREAD ON TYPE BOOL)" >> $HOSTCONF
     else
         echo "VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)" >> $HOSTCONF
-    fi
-
-    echo >> $HOSTCONF
-    echo "##" >> $HOSTCONF
-    echo "## VisIt Boost Option." >> $HOSTCONF
-    echo "##" >> $HOSTCONF
-    if [[ "${DO_BOOST}" == "yes" ]] ; then
-        echo "VISIT_OPTION_DEFAULT(VISIT_USE_BOOST ON TYPE BOOL)" >> $HOSTCONF
-    else
-        echo "VISIT_OPTION_DEFAULT(VISIT_USE_BOOST OFF TYPE BOOL)" >> $HOSTCONF
     fi
 
     if [[ "${DO_PARADIS}" == "yes" ]] ; then
@@ -1521,7 +1518,6 @@ function usage
   printf "%-15s %s [%s]\n" "--help" "Display this help message." "false"
   printf "%-15s %s [%s]\n" "--java" "Build with the Java client library" "${DO_JAVA}"
   printf "%-15s %s [%s]\n" "--no-hostconf" "Do not create host.conf file." "$ON_HOSTCONF"
-  printf "%-15s %s [%s]\n" "--no-boost" "Do not use the system boost." "$ON_BOOST"
   printf "%-15s %s [%s]\n" "--parallel" "Enable parallel build, display MPI prompt" "$parallel"
   printf "%-15s %s [%s]\n" "--prefix" "The directory to which VisIt should be installed once it is built" "$VISIT_INSTALL_PREFIX"
   printf "%-15s %s [%s]\n" "--print-vars" "Display user settable environment variables" "false"
@@ -1530,7 +1526,8 @@ function usage
   printf "%-15s %s [%s]\n" "--paradis" "Build with the paraDIS client library" "${DO_PARADIS}"
   printf "%-15s %s [%s]\n" "--static" "Build using static linking" "$DO_STATIC_BUILD"
   printf "%-15s %s [%s]\n" "--stdout" "Write build log to stdout" "$LOG_FILE"
-  
+  printf "%-15s %s [%s]\n" "--xdb" "Enable FieldView XDB plugin." "$DO_XDB"
+
   for (( bv_i=0; bv_i<${#grouplibs_comment[*]}; ++bv_i ))
   do
         name=${grouplibs_name[$bv_i]}

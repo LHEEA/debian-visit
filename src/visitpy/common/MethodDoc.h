@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -175,6 +175,7 @@ extern const char *visit_Queries_doc;
 extern const char *visit_QueryOverTime_doc;
 extern const char *visit_Query_doc;
 extern const char *visit_ReOpenDatabase_doc;
+extern const char *visit_ReadHostProfilesFromDirectory_doc;
 extern const char *visit_RecenterView_doc;
 extern const char *visit_RedoView_doc;
 extern const char *visit_RedrawWindow_doc;
@@ -233,6 +234,7 @@ extern const char *visit_SetQueryOutputToValue_doc;
 extern const char *visit_SetQueryOutputToString_doc;
 extern const char *visit_SetQueryFloatFormat_doc;
 extern const char *visit_SetQueryOverTimeAttributes_doc;
+extern const char *visit_SetRemoveDuplicateNodes_doc;
 extern const char *visit_SetRenderingAttributes_doc;
 extern const char *visit_SetSaveWindowAttributes_doc;
 extern const char *visit_SetTimeSliderState_doc;

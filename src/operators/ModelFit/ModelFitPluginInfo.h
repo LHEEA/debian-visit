@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ class ModelFitGUIPluginInfo : public virtual GUIOperatorPluginInfo, public virtu
         QvisNotepadArea *notepad);
 };
 
-class ModelFitViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual ModelFitCommonPluginInfo
+class ModelFitViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual ModelFitCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -96,13 +96,11 @@ class ModelFitViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -110,7 +108,12 @@ class ModelFitViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public
     static ModelFitAtts *clientAtts;
 };
 
-class ModelFitEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual ModelFitCommonPluginInfo
+class ModelFitViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual ModelFitViewerEnginePluginInfo
+{
+  public:
+};
+
+class ModelFitEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual ModelFitViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

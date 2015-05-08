@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -39,6 +39,9 @@
 #  Cyrus Harrison, Tue Oct  9 15:44:53 PDT 2012
 #  Added tess2
 #
+#  Cyrus Harrison, Mon Jan 26 21:26:34 PST 2015
+#  Removed bilib
+#
 #****************************************************************************/
 
 PROJECT(thirdparty_builtins)
@@ -47,7 +50,6 @@ IF(VISIT_USE_GLEW)
     ADD_SUBDIRECTORY(glew)
 ENDIF(VISIT_USE_GLEW)
 ADD_SUBDIRECTORY(verdict)
-ADD_SUBDIRECTORY(bilib)
 ADD_SUBDIRECTORY(tess2)
 IF(VISIT_PARALLEL)
     ADD_SUBDIRECTORY(cognomen)

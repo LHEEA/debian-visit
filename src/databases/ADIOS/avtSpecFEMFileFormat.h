@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -90,7 +90,7 @@ class avtSpecFEMFileFormat : public avtMTMDFileFormat
 
     virtual vtkDataSet    *GetMesh(int, int, const char *);
     virtual vtkDataArray  *GetVar(int, int, const char *);
-    virtual vtkDataArray  *GetVectorVar(int, int, const char *) {return NULL;}
+    virtual vtkDataArray  *GetVectorVar(int, int, const char *);
 
   protected:
     ADIOSFileObject *meshFile, *dataFile;
@@ -107,7 +107,7 @@ class avtSpecFEMFileFormat : public avtMTMDFileFormat
                                    bool xyzMesh, int ptOffset=0);
 
     vtkDataArray *   GetVarRegion(std::string &nm, int ts, int dom);
-
+    vtkDataArray *   GetVectorVarRegion(std::string &nm, int ts, int dom);
 
     //std::map<std::string, std::string> variables;
     std::vector<std::string> variables;

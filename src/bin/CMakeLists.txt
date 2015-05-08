@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -178,7 +178,7 @@ ELSE (NOT WIN32)
                         GROUP_READ GROUP_WRITE
                         WORLD_READ)
 
-    FOREACH (CFG Release Debug RelWithDebugInfo MinSizeRel)
+    FOREACH (CFG Release Debug RelWithDebInfo MinSizeRel)
         FILE(COPY ${VISIT_BIN_WIN_FILES}
              DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CFG}
              FILE_PERMISSIONS OWNER_READ OWNER_WRITE

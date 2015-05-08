@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -299,7 +299,7 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         // This first call is purely to provide opportunity to output stuff
         // to debug logs.
         const bool debugOff = true;
-        iBase_EntityHandle junk;
+        iBase_EntityHandle junk = (iBase_EntityHandle)0;
         if (DebugStream::Level4())
             TraverseSetHierarchy(itapsMesh, 0, 0, true, junk, rootSet, !debugOff, 0, 0);
 
@@ -401,7 +401,7 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             smd->SetEnumAlwaysExcludeValue(-1.0);
             smd->SetEnumPartialCellMode(avtScalarMetaData::Dissect);
 
-            for (int k = 0; k < tlsit->second.size(); k++)
+            for (int k = 0; k < (int) tlsit->second.size(); k++)
             {
                 char tmpName[64];
                 SNPRINTF(tmpName, sizeof(tmpName), "%s_%03d", tlsit->first.c_str(), k);
@@ -418,8 +418,8 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         // variable on the mesh
         //
         Expression expr;
-        expr.SetName("zonetype");
-        expr.SetDefinition("zonetype(mesh)");
+        expr.SetName("zonetype_rank");
+        expr.SetDefinition("zonetype_rank(mesh)");
         expr.SetType(Expression::ScalarMeshVar);
         md->AddExpression(&expr);
 
@@ -543,14 +543,12 @@ avtITAPS_CFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         char desc[256];
         desc[0] = '\0';
         int origError = (int) errType;
-        int tmpError = (int) errType;
         iMesh_getDescription(itapsMesh, desc, sizeof(desc));
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", origError, desc); 
         if (!avtCallback::IssueWarning(msg))
             cerr << msg << endl;
     }
-funcEnd: ;
 
 #ifdef MDSERVER
     // We don't need to keep this thing around on the mdserver, so free it up
@@ -595,6 +593,9 @@ funcEnd: ;
 //
 //    Jeremy Meredith, Wed Mar 27 15:33:20 EDT 2013
 //    iMesh_getDescription no longer needs an error output argument.
+//
+//    David Camp, Mon Nov 10 12:37:21 PST 2014
+//    Added support for the hex9, hex10, hex27 formats.
 //
 // ****************************************************************************
 
@@ -881,22 +882,11 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
             }
             vtkIdType vertIds[8];
             int jj = 0;
-            bool valid = true;
-            for (int idx = offs[i];
-                 idx < ((i+1) < offs_size ? offs[i+1] : offs_size); idx++)
+            for (int idx = offs[i]; idx < offs[i+1]; ++idx)
             {
-                if (jj >= sizeof(vertIds) / sizeof(vertIds[0]))
-                    valid = false;
-                if (valid)
-                    vertIds[jj++] = adjInds[idx];
-                else
-                   jj++;
-            }
-            if (!valid)
-            {
-                debug3 << "Unsupported vert count " << jj
-                       << " for iMesh entity " << i << endl;
-                continue;
+                vertIds[jj++] = adjInds[idx];
+                if( jj == 8 )
+                    break;
             }
             ugrid->InsertNextCell(vtkZoneType, jj, vertIds);
         }
@@ -920,7 +910,6 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
         char desc[256];
         desc[0] = '\0';
         int origError = (int) errType;
-        int tmpError = (int) errType;
         iMesh_getDescription(itapsMesh, desc, sizeof(desc));
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", origError, desc); 
@@ -928,7 +917,6 @@ avtITAPS_CFileFormat::GetMesh(int domain, const char *meshname)
             cerr << msg << endl;
         return 0;
     }
-funcEnd: ;
 }
 
 class coord_t {
@@ -1043,7 +1031,7 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
             p[i] = -1;
         }
 
-        for (j = 0; j < theSets.size(); j++)
+        for (j = 0; j < (int) theSets.size(); j++)
         {
             //
             // Examine this set and any of its subsets, looking for primitive,
@@ -1053,7 +1041,7 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
             //
             int ent_type = -1;
             int max_num_ents = 0;
-            iBase_EntitySetHandle qSet;
+            iBase_EntitySetHandle qSet = theSets[0];
             vector<iBase_EntitySetHandle> setStack;
             setStack.push_back(theSets[j]);
             while (setStack.size())
@@ -1151,7 +1139,6 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
         char desc[256];
         desc[0] = '\0';
         int origError = (int) errType;
-        int tmpError = (int) errType;
         iMesh_getDescription(itapsMesh, desc, sizeof(desc));
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", origError, desc); 
@@ -1160,7 +1147,6 @@ avtITAPS_CFileFormat::GetNodalSubsetVar(int domain, const char *varname,
         return 0;
     }
 
-funcEnd:
     return result;
 }
 
@@ -1337,7 +1323,6 @@ tagFound:
         char desc[256];
         desc[0] = '\0';
         int origError = (int) errType;
-        int tmpError = (int) errType;
         iMesh_getDescription(itapsMesh, desc, sizeof(desc));
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) \"%s\""
             "\nUnable to open file!", origError, desc); 
@@ -1346,7 +1331,6 @@ tagFound:
         return 0;
     }
 
-funcEnd:
     return result;
 }
 

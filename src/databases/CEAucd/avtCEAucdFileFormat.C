@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -270,7 +270,7 @@ avtCEAucdFileFormat::SetUpFiles(void)
         }
     }
     
-    ReadAndProcessDirectory(dir, CheckFileCallback, this);
+    FileFunctions::ReadAndProcessDirectory(dir, CheckFileCallback, this);
 
     setUpFiles = true;
 }

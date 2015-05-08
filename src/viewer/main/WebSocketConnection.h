@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,7 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                              WebSocketConnection.h                           //
+//                              WebSocketConnection.h                        //
 // ************************************************************************* //
 
 #ifndef WEBSOCKET_CONNECTION_H
@@ -152,9 +152,10 @@ public:
 //
 // ****************************************************************************
 
+class AttributeSubject;
 class MapNode;
 class JSONNode;
-class VIEWER_API WebSocketConnection : public QObject, public SocketConnection
+class VIEWER_API WebSocketConnection : public QObject, public AttributeSubjectSocketConnection
 {
     Q_OBJECT
 public:
@@ -164,7 +165,7 @@ public:
 
     virtual int  Fill();
     virtual void Flush();
-    virtual void Flush(AttributeSubject*);
+    virtual void FlushAttr(AttributeSubject*);
     virtual long Size();
     virtual void Write(unsigned char value);
     virtual void Read(unsigned char *address);
@@ -183,8 +184,9 @@ private:
     QWsSocket                 *socket;
     QString messageRead;
     std::vector<QString> messages;
+
 signals:
-    void activated(int);
+    void frameRead(int);
 };
 
 #endif

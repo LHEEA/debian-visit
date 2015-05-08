@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -211,8 +211,8 @@ avtDebugDumpOptions::SetDumpDirectory(const string &odir)
         else if (!(resAttrs & FILE_ATTRIBUTE_DIRECTORY))
             invalidDir = true;
 #else
-        VisItStat_t s;
-        VisItStat(res_dir.c_str(), &s);
+        FileFunctions::VisItStat_t s;
+        FileFunctions::VisItStat(res_dir.c_str(), &s);
         mode_t mode = s.st_mode;
         invalidDir = (!S_ISDIR(mode));
 #endif

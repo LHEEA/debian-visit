@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,6 +86,10 @@ class avtMaterial;
 //    Brad Whitlock, Sun Apr 22 10:29:43 PDT 2012
 //    Double support.
 //
+//    Kevin Griffin, Tue Apr 21 17:41:51 PDT 2015
+//    Added the ExchangeVector method and removed the Exchange*Vector methods.
+//    (* = Float, Double, etc)
+//
 // ****************************************************************************
 
 class DATABASE_API avtNekDomainBoundaries : public avtDomainBoundaries
@@ -103,18 +107,10 @@ class DATABASE_API avtNekDomainBoundaries : public avtDomainBoundaries
     virtual std::vector<vtkDataArray*>     ExchangeScalar(std::vector<int>     domainNum,
                                                bool                  isPointData,
                                                std::vector<vtkDataArray*> scalars);
-
-    virtual std::vector<vtkDataArray*>     ExchangeFloatVector(std::vector<int> domainNum,
-                                               bool                   isPointData,
-                                               std::vector<vtkDataArray*>  vectors);
-
-    virtual std::vector<vtkDataArray*>     ExchangeDoubleVector(std::vector<int> domainNum,
-                                               bool                   isPointData,
-                                               std::vector<vtkDataArray*>  vectors);
-
-    virtual std::vector<vtkDataArray*>     ExchangeIntVector(std::vector<int>  domainNum,
-                                               bool                  isPointData,
-                                               std::vector<vtkDataArray*> vectors);
+    
+    virtual std::vector<vtkDataArray*>     ExchangeVector(std::vector<int> domainNum,
+                                                       bool isPointData,
+                                                       std::vector<vtkDataArray*> vectors);
 
     virtual std::vector<avtMaterial*>      ExchangeMaterial(std::vector<int>   domainNum,
                                               std::vector<avtMaterial*>   mats);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -974,7 +974,8 @@ ViewerMethods::SetNamedSelectionAutoApply(bool val)
 // ****************************************************************************
 
 void
-ViewerMethods::UpdateNamedSelection(const std::string &selName, bool updatePlots)
+ViewerMethods::UpdateNamedSelection(const std::string &selName, bool updatePlots,
+    bool allowCaching)
 {
     //
     // Set the rpc type and arguments.
@@ -983,7 +984,7 @@ ViewerMethods::UpdateNamedSelection(const std::string &selName, bool updatePlots
     state->GetViewerRPC()->SetStringArg1(selName);
     state->GetViewerRPC()->SetBoolFlag(false);
     state->GetViewerRPC()->SetIntArg1(updatePlots?1:0);
-    state->GetViewerRPC()->SetIntArg2(true);
+    state->GetViewerRPC()->SetIntArg2(allowCaching?1:0);
 
     //
     // Issue the RPC.
@@ -3872,6 +3873,32 @@ ViewerMethods::ImportEntireStateWithDifferentSources(const std::string &filename
 }
 
 // ****************************************************************************
+// Method: ViewerMethods::ReadHostProfilesFromDirectory
+//
+// Purpose:
+//   Tells the viewer to read host profiles from a specific directory.
+//
+// Arguments:
+//   dir   : The directory from which host profiles will be read.
+//   clear : Whether to clear the list prior to reading.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Dec 15 15:08:45 PST 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+ViewerMethods::ReadHostProfilesFromDirectory(const std::string &dir, bool clear)
+{
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ReadHostProfilesFromDirectoryRPC);
+    state->GetViewerRPC()->SetDatabase(dir);
+    state->GetViewerRPC()->SetBoolFlag(clear);
+    state->GetViewerRPC()->Notify();
+}
+
+// ****************************************************************************
 // Method: ViewerMethods::SetCenterOfRotation
 //
 // Purpose: 
@@ -5450,6 +5477,27 @@ ViewerMethods::SetBackendType(int flag)
     state->GetViewerRPC()->SetRPCType(
         ViewerRPC::SetBackendTypeRPC);
     state->GetViewerRPC()->SetIntArg1(flag);
+    state->GetViewerRPC()->Notify();
+}
+
+
+// ****************************************************************************
+//  Method: ViewerMethods::SetRemoveDuplicateNodes
+//
+//  Purpose: Tells viewer to set the flag for removing duplicate nodes
+//           in the pipeline.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   December 16, 2014
+//
+// ****************************************************************************
+
+void
+ViewerMethods::SetRemoveDuplicateNodes(bool flag)
+{
+    state->GetViewerRPC()->SetRPCType(
+        ViewerRPC::SetRemoveDuplicateNodesRPC);
+    state->GetViewerRPC()->SetBoolFlag(flag);
     state->GetViewerRPC()->Notify();
 }
 

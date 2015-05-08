@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -299,6 +299,9 @@ avtLineoutFilter::VerifyInput(void)
 //   Brad Whitlock, Wed Jul 27 13:20:53 PDT 2011
 //   Fix trailing slash problem.
 //
+//   Kathleen Biagas, Mon Feb  9 15:34:07 PST 2015
+//   Do not use interval tree if spatial meta data was invalidated.
+//
 // ****************************************************************************
 
 
@@ -323,6 +326,11 @@ avtLineoutFilter::ModifyContract(avtContract_p in_contract)
     {
         rv->GetDataRequest()->TurnZoneNumbersOn();
         useOriginalCells = true;
+        return rv;
+    }
+
+    if (!GetInput()->GetInfo().GetValidity().GetSpatialMetaDataPreserved())
+    {
         return rv;
     }
 

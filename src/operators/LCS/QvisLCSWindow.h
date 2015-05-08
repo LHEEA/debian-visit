@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -126,7 +126,9 @@ class QvisLCSWindow : public QvisOperatorWindow
     void limitMaxDistanceChanged(bool);
 
     void operationTypeChanged(int);
+    void eigenComponentChanged(int);
     void operatorTypeChanged(int);
+ 
     void terminationTypeButtonGroupChanged(int);
     void clampLogValuesChanged(bool);
 
@@ -188,6 +190,8 @@ class QvisLCSWindow : public QvisOperatorWindow
     QCheckBox *limitMaxDistance;
 
     QComboBox *operationType;
+    QLabel    *eigenComponentLabel;
+    QComboBox *eigenComponent;
     QComboBox *operatorType;
     QCheckBox *clampLogValues;
 

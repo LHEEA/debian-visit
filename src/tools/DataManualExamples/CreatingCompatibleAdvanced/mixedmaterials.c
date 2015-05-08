@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -85,7 +85,6 @@ int mixlen = 15;
 int
 main(int argc, char *argv[])
 {
-    int i;
     int dims[2], mdims[2], ndims;
     float xc[] = {0., 0.5, 1.0, 1.5, 2.0};
     float yc[] = {0., 0.5, 1.0, 1.5};

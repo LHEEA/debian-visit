@@ -361,6 +361,9 @@
 #    Eric Brugger, Wed Oct 22 11:33:35 PDT 2014
 #    I added a host profile for surface.
 #
+#    Kathleen Biagas, Mon Jan 26 07:46:28 PST 2015
+#    Removed host profile for edge.
+#
 #-----------------------------------------------------------------------
 
 Compress=COMPRESS
@@ -731,7 +734,7 @@ if [ "$test" = "true" ]; then
     echo "Testing utah configuration..."
     rm -rf $dir
     $0 -c utah $version $platform $dir > /dev/null 2>&1
-    files=`ls $dir/$version/.visit/hosts/host_utah*` 
+    files=`ls $dir/$version/.visit/hosts/host_utah*`
     if [ "$files" == "" ]; then
        echo "failed"
        exit 1
@@ -1053,11 +1056,11 @@ elif [ "$config" = "llnl_open_cz" ]; then
    # Copy the files explicitly to avoid the rzgw hosts. We're most likely installing on a cz machine.
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_aztec.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_cab.xml      "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_edge.xml     "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_hera.xml     "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_oslic.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_sierra.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_surface.xml     "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_vulcan.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_slac_red.xml      "$dir"/$version+/.visit/hosts/
 
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/customlauncher         "$dir"/$version+/bin/

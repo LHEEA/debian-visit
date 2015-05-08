@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -78,7 +78,7 @@ SET_UP_THIRD_PARTY(UINTAH lib ${INCLUDE_TMP_DIR}
 #  CCA_Components_Solvers
 #  CCA_Components_SwitchingCriteria
   CCA_Ports
-  Core_Basis
+#  Core_Basis
   Core_Containers
   Core_DataArchive
   Core_Datatypes

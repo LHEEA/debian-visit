@@ -1,17 +1,40 @@
-##**************************************************
-## ViSUS Visualization Project                    **
-## Copyright (c) 2010-2014 University of Utah     **
-## Scientific Computing and Imaging Institute     **
-## 72 S Central Campus Drive, Room 3750           **
-## Salt Lake City, UT 84112                       **
-##                                                **
-## For information about this project see:        **
-## http://www.pascucci.org/visus/                 **
-##                                                **
-##      or contact: pascucci@sci.utah.edu         **
-##                                                **
-##**************************************************/
-
+#*****************************************************************************
+#
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Produced at the Lawrence Livermore National Laboratory
+# LLNL-CODE-442911
+# All rights reserved.
+#
+# This file is  part of VisIt. For  details, see https://visit.llnl.gov/.  The
+# full copyright notice is contained in the file COPYRIGHT located at the root
+# of the VisIt distribution or at http://www.llnl.gov/visit/copyright.html.
+#
+# Redistribution  and  use  in  source  and  binary  forms,  with  or  without
+# modification, are permitted provided that the following conditions are met:
+#
+#  - Redistributions of  source code must  retain the above  copyright notice,
+#    this list of conditions and the disclaimer below.
+#  - Redistributions in binary form must reproduce the above copyright notice,
+#    this  list of  conditions  and  the  disclaimer (as noted below)  in  the
+#    documentation and/or other materials provided with the distribution.
+#  - Neither the name of  the LLNS/LLNL nor the names of  its contributors may
+#    be used to endorse or promote products derived from this software without
+#    specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT  HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR  IMPLIED WARRANTIES, INCLUDING,  BUT NOT  LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND  FITNESS FOR A PARTICULAR  PURPOSE
+# ARE  DISCLAIMED. IN  NO EVENT  SHALL LAWRENCE  LIVERMORE NATIONAL  SECURITY,
+# LLC, THE  U.S.  DEPARTMENT OF  ENERGY  OR  CONTRIBUTORS BE  LIABLE  FOR  ANY
+# DIRECT,  INDIRECT,   INCIDENTAL,   SPECIAL,   EXEMPLARY,  OR   CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT  LIMITED TO, PROCUREMENT OF  SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF  USE, DATA, OR PROFITS; OR  BUSINESS INTERRUPTION) HOWEVER
+# CAUSED  AND  ON  ANY  THEORY  OF  LIABILITY,  WHETHER  IN  CONTRACT,  STRICT
+# LIABILITY, OR TORT  (INCLUDING NEGLIGENCE OR OTHERWISE)  ARISING IN ANY  WAY
+# OUT OF THE  USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+# DAMAGE.
+#
+#*****************************************************************************
 
 # This module finds if ViSUS is installed, and sets the following variables
 # indicating where it is:
@@ -75,7 +98,11 @@ IF (VISUS_INCLUDE_DIR)
    IF (VISUS_JUCE)
     FIND_LIBRARY(VISUS_GUI_IMPL_LIB Juce                   ${VISUS_DIR}/lib NO_DEFAULT_PATH)
    ENDIF()
-   FIND_LIBRARY(VISUS_CURL_LIB      curl                   ${VISUS_DIR}/lib NO_DEFAULT_PATH)
+   IF(WIN32)
+     FIND_LIBRARY(VISUS_CURL_LIB      libcurl                ${VISUS_DIR}/lib NO_DEFAULT_PATH)
+   ELSE()
+     FIND_LIBRARY(VISUS_CURL_LIB      curl                   ${VISUS_DIR}/lib NO_DEFAULT_PATH)
+   ENDIF()
    FIND_LIBRARY(VISUS_FREEIMAGE_LIB FreeImage              ${VISUS_DIR}/lib NO_DEFAULT_PATH)
    FIND_LIBRARY(VISUS_XML_LIB       tinyxml                ${VISUS_DIR}/lib NO_DEFAULT_PATH)
    FIND_LIBRARY(VISUS_LIBZ_LIB      libz                   ${VISUS_DIR}/lib NO_DEFAULT_PATH)
@@ -123,12 +150,16 @@ IF (VISUS_INCLUDE_DIR)
       SET (VISUS_LIBRARIES 
          ${VISUS_CORE_LIBRARIES}
          ${VISUS_ADDL_LIBRARIES}
+         ${VISUS_DIR}/lib/hdf.lib
+         ${VISUS_DIR}/lib/mfhdf.lib
+         ${VISUS_DIR}/lib/xdr.lib
          Vfw32.lib
          Version.lib
          Imm32.lib
          Winmm.lib;
          shlwapi.lib
          Wininet.lib
+         psapi.lib
      )
 
    ###########################################

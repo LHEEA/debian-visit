@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -137,7 +137,7 @@ class PIPELINE_API avtDataSelection
 
     virtual const char *    GetType() const = 0;
     virtual bool            operator==(const avtDataSelection &) const
-                                { EXCEPTION0(ImproperUseException); };
+                                { EXCEPTION0(ImproperUseException); return false; };
     virtual std::string     DescriptionString(void) = 0;
 
   private:

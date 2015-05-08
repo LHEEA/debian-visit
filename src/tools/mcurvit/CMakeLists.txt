@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -96,7 +96,9 @@ ${VISIT_SOURCE_DIR}/avt/Pipeline/Sinks
 ${VISIT_SOURCE_DIR}/avt/Pipeline/Sources
 ${VISIT_SOURCE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_SOURCE_DIR}/gui
+${VISIT_SOURCE_DIR}/viewer/core
 ${VISIT_SOURCE_DIR}/viewer/main
+${VISIT_SOURCE_DIR}/viewer/main/ui
 ${VISIT_SOURCE_DIR}/viewer/rpc
 ${VISIT_SOURCE_DIR}/vtkqt
 ${VTK_INCLUDE_DIRS}
@@ -127,7 +129,7 @@ IF(APPLE)
     SET(MACOSX_BUNDLE_LONG_VERSION_STRING  "MCurveIt version ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_SHORT_VERSION_STRING "MCurveIt ${VISIT_VERSION}")
     SET(MACOSX_BUNDLE_BUNDLE_VERSION       ${VISIT_VERSION})
-    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC")
+    SET(MACOSX_BUNDLE_COPYRIGHT            "Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC")
 ELSE(APPLE)
     ADD_EXECUTABLE(mcurvit ${VISIT_APPLICATION_STYLE} ${MCURVIT_SOURCES} ${STATIC_SOURCES})
 ENDIF(APPLE)

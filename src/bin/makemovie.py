@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # All rights reserved.
 #
@@ -2338,7 +2338,12 @@ class MakeMovie(object):
             # Determine the name of the movie template base class's file.
             prefix = ""
             if os.name == "nt":
-                prefix = sys.executable[:-7] + "resources" + self.slash
+                pos = string.find(sys.executable[:-7], "exe")
+                if pos != -1:
+                    # Development version
+                    prefix = sys.executable[:pos] + "resources" + self.slash
+                else:
+                    prefix = sys.executable[:-7] + "resources" + self.slash
             else:
                 pos = string.find(sys.argv[0], "exe" + self.slash + "cli")
                 if pos != -1:
@@ -2629,6 +2634,9 @@ class MakeMovie(object):
     #   Brad Whitlock, Wed Apr  3 16:30:39 PDT 2013
     #   Rename to EncodeMPEGMovie_old and remove ffmpeg code.
     #
+    #   Kathleen Biagas, Tue Jan 13 11:00:19 PST 2015
+    #   Use mpeg2encode directly (instead of visit -mpeg2encode)
+    #
     ###########################################################################
 
     def EncodeMPEGMovie_old(self, moviename, imageFormatString, xres, yres):
@@ -2732,7 +2740,7 @@ class MakeMovie(object):
             f.close();
             # Create the movie
             if (sys.platform != "win32"):
-                command = "visit -v %s -mpeg2encode %s %s" % (Version(), paramFile, absMovieName)
+                command = "mpeg2encode %s %s" % (paramFile, absMovieName)
             else:
                 command = "mpeg2encode.exe "  + '"' + paramFile + '" "' + absMovieName + '"'
             self.Debug(1, command)

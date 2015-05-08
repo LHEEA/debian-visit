@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ class CreateBondsGUIPluginInfo : public virtual GUIOperatorPluginInfo, public vi
     virtual const char **XPMIconData() const;
 };
 
-class CreateBondsViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual CreateBondsCommonPluginInfo
+class CreateBondsViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual CreateBondsCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -96,14 +96,11 @@ class CreateBondsViewerPluginInfo : public virtual ViewerOperatorPluginInfo, pub
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
-    virtual const char **XPMIconData() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -111,7 +108,13 @@ class CreateBondsViewerPluginInfo : public virtual ViewerOperatorPluginInfo, pub
     static CreateBondsAttributes *clientAtts;
 };
 
-class CreateBondsEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual CreateBondsCommonPluginInfo
+class CreateBondsViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual CreateBondsViewerEnginePluginInfo
+{
+  public:
+    virtual const char **XPMIconData() const;
+};
+
+class CreateBondsEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual CreateBondsViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

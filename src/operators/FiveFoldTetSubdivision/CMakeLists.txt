@@ -23,11 +23,13 @@ QvisFiveFoldTetSubdivisionWindow.h
 )
 
 SET(LIBV_SOURCES
+FiveFoldTetSubdivisionViewerEnginePluginInfo.C
 FiveFoldTetSubdivisionViewerPluginInfo.C
 ${COMMON_SOURCES}
 )
 
 SET(LIBE_SOURCES
+FiveFoldTetSubdivisionViewerEnginePluginInfo.C
 FiveFoldTetSubdivisionEnginePluginInfo.C
 avtFiveFoldTetSubdivisionFilter.C
 ${COMMON_SOURCES}
@@ -74,7 +76,9 @@ ${VISIT_INCLUDE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_INCLUDE_DIR}/gui
 ${VISIT_INCLUDE_DIR}/mdserver/proxy
 ${VISIT_INCLUDE_DIR}/mdserver/rpc
+${VISIT_INCLUDE_DIR}/viewer/core
 ${VISIT_INCLUDE_DIR}/viewer/main
+${VISIT_INCLUDE_DIR}/viewer/main/ui
 ${VISIT_INCLUDE_DIR}/viewer/proxy
 ${VISIT_INCLUDE_DIR}/viewer/rpc
 ${VISIT_INCLUDE_DIR}/winutil
@@ -86,7 +90,6 @@ ${QT_QTGUI_INCLUDE_DIR}
 ${EAVL_INCLUDE_DIR} 
 ${VTK_INCLUDE_DIRS} 
 ${PYINCLUDES}
-${BOOST_INCLUDE_DIR}
 )
 
 
