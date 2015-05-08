@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -448,8 +448,7 @@ avtImageColleague::UpdateImage(std::string filename)
 {
     bool retval = true;
 
-    if (filename.size() > 0 && filename[0] == '~')
-        filename = ExpandUserPath(filename);
+    filename = FileFunctions::ExpandPath(filename);
 
     // Get a reader for filename if possible.
     vtkImageReader2 *r =

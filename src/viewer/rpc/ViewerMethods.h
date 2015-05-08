@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -176,6 +176,9 @@ class ViewerState;
 //   Cameron Christensen, Tuesday, June 10, 2014
 //   Added SetBackendType.
 //
+//   Kathleen Biagas, Mon Dec 22 10:19:45 PST 2014
+//   Add SetRemoveDuplicateNodes.
+//
 // ****************************************************************************
 
 class VIEWER_RPC_API ViewerMethods
@@ -251,7 +254,7 @@ public:
                             const std::string &simName);
     void SaveNamedSelection(const std::string &selName);
     void SetNamedSelectionAutoApply(bool);
-    void UpdateNamedSelection(const std::string &selName, bool updatePlots);
+    void UpdateNamedSelection(const std::string &selName, bool updatePlots, bool allowCaching=true);
     void UpdateNamedSelection(const std::string &selName, const SelectionProperties &props,
                               bool updatePlots, bool allowCaching);
     void InitializeNamedSelectionVariables(const std::string &selName);
@@ -402,6 +405,7 @@ public:
     void SetCreateVectorMagnitudeExpressions(int flag);
     void SetPrecisionType(int flag);
     void SetBackendType(int flag);
+    void SetRemoveDuplicateNodes(bool flag);
     
     void SetSuppressMessages(int flag);
 
@@ -415,6 +419,7 @@ public:
     void ImportEntireStateWithDifferentSources(const std::string &filename,
                                                bool inVisItDir,
                                                const stringVector &sources);
+    void ReadHostProfilesFromDirectory(const std::string &dir, bool clear);
 
     void SetPlotSILRestriction();
 

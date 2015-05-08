@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,7 @@
 #include <visit-config.h>
 
 #include <AttributeSubject.h>
+#include <AttributeSubjectSerialize.h>
 #include <MapNode.h>
 #include <cstdlib>
 
@@ -851,7 +852,7 @@ QWsSocket::initializeWebSocket(const QString &request, QString &response)
 //
 // ****************************************************************************
 
-WebSocketConnection::WebSocketConnection(QTcpSocket* tcpSocket,const QString& request) : SocketConnection(tcpSocket->socketDescriptor()) //DESCRIPTOR descriptor_) : SocketConnection(descriptor_) /*: buffer()*/
+WebSocketConnection::WebSocketConnection(QTcpSocket* tcpSocket,const QString& request) : AttributeSubjectSocketConnection(tcpSocket->socketDescriptor()) //DESCRIPTOR descriptor_) : SocketConnection(descriptor_) /*: buffer()*/
 {
     QString response = "";
 
@@ -897,7 +898,7 @@ WebSocketConnection::ReadFrame(const QString &str)
     //test if object..
     if(!str.startsWith("{") || !str.endsWith("}"))
     {
-        std::cerr << "Incomplete Object..:" << str.toStdString() << std::endl;
+        std::cout << "Incomplete Object..:" << str.toStdString() << std::endl;
         while(socket->internalSocket()->bytesAvailable())
             socket->internalSocket()->readAll();
         return;
@@ -906,7 +907,7 @@ WebSocketConnection::ReadFrame(const QString &str)
     messageRead = str;
     messages.push_back(str);
 
-    emit activated(0);
+    emit frameRead(socket->internalSocket()->socketDescriptor());
 }
 
 // ****************************************************************************
@@ -1054,29 +1055,9 @@ WebSocketConnection::Fill()
         std::string message = messageRead.toStdString();
         messageRead = "";
 
+        JSONNode node;
         try{
-            //node.Parse(message);
-
-            while(message.size() > 0)
-            {
-                JSONNode node;
-
-                size_t amt = node.Parse(message);
-
-                //std::cout << "message processing: " << node.ToString() << " " << amt << " " << message.size() << std::endl;
-
-                int guido = node["id"].GetInt();
-
-                JSONNode contents = node["contents"];
-                JSONNode metadata = node["metadata"];
-
-                res += SocketConnection::Write(guido, contents, metadata); //Write(guido,&mapnode);
-
-                if(amt >= message.size())
-                    break;
-
-                message = message.substr(amt);
-            }
+        node.Parse(message);
         }
         catch(...)
         {
@@ -1084,6 +1065,23 @@ WebSocketConnection::Fill()
             std::cerr << "message: " << message << std::endl;
             continue;
         }
+
+        int guido = node["id"].GetInt();
+        JSONNode contents = node["contents"];
+        JSONNode metadata = node["metadata"];
+
+        /// With the information I have I could probably
+        /// just use JSONNode to convert completely..
+        /// but that would leave MapNode incomplete..
+
+        //MapNode mapnode(contents, metadata, false);
+
+        //std::cout << mapnode.ToXML(false) << std::endl;
+        //std::cout << mapnode.ToJSON(false) << std::endl;
+
+        AttributeSubjectSerialize ser;
+        ser.SetConnection(this);
+        res += ser.Write(guido, contents, metadata); //Write(guido,&mapnode);
     }
 
     messages.clear();
@@ -1115,7 +1113,7 @@ WebSocketConnection::Fill()
 //
 // ****************************************************************************
 void
-WebSocketConnection::Flush(AttributeSubject *subject)
+WebSocketConnection::FlushAttr(AttributeSubject *subject)
 {
 //    std::cout << subject->TypeName() << " "
 //              << subject->CalculateMessageSize(*this)
@@ -1127,37 +1125,14 @@ WebSocketConnection::Flush(AttributeSubject *subject)
     try{
         if(subject->GetSendMetaInformation())
         {
-            JSONNode meta;
-            JSONNode node;
-
-            subject->WriteAPI(meta);
-
-            node["id"] = subject->GetGuido();
-            node["typename"] = subject->TypeName();
-            node["api"] = meta; //.ToJSONNode(false,false);
-
-            std::string output = node.ToString();
-
-            QString qoutput = output.c_str();
+            QString qoutput = serializeMetaData(subject).c_str();
             socket->write(qoutput);
 
             if(socket->internalSocket()->state() != QAbstractSocket::UnconnectedState)
                 socket->internalSocket()->waitForBytesWritten();
         }
 
-        JSONNode child, metadata;
-        JSONNode node;
-
-        subject->Write(child);
-        subject->WriteMetaData(metadata);
-        node["id"] = subject->GetGuido();
-        node["typename"] = subject->TypeName();
-        node["contents"] = child; //.ToJSONNode(false,true);
-        node["metadata"] = metadata;
-
-        std::string output = node.ToString();
-
-        QString qoutput = output.c_str();
+        QString qoutput = serializeAttributeSubject(subject).c_str();
         socket->write(qoutput);
 
         if(socket->internalSocket()->state() != QAbstractSocket::UnconnectedState)

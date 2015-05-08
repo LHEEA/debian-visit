@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -35,26 +35,28 @@
 * DAMAGE.
 *
 *****************************************************************************/
+#include <ViewerServerManager.h>
 
 #include <visit-config.h>
 #include <snprintf.h>
 
-#include <QSocketNotifier>
-
-#include <ViewerServerManager.h>
-#include <Connection.h>
-#include <HostProfileList.h>
-#include <MachineProfile.h>
-#include <LauncherProxy.h>
-#include <RemoteProxyBase.h>
-#include <LostConnectionException.h>
-#include <CouldNotConnectException.h>
 #include <CancelledConnectException.h>
-#include <ViewerConnectionProgressDialog.h>
-#include <ViewerPasswordWindow.h>
+#include <Connection.h>
+#include <CouldNotConnectException.h>
+#include <HostProfileList.h>
+#include <LauncherProxy.h>
+#include <LostConnectionException.h>
+#include <MachineProfile.h>
+#include <RemoteProxyBase.h>
+
+#include <ViewerConnectionPrinter.h>
+#include <ViewerConnectionProgress.h>
+#include <ViewerFactory.h>
+#include <ViewerMessaging.h>
 #include <ViewerProperties.h>
-#include <ViewerSubject.h>
 #include <ViewerRemoteProcessChooser.h>
+#include <ViewerState.h>
+#include <ViewerText.h>
 
 #include <DebugStream.h>
 #include <avtCallback.h>
@@ -64,21 +66,18 @@
 #include <string>
 
 //
-// Global variables.
-//
-extern ViewerSubject *viewerSubject;
-
-//
 // Static members.
 //
-HostProfileList *ViewerServerManager::clientAtts = 0;
-int ViewerServerManager::debugLevel = 0;
-bool ViewerServerManager::bufferDebug = false;
 std::string ViewerServerManager::localHost("localhost");
 stringVector ViewerServerManager::arguments;
 ViewerServerManager::LauncherMap ViewerServerManager::launchers;
 void * ViewerServerManager::cbData[2] = {0,0};
-bool ViewerServerManager::sshTunnelingForcedOn = false;
+void (*ViewerServerManager::OpenWithEngineCB)(const std::string &, 
+                                              const stringVector &args,
+                                              void *) = NULL;
+void *ViewerServerManager::OpenWithEngineCBData = NULL;
+bool (*ViewerServerManager::LaunchProgressCB)(void *, int) = NULL;
+void *ViewerServerManager::LaunchProgressCBData = NULL;
 
 // ****************************************************************************
 // Method: ViewerServerManager::ViewerServerManager
@@ -95,7 +94,7 @@ bool ViewerServerManager::sshTunnelingForcedOn = false;
 //
 // ****************************************************************************
 
-ViewerServerManager::ViewerServerManager() : ViewerBase(0)
+ViewerServerManager::ViewerServerManager() : ViewerBase()
 {
 }
 
@@ -114,60 +113,6 @@ ViewerServerManager::ViewerServerManager() : ViewerBase(0)
 
 ViewerServerManager::~ViewerServerManager()
 {
-}
-
-// ****************************************************************************
-// Method: ViewerServerManager::GetClientAtts
-//
-// Purpose: 
-//   Returns a pointer to the host profile list.
-//
-// Returns:    A pointer to the host profile list.
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri May 3 16:12:56 PST 2002
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-HostProfileList *
-ViewerServerManager::GetClientAtts()
-{
-    //
-    // If the client attributes haven't been allocated then do so.
-    //
-    if (clientAtts == 0)
-    {
-        clientAtts = new HostProfileList;
-    }
-
-    return clientAtts;
-}
-
-// ****************************************************************************
-// Method: ViewerServerManager::SetDebugLevel
-//
-// Purpose: 
-//   Sets the debug level that is passed to the engines.
-//
-// Arguments:
-//   level : The debug level.
-//
-// Programmer: Brad Whitlock
-// Creation:   Mon Nov 27 17:29:01 PST 2000
-//
-// Modifications:
-//   
-//    Mark C. Miller, Tue Apr 21 14:24:18 PDT 2009
-//    Added bufferDebug to control buffering of debug logs.
-// ****************************************************************************
-
-void
-ViewerServerManager::SetDebugLevel(int level, bool doBuf)
-{
-    debugLevel = level;
-    bufferDebug = doBuf;
 }
 
 // ****************************************************************************
@@ -288,14 +233,14 @@ MachineProfile
 ViewerServerManager::GetMachineProfile(const std::string &host) const
 {
     const MachineProfile *profile =
-         clientAtts->GetMachineProfileForHost(host);
+         GetViewerState()->GetHostProfileList()->GetMachineProfileForHost(host);
     MachineProfile p2;
     if(profile != NULL)
         p2 = *profile;
     else
         p2 = MachineProfile::Default(host);
 
-    if (sshTunnelingForcedOn)
+    if (GetViewerProperties()->GetForceSSHTunneling())
     {
         p2.SetTunnelSSH(true);
     }
@@ -327,13 +272,13 @@ ViewerServerManager::AddArguments(RemoteProxyBase *component,
     const stringVector &args)
 {
     // Add arguments to the mdserver.
-    if(debugLevel > 0)
+    if(GetViewerProperties()->GetDebugLevel() > 0)
     {
         char temp[10];
-        if (bufferDebug)
-            SNPRINTF(temp, 10, "%db", debugLevel);
+        if (GetViewerProperties()->GetBufferDebug())
+            SNPRINTF(temp, 10, "%db", GetViewerProperties()->GetDebugLevel());
         else
-            SNPRINTF(temp, 10, "%d", debugLevel);
+            SNPRINTF(temp, 10, "%d", GetViewerProperties()->GetDebugLevel());
         component->AddArgument("-debug");
         component->AddArgument(temp);
     }
@@ -352,10 +297,10 @@ ViewerServerManager::AddArguments(RemoteProxyBase *component,
 }
 
 // ****************************************************************************
-// Method: ViewerServerManager::CreateConnectionProgressDialog
+// Method: ViewerServerManager::CreateConnectionProgress
 //
 // Purpose: 
-//   Creates a connection progress dialog that is hooked up to the component
+//   Creates a connection progress object that is hooked up to the component
 //   that we're launching. This lets us see how things are launched and lets
 //   us cancel the launch if we want.
 //
@@ -367,53 +312,38 @@ ViewerServerManager::AddArguments(RemoteProxyBase *component,
 // Creation:   Tue May 6 14:02:41 PST 2003
 //
 // Modifications:
-//   Brad Whitlock, Mon May 19 17:40:40 PST 2003
-//   I made the timeout for showing the window be zero if the component
-//   being launched is remote or parallel.
-//
-//   Brad Whitlock, Wed Oct 8 14:49:45 PST 2003
-//   I made the timeout be zero on MacOS X. This can be undone later when
-//   VisIt launches faster there.
-//
-//   Brad Whitlock, Tue May 27 15:54:41 PDT 2008
-//   VisIt is fast on Intel Macs so make the timeout be non-zero.
-//
-//   Brad Whitlock, Tue Apr 14 11:31:48 PDT 2009
-//   Use ViewerProperties.
-//
-//   Brad Whitlock, Tue Nov 29 16:11:06 PST 2011
-//   Remove some arguments.
+//   Brad Whitlock, Sat Sep  6 00:15:33 PDT 2014
+//   Use factory.
 //
 // ****************************************************************************
 
-ViewerConnectionProgressDialog *
-ViewerServerManager::CreateConnectionProgressDialog(const std::string &host)
+ViewerConnectionProgress *
+ViewerServerManager::CreateConnectionProgress(const std::string &host)
 {
-    ViewerConnectionProgressDialog *dialog = 0;
+    ViewerConnectionProgress *progress = NULL;
 #ifdef HAVE_THREADS
     //
     // Set the engine proxy's progress callback.
     //
-    if(!GetViewerProperties()->GetNowin())
-    {
-        // Create a new connection dialog.
-        dialog = new ViewerConnectionProgressDialog(host.c_str());
-    }
+    progress = GetViewerFactory()->CreateConnectionProgress();
+    if(progress != NULL)
+        progress->SetHostName(host);
 #endif
 
-    return dialog;
+    return progress;
 }
 
 // ****************************************************************************
-// Method: ViewerServerManager::SetupConnectionProgressDialog
+// Method: ViewerServerManager::SetupConnectionProgress
 //
 // Purpose: 
-//   Hook up the dialog to the component that we're launching. This lets us 
-//   see how things are launched and lets us cancel the launch if we want.
+//   Hook up the progress object to the component that we're launching. This
+//   lets us see how things are launched and lets us cancel the launch if 
+//   we want.
 //
 // Arguments:
 //   component : The component we're hooking up.
-//   dialog    : The dialog that we're initializing.
+//   progress  : The progress object that we're initializing.
 //
 // Returns:    
 //
@@ -423,33 +353,29 @@ ViewerServerManager::CreateConnectionProgressDialog(const std::string &host)
 // Creation:   Tue Nov 29 19:51:10 PST 2011
 //
 // Modifications:
+//    Brad Whitlock, Tue Sep  2 13:01:25 PDT 2014
+//    Changed how the callbacks are set up.
 //   
 // ****************************************************************************
 
 void
-ViewerServerManager::SetupConnectionProgressDialog(RemoteProxyBase *component,
-    ViewerConnectionProgressDialog *dialog)
+ViewerServerManager::SetupConnectionProgress(RemoteProxyBase *component,
+    ViewerConnectionProgress *progress)
 {
 #ifdef HAVE_THREADS
-    if(dialog != NULL)
+    if(progress != NULL)
     {
-        // Set some properties on the dialog.
-        dialog->setParallel(component->Parallel());
-        dialog->setComponentName(component->GetComponentName().c_str());
+        // Set some properties on the object.
+        progress->SetParallel(component->Parallel());
+        progress->SetComponentName(component->GetComponentName());
         int timeout = (component->Parallel() ||
-                       !HostIsLocalHost(dialog->getHostName().toStdString())) ? 0 : 4000;
-        dialog->setTimeout(timeout);    
+                       !HostIsLocalHost(progress->GetHostName())) ? 0 : 4000;
+        progress->SetTimeout(timeout);    
 
         // Install a callback with the component
-        cbData[0] = (void *)viewerSubject;
-        cbData[1] = (void *)dialog;
-        component->SetProgressCallback(ViewerSubject::LaunchProgressCB,
-                                       cbData);
-
-        // Register the dialog with the password window so we can set
-        // the dialog's timeout to zero if we have to prompt for a
-        // password.
-        ViewerPasswordWindow::SetConnectionProgressDialog(dialog);
+        cbData[0] = (void *)LaunchProgressCBData;
+        cbData[1] = (void *)progress;
+        component->SetProgressCallback(LaunchProgressCB, cbData);
     }
 #endif
 }
@@ -571,16 +497,20 @@ ViewerServerManager::SendKeepAlivesToLaunchers()
 //   I added the ability to use a gateway machine when connecting to a
 //   remote host.
 //
+//   Brad Whitlock, Tue Sep  2 13:02:12 PDT 2014
+//   I changed how the launch callback gets set up.
+//
 // ****************************************************************************
 
 void
 ViewerServerManager::StartLauncher(const std::string &host,
-     const std::string &visitPath, ViewerConnectionProgressDialog *dialog)
+     const std::string &visitPath, ViewerConnectionProgress *progress)
 {
     if(launchers.find(host) == launchers.end())
     {
         MachineProfile profile;
-        const MachineProfile *mp = clientAtts->GetMachineProfileForHost(host);
+        const MachineProfile *mp = GetViewerState()->GetHostProfileList()->
+            GetMachineProfileForHost(host);
         bool shouldShareBatchJob = false;
         if (mp != 0)
         {
@@ -596,8 +526,11 @@ ViewerServerManager::StartLauncher(const std::string &host,
 
             chooser->ClearCache(host);
 
-            if (! chooser->SelectProfile(clientAtts, host, false, profile))
+            if (! chooser->SelectProfile(GetViewerState()->GetHostProfileList(),
+                                         host, false, profile))
+            {
                 return;
+            }
         }
 
         if(HostIsLocalHost(host))
@@ -623,15 +556,14 @@ ViewerServerManager::StartLauncher(const std::string &host,
 
         TRY
         {
-            // If we're reusing the dialog, set the launcher's progress
+            // If we're reusing the progress, set the launcher's progress
             // callback function so that the window pops up.
-            if(dialog)
+            if(progress != NULL)
             {
-                cbData[0] = (void *)viewerSubject;
-                cbData[1] = (void *)dialog;
-                newLauncher->SetProgressCallback(
-                    ViewerSubject::LaunchProgressCB, cbData);
-                dialog->setIgnoreHide(true);
+                cbData[0] = (void *)LaunchProgressCBData;
+                cbData[1] = (void *)progress;
+                newLauncher->SetProgressCallback(LaunchProgressCB, cbData);
+                progress->SetIgnoreHide(true);
             }
 
             //
@@ -642,13 +574,13 @@ ViewerServerManager::StartLauncher(const std::string &host,
 
             // Create a socket notifier for the launcher's data socket so
             // we can read remote console output as it is forwarded.
-            launchers[host].notifier = new ViewerConnectionPrinter(
-                 newLauncher->GetWriteConnection(1));
+            launchers[host].notifier = GetViewerFactory()->CreateConnectionPrinter();
+            launchers[host].notifier->SetConnection(newLauncher->GetWriteConnection(1));
 
-            // Set the dialog's information back to the previous values.
-            if(dialog)
+            // Set the progress' information back to the previous values.
+            if(progress != NULL)
             {
-                dialog->setIgnoreHide(false);
+                progress->SetIgnoreHide(false);
             }
         }
         CATCH(VisItException)
@@ -705,9 +637,8 @@ ViewerServerManager::OpenWithLauncher(
         TRY
         {
             // We use the data argument to pass in a pointer to the connection
-            // progress window.
-            ViewerConnectionProgressDialog *dialog =
-                (ViewerConnectionProgressDialog *)data;
+            // progress object.
+            ViewerConnectionProgress *progress = (ViewerConnectionProgress *)data;
 
             // Search the args list and see if we've supplied the path to
             // the visit executable.
@@ -722,7 +653,7 @@ ViewerServerManager::OpenWithLauncher(
             }
 
             // Try to start a launcher on remoteHost.
-            StartLauncher(remoteHost, visitPath, dialog);
+            StartLauncher(remoteHost, visitPath, progress);
 
             // Try to make the launcher launch the process.
             if(launchers.find(remoteHost) == launchers.end())
@@ -765,36 +696,6 @@ ViewerServerManager::OpenWithLauncher(
     {
         EXCEPTION0(CouldNotConnectException);
     }
-}
-
-// ****************************************************************************
-// Method: ViewerServerManager::OpenWithEngine
-//
-// Purpose: 
-//   This callback function is used when we want to launch components via the
-//   engine instead of the VCL.
-//
-// Arguments:
-//   remoteHost : The name of the computer where we want the component to run.
-//   args       : The command line to run on the remote machine.
-//   data       : Optional callback data.
-//
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Nov 29 16:35:53 PST 2011
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-ViewerServerManager::OpenWithEngine(const std::string &remoteHost, 
-    const stringVector &args, void *data)
-{
-    ViewerSubject::OpenWithEngine(remoteHost, args, data);
 }
 
 // ****************************************************************************
@@ -851,7 +752,7 @@ ViewerServerManager::SimConnectThroughLauncher(const std::string &remoteHost,
             // progress window.
             typedef struct {
                 std::string h; int p; std::string k;
-                ViewerConnectionProgressDialog *d;
+                ViewerConnectionProgress *progress;
                 bool tunnel;} SimData;
             SimData *simData = (SimData*)data;
 
@@ -868,7 +769,7 @@ ViewerServerManager::SimConnectThroughLauncher(const std::string &remoteHost,
             }
 
             // Try to start a launcher on remoteHost.
-            StartLauncher(remoteHost, visitPath, simData->d);
+            StartLauncher(remoteHost, visitPath, simData->progress);
 
             // Try to make the launcher launch the process.
             if(launchers.find(remoteHost) == launchers.end())
@@ -953,132 +854,53 @@ ViewerServerManager::GetPortTunnelMap(const std::string &host)
     return ret;
 }
 
-//
-// ViewerConnectionPrinter class. It's really a minor class so it's in here.
-//
-
 // ****************************************************************************
-// Method: ViewerConnectionPrinter::ViewerConnectionPrinter
+// Method: ViewerServerManager::SetLaunchProgressCallback
 //
-// Purpose: 
-//   Constructor.
+// Purpose:
+//   Set a launch progress callback function.
 //
 // Arguments:
-//   conn : The connection associated with the socket.
-//   name : The name of the object.
+//   cb     : The callback function.
+//   cbdata : Data for the callback function.
 //
 // Programmer: Brad Whitlock
-// Creation:   Wed Nov 21 15:22:42 PST 2007
+// Creation:   Tue Sep  2 12:58:28 PDT 2014
 //
 // Modifications:
-//   
-// ****************************************************************************
-
-ViewerConnectionPrinter::ViewerConnectionPrinter(Connection *c) : 
-    QSocketNotifier(c->GetDescriptor(), QSocketNotifier::Read, 0)
-{
-    conn = c;
-    connect(this, SIGNAL(activated(int)),
-            this, SLOT(HandleRead(int)));
-}
-
-// ****************************************************************************
-// Method: ViewerConnectionPrinter::~ViewerConnectionPrinter
-//
-// Purpose: 
-//   Destructor.
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Nov 21 15:23:38 PST 2007
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-ViewerConnectionPrinter::~ViewerConnectionPrinter()
-{
-}
-
-// ****************************************************************************
-// Method: ViewerConnectionPrinter::HandleRead
-//
-// Purpose: 
-//   This is a Qt slot function that is called when the socket has data. The
-//   data gets read and printed to the console.
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Nov 21 15:23:52 PST 2007
-//
-// Modifications:
-//   Brad Whitlock, Fri Jan 9 15:13:01 PST 2009
-//   Catch the rest of the possible exceptions.
-//
-//   Mark C. Miller, Wed Jun 17 17:46:18 PDT 2009
-//   Replaced CATCHALL(...) with CATCHALL
-//
-//   Brad Whitlock, Tue Jun 26 16:45:03 PDT 2012
-//   Send output to the client too.
 //
 // ****************************************************************************
 
 void
-ViewerConnectionPrinter::HandleRead(int)
+ViewerServerManager::SetLaunchProgressCallback(bool (*cb)(void *, int), void *cbdata)
 {
-    TRY
-    {
-        // Fill up the connection from the socket.
-        conn->Fill();
-
-        QString msg;
-        while(conn->Size() > 0)
-        {
-            unsigned char c;
-            conn->Read(&c);
-            msg.append(QChar(c));
-        }
-
-        // Print the output that we read to stdout.
-        fprintf(stdout, "%s", msg.toStdString().c_str());
-        fflush(stdout);
-
-        // Send the message to the client too.
-        while(msg.endsWith("\n"))
-            msg.chop(1);
-        int idx = msg.indexOf("WARNING: ");
-        if(idx != -1)
-            ViewerBase::Warning(msg.right(msg.size() - (idx + 9)));
-        else
-            ViewerBase::Message(msg);
-    }
-    CATCH(LostConnectionException)
-    {
-        debug1 << "Lost connection in ViewerConnectionPrinter::HandleRead" << endl;
-    }
-    CATCHALL
-    {
-        ; // nothing
-    }
-    ENDTRY
+    LaunchProgressCB = cb;
+    LaunchProgressCBData = cbdata;
 }
 
 // ****************************************************************************
-//  Method:  ViewerServerManager::ForceSSHTunnelingForAllConnections
+// Method: ViewerServerManager::SetOpenWithEngineCallback
 //
-//  Purpose:
-//    Force SSH tunnelling for all connections.  This allows a more
-//    convenient way to initiate SSH tunneling on the command line, as
-//    this will override values in the host profiles.
+// Purpose:
+//   Set a callback function to use when components should be launched by the
+//   compute engine.
 //
-//  Arguments:
-//    
+// Arguments:
+//   cb     : The callback function.
+//   cbdata : Data for the callback function.
 //
-//  Programmer:  Jeremy Meredith
-//  Creation:    December  3, 2008
+// Programmer: Brad Whitlock
+// Creation:   Tue Sep  2 12:58:28 PDT 2014
+//
+// Modifications:
 //
 // ****************************************************************************
 
-void 
-ViewerServerManager::ForceSSHTunnelingForAllConnections()
+void
+ViewerServerManager::SetOpenWithEngineCallback(
+    void (*cb)(const std::string &, const stringVector &, void *),
+    void *cbdata)
 {
-    sshTunnelingForcedOn = true;
+    OpenWithEngineCB = cb;
+    OpenWithEngineCBData = cbdata;
 }

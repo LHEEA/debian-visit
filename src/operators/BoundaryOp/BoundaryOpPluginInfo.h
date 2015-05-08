@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ class BoundaryOpGUIPluginInfo : public virtual GUIOperatorPluginInfo, public vir
     virtual const char **XPMIconData() const;
 };
 
-class BoundaryOpViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual BoundaryOpCommonPluginInfo
+class BoundaryOpViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual BoundaryOpCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -96,14 +96,11 @@ class BoundaryOpViewerPluginInfo : public virtual ViewerOperatorPluginInfo, publ
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
-    virtual const char **XPMIconData() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -111,7 +108,13 @@ class BoundaryOpViewerPluginInfo : public virtual ViewerOperatorPluginInfo, publ
     static BoundaryOpAttributes *clientAtts;
 };
 
-class BoundaryOpEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual BoundaryOpCommonPluginInfo
+class BoundaryOpViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual BoundaryOpViewerEnginePluginInfo
+{
+  public:
+    virtual const char **XPMIconData() const;
+};
+
+class BoundaryOpEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual BoundaryOpViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

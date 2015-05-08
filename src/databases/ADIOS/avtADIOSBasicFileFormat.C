@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -270,7 +270,7 @@ avtADIOSBasicFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int t
         else
         {
             std::string meshName = GenerateMeshName(v->second);
-    string originalName = v->first, name = v->first;
+            string originalName = v->first, name = v->first;
             if (name[0] == '/')
                 name = string(&name[1]);
             

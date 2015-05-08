@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -112,21 +112,21 @@ static const char *ViewerRPCType_strings[] = {
 "MovePlotOrderTowardFirstRPC", "MovePlotOrderTowardLastRPC", "SetPlotOrderToFirstRPC", 
 "SetPlotOrderToLastRPC", "RenamePickLabelRPC", "GetQueryParametersRPC", 
 "DDTConnectRPC", "DDTFocusRPC", "ReleaseToDDTRPC", 
-"PlotDDTVispointVariablesRPC", "ExportRPC", "MaxRPC"
-};
+"PlotDDTVispointVariablesRPC", "ExportRPC", "ReadHostProfilesFromDirectoryRPC", 
+"SetRemoveDuplicateNodesRPC", "MaxRPC"};
 
 std::string
 ViewerRPC::ViewerRPCType_ToString(ViewerRPC::ViewerRPCType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 204) index = 0;
+    if(index < 0 || index >= 206) index = 0;
     return ViewerRPCType_strings[index];
 }
 
 std::string
 ViewerRPC::ViewerRPCType_ToString(int t)
 {
-    int index = (t < 0 || t >= 204) ? 0 : t;
+    int index = (t < 0 || t >= 206) ? 0 : t;
     return ViewerRPCType_strings[index];
 }
 
@@ -134,7 +134,7 @@ bool
 ViewerRPC::ViewerRPCType_FromString(const std::string &s, ViewerRPC::ViewerRPCType &val)
 {
     val = ViewerRPC::CloseRPC;
-    for(int i = 0; i < 204; ++i)
+    for(int i = 0; i < 206; ++i)
     {
         if(s == ViewerRPCType_strings[i])
         {

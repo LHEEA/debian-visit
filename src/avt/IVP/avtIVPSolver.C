@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,8 +55,10 @@
 //
 // ****************************************************************************
 
-avtIVPSolver::avtIVPSolver() : convertToCartesian(0), convertToCylindrical(0),
-                               order(1), h(1e-5), tol(1e-8), t(0.0), period(0)
+avtIVPSolver::avtIVPSolver() : convertToCartesian(false), convertToCylindrical(false),
+                               order(1), yCur(avtVector()), h(1e-5), h_max(1e-5),
+                               tol(1e-8), t(0.0), period(0), baseTime(0), maxTime(1),
+                               direction(DIRECTION_BACKWARD)
 {
 }
 

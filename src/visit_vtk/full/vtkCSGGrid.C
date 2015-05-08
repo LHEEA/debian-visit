@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,7 +75,7 @@
 #include <DebugStream.h>
 #include <ImproperUseException.h>
 
-#ifdef HAVE_BILIB
+#ifdef HAVE_BOOST
 #include <boost/numeric/interval.hpp>
 using boost::numeric::interval;
 #endif
@@ -83,6 +83,7 @@ using boost::numeric::interval;
 #include <deque>
 #include <map>
 #include <vector>
+#include <algorithm>
 
 using std::deque;
 using std::map;
@@ -236,7 +237,7 @@ bool
 vtkCSGGrid::Box::IsFlatEnough2(const double *const gridBoundaries,
     int boundaryId, double tol)
 {
-#ifdef HAVE_BILIB
+#ifdef HAVE_BOOST
     const double *const a = &gridBoundaries[boundaryId * NUM_QCOEFFS]; 
 
     // compute spatial box
@@ -334,7 +335,7 @@ vtkCSGGrid::Box::CanBeCut2(const double *const gridBoundaries,
 vtkCSGGrid::Box::FuncState
 vtkCSGGrid::Box::EvalBoxStateOfBoundary(const double *const a, double tol) const
 {
-#ifdef HAVE_BILIB
+#ifdef HAVE_BOOST
     interval<double> X(x0,x1);
     interval<double> Y(y0,y1);
     interval<double> Z(z0,z1);

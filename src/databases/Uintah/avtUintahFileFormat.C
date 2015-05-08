@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -359,6 +359,11 @@ avtUintahFileFormat::avtUintahFileFormat(const char *filename,
   getParticleData = (ParticleDataRaw* (*)(DataArchive*, GridP*, int, int, std::string, int, int)) dlsym(libHandle, "getParticleData");
   if((error = dlerror()) != NULL) {
     EXCEPTION1(InvalidDBTypeException, "The function getParticleData could not be located in the library!!!");
+  }
+
+  getParticlePositionName = (std::string (*)(DataArchive*)) dlsym(libHandle, "getParticlePositionName");
+  if((error = dlerror()) != NULL) {
+    EXCEPTION1(InvalidDBTypeException, "The function getParticlePositionName could not be located in the library!!!");
   }
 
 
@@ -812,7 +817,7 @@ avtUintahFileFormat::ReadMetaData(avtDatabaseMetaData *md, int timeState)
 
   cycles.resize( cycleTimes.size() );
 
-  for(int i=0; i<cycleTimes.size(); ++i )
+  for(int i=0; i<(int)cycleTimes.size(); ++i )
     cycles[i] = i;
 
   md->SetCycles( cycles );
@@ -1247,7 +1252,8 @@ avtUintahFileFormat::GetMesh(int timestate, int domain, const char *meshname)
       matlNo = atoi(matl.c_str());
 
     // we always want p.x when setting up the mesh
-    string vars = "p.x";
+//    string vars = "p.x";
+    string vars = (*getParticlePositionName)(archive);
 
     ParticleDataRaw *pd = (*getParticleData)(archive, grid, level, local_patch, vars, matlNo, timestate);
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,9 +55,6 @@ class    AttributeSubject;
 
 
 typedef   void  (*WarningCallback)(void *, const char *);
-typedef   void  (*ImageCallback)(void *, int, avtDataObject_p &);
-typedef   void  (*UpdatePlotAttributesCallback)(void *, const std::string &,
-                                                int, AttributeSubject*);
 typedef   ref_ptr<avtDatabase> (*GetDatabaseCallback)(void *,
                                        const std::string &, int, const char *);
 typedef   void  (*ResetTimeoutCallback)(void *, int);
@@ -120,20 +117,12 @@ class PIPELINE_API avtCallback
                                                          void *);
     static bool                  IssueWarning(const char *);
 
-    static void                  RegisterImageCallback(ImageCallback, void *);
-    static void                  GetImage(int, avtDataObject_p &);
-
     static void                  SetCurrentWindowAtts(const WindowAttributes&);
     static const WindowAttributes &
                                  GetCurrentWindowAtts(void);
 
     static void                  SetCurrentLightList(const LightList&);
     static const LightList      &GetCurrentLightList(void);
-
-    static void                  RegisterUpdatePlotAttributesCallback(
-                                         UpdatePlotAttributesCallback, void *);
-    static void                  UpdatePlotAttributes(const std::string &, int,
-                                                      AttributeSubject *);
 
     static void                  SetNowinMode(bool b)
                                      { nowinMode = b; }
@@ -190,9 +179,6 @@ class PIPELINE_API avtCallback
     static WarningCallback       warningCallback;
     static void                 *warningCallbackArgs;
 
-    static ImageCallback         imageCallback;
-    static void                 *imageCallbackArgs;
-
     static WindowAttributes      windowAtts;
     static LightList             lightList;
 
@@ -205,10 +191,6 @@ class PIPELINE_API avtCallback
     static GlobalAttributes::BackendType backendType;
 
     static std::string           auxSessionKey;
-
-    static UpdatePlotAttributesCallback
-                                 updatePlotAttributesCallback;
-    static void                 *updatePlotAttributesCallbackArgs;
 
     static GetDatabaseCallback   getDatabaseCallback;
     static void                 *getDatabaseCallbackArgs;

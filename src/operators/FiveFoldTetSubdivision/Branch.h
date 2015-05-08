@@ -1,7 +1,7 @@
 #ifndef _BRANCH_H_
 #define _BRANCH_H_
 
-#include <boost/cstdint.hpp>
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <vector>
@@ -9,7 +9,7 @@
 class Branch
 {
     public:
-        typedef boost::uint64_t IdxT;
+        typedef unsigned long long IdxT;
         typedef double ValueT;
         IdxT extremum;
         ValueT extremumVal;

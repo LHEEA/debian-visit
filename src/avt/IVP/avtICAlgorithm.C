@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -82,15 +82,17 @@ avtICAlgorithm::ICStatistics::operator << (std::ostream &out) const
 //   Hank Childs, Sun Jun  6 12:25:31 CDT 2010
 //   Change reference from streamline filter to PICS filter.
 //
+//   Dave Pugmire, Mon Dec 15 11:00:23 EST 2014
+//   Add a #steps taken counter.
+//
 // ****************************************************************************
 
 avtICAlgorithm::avtICAlgorithm( avtPICSFilter *f ) :
     TotalTime("totT"), IOTime("ioT"), IntegrateTime("intT"), SortTime("sorT"), ExtraTime("extT"),
-    IntegrateCnt("intC"), DomLoadCnt("domLC"), DomPurgeCnt("domPC")
+    IntegrateCnt("intC"), IntegrateStepCnt("stepC"), DomLoadCnt("domLC"), DomPurgeCnt("domPC")
 {
     picsFilter = f;
     numDomains = picsFilter->numDomains;
-
     domainsUsed = 0;
     totDomainsLoaded = 0;
     domainLoadedMin = 0;
@@ -212,11 +214,12 @@ void
 avtICAlgorithm::AdvectParticle(avtIntegralCurve *s)
 {
     int timerHandle = visitTimer->StartTimer();
-
-    picsFilter->AdvectParticle(s);
+    
+    int nStepsTaken = picsFilter->AdvectParticle(s);
 
     IntegrateTime.value += visitTimer->StopTimer(timerHandle, "AdvectParticle()");
     IntegrateCnt.value++;
+    IntegrateStepCnt.value += nStepsTaken;
 }
 
 
@@ -576,6 +579,7 @@ void
 avtICAlgorithm::CompileCounterStatistics()
 {
     ComputeStatistic(IntegrateCnt);
+    ComputeStatistic(IntegrateStepCnt);
     DomLoadCnt.value += picsFilter->GetLoadDSCount();
     DomPurgeCnt.value += picsFilter->GetPurgeDSCount();
     ComputeStatistic(DomLoadCnt);
@@ -662,19 +666,28 @@ avtICAlgorithm::ComputeStatistic(ICStatistics &stats)
             nVals++;
         }
     }
-    stats.mean = stats.total / (float)nVals;
+    if (nVals != 0)
+        stats.mean = stats.total / (float)nVals;
+    else
+        stats.mean = stats.value;
 
-    float sum = 0.0;
+    double sum = 0.0;
     for (int i = 0; i < nProcs; i++)
     {
         if (output[i] >= 0.0)
         {
-            float x = output[i] - stats.mean;
+            double x = output[i] - stats.mean;
             sum += (x*x);
         }
     }
-    sum /= (float)nVals;
-    stats.sigma = sqrt(sum);
+    if (nVals != 0)
+    {
+        sum /= (float)nVals;
+        if (sum > 0)
+            stats.sigma = sqrt(sum);
+        else
+            stats.sigma = 0.0;
+    }
 
     stats.histogram.resize(nVals);
     int i, j;
@@ -1002,6 +1015,8 @@ avtICAlgorithm::ReportCounters(ostream &os, bool totals)
 //    Dave Pugmire, Thu Feb 12 08:47:29 EST 2009
 //    Better formatting for stats output.
 //
+//    Mark C. Miller, Thu Oct  2 09:23:56 PDT 2014
+//    Defend against FPE div by zero
 // ****************************************************************************
 void
 avtICAlgorithm::PrintTiming(ostream &os, 
@@ -1018,7 +1033,10 @@ avtICAlgorithm::PrintTiming(ostream &os,
     if (total)
     {
         os<<s.total;
-        os<<" ["<<100.0*(s.total/t.total)<<"%] ";
+        if (t.total != 0)
+            os<<" ["<<100.0*(s.total/t.total)<<"%] ";
+        else
+            os<<" ["<<0<<"%] ";
         os<<" ["<<s.min<<", "<<s.max<<", "<<s.mean<<" : "<<s.sigma<<"]";
 
         if (s.mean != 0.0)
@@ -1035,7 +1053,10 @@ avtICAlgorithm::PrintTiming(ostream &os,
             v = 0.0;
         
         os<<v;
-        os<<" ["<<100.0*(v/t.value)<<"%] ";
+        if (t.value != 0)
+            os<<" ["<<100.0*(v/t.value)<<"%] ";
+        else
+            os<<" ["<<0<<"%] ";
         os<<endl;
     }
 }

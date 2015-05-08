@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -328,7 +328,8 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
 
     SNPRINTF(tmpStr, 1000, "%sdataVariable = \"%s\"\n", prefix, atts->GetDataVariable().c_str());
     str += tmpStr;
-    const char *integrationDirection_names = "Forward, Backward, Both";
+    const char *integrationDirection_names = "Forward, Backward, Both, ForwardDirectionless, BackwardDirectionless, "
+        "BothDirectionless";
     switch (atts->GetIntegrationDirection())
     {
       case IntegralCurveAttributes::Forward:
@@ -341,6 +342,18 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
           break;
       case IntegralCurveAttributes::Both:
           SNPRINTF(tmpStr, 1000, "%sintegrationDirection = %sBoth  # %s\n", prefix, prefix, integrationDirection_names);
+          str += tmpStr;
+          break;
+      case IntegralCurveAttributes::ForwardDirectionless:
+          SNPRINTF(tmpStr, 1000, "%sintegrationDirection = %sForwardDirectionless  # %s\n", prefix, prefix, integrationDirection_names);
+          str += tmpStr;
+          break;
+      case IntegralCurveAttributes::BackwardDirectionless:
+          SNPRINTF(tmpStr, 1000, "%sintegrationDirection = %sBackwardDirectionless  # %s\n", prefix, prefix, integrationDirection_names);
+          str += tmpStr;
+          break;
+      case IntegralCurveAttributes::BothDirectionless:
+          SNPRINTF(tmpStr, 1000, "%sintegrationDirection = %sBothDirectionless  # %s\n", prefix, prefix, integrationDirection_names);
           str += tmpStr;
           break;
       default:
@@ -394,7 +407,7 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
     SNPRINTF(tmpStr, 1000, "%sabsTolBBox = %g\n", prefix, atts->GetAbsTolBBox());
     str += tmpStr;
     const char *fieldType_names = "Default, FlashField, M3DC12DField, M3DC13DField, Nek5000Field, "
-        "NIMRODField";
+        "NektarPPField, NIMRODField";
     switch (atts->GetFieldType())
     {
       case IntegralCurveAttributes::Default:
@@ -415,6 +428,10 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
           break;
       case IntegralCurveAttributes::Nek5000Field:
           SNPRINTF(tmpStr, 1000, "%sfieldType = %sNek5000Field  # %s\n", prefix, prefix, fieldType_names);
+          str += tmpStr;
+          break;
+      case IntegralCurveAttributes::NektarPPField:
+          SNPRINTF(tmpStr, 1000, "%sfieldType = %sNektarPPField  # %s\n", prefix, prefix, fieldType_names);
           str += tmpStr;
           break;
       case IntegralCurveAttributes::NIMRODField:
@@ -1380,14 +1397,15 @@ IntegralCurveAttributes_SetIntegrationDirection(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the integrationDirection in the object.
-    if(ival >= 0 && ival < 3)
+    if(ival >= 0 && ival < 6)
         obj->data->SetIntegrationDirection(IntegralCurveAttributes::IntegrationDirection(ival));
     else
     {
         fprintf(stderr, "An invalid integrationDirection value was given. "
-                        "Valid values are in the range of [0,2]. "
+                        "Valid values are in the range of [0,5]. "
                         "You can also use the following names: "
-                        "Forward, Backward, Both.");
+                        "Forward, Backward, Both, ForwardDirectionless, BackwardDirectionless, "
+                        "BothDirectionless.");
         return NULL;
     }
 
@@ -1710,15 +1728,15 @@ IntegralCurveAttributes_SetFieldType(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the fieldType in the object.
-    if(ival >= 0 && ival < 6)
+    if(ival >= 0 && ival < 7)
         obj->data->SetFieldType(IntegralCurveAttributes::FieldType(ival));
     else
     {
         fprintf(stderr, "An invalid fieldType value was given. "
-                        "Valid values are in the range of [0,5]. "
+                        "Valid values are in the range of [0,6]. "
                         "You can also use the following names: "
                         "Default, FlashField, M3DC12DField, M3DC13DField, Nek5000Field, "
-                        "NIMRODField.");
+                        "NektarPPField, NIMRODField.");
         return NULL;
     }
 
@@ -2905,6 +2923,12 @@ PyIntegralCurveAttributes_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(IntegralCurveAttributes::Backward));
     if(strcmp(name, "Both") == 0)
         return PyInt_FromLong(long(IntegralCurveAttributes::Both));
+    if(strcmp(name, "ForwardDirectionless") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::ForwardDirectionless));
+    if(strcmp(name, "BackwardDirectionless") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::BackwardDirectionless));
+    if(strcmp(name, "BothDirectionless") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::BothDirectionless));
 
     if(strcmp(name, "maxSteps") == 0)
         return IntegralCurveAttributes_GetMaxSteps(self, NULL);
@@ -2947,6 +2971,8 @@ PyIntegralCurveAttributes_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(IntegralCurveAttributes::M3DC13DField));
     if(strcmp(name, "Nek5000Field") == 0)
         return PyInt_FromLong(long(IntegralCurveAttributes::Nek5000Field));
+    if(strcmp(name, "NektarPPField") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::NektarPPField));
     if(strcmp(name, "NIMRODField") == 0)
         return PyInt_FromLong(long(IntegralCurveAttributes::NIMRODField));
 

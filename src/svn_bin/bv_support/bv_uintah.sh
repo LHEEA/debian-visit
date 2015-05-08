@@ -59,7 +59,7 @@ function bv_uintah_initialize_vars
 
 function bv_uintah_info
 {
-export UINTAH_VERSION=${UINTAH_VERSION:-"1.6.0beta"}
+export UINTAH_VERSION=${UINTAH_VERSION:-"1.6.0"}
 export UINTAH_FILE=${UINTAH_FILE:-"Uintah-${UINTAH_VERSION}.tar.gz"}
 export UINTAH_COMPATIBILITY_VERSION=${UINTAH_COMPATIBILITY_VERSION:-"1.6"}
 export UINTAH_BUILD_DIR=${UINTAH_BUILD_DIR:-"Uintah-${UINTAH_VERSION}/optimized"}
@@ -128,12 +128,33 @@ function bv_uintah_dry_run
   fi
 }
 
-# *************************************************************************** #
-#                          Function 8.1, build_uintah                           #
-# *************************************************************************** #
+# **************************************************************************** #
+#                          Function 8.1, build_uintah                          #
+#                                                                              #
+# Kevin Griffin, Mon Nov 24 12:33:02 PST 2014                                  #
+# Changed the -showme:compile to -show for OS X Mavericks. The -showme:compile #
+# was being reported as an invalid option.                                     #
+# **************************************************************************** #
 
 function build_uintah
 {
+    if [[ "$OPSYS" == "Linux"  ]]; then
+	if [[ "$PAR_COMPILER" == "" || "$PAR_COMPILER_CXX" == "" || "$PAR_INCLUDE" == "" ]]; then
+	    warn "For Linux builds the PAR_COMPILER, PAR_COMPILER_CXX, and PAR_INCLUDE environment variables must be set."
+	    if [[ "$PAR_COMPILER" == "" ]]; then
+		warn "PAR_COMPILER should be of the form \"/path/to/mpi/bin/mpicc\""
+	    fi
+	    if [[ "$PAR_COMPILER_CXX" == "" ]]; then
+		warn "PAR_COMPILER_CXX should be of the form \"/path/to/mpi/bin/mpicxx\""
+	    fi
+	    if [[ "$PAR_INCLUDE" == "" ]]; then
+		warn "PAR_INCLUDE should be of the form \"-I/path/to/mpi/include\""
+	    fi
+	    warn "Giving Up!"
+	    return 1
+	fi
+    fi
+
     PAR_INCLUDE_STRING=""
     if [[ "$PAR_INCLUDE" != "" ]] ; then
         PAR_INCLUDE_STRING=$PAR_INCLUDE
@@ -146,16 +167,20 @@ function build_uintah
             PAR_INCLUDE_STRING=`$PAR_COMPILER -show`
         else
             if [[ -z "$PAR_INCLUDE_STRING" ]]; then
-                PAR_INCLUDE_STRING=`$PAR_COMPILER --showme:compile`
-                if [[ $? != 0 ]] ; then
-                    PAR_INCLUDE_STRING=`$PAR_COMPILER -show`
+                if [[ "$OPSYS" == "Darwin" && `sw_vers -productVersion` == 10.9.[0-9]* ]] ; then
+                   PAR_INCLUDE_STRING=`$PAR_COMPILER -show`
+                else
+                    PAR_INCLUDE_STRING=`$PAR_COMPILER -showme:compile`
+                    if [[ $? != 0 ]] ; then
+                       PAR_INCLUDE_STRING=`$PAR_COMPILER -show`
+                    fi
                 fi
             fi
         fi
     fi
 
     if [[ "$PAR_INCLUDE_STRING" == "" ]] ; then
-       warn "You must set either the PAR_COMPILER or PAR_INCLUDE environment variable to be Uintah."
+       warn "You must set either the PAR_COMPILER or PAR_INCLUDE environment variables."
        warn "PAR_COMPILER should be of the form \"/path/to/mpi/bin/mpicc\""
        warn "PAR_INCLUDE should be of the form \"-I/path/to/mpi/include\""
        warn "Giving Up!"
@@ -209,7 +234,8 @@ function build_uintah
     if [[ "$FC_COMPILER" == "no" ]] ; then
 
         warn "Uintah may require fortran to be enabled. It does not appear that the --fortran "
-        warn "agrument was set. If Uintah fails to build try adding the --fortran argument"
+        warn "agrument was set. If Uintah fails to build try adding the --fortra
+	n argument"
         FORTRANARGS="--without-fortran"
         #return 1
 
@@ -241,27 +267,57 @@ function build_uintah
 
     # In order to ensure $FORTRANARGS is expanded to build the arguments to
     # configure, we wrap the invokation in 'sh -c "..."' syntax
-    info "Invoking command to configure UINTAH"
-    info "../src/configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
+
+    if [[ "$OPSYS" == "Darwin" ]]; then
+
+      info "Invoking command to configure UINTAH"
+      info "../src/configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
         CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
         MPI_EXTRA_LIB_FLAG=\"$PAR_LIBRARY_NAMES\" \
         $FORTRANARGS \
         --prefix=\"$VISITDIR/uintah/$UINTAH_VERSION/$VISITARCH\" \
         ${cf_darwin} \
-        --enable-optimize="-O2" \
-        --enable-assertion-level=0
-        --enable-64bit
+        ${cf_build_type} \
+        --enable-optimize \
         --with-mpi="${PAR_INCLUDE_DIR}/.." "
-    sh -c "../src/configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
+
+#        --with-mpi-include="${PAR_INCLUDE_DIR}/" \
+#        --with-mpi-lib="${PAR_INCLUDE_DIR}/../lib" "
+
+      sh -c "../src/configure CXX=\"$CXX_COMPILER\" CC=\"$C_COMPILER\" \
+        CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
+        MPI_EXTRA_LIB_FLAG=\"$PAR_LIBRARY_NAMES\" \
+        $FORTRANARGS \
+        --prefix=\"$VISITDIR/uintah/$UINTAH_VERSION/$VISITARCH\" \
+        ${cf_darwin} \
+        ${cf_build_type} \
+        --enable-optimize \
+        --with-mpi="${PAR_INCLUDE_DIR}/.." "
+
+#        --with-mpi-include="${PAR_INCLUDE_DIR}/" \
+#        --with-mpi-lib="${PAR_INCLUDE_DIR}/../lib" "
+
+    else
+
+      info "Invoking command to configure UINTAH"
+      info "../src/configure CXX=\"$PAR_COMPILER_CXX\" CC=\"$PAR_COMPILER\" \
         CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
         MPI_EXTRA_LIB_FLAG=\"$PAR_LIBRARY_NAMES\" \
         $FORTRANARGS \
         --prefix=\"$VISITDIR/uintah/$UINTAH_VERSION/$VISITARCH\" \
         ${cf_build_type} \
-        --enable-optimize="-O2" \
-        --enable-assertion-level=0 \
-        --enable-64bit \
-        --with-mpi="${PAR_INCLUDE_DIR}/.." "
+        --enable-optimize"
+
+      sh -c "../src/configure CXX=\"$PAR_COMPILER_CXX\" CC=\"$PAR_COMPILER\" \
+        CFLAGS=\"$CFLAGS $C_OPT_FLAGS\" CXXFLAGS=\"$CXXFLAGS $CXX_OPT_FLAGS\" \
+        MPI_EXTRA_LIB_FLAG=\"$PAR_LIBRARY_NAMES\" \
+        $FORTRANARGS \
+        --prefix=\"$VISITDIR/uintah/$UINTAH_VERSION/$VISITARCH\" \
+        ${cf_build_type} \
+        --enable-optimize"
+    fi
+
+
     if [[ $? != 0 ]] ; then
        warn "UINTAH configure failed.  Giving up"
        return 1
@@ -281,7 +337,14 @@ function build_uintah
     #
     info "Installing UINTAH . . ."
 
-    mkdir $VISITDIR/uintah/ || error "Can't make UINTAH install dir."
+    if [[ ! -e $VISITDIR/uintah ]] ; then
+        mkdir $VISITDIR/uintah || error "Can't make UINTAH install dir."
+    fi
+
+    if [[ -e $VISITDIR/uintah/$UINTAH_VERSION ]] ; then
+        rm -rf $VISITDIR/uintah/$UINTAH_VERSION || error "Can't remove old UINTAH install dir."
+    fi
+
     mkdir $VISITDIR/uintah/$UINTAH_VERSION/ || error "Can't make UINTAH install dir."
     mkdir $VISITDIR/uintah/$UINTAH_VERSION/$VISITARCH || error "Can't make UINTAH install dir."
     mkdir $VISITDIR/uintah/$UINTAH_VERSION/$VISITARCH/lib || error "Can't make UINTAH install dir."

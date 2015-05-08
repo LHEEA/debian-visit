@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -59,7 +59,6 @@ int  UTILITY_API  LongestCommonPrefixLength(const char * const *, int);
 int  UTILITY_API  LongestCommonSuffixLength(const char * const *, int);
 
 // LINUX ONLY
-void UTILITY_API  GetMemorySize(unsigned long &, unsigned long &);
 void UTILITY_API  PrintCallStack(ostream &out, const char *file, int line);
 
 void UTILITY_API  WaitUntilFile(const char *);
@@ -229,51 +228,6 @@ InlineExtract(char * const &target, const char *&src, const int &amount)
     src += amount;
 }
 
-// ****************************************************************************
-//  Function: VisItInitExtentsToLimits
-//
-//  Purpose: Initialize an extents array to numerical limits of platform
-//
-//  Programmer: Mark C. Miller 
-//  Creation:   November 15, 2007 
-//
-// ****************************************************************************
-
-inline bool 
-VisItInitExtentsToLimits(double *exts, int n)
-{
-    if (!(n == 2 || n == 4 || n == 6))
-        return false;
-
-    for (int i = 0; i < n; i++)
-        exts[i] = n % 2 ? -DBL_MAX : DBL_MAX;
-
-    return true;
-}
-
-inline bool 
-VisItInitExtentsToLimits(float *exts, int n)
-{
-    if (!(n == 2 || n == 4 || n == 6))
-        return false;
-
-    for (int i = 0; i < n; i++)
-        exts[i] = n % 2 ? -FLT_MAX : FLT_MAX;
-
-    return true;
-}
-
-inline bool 
-VisItInitExtentsToLimits(int *exts, int n)
-{
-    if (!(n == 2 || n == 4 || n == 6))
-        return false;
-
-    for (int i = 0; i < n; i++)
-        exts[i] = n % 2 ? -INT_MAX : INT_MAX;
-
-    return true;
-}
 #endif
 
 

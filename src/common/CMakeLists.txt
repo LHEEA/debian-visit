@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -197,6 +197,7 @@ state/AppearanceAttributes.C
 state/AttributeGroup.C
 state/AttributeSubject.C
 state/AttributeSubjectMap.C
+state/AttributeSubjectSerialize.C
 state/Axes2D.C
 state/Axes3D.C
 state/AxesArray.C

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1618,11 +1618,11 @@ avtDDCMDFileFormat::DetermineProcessorReadOffset(const DDCMDHeader *header,
     for (unsigned int i = 0; i < nFiles; i++)
     {
         char          string[1024];
-        VisItStat_t   statbuf;
+        FileFunctions::VisItStat_t   statbuf;
 
         sprintf(string, "%s/%s#%6.6u", fname.c_str(), subname.c_str(), i);
 
-        VisItStat(string, &statbuf);
+        FileFunctions::VisItStat(string, &statbuf);
         fileSizeList[i] = (unsigned long)(statbuf.st_size); 
         fileSize += fileSizeList[i];
     } 

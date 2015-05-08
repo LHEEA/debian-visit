@@ -99,10 +99,10 @@ function bv_cmake_cmake_bin_dir
 
 function bv_cmake_info
 {
-export CMAKE_FILE=${CMAKE_FILE:-"cmake-2.8.12.2.tar.gz"}
-export CMAKE_VERSION=${CMAKE_VERSION:-"2.8.12.2"}
-export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-2.8.12.2"}
-export CMAKE_MD5_CHECKSUM="097278785da7182ec0aea8769d06860c"
+export CMAKE_FILE=${CMAKE_FILE:-"cmake-3.0.2.tar.gz"}
+export CMAKE_VERSION=${CMAKE_VERSION:-"3.0.2"}
+export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-3.0.2"}
+export CMAKE_MD5_CHECKSUM="db4c687a31444a929d2fdc36c4dfb95f"
 export CMAKE_SHA256_CHECKSUM=""
 }
 
@@ -161,6 +161,52 @@ function bv_cmake_dry_run
 # *************************************************************************** #
 #                          Function 5, build_cmake                            #
 # *************************************************************************** #
+
+function apply_cmake_patch_4
+{
+   patch -p0 <<\EOF
+--- cmake-3.0.2/Source/cmMakefileTargetGenerator.cxx
++++ cmake-3.0.2-new/Source/cmMakefileTargetGenerator.cxx
+@@ -306,6 +306,11 @@ std::string cmMakefileTargetGenerator::G
+     // Add target-specific flags.
+     this->LocalGenerator->AddCompileOptions(flags, this->Target,
+                                             lang, this->ConfigName);
++#if 1
++    for(size_t j = 0; j < flags.size(); ++j)
++        if(flags[j] == '"') 
++            flags[j] = ' ';
++#endif
+ 
+     ByLanguageMap::value_type entry(l, flags);
+     i = this->FlagsByLanguage.insert(entry).first;
+@@ -1773,6 +1778,19 @@ cmMakefileTargetGenerator
+     // shell no-op ":".
+     if(!cmd->empty() && (*cmd)[0] != ':')
+       {
++#if 1
++      // Work around a problem with random quotes being inserted into the link line.
++      std::string::size_type pos = cmd->find("\"");
++      if(pos != std::string::npos)
++      {
++          std::string cp(*cmd);
++          for(size_t j = 0; j < cp.size(); ++j)
++              if(cp[j] == '"')
++                  cp[j] = ' ';
++          linkScriptStream << cp << "\n";
++          continue;
++      }
++#endif
+       linkScriptStream << *cmd << "\n";
+       }
+     }
+EOF
+   if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch 4 to cmake."
+        return 1
+   else
+        return 0
+   fi
+}
 
 function apply_cmake_patch_3
 {
@@ -277,7 +323,6 @@ EOF
    fi
 }
 
-
 function apply_cmake_patch
 {
    info "Patching CMake . . ."
@@ -298,6 +343,13 @@ function apply_cmake_patch
 
    if [[ "${CMAKE_VERSION}" == "2.8.12.2" ]]; then
        apply_cmake_patch_3
+       if [[ $? != 0 ]] ; then
+          return 1
+       fi
+   fi
+
+   if [[ "${CMAKE_VERSION}" == "3.0.2" && "$BUILD_VISIT_BGQ" == "yes" ]]; then
+       apply_cmake_patch_4
        if [[ $? != 0 ]] ; then
           return 1
        fi

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -118,8 +118,8 @@ int vtkStimulateReader::OpenFile(void)
     return 0;
     }
 
-  VisItStat_t fs;
-  if ( !VisItStat( sdt_name, &fs) )
+  FileFunctions::VisItStat_t fs;
+  if ( !FileFunctions::VisItStat( sdt_name, &fs) )
     {
 #ifdef _WIN32
     this->File = new ifstream(sdt_name, ios::in | ios::binary);

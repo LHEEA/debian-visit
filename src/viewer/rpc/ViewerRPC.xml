@@ -204,6 +204,8 @@
       ReleaseToDDTRPC
       PlotDDTVispointVariablesRPC
       ExportRPC
+      ReadHostProfilesFromDirectoryRPC
+      SetRemoveDuplicateNodesRPC
       MaxRPC
     </Enum>
     <Field name="RPCType" label="RPCType" type="enum" subtype="ViewerRPCType">

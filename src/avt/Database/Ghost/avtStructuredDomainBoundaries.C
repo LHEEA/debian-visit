@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -642,7 +642,7 @@ BoundaryHelperFunctions<T>::CommunicateBoundaryData(const vector<int> &domain2pr
                   recvbuff, recvcount, recvdisp, mpi_datatype,
                   VISIT_MPI_COMM);
 
-    for (i = 0 ; i < (size_t)nprocs ; i++)
+    for (i = 0 ; i < nprocs ; i++)
         tmp_ptr[i] = recvbuff + recvdisp[i];
     for (size_t d1 = 0; d1 < sdb->boundary.size(); d1++)
     {
@@ -2083,6 +2083,58 @@ avtStructuredDomainBoundaries::ExchangeUCharScalar(vector<int>     domainNum,
     bhf_uchar->FreeBoundaryData(vals);
 
     return out;
+}
+
+// ****************************************************************************
+//  Method:  avtStructuredDomainBoundaries::ExchangeVector
+//
+//  Purpose:
+//    Exchange the ghost zone information for some vectors,
+//    returning the new ones.
+//
+//  Arguments:
+//    domainNum    an array of domain numbers for each mesh
+//    isPointData  true if this is node-centered, false if cell-centered
+//    vectors      an array of vectors
+//
+//  Programmer:  Kevin Griffin
+//  Creation:    April 21, 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+vector<vtkDataArray*>
+avtStructuredDomainBoundaries::ExchangeVector(vector<int>           domainNum,
+                                              bool                  isPointData,
+                                              vector<vtkDataArray*> vectors)
+{
+    int dataType = (vectors.empty() ? -1 : vectors[0]->GetDataType());
+    
+#ifdef PARALLEL
+    // Let's get them all to agree on one data type.
+    int myDataType = dataType;    
+    MPI_Allreduce(&myDataType, &dataType, 1, MPI_INT, MPI_MAX, VISIT_MPI_COMM);
+#endif
+    
+    if (dataType < 0)
+        return vectors;
+    
+    switch (dataType)
+    {
+        case VTK_FLOAT:
+            return ExchangeFloatVector(domainNum, isPointData, vectors);
+            break;
+        case VTK_DOUBLE:
+            return ExchangeDoubleVector(domainNum, isPointData, vectors);
+            break;
+        case VTK_INT:
+        case VTK_UNSIGNED_INT:
+            return ExchangeIntVector(domainNum, isPointData, vectors);
+            break;
+        default:
+            EXCEPTION1(VisItException, "Unknown vector type in "
+                       "avtStructuredDomainBoundaries::ExchangeVector");
+    }
 }
 
 
@@ -3887,7 +3939,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                         int d2 = doms[list[j]];
                         if (iteration == 0)
                         {
-                            if (levels[d2] != (l+1)) // at same refinement level
+                            if ((size_t)levels[d2] != (l+1)) // at same refinement level
                                 // and we want one finer
                                 continue;
                         }

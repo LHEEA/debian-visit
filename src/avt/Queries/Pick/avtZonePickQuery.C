@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -218,7 +218,7 @@ avtZonePickQuery::Execute(vtkDataSet *ds, const int dom)
     {
         bool success = false;
         GetZoneCoords(ds, pickedZone);
-        success = RetrieveNodes(ds, pickedZone);
+        success = RetrieveNodes(ds, pickedZone, needRealId);
         if (success)
         {
             pickAtts.SetElementNumber(pickedZone);

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -57,8 +57,9 @@ set(pyside_gui_include_paths
     ${VISIT_SOURCE_DIR}/gui/
     ${VISIT_SOURCE_DIR}/gui/main
     ${VISIT_SOURCE_DIR}/viewer/subjectproxy
+    ${VISIT_SOURCE_DIR}/viewer/core
     ${VISIT_SOURCE_DIR}/viewer/main 
-    ${VISIT_SOURCE_DIR}/viewer/mainproxy
+    ${VISIT_SOURCE_DIR}/viewer/main/ui
     ${VISIT_SOURCE_DIR}/viewer/proxy
     ${VISIT_SOURCE_DIR}/viewer/rpc
     ${VISIT_SOURCE_DIR}/vtkqt
@@ -92,6 +93,10 @@ set(pyside_gui_gen_sources
 ${CMAKE_CURRENT_BINARY_DIR}/pyside_gui/pysidegui_wrapper.cpp
 ${CMAKE_CURRENT_BINARY_DIR}/pyside_gui/guiwrapper_wrapper.cpp
 ${CMAKE_CURRENT_BINARY_DIR}/pyside_gui/pyside_gui_module_wrapper.cpp)
+
+IF(WIN32)
+  LINK_DIRECTORIES(${QT_SHAREDLIB_DIR} ${QT_LIBRARY_DIR})
+ENDIF(WIN32)
 
 #
 # For dev build, we may need to link to mesa on Linux.

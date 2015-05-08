@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -60,7 +60,7 @@
 #include <BadIndexException.h>
 #include <maptypes.h>
 #include <StringHelpers.h>
-
+#include <FileFunctions.h>
 
 using     std::string;
 using     std::pair;
@@ -93,10 +93,10 @@ avtOpenFOAMFileFormat::avtOpenFOAMFileFormat(const char *filename,
     readZones = false;
 
     std::string controlDict(filename);
-    std::string base = StringHelpers::Basename(filename);
+    std::string base = FileFunctions::Basename(filename);
     if (base != "controlDict")
     {
-        std::string dir = StringHelpers::Dirname(filename);
+        std::string dir = FileFunctions::Dirname(filename);
         controlDict = dir + VISIT_SLASH_STRING + "controlDict";
     }
     reader = visit_vtkPOpenFOAMReader::New();

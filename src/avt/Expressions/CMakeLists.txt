@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -134,10 +134,13 @@ Derivations/avtTensorMaximumShearExpression.C
 SET(GENERAL_SOURCES
 General/avtApplyDataBinningExpression.C
 General/avtApplyEnumerationExpression.C
-General/avtApplyMapExpression.C 
+General/avtApplyMapExpression.C
+General/avtArrayComponentwiseProductExpression.C
+General/avtArrayComponentwiseDivisionExpression.C
 General/avtArrayComposeExpression.C
 General/avtArrayComposeWithBinsExpression.C
 General/avtArrayDecomposeExpression.C
+General/avtArrayDecompose2DExpression.C
 General/avtArraySumExpression.C
 General/avtBinExpression.C
 General/avtColorComposeExpression.C
@@ -192,7 +195,8 @@ General/avtVariableSkewExpression.C
 General/avtVectorComposeExpression.C
 General/avtVectorDecomposeExpression.C
 General/avtViscousStressExpression.C
-General/avtZoneTypeExpression.C
+General/avtZoneTypeLabelExpression.C
+General/avtZoneTypeRankExpression.C
 )
 
 IF(VISIT_PYTHON_FILTERS)

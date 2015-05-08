@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -79,7 +79,6 @@ avtparaDISFileFormat::avtparaDISFileFormat(const char *filename,
                                            DBOptionsAttributes *rdatts)
   : avtSTSDFileFormat(filename), mParallelData(filename), mDumpfile(filename, rdatts) {
 
-  cerr << "using avtparaDISFileFormat::avtparaDISFileFormat version 2.3.4" << endl; 
   if (filename) {
     mFilename = filename; 
   }
@@ -147,6 +146,12 @@ avtparaDISFileFormat::FreeUpResources(void)
 void
 avtparaDISFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 {
+  static bool haveIssuedVersionInfo = false;
+
+  if (!haveIssuedVersionInfo)
+      cerr << "using avtparaDISFileFormat::avtparaDISFileFormat version 2.3.4" << endl; 
+  haveIssuedVersionInfo = true;
+  debug1 << "using avtparaDISFileFormat::avtparaDISFileFormat version 2.3.4" << endl; 
   debug1 << "starting populateDatabaseMetaData" << endl; 
   debug1 << "avtparaDISFileFormat version " << PARADIS_READER_VERSION_NUMBER << ", " << PARADIS_READER_VERSION_DATE << endl;
   md->SetMustRepopulateOnStateChange(true); 

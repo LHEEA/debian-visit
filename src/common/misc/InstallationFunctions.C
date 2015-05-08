@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1154,8 +1154,8 @@ ConfigStateIncrementRunCount(ConfigStateEnum &code)
 
     // Does the file exist?
     bool firstTime = false;
-    VisItStat_t s;
-    if(VisItStat(rcFile.c_str(), &s) == -1)
+    FileFunctions::VisItStat_t s;
+    if(FileFunctions::VisItStat(rcFile.c_str(), &s) == -1)
         firstTime = true;
 
     ConfigStateEnum code2;

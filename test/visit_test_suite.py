@@ -179,7 +179,9 @@ def launch_visit_test(args):
         rcmd +=  "-nowin "
     if not opts["use_pil"]:
         rcmd +=  "-noPIL "
-    rcmd +=  "-timing -cli "
+    if not opts["no_timings"]:
+        rcmd +=  "-timing"
+    rcmd += " -cli "
     cfile = pjoin(test_dir,test_base + ".config")
     if os.path.isfile(cfile):
         rcmd += "-config " + cfile + " "
@@ -232,6 +234,7 @@ def launch_visit_test(args):
     tparams["numdiff"]        = opts["numdiff"]
     tparams["top_dir"]        = top_dir
     tparams["data_dir"]       = opts["data_dir"]
+    tparams["data_host"]      = opts["data_host"]
     tparams["baseline_dir"]   = opts["baseline_dir"]
     tparams["tests_dir"]      = opts["tests_dir"]
     tparams["visit_bin"]      = opts["executable"]
@@ -239,6 +242,7 @@ def launch_visit_test(args):
     tparams["height"]         = opts["height"]
     tparams["ctest"]          = opts["ctest"]
     tparams["parallel_launch"]= opts["parallel_launch"]
+    tparams["host_profile_dir"]   = opts["host_profile_dir"]
 
     exe_dir, exe_file = os.path.split(tparams["visit_bin"])
     if sys.platform.startswith("win"):
@@ -389,6 +393,9 @@ def log_test_result(result_dir,result):
 #    Eric Brugger, Fri Aug 15 10:04:27 PDT 2014
 #    I added the ability to specify the parallel launch method.
 #
+#    Brad Whitlock, Mon Dec 15 15:42:32 PST 2014
+#    Added --data-host, --host-profile-dir.
+#
 # ----------------------------------------------------------------------------
 def default_suite_options():
     data_dir_def    = abs_path(visit_root(),"data")
@@ -422,17 +429,21 @@ def default_suite_options():
                       "cleanup":True,
                       "cleanup_delay":10,
                       "executable":visit_exe_def,
+                      "data_host":"localhost",
                       "interactive":False,
-                      "pixdiff":0,
+                      "pixdiff":0.0,
                       "avgdiff":0,
                       "numdiff":0.0,
                       "vargs": "",
+                      "host_profile_dir": "",
                       "retry":False,
                       "index":None,
                       "timeout":3600,
                       "nprocs":nprocs_def,
                       "ctest":False,
-                      "parallel_launch":"mpirun"}
+                      "parallel_launch":"mpirun",
+                      "no_timings":False,
+                      "rsync_post":None}
     return opts_full_defs
 
 def finalize_options(opts):
@@ -460,6 +471,12 @@ def finalize_options(opts):
 #  Modifications:
 #    Eric Brugger, Fri Aug 15 10:04:27 PDT 2014
 #    I added the ability to specify the parallel launch method.
+#
+#    Kathleen Biagas, Wed Nov 5 14:32:21 PST 2014 
+#    On windows, glob any '*.py' tests names.
+#
+#    Matthew Wheeler, Mon Dec 15 12:56:00 GMT 2014
+#    Changed pixdiff % to be a float rather than an int
 #
 # ----------------------------------------------------------------------------
 def parse_args():
@@ -580,6 +597,12 @@ def parse_args():
                       help="specify executable version of visit to run. "
                            "For example, use \"-e '/usr/gapps/visit/bin/visit -v "
                            " [default = %s]" % defs["executable"])
+    parser.add_option("--data-host",
+                      dest="data_host",
+                      default=defs["data_host"],
+                      help="Specify remote host to use for data and compute engine. "
+                           "For example, use \"--data-host vulcan.llnl.gov "
+                           " [default = %s]" % defs["data_host"])
     parser.add_option("-i",
                       "--interactive",
                       action = "store_true",
@@ -588,9 +611,9 @@ def parse_args():
                            "Just bring up CLI and let user Source() "
                            "the .py file explicitly.")
     parser.add_option("--pixdiff",
-                      type="int",
+                      type="float",
                       default=defs["pixdiff"],
-                      help="allowed % of pixels different [default = 0%]")
+                      help="allowed % of pixels different [default = 0.0%]")
     parser.add_option("--avgdiff",
                       type="int",
                       default=defs["avgdiff"],
@@ -605,6 +628,9 @@ def parse_args():
                       default=defs["vargs"],
                       help="arguments to pass directly to VisIt "
                            "(surround them \" or ')")
+    parser.add_option("--host-profile-dir",
+                      default=defs["host_profile_dir"],
+                      help="Specify a directory from which host profiles will be read.")
     parser.add_option("--retry",
                       default=defs["retry"],
                       action="store_true",
@@ -641,12 +667,32 @@ def parse_args():
     parser.add_option("--parallel-launch",
                       default=defs["parallel_launch"],
                       help="specify the parallel launch method. "
-                           "Options are mpirun and srun.")
+                           "Options are mpirun and srun, or a space-separated "
+                           "list of parallel launch options.")
+    parser.add_option("--no-timings",
+                      dest="no_timings",
+                      default=defs["no_timings"],
+                      action = "store_true",
+                      help="Do not generate timing files.")
+    parser.add_option("--rsync-post",
+                      default=defs["rsync_post"],
+                      help="Post results via rsync")
 
     # parse args
     opts, tests = parser.parse_args()
     # note: we want a dict b/c the values could be passed without using optparse
     opts = vars(opts)
+    if sys.platform.startswith("win"):
+        # use glob to match any *.py
+        expandedtests = []
+        for t in tests:
+           if not '*' in t:
+              expandedtests.append(t)
+           else:
+              for match in glob.iglob(t):
+                 expandedtests.append(match)
+        if len(expandedtests) > 0:
+            tests = expandedtests
     return opts, tests
 
 # ----------------------------------------------------------------------------
@@ -853,6 +899,24 @@ def launch_tests(opts,tests):
     return error, results
 
 # ----------------------------------------------------------------------------
+#  Method: rsync_post
+#
+#  Programmer: Cyrus Harrison
+#  Date:       ue Nov 25 11:23:12 PST 2014
+#
+#  Modifications:
+# ----------------------------------------------------------------------------
+def rsync_post(src_dir,rsync_dest):
+    rsync_dest = pjoin(rsync_dest,timestamp(sep="_"))
+    rsync_cmd =  "rsync -vur %s/ %s" % (src_dir,rsync_dest)
+    Log("[rsyncing results to %s]" % rsync_dest)
+    exe_res = sexe(rsync_cmd,
+                   suppress_output=(not (opts["verbose"] or opts["less_verbose"])),
+                    echo=opts["verbose"])
+
+
+
+# ----------------------------------------------------------------------------
 #  Method: main
 #
 #  Programmer: Cyrus Harrison
@@ -912,6 +976,8 @@ def main(opts,tests):
             Log("!! Test suite run finished with %d errors." % nerrors)
     if opts["cleanup"]:
         cleanup(opts["result_dir"],opts["cleanup_delay"])
+    if opts["rsync_post"] is not None:
+        rsync_post(opts["result_dir"],opts["rsync_post"])
     if opts['ctest']:
         if not error:
             sys.exit(0)

@@ -1,14 +1,14 @@
-#/usr/gapps/visit/thirdparty_shared/2.8.1/cmake/2.8.12.2/linux-x86_64_gcc-4.4/bin/cmake
+#/usr/gapps/visit/thirdparty_shared/2.9.0/cmake/3.0.2/linux-x86_64_gcc-4.4/bin/cmake
 ##
-## ./build_visit2_8_1 generated host.cmake
-## created: Wed Oct  8 09:58:35 PDT 2014
-## system: Linux inca2 2.6.32-431.23.3.1chaos.ch5.2.x86_64 #1 SMP Tue Jul 29 14:58:25 PDT 2014 x86_64 x86_64 x86_64 GNU/Linux
+## ./build_visit2_9_0 generated host.cmake
+## created: Thu Feb 19 10:50:56 PST 2015
+## system: Linux inca3 2.6.32-431.29.2.2chaos.ch5.2.x86_64 #1 SMP Thu Dec 18 17:47:12 PST 2014 x86_64 x86_64 x86_64 GNU/Linux
 ## by: brugger
 
 ##
 ## Setup VISITHOME & VISITARCH variables.
 ##
-SET(VISITHOME /usr/gapps/visit/thirdparty_shared/2.8.1)
+SET(VISITHOME /usr/gapps/visit/thirdparty_shared/2.9.0)
 SET(VISITARCH linux-x86_64_gcc-4.4)
 
 ## Compiler flags.
@@ -22,11 +22,6 @@ VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -m64 -fPIC -fvisibility=hidden" TYPE STRI
 ## VisIt Thread Option
 ##
 VISIT_OPTION_DEFAULT(VISIT_THREAD OFF TYPE BOOL)
-
-##
-## VisIt Boost Option
-##
-VISIT_OPTION_DEFAULT(VISIT_USE_BOOST ON TYPE BOOL)
 
 ##
 ## Parallel Build Setup.
@@ -74,7 +69,7 @@ VISIT_OPTION_DEFAULT(VISIT_QT_BIN ${VISITHOME}/qt/4.8.3/${VISITARCH}/bin)
 ##
 ## VTK
 ##
-SETUP_VTK_VERSION(6.1.0)
+SETUP_APP_VERSION(VTK 6.1.0)
 VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/${VTK_VERSION}/${VISITARCH})
 ##
 
@@ -82,6 +77,12 @@ VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${VISITHOME}/vtk/${VTK_VERSION}/${VISITARCH})
 ## AdvIO
 ##
 VISIT_OPTION_DEFAULT(VISIT_ADVIO_DIR ${VISITHOME}/AdvIO/1.2/${VISITARCH})
+
+##
+## BOOST
+##
+SETUP_APP_VERSION(BOOST 1_57_0)
+VISIT_OPTION_DEFAULT(VISIT_BOOST_DIR ${VISITHOME}/boost/1_57_0/${VISITARCH})
 
 ##
 ## Boxlib
@@ -147,6 +148,30 @@ VISIT_OPTION_DEFAULT(VISIT_ICET_DIR ${VISITHOME}/icet/1.0.0/${VISITARCH})
 ##
 VISIT_OPTION_DEFAULT(VISIT_NETCDF_DIR ${VISITHOME}/netcdf/4.1.1/${VISITARCH})
 VISIT_OPTION_DEFAULT(VISIT_NETCDF_LIBDEP HDF5_LIBRARY_DIR hdf5_hl HDF5_LIBRARY_DIR hdf5 ${VISIT_HDF5_LIBDEP} TYPE STRING)
+
+##
+## ITAPS
+##
+## MOAB implementation
+ITAPS_INCLUDE_DIRECTORIES(MOAB ${VISITHOME}/itaps/1.4/MOAB/4.6.0/${VISITARCH}/include)
+ITAPS_FILE_PATTERNS(MOAB *.cub)
+ITAPS_LINK_LIBRARIES(MOAB iMesh MOAB hdf5_hl hdf5 sz z netcdf_c++ netcdf )
+ITAPS_LINK_DIRECTORIES(MOAB  ${VISITHOME}/itaps/1.4/MOAB/4.6.0/${VISITARCH}/lib  ${VISITHOME}/hdf5/1.8.7/${VISITARCH}/lib  ${VISITHOME}/szip/2.1/${VISITARCH}/lib  ${VISITHOME}/netcdf/4.1.1/${VISITARCH}/lib )
+## FMDB implementation
+ITAPS_INCLUDE_DIRECTORIES(FMDB ${VISITHOME}/itaps/1.4/FMDB/1.4.0/${VISITARCH}/include)
+ITAPS_FILE_PATTERNS(FMDB *.sms)
+ITAPS_LINK_LIBRARIES(FMDB FMDB SCORECModel SCORECUtil )
+ITAPS_LINK_DIRECTORIES(FMDB ${VISITHOME}/itaps/1.4/FMDB/1.4.0/${VISITARCH}/lib)
+## GRUMMP implementation
+ITAPS_INCLUDE_DIRECTORIES(GRUMMP ${VISITHOME}/itaps/1.4/GRUMMP/0.6.5/${VISITARCH}/include)
+ITAPS_FILE_PATTERNS(GRUMMP *.bdry *.smesh *.vmesh)
+ITAPS_LINK_LIBRARIES(GRUMMP iMesh_GRUMMP GR_3D GR_surf GR_2D GR_geom GR_base SUMAAlog_lite OptMS cgm dl)
+ITAPS_LINK_DIRECTORIES(GRUMMP ${VISITHOME}/itaps/1.4/GRUMMP/0.6.5/${VISITARCH}/lib)
+
+##
+## MFEM
+##
+VISIT_OPTION_DEFAULT(VISIT_MFEM_DIR ${VISITHOME}/mfem/3.0.1/${VISITARCH})
 
 ##
 ## Mili

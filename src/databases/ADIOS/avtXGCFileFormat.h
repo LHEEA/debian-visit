@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -113,6 +113,7 @@ class avtXGCFileFormat : public avtMTMDFileFormat
     void                   Initialize();
     vtkDataArray          *GetTurbulence(int ts, int dom);
     vtkDataArray          *GetSep();
+    vtkDataArray          *GetPsi();
     vtkDataSet            *GetSepMesh();
     vtkDataSet            *GetMesh2D(int ts, int dom);
 

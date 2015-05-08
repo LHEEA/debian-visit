@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -5643,6 +5643,39 @@ const char *visit_ReOpenDatabase_doc =
 "SetTimeSliderState(state)\n"
 "SaveWindow()\n"
 ;
+
+const char *visit_ReadHostProfilesFromDirectory_doc = 
+"ReadHostProfilesFromDirectory\n"
+"-Reads host profiles from a specified directory.\n"
+"\n"
+"\n"
+"Synopsis:\n"
+"\n"
+"ReadHostProfilesFromDirectory(directory, clear) -> integer\n"
+"\n"
+"Arguments:\n"
+"\n"
+"directory\n"
+"The name of the directory that contains the host profile XML files.\n"
+"clear\n"
+"A flag indicating whether the host profile list should cleared first.\n"
+"\n"
+"Returns:\n"
+"\n"
+"The ReadHostProfilesFromDirectory function returns an integer value of 1 for success and\n"
+"0 for failure.\n"
+"\n"
+"Description:\n"
+"\n"
+"The ReadHostProfilesFromDirectory provides a way to tell VisIt to load host \n"
+"profiles from the XML files in a specified directory. This is needed because\n"
+"the machine profile for host profiles contains client/server options that \n"
+"sometimes cannot be specified via the VisIt command line.\n"
+"\n"
+"Example:\n"
+"\n"
+"ReadHostProfilesFromDirectory(\"/usr/gapps/visit/2.8.2/linux-x86_64/resources/hosts/llnl\", 1)\n"
+;
 const char *visit_ReplaceDatabase_doc = 
 "ReplaceDatabase\n"
 "-Replaces the database in the current plots with a new database.\n"
@@ -6495,7 +6528,7 @@ const char *visit_SetCreateVectorMagnitudeExpressions_doc =
 "should be automatically created. The default behavior is for the \n"
 "expressions to be created, which may slow down VisIt's performance \n"
 "if there is an extraordinary large number of vector variables.  Turning this \n"
-"feature off tells VisIt to skip automatic creation of the vecotr magnitude expressions. \n"
+"feature off tells VisIt to skip automatic creation of the vector magnitude expressions. \n"
 "expressions."
 "\n"
 "\n"
@@ -7455,6 +7488,48 @@ const char *visit_SetQueryOverTimeAttributes_doc =
 "QueryOverTime(\"Min\")\n"
 "ResetView()\n"
 ;
+const char *visit_SetRemoveDuplicateNodes_doc =
+"SetRemoveDuplicateNodes\n"
+"-Sets global attribute boolean to automatically remove duplicate nodes from\n"
+" fully disconnected unstructured grids.\n"
+"\n"
+"\n"
+"Synopsis:\n"
+"\n"
+"SetRemoveDuplicateNodes(val) -> integer\n"
+"\n"
+"\n"
+"Arguments:\n"
+"\n"
+"val\n"
+"Either a zero (false) or non-zero (true) integer value to indicate if\n"
+" duplicate nodes in fully disconnected unstructured grids should be \n"
+" automatically removed by visit.\n"
+"\n"
+"\n"
+"Returns:\n"
+"\n"
+"The SetRemoveDuplicateNodes function returns 1 on success and 0 on failure.\n"
+"\n"
+"\n"
+"Description:\n"
+"\n"
+"The SetRemoveDuplicateNodes function sets a boolean in the \n"
+"global attributes indicating whether or not duplicate nodes in\n"
+"fully disconnected unstructured grids should be automatically removed.\n"
+"The default behavior is for the original grid to be left as read, which\n"
+" may slow down VisIt's performance for extraordinary large meshes.\n"
+" Turning this feature off tells VisIt to remove the duplicate nodes after\n"
+" the mesh is read, but before further processing in VisIt.\n"
+"\n"
+"\n"
+"Example:\n"
+"\n"
+"% visit -cli\n"
+"SetRemoveDuplicateNodes(1) # turn this feature on\n"
+"SetRemoveDuplicateNodes(0) # turn this feature off\n"
+;
+
 const char *visit_SetRenderingAttributes_doc = 
 "SetRenderingAttributes\n"
 "-Sets global rendering attributes that control the look and feel of the\n"
@@ -9603,18 +9678,3 @@ const char *visit_RemoveMachineProfile_doc =
 "\n"
 "\n"
 ;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

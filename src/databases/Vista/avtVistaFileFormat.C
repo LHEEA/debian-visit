@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -70,7 +70,7 @@
 #include <string>
 #include <map>
 
-#include <StringHelpers.h>
+#include <FileFunctions.h>
 #include <avtCallback.h>
 #include <avtVistaFileFormat.h>
 #include <avtVistaAle3dFileFormat.h>
@@ -293,8 +293,8 @@ avtVistaFileFormat::avtVistaFileFormat(const char *filename,
 {
     wasMorphed = false;
 
-    masterFileName = StringHelpers::Basename(filename);
-    masterDirName = StringHelpers::Dirname(filename);
+    masterFileName = FileFunctions::Basename(filename);
+    masterDirName = FileFunctions::Dirname(filename);
 
     fileHandles = new void*[MAX_FILES];
     for (int i = 0 ; i < MAX_FILES ; i++)

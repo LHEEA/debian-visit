@@ -1,6 +1,6 @@
 c-----------------------------------------------------------------------------
 c
-c Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+c Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 c Produced at the Lawrence Livermore National Laboratory
 c LLNL-CODE-442911
 c All rights reserved.
@@ -257,6 +257,17 @@ c---------------------------------------------------------------------------
       integer     domain, lname
       include "visitfortransimV2interface.inc"
       visitgetvariable = VISIT_INVALID_HANDLE
+      end
+
+c---------------------------------------------------------------------------
+c visitgetmixedvariable
+c---------------------------------------------------------------------------
+      integer function visitgetmixedvariable(domain, name, lname)
+      implicit none
+      character*8 name
+      integer     domain, lname
+      include "visitfortransimV2interface.inc"
+      visitgetmixedvariable = VISIT_INVALID_HANDLE
       end
 
 c---------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -569,7 +569,7 @@ SimGetMaterial(int domain, const char *name, void *cbdata)
     VisIt_MaterialData_alloc(&h);
     if(strcmp(name, "Material") == 0)
     {
-        int i, j, m, cell = 0, arrlen = 0;
+        int i, j, m, cell = 0;
         int nmats, cellmat[10], matnos[3]={1,2,3};
         float cellmatvf[10];
 

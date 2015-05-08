@@ -49,6 +49,9 @@
         Forward
         Backward
         Both
+        ForwardDirectionless
+        BackwardDirectionless
+        BothDirectionless
       </Enum>
       <Enum name="ParallelizationAlgorithmType">
         LoadOnDemand
@@ -62,6 +65,7 @@
         M3DC12DField
         M3DC13DField
         Nek5000Field
+        NektarPPField
         NIMRODField
       </Enum>
       <Enum name="IntegrationType">
@@ -311,7 +315,7 @@
       </Function>
       <Function name="ChangesRequireRecalculation" user="true" member="true">
       </Function>
-      <Function name="IntegralCurveViewerPluginInfo::GetOperatorVarDescription" user="false" member="true">
+      <Function name="IntegralCurveViewerEnginePluginInfo::GetOperatorVarDescription" user="false" member="true">
       </Function>
       <Include file="source" quoted="false">
         PointAttributes.h

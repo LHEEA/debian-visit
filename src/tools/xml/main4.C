@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -126,6 +126,15 @@ CallGenerator(const QString &docType, Attribute *attribute, Plugin *plugin, cons
             plugin->WriteGUIInfoSource(gc);
             fgc->close();
             delete fgc;
+        }
+
+        QFile *fvec;
+        if ((fvec = Open(plugin->name+"ViewerEnginePluginInfo.C")) != 0)
+        {
+            QTextStream vc(fvec);
+            plugin->WriteViewerEngineInfoSource(vc);
+            fvec->close();
+            delete fvec;
         }
 
         QFile *fvc;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,6 +39,8 @@
 // ************************************************************************* //
 //                       avtDataObjectToDatasetFilter.C                      //
 // ************************************************************************* //
+
+#include <snprintf.h>
 
 #include <avtDataObjectToDatasetFilter.h>
 
@@ -171,10 +173,13 @@ avtDataObjectToDatasetFilter::PostExecute(void)
     if ((atts.GetSpatialDimension()==3 && atts.GetTopologicalDimension()<3) ||
         (atts.GetSpatialDimension()==2 && atts.GetTopologicalDimension()<2))
     {
+        char dimDataStr[32];
         debug3 << "avtDataObjectToDatastFilter converting ugrids to polydata "
                << "in postex." << endl;
         int t0 = visitTimer->StartTimer();
-        tree->Traverse(CConvertUnstructuredGridToPolyData, NULL, dummy);
+        SNPRINTF(dimDataStr, sizeof(dimDataStr),
+            "avtTopoDim=%d", atts.GetTopologicalDimension());
+        tree->Traverse(CConvertUnstructuredGridToPolyData, dimDataStr, dummy);
         visitTimer->StopTimer(t0, "converting ugrids to polydata in postex");
     }
 

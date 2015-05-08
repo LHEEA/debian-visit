@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -117,7 +117,6 @@
         char msg[1024];                                                                         \
         char desc[256];                                                                         \
         for (int i = 0; i < sizeof(desc); i++) desc[i] = '\0';                                  \
-        int dummyError = ERR;                                                                   \
         iMesh_getDescription(IMI, desc, sizeof(desc));                             \
         SNPRINTF(msg, sizeof(msg), "Encountered ITAPS error (%d) after call to \"%s\""          \
             " at line %d in file \"%s\"\nThe description is...\n"                               \

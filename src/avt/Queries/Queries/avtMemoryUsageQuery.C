@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,8 +46,7 @@
 #include <snprintf.h>
 #include <QueryAttributes.h>
 
-#include <Utility.h>
-
+#include <avtMemory.h>
 
 #ifdef PARALLEL
 #include <mpi.h>
@@ -110,7 +109,7 @@ avtMemoryUsageQuery::PerformQuery(QueryAttributes *atts)
     // grab memory usage per engine process
     unsigned long m_size, m_rss;
     
-    GetMemorySize(m_size, m_rss);
+    avtMemory::GetMemorySize(m_size, m_rss);
     
     if(m_size == 0 || m_rss == 0)
     {

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -278,6 +278,7 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
     fieldType->addItem(tr("M3D-C1 2D"));
     fieldType->addItem(tr("M3D-C1 3D"));
     fieldType->addItem(tr("Nek5000"));
+    fieldType->addItem(tr("Nektar++"));
     fieldType->addItem(tr("NIMROD"));
     connect(fieldType, SIGNAL(activated(int)),
             this, SLOT(fieldTypeChanged(int)));
@@ -405,14 +406,28 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
                                             central), 0, 0);
 
     operationType = new QComboBox(central);
-    operationType->addItem(tr("Lyapunov Exponent"));
     operationType->addItem(tr("Integration time"));
     operationType->addItem(tr("Arc length"));
     operationType->addItem(tr("Average distance from seed"));
+    operationType->addItem(tr("Eigen Value"));
+    operationType->addItem(tr("Eigen Vector"));
+    operationType->addItem(tr("Lyapunov Exponent"));
     connect(operationType, SIGNAL(activated(int)),
             this, SLOT(operationTypeChanged(int)));
     terminationLayout->addWidget(operationType, 0, 1);
 
+    // Create the eigenComponent of integration.
+
+    eigenComponentLabel = new QLabel(tr("Eigen component"), central);
+    terminationLayout->addWidget(eigenComponentLabel, 1, 0);
+
+    eigenComponent = new QComboBox(central);
+    eigenComponent->addItem(tr("First"));
+    eigenComponent->addItem(tr("Second"));
+    eigenComponent->addItem(tr("Third"));
+    connect(eigenComponent, SIGNAL(activated(int)),
+            this, SLOT(eigenComponentChanged(int)));
+    terminationLayout->addWidget(eigenComponent, 1, 1);
 
     // Create the operator of integrator.
     operatorType = new QComboBox(central);
@@ -429,51 +444,51 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
     // Radio button termination type
     rb = new QRadioButton(tr("Limit maximum advection time i.e. FTLE"), terminationGroup);
     terminationTypeButtonGroup->addButton(rb, 0);
-    terminationLayout->addWidget(rb, 1, 0, 1, 2);
+    terminationLayout->addWidget(rb, 2, 0, 1, 2);
 
     rb->setChecked(true);
 
     rb = new QRadioButton(tr("Limit maximum advection distance i.e. FLLE"), terminationGroup);
     terminationTypeButtonGroup->addButton(rb, 1);
-    terminationLayout->addWidget(rb, 2, 0, 1, 2);
+    terminationLayout->addWidget(rb, 3, 0, 1, 2);
 
     rb = new QRadioButton(tr("Limit maximum size i.e. FSLE"), terminationGroup);
     terminationTypeButtonGroup->addButton(rb, 2);
-    terminationLayout->addWidget(rb, 3, 0, 1, 2);
+    terminationLayout->addWidget(rb, 4, 0, 1, 2);
 
     connect(terminationTypeButtonGroup, SIGNAL(buttonClicked(int)), this, SLOT(terminationTypeButtonGroupChanged(int)));
 
     // Check box termination type
     limitMaxTime = new QCheckBox(tr("Limit maximum advection time"), terminationGroup);
     connect(limitMaxTime, SIGNAL(toggled(bool)), this, SLOT(limitMaxTimeChanged(bool)));
-    terminationLayout->addWidget(limitMaxTime, 1, 0, 1, 2);
+    terminationLayout->addWidget(limitMaxTime, 2, 0, 1, 2);
     limitMaxTime->hide();
 
     limitMaxDistance = new QCheckBox(tr("Limit maximum advection distance"), terminationGroup);
     connect(limitMaxDistance, SIGNAL(toggled(bool)), this, SLOT(limitMaxDistanceChanged(bool)));
-    terminationLayout->addWidget(limitMaxDistance, 2, 0, 1, 2);
+    terminationLayout->addWidget(limitMaxDistance, 3, 0, 1, 2);
     limitMaxDistance->hide();
 
     // Termination values
     maxTime = new QLineEdit(central);
     connect(maxTime, SIGNAL(returnPressed()), this, SLOT(maxTimeProcessText()));
-    terminationLayout->addWidget(maxTime, 1, 2);
+    terminationLayout->addWidget(maxTime, 2, 2);
 
     maxDistance = new QLineEdit(central);
     connect(maxDistance, SIGNAL(returnPressed()), this, SLOT(maxDistanceProcessText()));
-    terminationLayout->addWidget(maxDistance, 2, 2);
+    terminationLayout->addWidget(maxDistance, 3, 2);
 
     maxSize = new QLineEdit(central);
     connect(maxSize, SIGNAL(returnPressed()), this, SLOT(maxSizeProcessText()));
-    terminationLayout->addWidget(maxSize, 3, 2);
+    terminationLayout->addWidget(maxSize, 4, 2);
 
     // Max steps override
     QLabel *maxStepsLabel = new QLabel(tr("Maximum number of steps"), terminationGroup);
-    terminationLayout->addWidget(maxStepsLabel, 4, 0, 1, 2);
+    terminationLayout->addWidget(maxStepsLabel, 5, 0, 1, 2);
     maxSteps = new QLineEdit(central);
     connect(maxSteps, SIGNAL(returnPressed()),
             this, SLOT(maxStepsProcessText()));
-    terminationLayout->addWidget(maxSteps, 4, 2);
+    terminationLayout->addWidget(maxSteps, 5, 2);
 }
 
 
@@ -698,15 +713,15 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 // Creation:   Mon Oct 21 14:19:00 PST 2002
 //
 // Modifications:
+//   Kathleen Biagas, Thu Apr 9 07:19:54 MST 2015
+//   Use helper function DoubleToQString for consistency in formatting across
+//   all windows.
 //
 // ****************************************************************************
 
 void
 QvisLCSWindow::UpdateWindow(bool doAll)
 {
-    QString       temp;
-    QColor        tempcolor;
-
     for(int i = 0; i < atts->NumAttributes(); ++i)
     {
         if(!doAll)
@@ -779,8 +794,7 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             EndPosition->setText(DoublesToQString(atts->GetEndPosition(), 3));
             break;
         case LCSAttributes::ID_maxStepLength:
-            temp.setNum(atts->GetMaxStepLength());
-            maxStepLength->setText(temp);
+            maxStepLength->setText(DoubleToQString(atts->GetMaxStepLength()));
             break;
         case LCSAttributes::ID_limitMaximumTimestep:
             limitMaxTimeStep->blockSignals(true);
@@ -799,12 +813,10 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             maxTimeStep->blockSignals(false);
             break;
         case LCSAttributes::ID_maxTimeStep:
-            temp.setNum(atts->GetMaxTimeStep());
-            maxTimeStep->setText(temp);
+            maxTimeStep->setText(DoubleToQString(atts->GetMaxTimeStep()));
             break;
         case LCSAttributes::ID_maxSteps:
-            temp.setNum(atts->GetMaxSteps());
-            maxSteps->setText(temp);
+            maxSteps->setText(IntToQString(atts->GetMaxSteps()));
             break;
 
         case LCSAttributes::ID_terminateByDistance:
@@ -826,12 +838,14 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             operationType->setCurrentIndex(int(atts->GetOperationType()) );
             operationType->blockSignals(false);
 
-            if( atts->GetOperationType() == LCSAttributes::Lyapunov)
+            if( atts->GetOperationType() == LCSAttributes::Lyapunov )
             {
               terminationTypeButtonGroup->blockSignals(true);
               terminationTypeButtonGroup->button(0)->show();
               terminationTypeButtonGroup->button(1)->show();
               terminationTypeButtonGroup->button(2)->show();
+              eigenComponentLabel->show();
+              eigenComponent->show();
               maxSize->show();
               limitMaxDistance->hide();
               limitMaxTime->hide();
@@ -850,10 +864,24 @@ QvisLCSWindow::UpdateWindow(bool doAll)
               terminationTypeButtonGroup->button(0)->hide();
               terminationTypeButtonGroup->button(1)->hide();
               terminationTypeButtonGroup->button(2)->hide();
+
+              if( atts->GetOperationType() == LCSAttributes::EigenValue ||
+                  atts->GetOperationType() == LCSAttributes::EigenVector )
+              {
+                eigenComponentLabel->show();
+                eigenComponent->show();
+                operatorType->hide();
+              }
+              else
+              {
+                eigenComponentLabel->hide();
+                eigenComponent->hide();
+                operatorType->show();
+              }
+
               maxSize->hide();
               limitMaxDistance->show();
               limitMaxTime->show();
-              operatorType->show();
               if( atts->GetOperatorType() == LCSAttributes::BaseValue)
                 clampLogValues->hide();
               else
@@ -889,16 +917,13 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             maxSize->setEnabled(atts->GetTerminationType()==2);
             break;
         case LCSAttributes::ID_termSize:
-            temp.setNum(atts->GetTermSize());
-            maxSize->setText(temp);
+            maxSize->setText(DoubleToQString(atts->GetTermSize()));
             break;
         case LCSAttributes::ID_termDistance:
-            temp.setNum(atts->GetTermDistance());
-            maxDistance->setText(temp);
+            maxDistance->setText(DoubleToQString(atts->GetTermDistance()));
             break;
         case LCSAttributes::ID_termTime:
-            temp.setNum(atts->GetTermTime(), 'g', 16);
-            maxTime->setText(temp);
+            maxTime->setText(DoubleToQString(atts->GetTermTime()));
             break;
         case LCSAttributes::ID_velocitySource:
             velocitySource->setText(DoublesToQString(atts->GetVelocitySource(),3));
@@ -910,8 +935,7 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             directionType->blockSignals(false);
             break;
         case LCSAttributes::ID_relTol:
-            temp.setNum(atts->GetRelTol());
-            relTol->setText(temp);
+            relTol->setText(DoubleToQString(atts->GetRelTol()));
             break;
         case LCSAttributes::ID_absTolSizeType:
             absTolSizeType->blockSignals(true);
@@ -919,27 +943,23 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             absTolSizeType->blockSignals(false);
             if (atts->GetAbsTolSizeType() == LCSAttributes::FractionOfBBox)
             {
-                temp.setNum(atts->GetAbsTolBBox());
-                absTol->setText(temp);
+                absTol->setText(DoubleToQString(atts->GetAbsTolBBox()));
             }
             if (atts->GetAbsTolSizeType() == LCSAttributes::Absolute)
             {
-                temp.setNum(atts->GetAbsTolAbsolute());
-                absTol->setText(temp);
+                absTol->setText(DoubleToQString(atts->GetAbsTolAbsolute()));
             }
             break;
         case LCSAttributes::ID_absTolBBox:
             if (atts->GetAbsTolSizeType() == LCSAttributes::FractionOfBBox)
             {
-                temp.setNum(atts->GetAbsTolBBox());
-                absTol->setText(temp);
+                absTol->setText(DoubleToQString(atts->GetAbsTolBBox()));
             }
             break;
         case LCSAttributes::ID_absTolAbsolute:
             if (atts->GetAbsTolSizeType() == LCSAttributes::Absolute)
             {
-                temp.setNum(atts->GetAbsTolAbsolute());
-                absTol->setText(temp);
+                absTol->setText(DoubleToQString(atts->GetAbsTolAbsolute()));
             }
             break;
         case LCSAttributes::ID_fieldType:
@@ -1041,12 +1061,10 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             pathlineOverrideStartingTimeFlag->blockSignals(false);
             break;
         case LCSAttributes::ID_pathlinesOverrideStartingTime:
-            temp.setNum(atts->GetPathlinesOverrideStartingTime(), 'g', 16);
-            pathlineOverrideStartingTime->setText(temp);
+            pathlineOverrideStartingTime->setText(DoubleToQString(atts->GetPathlinesOverrideStartingTime()));
             break;
         case LCSAttributes::ID_pathlinesPeriod:
-            temp.setNum(atts->GetPathlinesPeriod(), 'g', 16);
-            pathlinePeriod->setText(temp);
+            pathlinePeriod->setText(DoubleToQString(atts->GetPathlinesPeriod()));
             break;
         case LCSAttributes::ID_pathlinesCMFE:
             pathlineCMFEButtonGroup->blockSignals(true);
@@ -1080,8 +1098,7 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             issueWarningForStiffness->blockSignals(false);
             break;
         case LCSAttributes::ID_criticalPointThreshold:
-            temp.setNum(atts->GetCriticalPointThreshold());
-            criticalPointThreshold->setText(temp);
+            criticalPointThreshold->setText(DoubleToQString(atts->GetCriticalPointThreshold()));
             break;
         }
     }
@@ -1261,7 +1278,7 @@ void
 QvisLCSWindow::GetCurrentValues(int which_widget)
 {
     bool doAll = (which_widget == -1);
-    QString msg, temp;
+    QString msg;
 
     // Do resolution
     if(which_widget == LCSAttributes::ID_Resolution || doAll)
@@ -1659,6 +1676,16 @@ QvisLCSWindow::operationTypeChanged(int val)
     if(val != atts->GetOperationType())
     {
         atts->SetOperationType(LCSAttributes::OperationType(val));
+        Apply();
+    }
+}   
+
+void
+QvisLCSWindow::eigenComponentChanged(int val)
+ {
+    if(val != atts->GetEigenComponent())
+    {
+        atts->SetEigenComponent(LCSAttributes::EigenComponent(val));
         Apply();
     }
 }   

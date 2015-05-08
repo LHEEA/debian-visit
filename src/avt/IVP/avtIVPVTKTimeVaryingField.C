@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,8 +41,6 @@
 // ************************************************************************* //
 
 #include <avtIVPVTKTimeVaryingField.h>
-#include <iostream>
-#include <limits>
 
 #include <vtkUnsignedCharArray.h>
 #include <vtkDataSet.h>
@@ -50,6 +48,9 @@
 #include <vtkCellData.h>
 #include <vtkGenericCell.h>
 #include <DebugStream.h>
+
+#include <iostream>
+#include <limits>
 
 //const char* avtIVPVTKTimeVaryingField::NextTimePrefix = "__nextTimePrefix_";
 const char* avtIVPVTKTimeVaryingField::NextTimePrefix = "__pathlineNextTimeVar__";
@@ -146,7 +147,6 @@ avtIVPVTKTimeVaryingField::~avtIVPVTKTimeVaryingField()
 //   Incorporate vtkVisItInterpolatedVelocityField in avtIVPVTKTimeVaryingField.
 //
 // ****************************************************************************
-
 void
 avtIVPVTKTimeVaryingField::GetExtents( double extents[6] ) const
 {
@@ -185,6 +185,7 @@ avtIVPField::Result
 avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) const
 {
     bool inside[2] = {true, true};
+
     if( pos != lastPos )
     {
         lastPos  = pos;
@@ -195,13 +196,13 @@ avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) 
     
     if (t0 < t1)
     {
-        if( time < t0 || time > t1 )
+        if( time < t0 || t1 < time )
             inside[1] = false;
     }
     else
     {
         // backwards integration
-        if( time < t1 || time > t0 )
+        if( time < t1 || t0 < time )
             inside[1] = false;
     }
 
@@ -241,19 +242,21 @@ avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) 
 // ****************************************************************************
 
 avtIVPField::Result
-avtIVPVTKTimeVaryingField::operator()( const double &t, const avtVector &p, avtVector &vel ) const
+avtIVPVTKTimeVaryingField::operator()( const double &t,
+                                       const avtVector &p,
+                                       avtVector &vel ) const
 {
     Result res = FindCell(t, p);
     if (res != OK)
         return res;
 
+    double v0[3], v1[3];
+
+    double p0 = (t1-t)/dt;
+    double p1 = (t-t0)/dt;
+
     if (velCellBased)
     {
-        double v0[3], v1[3];
-
-        double p0 = (t1-t)/dt;
-        double p1 = (t-t0)/dt;
-
         velData[0]->GetTuple( lastCell, v0 );
         velData[1]->GetTuple( lastCell, v1 );
 
@@ -263,11 +266,6 @@ avtIVPVTKTimeVaryingField::operator()( const double &t, const avtVector &p, avtV
     }
     else
     {
-        double v0[3], v1[3];
-
-        double p0 = (t1-t)/dt;
-        double p1 = (t-t0)/dt;
-
         for( avtInterpolationWeights::const_iterator wi=lastWeights.begin();
              wi!=lastWeights.end(); ++wi )
         {

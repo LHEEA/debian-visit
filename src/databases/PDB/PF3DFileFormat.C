@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -670,6 +670,11 @@ PF3DFileFormat::GetType()
 bool
 PF3DFileFormat::CanAccessFile(const std::string &filename) const
 {
+#if 1
+    return FileFunctions::CheckPermissions(filename) == 
+           FileFunctions::PERMISSION_RESULT_READABLE;
+#else
+// OBSOLETE...
 #if defined(_WIN32)
     // For now.
     return true;
@@ -681,8 +686,8 @@ PF3DFileFormat::CanAccessFile(const std::string &filename) const
     int   ngids = getgroups(100, gids);
 
     // Get information about the file.
-    VisItStat_t s;
-    VisItStat(filename.c_str(), &s);
+    FileFunctions::VisItStat_t s;
+    FileFunctions::VisItStat(filename.c_str(), &s);
 
     bool isdir = S_ISDIR(s.st_mode);
     bool canaccess = false;
@@ -712,6 +717,7 @@ PF3DFileFormat::CanAccessFile(const std::string &filename) const
     }
 
     return canaccess;
+#endif
 #endif
 }
 

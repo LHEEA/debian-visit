@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -124,7 +124,7 @@ public:
     const int* GetFrameAndState() const;
     const double *GetViewExtents() const;
     const std::string &GetChangedCtName() const;
-    const int GetWindowID() const;
+    int GetWindowID() const;
 
 private:
     WindowAttributes win;

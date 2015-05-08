@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -303,24 +303,31 @@ EngineMain(int argc, char *argv[])
             visitTimer->Enable();
     }
 
-    Engine *engine = Engine::Instance();
+    Engine *engine = EngineBase::GetEngine();
 
     // Do some pre-connect initialization
     engine->Initialize(&argc, &argv, true);
+    debug1 << "Engine::Initialize completed." << endl;
 
     // Try to connect to the viewer
     if (engine->ConnectViewer(&argc, &argv))
     {
+        debug1 << "Engine::ConnectViewer completed." << endl;
+
         // Do the post-connect initialization
         engine->SetUpViewerInterface(&argc, &argv);
+        debug1 << "Engine::SetupViewerInterface completed." << endl;
 
         // Do the rest of the engine initialization.
         engine->InitializeCompute();
+        debug1 << "Engine::InitializeCompute completed." << endl;
 
         // Begin the engine's event processing loop.
 #ifdef PARALLEL
+        debug1 << "Entering PAR_EventLoop" << endl;
         engine->PAR_EventLoop();
 #else
+        debug1 << "Entering EventLoop" << endl;
         engine->EventLoop();
 #endif
     }

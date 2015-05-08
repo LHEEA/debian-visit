@@ -20,6 +20,7 @@ avtADIOSBasicFileFormat.C
 avtXGCFileFormat.C
 avtSpecFEMFileFormat.C
 avtADIOSSchemaFileFormat.C
+avtLAMMPSFileFormat.C
 ADIOSFileObject.C
 )
 
@@ -31,6 +32,7 @@ avtADIOSBasicFileFormat.C
 avtXGCFileFormat.C
 avtSpecFEMFileFormat.C
 avtADIOSSchemaFileFormat.C
+avtLAMMPSFileFormat.C
 ADIOSFileObject.C
 )
 

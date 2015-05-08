@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -404,7 +404,7 @@ avtMultiCurveFilter::Execute(void)
             {
                 yMin = var->GetTuple1(i);
                 yMax = var->GetTuple1(i);
-                for (i = i; i < nx * ny; i++)
+                for (; i < nx * ny; i++)
                 {
                     if (var2->GetTuple1(i) >= 0.)
                     {

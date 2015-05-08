@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,10 +76,15 @@ using std::string;
 //
 //    Mark C. Miller, Tue Jan  4 10:23:19 PST 2005
 //    Added window id
+//
+//    Mark C. Miller, Wed Oct  1 19:55:02 PDT 2014
+//    Ensure extents are initialized.
 // ****************************************************************************
 
 SetWinAnnotAttsRPC::SetWinAnnotAttsRPC() : BlockingRPC("aaasaIDsi")
 {
+    const double init_extents[6] = {0,0,0,0,0,0};
+    SetViewExtents(init_extents);
 }
 
 // ****************************************************************************
@@ -518,7 +523,7 @@ SetWinAnnotAttsRPC::GetChangedCtName() const
 //
 // ****************************************************************************
 
-const int 
+int 
 SetWinAnnotAttsRPC::GetWindowID() const
 {
     return windowID;

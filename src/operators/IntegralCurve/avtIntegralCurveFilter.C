@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2466,7 +2466,7 @@ avtIntegralCurveFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCurve *
                       (crop_value - last_crop_value);
                 }
 
-                // Get the parameter for the endding interpolation value. 
+                // Get the parameter for the ending interpolation value. 
                 if( cropEndInterpolate &&
                     last_crop_value < cropEndValue &&
                     cropEndValue < crop_value )             

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,7 +86,7 @@ class DeferExpressionGUIPluginInfo : public virtual GUIOperatorPluginInfo, publi
         QvisNotepadArea *notepad);
 };
 
-class DeferExpressionViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual DeferExpressionCommonPluginInfo
+class DeferExpressionViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual DeferExpressionCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -95,13 +95,11 @@ class DeferExpressionViewerPluginInfo : public virtual ViewerOperatorPluginInfo,
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -109,7 +107,12 @@ class DeferExpressionViewerPluginInfo : public virtual ViewerOperatorPluginInfo,
     static DeferExpressionAttributes *clientAtts;
 };
 
-class DeferExpressionEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual DeferExpressionCommonPluginInfo
+class DeferExpressionViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual DeferExpressionViewerEnginePluginInfo
+{
+  public:
+};
+
+class DeferExpressionEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual DeferExpressionViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

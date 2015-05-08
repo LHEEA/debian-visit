@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,6 +48,7 @@
 #include "JSONRoot.h"
 
 #include <StringHelpers.h>
+#include <FileFunctions.h>
 
 #include <iostream>
 using namespace std;
@@ -85,7 +86,7 @@ JSONRootPath::~JSONRootPath()
 // ****************************************************************************
 //  Method: JSONRootPath::Expand
 //
-//  Purpose: Maps a doman id to is file system or in db path.
+//  Purpose: Maps a domain id to is file system or in db path.
 //
 //
 //  Programmer:  Cyrus Harrison
@@ -95,12 +96,15 @@ JSONRootPath::~JSONRootPath()
 //   Cyrus Harrison, Tue Sep 23 14:42:52 PDT 2014
 //   Added support for simple domain expansion.
 //
+//   Cyrus Harrison, Wed Jan 21 15:02:21 PST 2015
+//   Added support for "%06d", which is the new MFEM standard format string
+//
 // ****************************************************************************
 std::string
 JSONRootPath::Expand(int domain) const
 {
     //
-    // Note: This currenlty only handles "%05d" as the format string.
+    // Note: This currently only handles "%05d" or "%06d" as the format string.
     //
     
     std::size_t path_pattern = path.find("%05d");
@@ -113,10 +117,19 @@ JSONRootPath::Expand(int domain) const
                                       "%05d",
                                       std::string(buff));
     }
-    else
+    
+    path_pattern = path.find("%06d");
+    
+    if(path_pattern != std::string::npos)
     {
-        return path;
+        char buff[64];
+        SNPRINTF(buff,64,"%06d",domain);    
+        return StringHelpers::Replace(path,
+                                      "%06d",
+                                      std::string(buff));
     }
+
+    return path;
 }
 
 // ****************************************************************************
@@ -579,8 +592,8 @@ JSONRoot::ParseJSON(const std::string &json_root)
     // clear existing structure
     dsets.clear();
 
-    std::string root_file = StringHelpers::Absname(".",json_root);
-    std::string root_dir =  StringHelpers::Dirname(root_file);
+    std::string root_file = FileFunctions::Absname(".",json_root);
+    std::string root_dir =  FileFunctions::Dirname(root_file);
 
     // open root file and read its contents
     ifstream iroot;
@@ -671,7 +684,7 @@ std::string
 JSONRoot::ResolveAbsolutePath(const std::string &root_dir,
                               const std::string &file_path)
 {
-    return StringHelpers::Absname(root_dir,file_path);
+    return FileFunctions::Absname(root_dir,file_path);
 }
 
 // ****************************************************************************
@@ -710,7 +723,7 @@ JSONRoot::ToJson(ostringstream &oss)
     vector<string>dset_names;
     DataSets(dset_names);
     // loop over data sets
-    for(int i=0;i<dset_names.size();i++)
+    for(int i=0;i<(int)dset_names.size();i++)
     {
         // domain and mesh data
         oss << "   \"" << dset_names[i] << "\":{\n";
@@ -721,17 +734,17 @@ JSONRoot::ToJson(ostringstream &oss)
         // loop over fields
         vector<string>field_names;
         dset.Fields(field_names);
-        for(int j=0;j<field_names.size();j++)
+        for(int j=0;j<(int)field_names.size();j++)
         {
             JSONRootEntry &field = dset.Field(field_names[j]);
                 oss << "        \"" << field_names[j] << " \": {";
                 oss << "\"path\": \"" << field.Path().Expand() << "\", \"tags\":{";
             vector<string>tag_names;
             field.Tags(tag_names);
-            for(int k=0;k<tag_names.size();k++)
+            for(int k=0;k<(int)tag_names.size();k++)
             {
                 oss << "\"" << tag_names[k] << "\": \"" << field.Tag(tag_names[k]) << "\"";
-                if(k < tag_names.size()-1)
+                if(k < (int)tag_names.size()-1)
                     oss <<", ";
             }
             oss << "}\n";

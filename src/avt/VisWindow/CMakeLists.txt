@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -62,6 +62,7 @@ Colleagues/VisWinPlots.C
 Colleagues/VisWinQuery.C
 Colleagues/VisWinRendering.C
 Colleagues/VisWinRenderingWithoutWindow.C
+Colleagues/VisWinRenderingWithoutWindowWithInteractions.C
 Colleagues/VisWinTools.C
 Colleagues/VisWinTriad.C
 Colleagues/VisWinUserInfo.C
@@ -155,6 +156,7 @@ Tools/avtToolInterface.C
 
 SET(VISWINDOW_SOURCES
 VisWindow/VisWindow.C
+VisWindow/VisWindowWithInteractions.C
 VisWindow/VisWindowTypes.C
 )
 

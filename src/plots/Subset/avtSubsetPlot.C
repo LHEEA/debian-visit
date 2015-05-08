@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -560,6 +560,12 @@ avtSubsetPlot::ApplyOperators(avtDataObject_p input)
 //    Added the block merge filter to the pipeline for the block wireframe
 //    option.
 //
+//    Kevin Griffin, Thu Jan 15 16:42:43 PST 2015
+//    Added the drawInternal flag check so that the wireframe behavior of the
+//    subset plot of blocks executes like the old (incorrect) wireframe behavior
+//    when this flag is true. If the drawInteral flag is false, the wireframe of
+//    subset plots of blocks will only outline the blocks.
+//
 // ****************************************************************************
 
 avtDataObject_p
@@ -657,8 +663,8 @@ avtSubsetPlot::ApplyRenderingTransformation(avtDataObject_p input)
             {
                 sub->SetInput(fl->GetOutput());
             }
-
-            if (type == SubsetAttributes::Group)
+            
+            if ((type == SubsetAttributes::Group) && !atts.GetDrawInternal())
             {
                 sbmf->SetInput(sub->GetOutput());
                 wf->SetInput(sbmf->GetOutput());
@@ -851,6 +857,9 @@ avtSubsetPlot::NeedZBufferToCompositeEvenIn2D(void)
 //    Kathleen Bonnell, Mon Jan 17 18:16:41 MST 2011
 //    Retrieve invertColorTable flag and send to color table.
 //
+//    Kathleen Biagas, Thu Oct 16 09:12:03 PDT 2014
+//    Send 'needsRecalculation' flag to levelsMapper when setting colors.
+//
 // ****************************************************************************
 
 void 
@@ -881,7 +890,7 @@ avtSubsetPlot::SetColors()
         cal.AddColors(ca);
 
         avtLUT->SetLUTColorsWithOpacity(ca.GetColor(), 1);
-        levelsMapper->SetColors(cal);
+        levelsMapper->SetColors(cal, needsRecalculation);
 
         // 
         //  Send an empty color map, rather than one where all
@@ -889,8 +898,6 @@ avtSubsetPlot::SetColors()
         //
         levelsLegend->SetLabelColorMap(levelColorMap);
         levelsLegend->SetLevels(labels);
-
-        return;
     }
     else if (atts.GetColorType() == SubsetAttributes::ColorByMultipleColors)
     {
@@ -918,7 +925,7 @@ avtSubsetPlot::SetColors()
         }
 
         avtLUT->SetLUTColorsWithOpacity(colors, numColors);
-        levelsMapper->SetColors(cal);
+        levelsMapper->SetColors(cal, needsRecalculation);
         levelsLegend->SetLevels(labels);
 
         levelsMapper->SetLabelColorMap(levelColorMap);
@@ -995,7 +1002,7 @@ avtSubsetPlot::SetColors()
         }
 
         avtLUT->SetLUTColorsWithOpacity(colors, numColors);
-        levelsMapper->SetColors(cal);
+        levelsMapper->SetColors(cal, needsRecalculation);
         levelsLegend->SetLevels(labels);
 
         levelsMapper->SetLabelColorMap(levelColorMap);

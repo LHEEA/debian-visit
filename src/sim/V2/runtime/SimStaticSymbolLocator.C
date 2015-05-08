@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -118,7 +118,6 @@ database_dlsym(const std::string &sym)
 void *
 fake_dlsym(const std::string &sym)
 {
-    debug1 << "Asked for " << sym << endl;
     void *ptr = NULL;
     if((ptr = plot_dlsym(sym)) != NULL)
         return ptr;
@@ -127,7 +126,6 @@ fake_dlsym(const std::string &sym)
     if((ptr = database_dlsym(sym)) != NULL)
         return ptr;
 
-    debug1 << "fake_dlsym can't find symbol " << sym << endl;
     return NULL;
 }
 

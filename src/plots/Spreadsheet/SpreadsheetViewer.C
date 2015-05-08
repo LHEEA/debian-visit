@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -90,8 +90,11 @@
 #include <vtkVisItCellLocator.h>
 
 #include <ViewerPlot.h>
+#include <ViewerMessaging.h>
 #include <ViewerMethods.h>
 #include <ViewerState.h>
+#include <ViewerText.h>
+
 #include <DebugStream.h>
 
 #include <Subject.h>
@@ -290,7 +293,7 @@ SpreadsheetViewer::SpreadsheetViewer(ViewerPlot *p, QWidget *parent) :
     if (spreadsheetFont.fromString(plotAtts->GetSpreadsheetFont().c_str()))
         tables[0]->setFont(spreadsheetFont);
 
-    connect(tables[0], SIGNAL(selectionChanged()),
+    connect(tables[0], SIGNAL(tableSelectionChanged()),
             this, SLOT(tableSelectionChanged()));
     zTabs->addTab(tables[0], "k=1");
     connect(zTabs, SIGNAL(currentChanged(int)),
@@ -1585,7 +1588,7 @@ SpreadsheetViewer::setNumberOfTabs(int nt, int base, bool structured)
                 QFont spreadsheetFont;
                 if (spreadsheetFont.fromString(plotAtts->GetSpreadsheetFont().c_str()))
                     t[i]->setFont(spreadsheetFont);
-                connect(t[i], SIGNAL(selectionChanged()),
+                connect(t[i], SIGNAL(tableSelectionChanged()),
                         this, SLOT(tableSelectionChanged()));
                 zTabs->addTab(t[i],"");
             }
@@ -1606,7 +1609,7 @@ SpreadsheetViewer::setNumberOfTabs(int nt, int base, bool structured)
             else
             {
                 zTabs->removeTab(zTabs->indexOf(tables[i]));
-                disconnect(tables[i], SIGNAL(selectionChanged()),
+                disconnect(tables[i], SIGNAL(tableSelectionChanged()),
                            this, SLOT(tableSelectionChanged()));
                 delete tables[i];
             }
@@ -1919,25 +1922,16 @@ SpreadsheetViewer::moveSliceToCurrentPick()
     if (plotAtts->GetCurrentPickValid())
     {
         int sliceAxis = -1;
-        int rowAxis = -1;
-        int columnAxis = -1;
-
         switch (plotAtts->GetNormal())
         {
             case SpreadsheetAttributes::X:
                 sliceAxis = 0;
-                rowAxis = 1;
-                columnAxis = 2;
                 break;
             case SpreadsheetAttributes::Y:
                 sliceAxis = 1;
-                rowAxis = 0;
-                columnAxis = 2;
                 break;
             case SpreadsheetAttributes::Z:
                 sliceAxis = 2;
-                rowAxis = 1;
-                columnAxis = 0;
                 break;
             default:
                 debug1 << mName << "Invalid normal specified in plot attributes.";
@@ -2707,7 +2701,7 @@ SpreadsheetViewer::saveAsText()
             else
             {
                 QString err(tr("Could not write %1.").arg(fileName));
-                plot->Error(err.toStdString().c_str());
+                plot->GetViewerMessaging()->Error(err.toStdString());
             }
         }
     }

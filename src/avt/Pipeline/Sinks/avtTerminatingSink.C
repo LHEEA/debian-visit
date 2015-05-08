@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,7 +54,7 @@
 #include <ImproperUseException.h>
 #include <NoInputException.h>
 #include <TimingsManager.h>
-#include <Utility.h>
+#include <avtMemory.h>
 
 #include <visitstream.h>
 
@@ -211,7 +211,7 @@ avtTerminatingSink::Execute(avtContract_p contract)
             if (DebugStream::Level3())
             {
                 unsigned long size = 0, rss = 0;
-                GetMemorySize(size, rss);
+                avtMemory::GetMemorySize(size, rss);
                 if (size > 0 && rss > 0)
                 {
                     debug3 << "Memory after first execution was: size = " << size 
@@ -243,7 +243,7 @@ avtTerminatingSink::Execute(avtContract_p contract)
                 if (DebugStream::Level3())
                 {
                     unsigned long size = 0, rss = 0;
-                    GetMemorySize(size, rss);
+                    avtMemory::GetMemorySize(size, rss);
                     if (size > 0 && rss > 0)
                     {
                         debug3 << "Memory after iteration " << iter 

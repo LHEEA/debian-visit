@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,7 +86,7 @@ write_zonecent_quadvar(DBfile *dbfile)
     }
     dims[0] = NX-1; dims[1] = NY-1; dims[2] = NZ-1;
     DBPutQuadvar(dbfile, "zonal", "quadmesh",
-                 3, varnames, comp, dims,
+                 3, (DBCAS_t)varnames, comp, dims,
                  ndims, NULL, 0, DB_FLOAT, DB_ZONECENT, NULL);
     free(comp[0]);
     free(comp[1]);
@@ -111,7 +111,7 @@ write_nodecent_quadvar(DBfile *dbfile)
     }
     dims[0] = NX; dims[1] = NY; dims[2] = NZ;
     DBPutQuadvar(dbfile, "nodal", "quadmesh",
-                 3, varnames, comp, dims,
+                 3, (DBCAS_t)varnames, comp, dims,
                  ndims, NULL, 0, DB_FLOAT, DB_NODECENT, NULL);
     free(comp[0]);
     free(comp[1]);

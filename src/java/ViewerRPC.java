@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -264,7 +264,9 @@ public class ViewerRPC extends AttributeSubject
     public final static int VIEWERRPCTYPE_RELEASETODDTRPC = 200;
     public final static int VIEWERRPCTYPE_PLOTDDTVISPOINTVARIABLESRPC = 201;
     public final static int VIEWERRPCTYPE_EXPORTRPC = 202;
-    public final static int VIEWERRPCTYPE_MAXRPC = 203;
+    public final static int VIEWERRPCTYPE_READHOSTPROFILESFROMDIRECTORYRPC = 203;
+    public final static int VIEWERRPCTYPE_SETREMOVEDUPLICATENODESRPC = 204;
+    public final static int VIEWERRPCTYPE_MAXRPC = 205;
 
 
     public ViewerRPC()
@@ -1342,6 +1344,10 @@ public class ViewerRPC extends AttributeSubject
             str = str + "VIEWERRPCTYPE_PLOTDDTVISPOINTVARIABLESRPC";
         if(RPCType == VIEWERRPCTYPE_EXPORTRPC)
             str = str + "VIEWERRPCTYPE_EXPORTRPC";
+        if(RPCType == VIEWERRPCTYPE_READHOSTPROFILESFROMDIRECTORYRPC)
+            str = str + "VIEWERRPCTYPE_READHOSTPROFILESFROMDIRECTORYRPC";
+        if(RPCType == VIEWERRPCTYPE_SETREMOVEDUPLICATENODESRPC)
+            str = str + "VIEWERRPCTYPE_SETREMOVEDUPLICATENODESRPC";
         if(RPCType == VIEWERRPCTYPE_MAXRPC)
             str = str + "VIEWERRPCTYPE_MAXRPC";
         str = str + "\n";

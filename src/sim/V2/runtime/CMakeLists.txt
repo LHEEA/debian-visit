@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -38,7 +38,26 @@
 #
 #****************************************************************************/
 
+# This flag controls whether we try to build the simv2 runtime with 
+# viewercore support.
+SET(SIMV2_VIEWER_INTEGRATION ON)
+
+IF(SIMV2_VIEWER_INTEGRATION)
+    SET(LIBSIM_RUNTIME_VIEWER_SOURCES SimEngineManager.C SimFileServer.C)
+    SET(LIBSIM_RUNTIME_VIEWER_LIBS_SER viewercore_ser)
+    SET(LIBSIM_RUNTIME_VIEWER_LIBS_PAR viewercore_par)
+    SET(VISIT_VIEWER_DIRS
+        ${VISIT_SOURCE_DIR}/viewer/core
+        ${VISIT_SOURCE_DIR}/viewer/rpc
+    )
+    ADD_DEFINITIONS(-DSIMV2_VIEWER_INTEGRATION)
+ENDIF(SIMV2_VIEWER_INTEGRATION)
+
 SET(LIBSIM_RUNTIME_SOURCES 
+${LIBSIM_RUNTIME_VIEWER_SOURCES}
+SimEngine.C
+SimOperatorPluginManager.C
+SimPlotPluginManager.C
 VisItControlInterfaceRuntime.C 
 VisItDataInterfaceRuntime.C 
 VisItDataInterfaceRuntimeP.C 
@@ -67,17 +86,30 @@ simv2_VariableMetaData.C
 
 # If VisIt is static then we need some static symbol lookup functions
 IF(VISIT_STATIC)
-    SET(LIBSIM_STATIC_SOURCES SimStaticSymbolLocator.C)
+    SET(SIMV2_PLUGIN_DIR ${VISIT_SOURCE_DIR}/databases/SimV2)
+
+    SET(SIMV2_PLUGIN_SOURCES
+        ${SIMV2_PLUGIN_DIR}/SimV2CommonPluginInfo.C
+        ${SIMV2_PLUGIN_DIR}/SimV2EnginePluginInfo.C
+        ${SIMV2_PLUGIN_DIR}/SimV2GetMesh.C
+        ${SIMV2_PLUGIN_DIR}/SimV2PluginInfo.C
+        ${SIMV2_PLUGIN_DIR}/avtSimV2FileFormat.C
+        ${SIMV2_PLUGIN_DIR}/avtSimV2Writer.C
+     )
+
+    SET(LIBSIM_STATIC_SOURCES ${SIMV2_PLUGIN_SOURCES} SimStaticSymbolLocator.C)
 ENDIF(VISIT_STATIC)
 
 INCLUDE_DIRECTORIES(
 ${CMAKE_CURRENT_SOURCE_DIR}
 ${VISIT_COMMON_INCLUDES}
 ${VTK_INCLUDE_DIRS}
+${VISIT_VIEWER_DIRS}
 ${VISIT_SOURCE_DIR}/avt/DBAtts/MetaData
 ${VISIT_SOURCE_DIR}/avt/DBAtts/SIL
 ${VISIT_SOURCE_DIR}/avt/DataBinning
 ${VISIT_SOURCE_DIR}/avt/Database/Database
+${VISIT_SOURCE_DIR}/avt/Database/Formats
 ${VISIT_SOURCE_DIR}/avt/Database/Ghost
 ${VISIT_SOURCE_DIR}/avt/Expressions/Abstract
 ${VISIT_SOURCE_DIR}/avt/Expressions/CMFE
@@ -112,7 +144,9 @@ ${VISIT_SOURCE_DIR}/engine/main
 ${VISIT_SOURCE_DIR}/engine/proxy
 ${VISIT_SOURCE_DIR}/engine/rpc
 ${VISIT_SOURCE_DIR}/sim/V2/lib
-${VISIT_SOURCE_DIR}/visit_vtk/lightweight/
+${VISIT_SOURCE_DIR}/visit_vtk/full
+${VISIT_SOURCE_DIR}/visit_vtk/lightweight
+${SIMV2_PLUGIN_DIR}
 )
 
 LINK_DIRECTORIES(
@@ -124,7 +158,7 @@ ${ICET_LIBRARY_DIR}
 )
 
 ADD_LIBRARY(simV2runtime_ser ${LIBSIM_RUNTIME_SOURCES} ${LIBSIM_STATIC_SOURCES})
-TARGET_LINK_LIBRARIES(simV2runtime_ser engine_ser)
+TARGET_LINK_LIBRARIES(simV2runtime_ser engine_ser ${LIBSIM_RUNTIME_VIEWER_LIBS_SER})
 
 IF(NOT APPLE)
     SET_TARGET_PROPERTIES(simV2runtime_ser PROPERTIES INSTALL_RPATH "$ORIGIN")
@@ -134,7 +168,7 @@ VISIT_INSTALL_TARGETS(simV2runtime_ser)
 
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(simV2runtime_par ${LIBSIM_RUNTIME_SOURCES} ${LIBSIM_STATIC_SOURCES})
-    TARGET_LINK_LIBRARIES(simV2runtime_par engine_par)
+    TARGET_LINK_LIBRARIES(simV2runtime_par engine_par ${LIBSIM_RUNTIME_VIEWER_LIBS_PAR})
     IF(NOT APPLE)
         SET_TARGET_PROPERTIES(simV2runtime_par PROPERTIES INSTALL_RPATH "$ORIGIN")
     ENDIF(NOT APPLE)

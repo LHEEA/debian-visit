@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -284,9 +284,9 @@ avtMoleculeRenderer::SetAtts(const AttributeGroup *a)
 //
 // ****************************************************************************
 void
-avtMoleculeRenderer::GlobalSetAmbientCoefficient(float coeff)
+avtMoleculeRenderer::GlobalSetAmbientCoefficient(double coeff)
 {
-    ambient_coeff = coeff;
+    ambient_coeff = float(coeff);
 }
 
 // ****************************************************************************

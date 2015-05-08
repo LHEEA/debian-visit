@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,6 +62,10 @@ class     vtkPLOT3DReader;
 //  Programmer: Hank Childs
 //  Creation:   May 3, 2002
 //
+//  Modifications:
+//    Kathleen Biagas, Thu Apr 23 10:36:09 PDT 2015
+//    Added 'haveSolutionFile' flag.
+//
 // ****************************************************************************
 
 class avtPLOT3DFileFormat : public avtSTMDFileFormat
@@ -82,6 +86,7 @@ class avtPLOT3DFileFormat : public avtSTMDFileFormat
     vtkPLOT3DReader *reader;
     std::string           visitMetaFile;
     bool                  ReadVisItMetaFile(void);
+    bool                  haveSolutionFile;
 };
 
 

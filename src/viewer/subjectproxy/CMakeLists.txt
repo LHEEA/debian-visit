@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -44,6 +44,7 @@
 
 SET(VIEWERLIB_SOURCES
 ViewerSubjectProxy.C
+ViewerSubjectProxyFactory.C
 )
 
 # If the viewer is static then we need some static symbol lookup functions
@@ -67,7 +68,10 @@ ${CMAKE_CURRENT_SOURCE_DIR}
 ${VISIT_COMMON_INCLUDES}
 ${VISIT_SOURCE_DIR}/viewer/rpc
 ${VISIT_SOURCE_DIR}/viewer/proxy
+${VISIT_SOURCE_DIR}/viewer/core
+${VISIT_SOURCE_DIR}/viewer/core/actions
 ${VISIT_SOURCE_DIR}/viewer/main
+${VISIT_SOURCE_DIR}/viewer/main/ui
 ${VISIT_SOURCE_DIR}/avt/DBAtts/MetaData
 ${VISIT_SOURCE_DIR}/avt/DBAtts/SIL
 ${VISIT_SOURCE_DIR}/avt/Database/Database

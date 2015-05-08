@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -131,6 +131,7 @@ public:
     void SetUserRestoreSessionFile(bool userRestoreSessionFile_);
     void SetPrecisionType(PrecisionType precisionType_);
     void SetBackendType(BackendType backendType_);
+    void SetRemoveDuplicateNodes(bool removeDuplicateNodes_);
 
     // Property getting methods
     const stringVector &GetSources() const;
@@ -162,6 +163,7 @@ public:
     bool               GetUserRestoreSessionFile() const;
     PrecisionType      GetPrecisionType() const;
     BackendType        GetBackendType() const;
+    bool               GetRemoveDuplicateNodes() const;
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -215,6 +217,7 @@ public:
         ID_userRestoreSessionFile,
         ID_precisionType,
         ID_backendType,
+        ID_removeDuplicateNodes,
         ID__LAST
     };
 
@@ -246,11 +249,12 @@ private:
     bool         userRestoreSessionFile;
     int          precisionType;
     int          backendType;
+    bool         removeDuplicateNodes;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define GLOBALATTRIBUTES_TMFS "s*i*ibbbbbbbibbbbbbbbbbbbbbii"
+#define GLOBALATTRIBUTES_TMFS "s*i*ibbbbbbbibbbbbbbbbbbbbbiib"
 
 #endif

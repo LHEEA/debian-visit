@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -152,6 +152,13 @@
 //
 //    Eric Brugger, Wed May 21 14:48:11 PDT 2014
 //    I added support for EAVL.
+//
+//    Kathleen Biagas, Thu Oct 30 16:37:37 MST 2014
+//    Added status message for plugins-against-a-public install on Windows,
+//    to inform user the location of the plugin once complete.
+//
+//    Kathleen Biagas, Thu Nov  6 11:21:13 PST 2014
+//    Added support for DEFINES tag.
 //
 // ****************************************************************************
 
@@ -455,7 +462,9 @@ class CMakeGeneratorPlugin : public Plugin
             out << VisItIncludeDir() << "/mdserver/proxy" << endl;
             out << VisItIncludeDir() << "/mdserver/rpc" << endl;
         }
+        out << VisItIncludeDir() << "/viewer/core" << endl;
         out << VisItIncludeDir() << "/viewer/main" << endl;
+        out << VisItIncludeDir() << "/viewer/main/ui" << endl;
         out << VisItIncludeDir() << "/viewer/proxy" << endl;
         out << VisItIncludeDir() << "/viewer/rpc" << endl;
         out << VisItIncludeDir() << "/winutil" << endl;
@@ -538,6 +547,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         // libV sources
         out << "SET(LIBV_SOURCES" << endl;
+        out << name<<"ViewerEnginePluginInfo.C" << endl;
         out << name<<"ViewerPluginInfo.C" << endl;
         out << "avt"<<name<<"Plot.C" << endl;
         if (customvfiles)
@@ -563,6 +573,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         // libE sources
         out << "SET(LIBE_SOURCES" << endl;
+        out << name<<"ViewerEnginePluginInfo.C" << endl;
         out << name<<"EnginePluginInfo.C" << endl;
         out << "avt"<<name<<"Plot.C" << endl;
         if (customefiles)
@@ -610,7 +621,14 @@ class CMakeGeneratorPlugin : public Plugin
         for (size_t i=0; i<cxxflags.size(); i++)
         {
             if(!cxxflags[i].startsWith("${") && !cxxflags[i].startsWith("$("))
-                 out << "ADD_DEFINITIONS(\"" << cxxflags[i] << "\")" << endl;
+                 out << "ADD_DEFINITIONS(" << cxxflags[i] << ")" << endl;
+        }
+        out << endl;
+
+        // Pass DEFINITIONS
+        for (size_t i=0; i<defs.size(); i++)
+        {
+            out << "ADD_DEFINITIONS(" << defs[i] << ")" << endl;
         }
         out << endl;
 
@@ -733,6 +751,13 @@ class CMakeGeneratorPlugin : public Plugin
           out << "VISIT_PLUGIN_TARGET_FOLDER(plots " << name  
               << " ${INSTALLTARGETS})" << endl;
         out << endl;
+#ifdef _WIN32
+        if (!using_dev)
+        {
+          out << "MESSAGE(STATUS \"Plugin will be installed to: ${VISIT_PLUGIN_DIR}\")" << endl;
+          
+        }
+#endif
     }
 
     void WriteCMake_Operator(QTextStream &out, 
@@ -786,6 +811,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         // libV sources
         out << "SET(LIBV_SOURCES" << endl;
+        out << name<<"ViewerEnginePluginInfo.C" << endl;
         out << name<<"ViewerPluginInfo.C" << endl;
         if (customvfiles)
         {
@@ -810,6 +836,7 @@ class CMakeGeneratorPlugin : public Plugin
 
         // libE sources
         out << "SET(LIBE_SOURCES" << endl;
+        out << name<<"ViewerEnginePluginInfo.C" << endl;
         out << name<<"EnginePluginInfo.C" << endl;
         if (customefiles)
         {
@@ -837,7 +864,14 @@ class CMakeGeneratorPlugin : public Plugin
         for (size_t i=0; i<cxxflags.size(); i++)
         {
             if(!cxxflags[i].startsWith("${") && !cxxflags[i].startsWith("$("))
-                 out << "ADD_DEFINITIONS(\"" << cxxflags[i] << "\")" << endl;
+                 out << "ADD_DEFINITIONS(" << cxxflags[i] << ")" << endl;
+        }
+        out << endl;
+
+        // Pass Defines
+        for (size_t i=0; i<defs.size(); i++)
+        {
+            out << "ADD_DEFINITIONS(" << defs[i] << ")" << endl;
         }
         out << endl;
 
@@ -1105,8 +1139,15 @@ class CMakeGeneratorPlugin : public Plugin
             if(!cxxflags[i].startsWith("${") &&
                !cxxflags[i].startsWith("$(") &&
                !cxxflags[i].startsWith("-I"))
-                 out << "ADD_DEFINITIONS(\"" << cxxflags[i] << "\")" << endl;
+                 out << "ADD_DEFINITIONS(" << cxxflags[i] << ")" << endl;
         }
+
+        // Pass defines
+        for (size_t i=0; i<defs.size(); i++)
+        {
+            out << "ADD_DEFINITIONS(" << defs[i] << ")" << endl;
+        }
+
         bool needWindowsDefines = false;
         for (size_t i=0; i<libs.size() && !needWindowsDefines; i++)
         {

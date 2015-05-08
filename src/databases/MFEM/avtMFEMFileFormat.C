@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,6 +74,9 @@
 #include <JSONRoot.h>
 using     std::string;
 using     std::ostringstream;
+using     std::vector;
+
+using namespace mfem;
 
 // ****************************************************************************
 //  Method: avtMFEMFileFormat constructor
@@ -839,7 +842,11 @@ avtMFEMFileFormat::GetRefinedElementColoring(const std::string &mesh_name,
     //
     
     //srandom(time(0)); don't seed, may have side effects for other parts of visit
+#ifdef _WIN32
+    double a = double(rand()) / (double(RAND_MAX) + 1.);
+#else
     double a = double(random()) / (double(RAND_MAX) + 1.);
+#endif
     int el0 = (int)floor(a * mesh->GetNE());
     mesh->GetElementColoring(coloring, el0);
     int ref_idx=0;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,7 +49,6 @@ visit_handle
 SimGetMetaData(void *cbdata)
 {
     visit_handle md = VISIT_INVALID_HANDLE;
-    simulation_data *sim = (simulation_data *)cbdata;
 
     /* Create metadata with no variables. */
     if(VisIt_SimulationMetaData_alloc(&md) == VISIT_OKAY)

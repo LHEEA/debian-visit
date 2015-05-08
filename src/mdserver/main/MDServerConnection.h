@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -278,15 +278,12 @@ public:
     void SetDefaultFileOpenOptions(const FileOpenOptions &opts);
 
 private:
-    std::string FilteredPath(const std::string &path) const;
     void        ReadCWD();
     void        ReadFileList();
 
     bool FileMatchesFilterList(const std::string &) const;
     bool FileMatchesFilter(const char *filter, const char *str, int &j) const;
     bool GetPattern(const std::string &file, std::string &p, int &) const;
-    std::string ExpandPathHelper(const std::string &path,
-                                 const std::string &workingDir) const;
     bool FileHasVisItExtension(const std::string &file) const;
     bool FileLooksLikePartFile(const VirtualFileInformationMap &newVirtualFiles,
                                const std::string &pattern) const;

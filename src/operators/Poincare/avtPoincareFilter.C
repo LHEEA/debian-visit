@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -892,7 +892,7 @@ avtPoincareFilter::CreateIntegralCurve( const avtIVPSolver* model,
                                         long ID ) 
 {
     // need at least these three attributes
-    unsigned char attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
+    unsigned int attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
 
     if( puncturePlotType == PoincareAttributes::Double )
       attr |= avtStateRecorderIntegralCurve::SAMPLE_TIME;

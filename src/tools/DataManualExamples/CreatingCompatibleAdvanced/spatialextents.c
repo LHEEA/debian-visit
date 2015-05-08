@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -70,17 +70,22 @@ write_domains(DBfile *dbfile, double *spatial_extents, double *data_extents)
     for(xdom = 0; xdom < NXDOMS; ++xdom, ++dom)
     {
         float xc[NX], yc[NY], zc[NZ];
-        float *coords[] = {xc, yc, zc};
+        float *coords[3];
         int index = 0;
         float xstart, xend, ystart, yend, zstart, zend;
-        int xzones, yzones, zzones, nzones;
+        int xzones, yzones, zzones;
         int xnodes, ynodes, znodes;
 
         double *sdomextents = spatial_extents + 6 * dom;
         double *ddomextents = data_extents + 2 * dom;
 
-        /* Create a new directory. */
         char dirname[100];
+
+        coords[0] = xc;
+        coords[1] = yc;
+        coords[2] = zc;
+
+        /* Create a new directory. */
         sprintf(dirname, "Domain%03d", dom);
         DBMkDir(dbfile, dirname);
         DBSetDir(dbfile, dirname);
@@ -100,7 +105,6 @@ write_domains(DBfile *dbfile, double *spatial_extents, double *data_extents)
         ynodes = yzones + 1;
         znodes = zzones + 1;
 
-        nzones = xzones*yzones*zzones;
         dims[0] = xnodes;
         dims[1] = ynodes;
         dims[2] = znodes;
@@ -196,7 +200,7 @@ write_multimesh(DBfile *dbfile, double *spatial_extents)
     optlist = DBMakeOptlist(2);
     DBAddOption(optlist, DBOPT_EXTENTS_SIZE, (void *)&six);
     DBAddOption(optlist, DBOPT_EXTENTS, (void *)spatial_extents);
-    DBPutMultimesh(dbfile, "quadmesh", nmesh, meshnames, meshtypes, optlist);
+    DBPutMultimesh(dbfile, "quadmesh", nmesh, (DBCAS_t)meshnames, meshtypes, optlist);
     DBFreeOptlist(optlist);
 
     /* Free the memory*/
@@ -231,7 +235,7 @@ write_multivar(DBfile *dbfile, double *data_extents)
     optlist = DBMakeOptlist(2);
     DBAddOption(optlist, DBOPT_EXTENTS_SIZE, (void *)&two);
     DBAddOption(optlist, DBOPT_EXTENTS, (void *)data_extents);
-    DBPutMultivar(dbfile, "var", nvar, varnames, vartypes, optlist);
+    DBPutMultivar(dbfile, "var", nvar, (DBCAS_t)varnames, vartypes, optlist);
     DBFreeOptlist(optlist);
 
     /* Free the memory*/

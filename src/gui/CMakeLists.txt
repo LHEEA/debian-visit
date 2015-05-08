@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -100,6 +100,7 @@ QvisColorTableWindow.C
 QvisCommandWindow.C
 QvisCompositeTransition.C
 QvisDBOptionsDialog.C
+QvisDBOptionsHelpWindow.C
 QvisDatabaseCorrelationListWindow.C
 QvisDatabaseCorrelationWindow.C
 QvisDelayedWindow.C
@@ -240,6 +241,7 @@ QvisColorSelectionWidget.h
 QvisColorTableWindow.h
 QvisCommandWindow.h
 QvisDBOptionsDialog.h
+QvisDBOptionsHelpWindow.h
 QvisDatabaseCorrelationListWindow.h
 QvisDatabaseCorrelationWindow.h
 QvisDelayedWindow.h

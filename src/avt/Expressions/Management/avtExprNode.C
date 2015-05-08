@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,9 @@
 #include <avtArrayComposeExpression.h>
 #include <avtArrayComposeWithBinsExpression.h>
 #include <avtArrayDecomposeExpression.h>
+#include <avtArrayDecompose2DExpression.h>
+#include <avtArrayComponentwiseDivisionExpression.h>
+#include <avtArrayComponentwiseProductExpression.h>
 #include <avtArraySumExpression.h>
 #include <avtBinExpression.h>
 #include <avtBinaryAddExpression.h>
@@ -532,12 +535,18 @@ avtFunctionExpr::CreateFilters(string functionName)
         return new avtApplyEnumerationExpression();
     if (functionName == "map")
         return new avtApplyMapExpression();
+    if (functionName == "array_componentwise_division")
+        return new avtArrayComponentwiseDivisionExpression();
+    if (functionName == "array_componentwise_product")
+        return new avtArrayComponentwiseProductExpression();
     if (functionName == "array_compose")
         return new avtArrayComposeExpression();
     if (functionName == "array_compose_with_bins")
         return new avtArrayComposeWithBinsExpression();
     if (functionName == "array_decompose")
         return new avtArrayDecomposeExpression();
+    if (functionName == "array_decompose2d")
+        return new avtArrayDecompose2DExpression();
     if (functionName == "array_sum")
         return new avtArraySumExpression();
     if (functionName == "localized_compactness")

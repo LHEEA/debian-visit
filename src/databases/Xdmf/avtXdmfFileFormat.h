@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -154,6 +154,7 @@ class avtXdmfFileFormat: public avtMTMDFileFormat
         void GetStructuredGhostZones(int[3], int[6], vtkDataSet *);
         void ScaleExtents(int[6], int[6], int[3]);
         void SetCurrentGrid(int, const char *);
+        XdmfGrid *FirstRealGrid(XdmfGrid *start);
 };
 
 #endif

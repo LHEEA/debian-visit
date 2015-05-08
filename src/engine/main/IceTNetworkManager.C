@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -304,6 +304,11 @@ IceTNetworkManager::TileLayout(size_t width, size_t height) const
 //    Pass along checkThreshold argument so we can get kicked out of SR-mode
 //    when Ice-T falls back to normal compositing.
 //
+//    Brad Whitlock, Wed Oct 29 09:57:16 PDT 2014
+//    Don't call RenderBalance. It was doing collective communication and 
+//    causing a hang when not all ranks are writing debugging logs. It did not
+//    provide much information anyway.
+//
 // ****************************************************************************
 
 avtDataObject_p
@@ -410,8 +415,7 @@ IceTNetworkManager::Render(bool checkThreshold, intVector networkIds, bool getZB
         }
 
         debug5 << "Rendering " << viswin->GetNumPrimitives()
-               << " primitives.  Balanced speedup = "
-               << RenderBalance(viswin->GetNumPrimitives()) << "x" << endl;
+               << " primitives." << endl;
 
         int width, height, width_start, height_start;
         // This basically gets the width and the height.
@@ -853,10 +857,9 @@ extern "C" void
 render()
 {
     debug2 << "IceT has invoked our render function." << std::endl;
-    Engine *engy = Engine::Instance();
     IceTNetworkManager *net_mgr;
 
-    net_mgr = dynamic_cast<IceTNetworkManager*>(engy->GetNetMgr());
+    net_mgr = dynamic_cast<IceTNetworkManager*>(IceTNetworkManager::GetEngine()->GetNetMgr());
     net_mgr->RealRender();
 }
 

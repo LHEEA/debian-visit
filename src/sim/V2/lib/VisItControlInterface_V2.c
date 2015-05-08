@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -120,6 +120,9 @@
 
 #define MAX_SIMULATION_FILENAME 1024
 
+#define LIBSIM_MAX_STRING_SIZE      1024
+#define LIBSIM_MAX_STRING_LIST_SIZE 100
+
 static int BroadcastInt(int *value, int sender);
 
 
@@ -130,6 +133,7 @@ typedef struct
     int   (*get_descriptor)(void*);
     int   (*process_input)(void*);
     int   (*initialize)(void*,int,char**);
+    int   (*initialize_batch)(void*,int,char**);
     int   (*connect_viewer)(void*,int,char**);
     void  (*time_step_changed)(void*);
     void  (*execute_command)(void*,const char*);
@@ -140,13 +144,18 @@ typedef struct
     void  (*debug_logs)(int,const char *);
     int   (*set_mpicomm)(void *);
 
-    int   (*add_plot)(void *, const char *, const char *, const char *, int *);
-    int   (*add_operator)(void *, int, const char *, int *);
-    int   (*draw_plot)(void *, int);
-    int   (*delete_plot)(void *, int);
-    int   (*set_plot_options)(void *, int, const char *, int, void *, int);
-    int   (*set_operator_options)(void *, int, int, const char *, int, void *, int);
+    int   (*add_plot)(void *, const char *, const char *);
+    int   (*add_operator)(void *, const char *, int);
+    int   (*draw_plots)(void *);
+    int   (*delete_active_plots)(void *);
+    int   (*set_active_plots)(void *, const int *, int);
 
+    int   (*set_plot_options)(void *, const char *, int, void *, int);
+    int   (*set_operator_options)(void *, const char *, int, void *, int);
+
+
+    int   (*exportdatabase)(void *, const char *, const char *, visit_handle);
+    int   (*restoresession)(void *, const char *);
 } control_callback_t;
 
 #define STRUCT_MEMBER(F, FR, FA)  void (*set_##F)(FR (*) FA, void*);
@@ -796,6 +805,7 @@ static int SendStringOverSocket(char *buffer, VISIT_SOCKET desc)
 {
     size_t      nleft, nwritten;
     const char *sptr;
+
     LIBSIM_API_ENTER2(SendStringOverSocket, "buffer=%s, desc=%d", buffer,desc);
     /* Send it! */
     sptr = (const char*)buffer;
@@ -919,14 +929,14 @@ static int VerifySecurityKeys(VISIT_SOCKET desc)
 {
    int securityKeyLen;
    int offeredKeyLen;
-   char offeredKey[2000] = "";
+   char offeredKey[VISIT_SOCKET_BUFFER_SIZE] = "";
 
    LIBSIM_API_ENTER1(VerifySecurityKeys, "desc=%d", desc);
 
    if (parallelRank == 0)
    {
       /* The first thing the VCL sends is the key */
-      ReceiveSingleLineFromSocket(offeredKey, 2000, desc);
+      ReceiveSingleLineFromSocket(offeredKey, VISIT_SOCKET_BUFFER_SIZE, desc);
 
       if (isParallel)
       {
@@ -988,7 +998,7 @@ static int VerifySecurityKeys(VISIT_SOCKET desc)
 *******************************************************************************/
 static int GetConnectionParameters(VISIT_SOCKET desc)
 {
-   char buf[2000] = "";
+   char buf[VISIT_SOCKET_BUFFER_SIZE] = "";
    char *tmpbuf;
    char *nxtbuf;
    int i;
@@ -1005,7 +1015,7 @@ static int GetConnectionParameters(VISIT_SOCKET desc)
       tmpbuf = buf;
       while (1)
       {
-         nxtbuf = ReceiveContinuousLineFromSocket(tmpbuf, 2000, desc);
+         nxtbuf = ReceiveContinuousLineFromSocket(tmpbuf, VISIT_SOCKET_BUFFER_SIZE, desc);
 
          if (strlen(tmpbuf) == 0)
             break;
@@ -1069,9 +1079,15 @@ static int GetConnectionParameters(VISIT_SOCKET desc)
 *   I split up the function into 2 functions. Allow for this function being
 *   called repeatedly.
 *
+*   Brad Whitlock, Thu Sep 18 16:12:37 PDT 2014
+*   I made it call a different initialization function for batch.
+*
+*   Brad Whitlock, Tue Nov 11 17:32:10 PST 2014
+*   Get batch mode options from visit_options string.
+*
 *******************************************************************************/
 
-static int CreateEngine(void)
+static int CreateEngine(int batch)
 {
     int status = VISIT_ERROR;
 
@@ -1099,24 +1115,67 @@ static int CreateEngine(void)
              */
             if(engine_argc == 0)
             {
-                engine_argc = 4;
-                engine_argv = (char **)malloc(sizeof(char*)*5);
+                engine_argc = 1;
+                engine_argv = (char **)malloc(sizeof(char*)*LIBSIM_MAX_STRING_LIST_SIZE);
+                memset(engine_argv, 0, sizeof(char*)*LIBSIM_MAX_STRING_LIST_SIZE);
                 engine_argv[0] = strdup("/usr/gapps/visit/bin/visit");
+#if 1
+                if(visit_options != NULL)
+                {
+                    char *start, *end, *tmpstr;
+                    start = end = visit_options;
+                    tmpstr = (char *)malloc(LIBSIM_MAX_STRING_SIZE);
+                    while(start != NULL)
+                    {
+                        int len = 0;
+                        end = start;
+                        while(*end != ' ' && *end != '\0')
+                            ++end;
+                        len = end - start;
+                        if(len > LIBSIM_MAX_STRING_SIZE-1)
+                            len = LIBSIM_MAX_STRING_SIZE-1;
+                        memcpy(tmpstr, start, len);
+                        tmpstr[len] = '\0';
+                        if(len > 0 && engine_argc < LIBSIM_MAX_STRING_LIST_SIZE)
+                            engine_argv[engine_argc++] = strdup(tmpstr);
+                        if(*end == '\0')
+                            start = NULL;
+                        else
+                            start = end + 1;
+                    }
+                    free(tmpstr);
+                }
+#else
                 engine_argv[1] = strdup("-debug");
                 engine_argv[2] = strdup("5");
                 engine_argv[3] = strdup("-clobber_vlogs");
-                engine_argv[4] = NULL;
+                engine_argc = 4;
+#endif
             }
 
             LIBSIM_MESSAGE_STRINGLIST("Calling visit_initialize: argv=",
                                       engine_argc, engine_argv);
-            if (!(*callbacks->control.initialize)(engine, engine_argc, engine_argv))
+            if(batch && callbacks->control.initialize_batch != NULL)
             {
-                VisItDisconnect();
-                LIBSIM_API_LEAVE1(CreateEngine,
-                                 "visit_initialize failed. return %d",
-                                 VISIT_ERROR);
-                return VISIT_ERROR;
+                if (!(*callbacks->control.initialize_batch)(engine, engine_argc, engine_argv))
+                {
+                    VisItDisconnect();
+                    LIBSIM_API_LEAVE1(CreateEngine,
+                                      "visit_initialize_batch failed. return %d",
+                                      VISIT_ERROR);
+                    return VISIT_ERROR;
+                }
+            }
+            else
+            {
+                if (!(*callbacks->control.initialize)(engine, engine_argc, engine_argv))
+                {
+                    VisItDisconnect();
+                    LIBSIM_API_LEAVE1(CreateEngine,
+                                      "visit_initialize failed. return %d",
+                                      VISIT_ERROR);
+                    return VISIT_ERROR;
+                }
             }
         }
     }
@@ -1756,6 +1815,9 @@ static void CloseVisItLibrary(void)
 *   Brad Whitlock, Thu Nov 10 09:53:29 PST 2011
 *   Add control functions for setting up plots.
 *
+*   Brad Whitlock, Fri Sep 19 17:44:43 PDT 2014
+*   Added exportdatabase, restoresession, changed plot setup functions.
+*
 *******************************************************************************/
 
 static int LoadVisItLibrary(void)
@@ -1832,12 +1894,17 @@ static int LoadVisItLibrary(void)
         CONTROL_DLSYM(debug_logs,                 void,   (int,const char *));
         CONTROL_DLSYM(set_mpicomm,                int,    (void *));
 
-        CONTROL_DLSYM_OPTIONAL(add_plot,             int,    (void *, const char *, const char *, const char *, int *));
-        CONTROL_DLSYM_OPTIONAL(add_operator,         int,    (void *, int, const char *, int *));
-        CONTROL_DLSYM_OPTIONAL(draw_plot,            int,    (void *, int));
-        CONTROL_DLSYM_OPTIONAL(delete_plot,          int,    (void *, int));
-        CONTROL_DLSYM_OPTIONAL(set_plot_options,     int,    (void *, int, const char *, int, void *, int));
-        CONTROL_DLSYM_OPTIONAL(set_operator_options, int,    (void *, int, int, const char *, int, void *, int));
+        CONTROL_DLSYM_OPTIONAL(add_plot,             int,    (void *, const char *, const char *));
+        CONTROL_DLSYM_OPTIONAL(add_operator,         int,    (void *, const char *, int));
+        CONTROL_DLSYM_OPTIONAL(draw_plots,           int,    (void *));
+        CONTROL_DLSYM_OPTIONAL(delete_active_plots,  int,    (void *));
+        CONTROL_DLSYM_OPTIONAL(set_active_plots,     int,    (void *, const int *, int));
+        CONTROL_DLSYM_OPTIONAL(set_plot_options,     int,    (void *, const char *, int, void *, int));
+        CONTROL_DLSYM_OPTIONAL(set_operator_options, int,    (void *, const char *, int, void *, int));
+
+        CONTROL_DLSYM_OPTIONAL(initialize_batch,     int,    (void *, int, char **));
+        CONTROL_DLSYM_OPTIONAL(exportdatabase,       int,    (void *, const char *, const char *, visit_handle));
+        CONTROL_DLSYM_OPTIONAL(restoresession,       int,    (void *, const char *));
 
         /* Get the data functions from the library. */
         DECLARE_DATA_CALLBACKS(DATA_DLSYM)
@@ -1857,11 +1924,13 @@ static int LoadVisItLibrary(void)
 * Author: Brad Whitlock, B Division, Lawrence Livermore National Laboratory
 *
 * Modifications:
+*   Brad Whitlock, Thu Sep 18 16:13:39 PDT 2014
+*   Add batch flag.
 *
 *******************************************************************************/
 
 static int
-InitializeRuntime(void)
+InitializeRuntime(int batch)
 {
     /* load the library */
     if (LoadVisItLibrary() == VISIT_ERROR)
@@ -1872,7 +1941,7 @@ InitializeRuntime(void)
     }
 
     /* Create the engine object. */
-    if (CreateEngine() == VISIT_ERROR)
+    if (CreateEngine(batch) == VISIT_ERROR)
     {
         LIBSIM_API_LEAVE1(InitializeRuntime, 
                           "CreateEngine failed. return %d", VISIT_ERROR);
@@ -2101,7 +2170,7 @@ char *VisItGetEnvironment(void)
     char *new_env = NULL;
 
     LIBSIM_API_ENTER(VisItGetEnvironment);
-
+#if !defined(VISIT_BLUE_GENE_Q)
     new_env = (char*)(malloc(ENV_BUF_SIZE));
     memset(new_env, 0, ENV_BUF_SIZE * sizeof(char));
 
@@ -2131,7 +2200,7 @@ char *VisItGetEnvironment(void)
         free(new_env);
         new_env = NULL;
     }
-
+#endif
     LIBSIM_API_LEAVE1(VisItGetEnvironment, "return %s", 
                      (new_env ? new_env : "NULL"));
 
@@ -2223,7 +2292,7 @@ int VisItSetupEnvironment2(char *env)
    char *ptr;
 
    LIBSIM_API_ENTER(VisItSetupEnvironment2);
-
+#if !defined(VISIT_BLUE_GENE_Q)
    /* Make a copy of the input string. */
    new_env = (char*)(malloc(ENV_BUF_SIZE));
    memset(new_env, 0, ENV_BUF_SIZE * sizeof(char));
@@ -2289,6 +2358,8 @@ int VisItSetupEnvironment2(char *env)
       ptr += i+1;
    }
    /* free(new_env); <--- NO!  You are not supposed to free this memory! */
+#endif
+
 #endif
    LIBSIM_API_LEAVE1(VisItSetupEnvironment2, "return %d", TRUE);
    return TRUE;
@@ -2743,6 +2814,20 @@ waitforevents:
     return VisItDetectInput_return_value;
 }
 #else
+
+#ifdef VISIT_BLUE_GENE_Q
+static int VisItDetectInputWithTimeout_bgq_ncalls = 0;
+
+int
+VisItDetectInputWithTimeout(int blocking, int timeoutVal,
+    int consoleFileDescriptor)
+{
+    int retval = 1; /* Listen socket input */
+    if(++VisItDetectInputWithTimeout_bgq_ncalls > 1)
+        retval = 2; /* Engine socket input */
+    return retval;
+}
+#else
 int
 VisItDetectInputWithTimeout(int blocking, int timeoutVal,
     int consoleFileDescriptor)
@@ -2821,12 +2906,20 @@ VisItDetectInputWithTimeout(int blocking, int timeoutVal,
                            -1);
          return -1;
       }
+      else if (errno == EBADF)
+      {
+         /* Interruption will likely cause a program exit anyway */
+         LIBSIM_API_LEAVE1(VisItDetectInput,
+                           "Invalid file descriptor given to select. return %d",
+                           -1);
+         return -1;
+      }
       else
       {
          /* This should never happen; internal error */
-         LIBSIM_API_LEAVE1(VisItDetectInput,
-                           "Unknown error in select. return %d",
-                           -2);
+         LIBSIM_API_LEAVE2(VisItDetectInput,
+                           "Error \"%s\" in select. return %d",
+                           strerror(errno), -2);
          return -2;
       }
    }
@@ -2876,6 +2969,7 @@ VisItDetectInputWithTimeout(int blocking, int timeoutVal,
    }
    /*return -5; Compilers complain because this line cannot be reached */
 }
+#endif
 #endif
 
 /*******************************************************************************
@@ -3036,7 +3130,7 @@ int VisItAttemptToCompleteConnection(void)
     }
 
     /* Initialize engine */
-    if (InitializeRuntime() == VISIT_ERROR)
+    if (InitializeRuntime(0) == VISIT_ERROR)
     {
         LIBSIM_API_LEAVE1(VisItAttemptToCompleteConnection, 
                           "InitializeRuntime failed. return %d", VISIT_ERROR);
@@ -3351,7 +3445,9 @@ void VisItDisconnect(void)
 #ifdef _WIN32
     selectThreadStarted = 0;
 #endif
-
+#ifdef VISIT_BLUE_GENE_Q
+    VisItDetectInputWithTimeout_bgq_ncalls = 0;
+#endif
     viewer_connected = 0;
 
     CloseVisItLibrary();
@@ -3689,243 +3785,37 @@ VisItSetMPICommunicator(void *comm)
     return retval;
 }
 
-/***************************************************************************/
-int
-VisItUI_clicked(const char *name, void (*cb)(void*), void *cbdata)
-{
-    int retval = VISIT_ERROR;
-    sim_ui_element *e = NULL;
-    LIBSIM_API_ENTER(VisItUI_clicked);
-    if((e = sim_ui_get(name)) != NULL)
-    {
-        e->slot_clicked = cb;
-        e->slot_clicked_data = cbdata;
-        retval = VISIT_OKAY;
-    }
-    LIBSIM_API_LEAVE(VisItUI_clicked);
-    return retval;
-}
-
-int
-VisItUI_stateChanged(const char *name, void (*cb)(int,void*), void *cbdata)
-{
-    int retval = VISIT_ERROR;
-    sim_ui_element *e = NULL;
-    LIBSIM_API_ENTER(VisItUI_stateChanged);
-    if((e = sim_ui_get(name)) != NULL)
-    {
-        e->slot_stateChanged = cb;
-        e->slot_stateChanged_data = cbdata;
-        retval = VISIT_OKAY;
-    }
-    LIBSIM_API_LEAVE(VisItUI_stateChanged);
-    return retval;
-}
-
-int
-VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata)
-{
-    int retval = VISIT_ERROR;
-    sim_ui_element *e = NULL;
-    LIBSIM_API_ENTER(VisItUI_valueChanged);
-    if((e = sim_ui_get(name)) != NULL)
-    {
-        e->slot_valueChanged = cb;
-        e->slot_valueChanged_data = cbdata;
-        retval = VISIT_OKAY;
-    }
-    LIBSIM_API_LEAVE(VisItUI_valueChanged);
-    return retval;
-}
-/***************************************************************************/
-
-int
-VisItUI_setValueI(const char *name, int value, int enabled)
-{
-    int retval = VISIT_ERROR;
-
-    LIBSIM_API_ENTER(VisItUI_setValueI);
-    /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.execute_command)
-    {
-        char cmd[500];
-        sprintf(cmd, "SetUI:i:%s:%d:%d", name, value, enabled?1:0);
-        (*callbacks->control.execute_command)(engine, cmd);
-        retval = VISIT_OKAY;
-    }
-    LIBSIM_API_LEAVE(VisItUI_setValueI)
-    return retval;
-}
-
-int
-VisItUI_setValueS(const char *name, const char *value, int enabled)
-{
-    int retval = VISIT_ERROR;
-
-    LIBSIM_API_ENTER(VisItUI_setValueS);
-    /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.execute_command)
-    {
-        char cmd[500];
-        sprintf(cmd, "SetUI:s:%s:%s:%d", name, value, enabled?1:0);
-        (*callbacks->control.execute_command)(engine, cmd);
-        retval = VISIT_OKAY;
-    }
-    LIBSIM_API_LEAVE(VisItUI_setValueS)
-    return retval;
-}
+/******************************************************************************
+*
+* Name: VisItInitializeRuntime
+*
+* Purpose: Explicitly load the VisIt runtime library.
+*
+* Programmer: Brad Whitlock
+* Date:       2013
+*
+* Modifications:
+*
+******************************************************************************/
 
 int
 VisItInitializeRuntime(void)
 {
-    return InitializeRuntime();
+    return InitializeRuntime(1);
 }
 
-int
-VisItAddPlot(const char *plotType, const char *var, int *plotID)
-{
-    int retval = VISIT_ERROR;
-
-    LIBSIM_API_ENTER(VisItAddPlot);
-
-/*
-    if(engine == NULL)
-    {
-        LIBSIM_API_LEAVE1(VisItAddPlot,
-                         "VisItInitializeSocketAndDumpSimFile must be called before VisItAddPlot", 
-                          VISIT_ERROR);
-        return VISIT_ERROR;
-    }
-*/
-
-    if(plotType == NULL)
-    {
-        LIBSIM_API_LEAVE0(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the plot type.");
-        return VISIT_ERROR;
-    }
-
-    if(var == NULL)
-    {
-        LIBSIM_API_LEAVE0(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the variable.");
-        return VISIT_ERROR;
-    }
-
-    if(plotID == NULL)
-    {
-        LIBSIM_API_LEAVE0(VisItAddPlot,
-                         "VisItAddPlot: NULL was passed for the plotID pointer.");
-        return VISIT_ERROR;
-    }
-
-#if 1
-    /* Since the function to write the sim2 file is rank-0 only, other ranks do
-     * not know the filename that was used. This is a problem for other ranks since
-     * their simulationFileName will be empty.
-     */
-    if(isParallel)
-    {
-        char *tmpString = (char *)malloc(sizeof(char) * MAX_SIMULATION_FILENAME);
-        memset(tmpString, 0, sizeof(char) * MAX_SIMULATION_FILENAME);    
-        if(simulationFileName != NULL)
-            strncpy(tmpString, simulationFileName, MAX_SIMULATION_FILENAME);
-
-        if(BroadcastString_internal2 != NULL)
-            (*BroadcastString_internal2)(tmpString, MAX_SIMULATION_FILENAME, 0, BroadcastString_internal2_data);
-        else if(BroadcastString_internal != NULL)
-            (*BroadcastString_internal)(tmpString, MAX_SIMULATION_FILENAME, 0);
-
-        if(simulationFileName == NULL)
-            simulationFileName = tmpString;
-        else
-            free(tmpString);
-    }
-#endif
-
-    /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.add_plot)
-    {
-        retval = (*callbacks->control.add_plot)(engine, simulationFileName, plotType, var, plotID);
-    }
-    LIBSIM_API_LEAVE(VisItAddPlot)
-    return retval;
-}
-
-int
-VisItAddOperator(int plotID, const char *operatorType, int *operatorID)
-{
-    int retval = VISIT_ERROR;
-
-    LIBSIM_API_ENTER(VisItAddOperator);
-
-    if(operatorType == NULL)
-    {
-        LIBSIM_API_LEAVE0(VisItAddOperator,
-                         "VisItAddOperator: NULL was passed for the operator type.");
-        return VISIT_ERROR;
-    }
-
-    if(operatorID == NULL)
-    {
-        LIBSIM_API_LEAVE0(VisItAddOperator,
-                         "VisItAddOperator: NULL was passed for the operatorID pointer.");
-        return VISIT_ERROR;
-    }
-
-    /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.add_operator)
-    {
-        retval = (*callbacks->control.add_operator)(engine, plotID, operatorType, operatorID);
-    }
-    LIBSIM_API_LEAVE(VisItAddOperator)
-    return retval;
-}
-
-int
-VisItDrawPlot(int plotID)
-{
-    int retval = VISIT_ERROR;
-
-    LIBSIM_API_ENTER(VisItDrawPlot);
-    /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.draw_plot)
-    {
-        retval = (*callbacks->control.draw_plot)(engine, plotID);
-    }
-    LIBSIM_API_LEAVE(VisItDrawPlot)
-    return retval;
-}
-
-int
-VisItDeletePlot(int plotID)
-{
-    int retval = VISIT_ERROR;
-
-    LIBSIM_API_ENTER(VisItDeletePlot);
-    /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.delete_plot)
-    {
-        retval = (*callbacks->control.delete_plot)(engine, plotID);
-    }
-    LIBSIM_API_LEAVE(VisItDeletePlot)
-    return retval;
-}
-
-static int
-PlotOpt(int plotID, const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
-{
-    int retval = VISIT_ERROR;
-
-    LIBSIM_API_ENTER(VisItSetPlotOptions);
-    /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.set_plot_options)
-    {
-        retval = (*callbacks->control.set_plot_options)(engine, plotID, fieldName, fieldType, fieldVal, fieldLen);
-    }
-    LIBSIM_API_LEAVE(VisItSetPlotOptions)
-    return retval;
-}
+/******************************************************************************
+*
+* Name: VisItGetMemory
+*
+* Purpose: Measure the memory being used on the current processor.
+*
+* Programmer: Satheesh Maheswaran
+* Date:       2012
+*
+* Modifications:
+*
+******************************************************************************/
 
 int
 VisItGetMemory(double *m_size, double *m_rss)
@@ -3974,24 +3864,325 @@ VisItGetMemory(double *m_size, double *m_rss)
     return retval;
 }
 
-int VisItSetPlotOptionsC(int id,const char*n,char v){ return PlotOpt(id,n,VISIT_FIELDTYPE_CHAR,(void*)&v,1); }
-int VisItSetPlotOptionsUC(int id,const char*n,unsigned char v){ return PlotOpt(id,n,VISIT_FIELDTYPE_UNSIGNED_CHAR,(void*)&v,1); }
-int VisItSetPlotOptionsI(int id,const char*n,int v){ return PlotOpt(id,n,VISIT_FIELDTYPE_INT,(void*)&v,1); }
-int VisItSetPlotOptionsL(int id,const char*n,long v){ return PlotOpt(id,n,VISIT_FIELDTYPE_LONG,(void*)&v,1); }
-int VisItSetPlotOptionsF(int id,const char*n,float v){ return PlotOpt(id,n,VISIT_FIELDTYPE_FLOAT,(void*)&v,1); }
-int VisItSetPlotOptionsD(int id,const char*n,double v){ return PlotOpt(id,n,VISIT_FIELDTYPE_DOUBLE,(void*)&v,1); }
-int VisItSetPlotOptionsS(int id,const char*n,const char *v){ return PlotOpt(id,n,VISIT_FIELDTYPE_STRING,(void*)v,1); }
 
-int VisItSetPlotOptionsCv(int id,const char*n,const char *v,int L){ return PlotOpt(id,n,VISIT_FIELDTYPE_CHAR_ARRAY,(void*)v,L); }
-int VisItSetPlotOptionsUCv(int id,const char*n,const unsigned char *v,int L){ return PlotOpt(id,n,VISIT_FIELDTYPE_UNSIGNED_CHAR_ARRAY,(void*)v,L); }
-int VisItSetPlotOptionsIv(int id,const char*n,const int *v,int L){ return PlotOpt(id,n,VISIT_FIELDTYPE_INT_ARRAY,(void*)v,L); }
-int VisItSetPlotOptionsLv(int id,const char*n,const long *v,int L){ return PlotOpt(id,n,VISIT_FIELDTYPE_LONG_ARRAY,(void*)v,L); }
-int VisItSetPlotOptionsFv(int id,const char*n,const float *v,int L){ return PlotOpt(id,n,VISIT_FIELDTYPE_FLOAT_ARRAY,(void*)v,L); }
-int VisItSetPlotOptionsDv(int id,const char*n,const double *v,int L){ return PlotOpt(id,n,VISIT_FIELDTYPE_DOUBLE_ARRAY,(void*)v,L); }
-int VisItSetPlotOptionsSv(int id,const char*n,const char **v,int L){ return PlotOpt(id,n,VISIT_FIELDTYPE_STRING_ARRAY,(void*)v,L); }
+/***************************************************************************
+
+                                  UI CODE
+
+****************************************************************************/
+int
+VisItUI_clicked(const char *name, void (*cb)(void*), void *cbdata)
+{
+    int retval = VISIT_ERROR;
+    sim_ui_element *e = NULL;
+    LIBSIM_API_ENTER(VisItUI_clicked);
+    if((e = sim_ui_get(name)) != NULL)
+    {
+        e->slot_clicked = cb;
+        e->slot_clicked_data = cbdata;
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_clicked);
+    return retval;
+}
+
+int
+VisItUI_stateChanged(const char *name, void (*cb)(int,void*), void *cbdata)
+{
+    int retval = VISIT_ERROR;
+    sim_ui_element *e = NULL;
+    LIBSIM_API_ENTER(VisItUI_stateChanged);
+    if((e = sim_ui_get(name)) != NULL)
+    {
+        e->slot_stateChanged = cb;
+        e->slot_stateChanged_data = cbdata;
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_stateChanged);
+    return retval;
+}
+
+int
+VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata)
+{
+    int retval = VISIT_ERROR;
+    sim_ui_element *e = NULL;
+    LIBSIM_API_ENTER(VisItUI_valueChanged);
+    if((e = sim_ui_get(name)) != NULL)
+    {
+        e->slot_valueChanged = cb;
+        e->slot_valueChanged_data = cbdata;
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_valueChanged);
+    return retval;
+}
+
+int
+VisItUI_setValueI(const char *name, int value, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setValueI);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:i:%s:%d:%d", name, value, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setValueI)
+    return retval;
+}
+
+int
+VisItUI_setValueS(const char *name, const char *value, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setValueS);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:s:%s:%s:%d", name, value, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setValueS)
+    return retval;
+}
+
+/***************************************************************************
+
+                        EXPERIMENTAL PLOTTING CODE
+
+****************************************************************************/
+
+/******************************************************************************
+*
+* Name: VisItAddPlot
+*
+* Purpose: Add a new plot.
+*
+* Programmer: Brad Whitlock
+* Date:       Fri Sep 19 17:33:35 PDT 2014
+*
+* Modifications:
+*
+******************************************************************************/
+
+int
+VisItAddPlot(const char *plotType, const char *var)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItAddPlot);
+
+    if(plotType == NULL)
+    {
+        LIBSIM_API_LEAVE0(VisItAddPlot,
+                         "VisItAddPlot: NULL was passed for the plot type.");
+        return VISIT_ERROR;
+    }
+
+    if(var == NULL)
+    {
+        LIBSIM_API_LEAVE0(VisItAddPlot,
+                         "VisItAddPlot: NULL was passed for the variable.");
+        return VISIT_ERROR;
+    }
+
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.add_plot)
+    {
+        retval = (*callbacks->control.add_plot)(engine, plotType, var);
+    }
+
+    LIBSIM_API_LEAVE(VisItAddPlot)
+    return retval;
+}
+
+/******************************************************************************
+*
+* Name: VisItAddOperator
+*
+* Purpose: Add a new operator.
+*
+* Programmer: Brad Whitlock
+* Date:       Fri Sep 19 17:33:35 PDT 2014
+*
+* Modifications:
+*
+******************************************************************************/
+
+int
+VisItAddOperator(const char *operatorType, int applyToAll)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItAddOperator);
+
+    if(operatorType == NULL)
+    {
+        LIBSIM_API_LEAVE0(VisItAddOperator,
+                         "VisItAddOperator: NULL was passed for the operator type.");
+        return VISIT_ERROR;
+    }
+
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.add_operator)
+    {
+        retval = (*callbacks->control.add_operator)(engine, operatorType, applyToAll);
+    }
+    LIBSIM_API_LEAVE(VisItAddOperator)
+    return retval;
+}
+
+/******************************************************************************
+*
+* Name: VisItDrawPlots
+*
+* Purpose: Draw the plots in the plot list.
+*
+* Programmer: Brad Whitlock
+* Date:       Fri Sep 19 17:33:35 PDT 2014
+*
+* Modifications:
+*
+******************************************************************************/
+
+int
+VisItDrawPlots(void)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItDrawPlot);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.draw_plots)
+    {
+        retval = (*callbacks->control.draw_plots)(engine);
+    }
+    LIBSIM_API_LEAVE(VisItDrawPlot)
+    return retval;
+}
+
+/******************************************************************************
+*
+* Name: VisItDeleteActivePlots
+*
+* Purpose: Delete the active plots in the plot list.
+*
+* Programmer: Brad Whitlock
+* Date:       Fri Sep 19 17:33:35 PDT 2014
+*
+* Modifications:
+*
+******************************************************************************/
+
+int
+VisItDeleteActivePlots(void)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItDeleteActivePlots);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.delete_active_plots)
+    {
+        retval = (*callbacks->control.delete_active_plots)(engine);
+    }
+    LIBSIM_API_LEAVE(VisItDeleteActivePlots)
+    return retval;
+}
+
+/******************************************************************************
+*
+* Name: VisItSetActivePlots
+*
+* Purpose: Set the active plots in the plot list.
+*
+* Programmer: Brad Whitlock
+* Date:       Mon Feb  2 13:44:02 PST 2015
+*
+* Modifications:
+*
+******************************************************************************/
+
+int
+VisItSetActivePlots(const int *ids, int nids)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItSetActivePlots);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.set_active_plots)
+    {
+        retval = (*callbacks->control.set_active_plots)(engine, ids, nids);
+    }
+    LIBSIM_API_LEAVE(VisItSetActivePlots)
+    return retval;
+}
+
+/******************************************************************************
+*
+* Name: VisItSetPlotOptions*
+*
+* Purpose: Sets the operator options for the active operator.
+*
+* Programmer: Brad Whitlock
+* Date:       Mon Feb  2 13:55:43 PST 2015
+*
+* Modifications:
+*
+******************************************************************************/
 
 static int
-OperatorOpt(int plotID, int operatorID, const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
+PlotOpt(const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItSetPlotOptions);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.set_plot_options)
+    {
+        retval = (*callbacks->control.set_plot_options)(engine, fieldName, fieldType, fieldVal, fieldLen);
+    }
+    LIBSIM_API_LEAVE(VisItSetPlotOptions)
+    return retval;
+}
+
+int VisItSetPlotOptionsC(const char *name,char v){ return PlotOpt(name,VISIT_FIELDTYPE_CHAR,(void*)&v,1); }
+int VisItSetPlotOptionsUC(const char *name,unsigned char v){ return PlotOpt(name,VISIT_FIELDTYPE_UNSIGNED_CHAR,(void*)&v,1); }
+int VisItSetPlotOptionsB(const char *name,int v){ return PlotOpt(name,VISIT_FIELDTYPE_INT,(void*)&v,1); }
+int VisItSetPlotOptionsI(const char *name,int v){ return PlotOpt(name,VISIT_FIELDTYPE_INT,(void*)&v,1); }
+int VisItSetPlotOptionsL(const char *name,long v){ return PlotOpt(name,VISIT_FIELDTYPE_LONG,(void*)&v,1); }
+int VisItSetPlotOptionsF(const char *name,float v){ return PlotOpt(name,VISIT_FIELDTYPE_FLOAT,(void*)&v,1); }
+int VisItSetPlotOptionsD(const char *name,double v){ return PlotOpt(name,VISIT_FIELDTYPE_DOUBLE,(void*)&v,1); }
+int VisItSetPlotOptionsS(const char *name,const char *v){ return PlotOpt(name,VISIT_FIELDTYPE_STRING,(void*)v,1); }
+
+int VisItSetPlotOptionsCv(const char *name,const char *v,int L){ return PlotOpt(name,VISIT_FIELDTYPE_CHAR_ARRAY,(void*)v,L); }
+int VisItSetPlotOptionsUCv(const char *name,const unsigned char *v,int L){ return PlotOpt(name,VISIT_FIELDTYPE_UNSIGNED_CHAR_ARRAY,(void*)v,L); }
+int VisItSetPlotOptionsIv(const char *name,const int *v,int L){ return PlotOpt(name,VISIT_FIELDTYPE_INT_ARRAY,(void*)v,L); }
+int VisItSetPlotOptionsLv(const char *name,const long *v,int L){ return PlotOpt(name,VISIT_FIELDTYPE_LONG_ARRAY,(void*)v,L); }
+int VisItSetPlotOptionsFv(const char *name,const float *v,int L){ return PlotOpt(name,VISIT_FIELDTYPE_FLOAT_ARRAY,(void*)v,L); }
+int VisItSetPlotOptionsDv(const char *name,const double *v,int L){ return PlotOpt(name,VISIT_FIELDTYPE_DOUBLE_ARRAY,(void*)v,L); }
+int VisItSetPlotOptionsSv(const char *name,const char **v,int L){ return PlotOpt(name,VISIT_FIELDTYPE_STRING_ARRAY,(void*)v,L); }
+
+/******************************************************************************
+*
+* Name: VisItSetOperatorOptions*
+*
+* Purpose: Sets the operator options for the active operator.
+*
+* Programmer: Brad Whitlock
+* Date:       Mon Feb  2 13:55:43 PST 2015
+*
+* Modifications:
+*
+******************************************************************************/
+static int
+OperatorOpt(const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
 {
     int retval = VISIT_ERROR;
 
@@ -3999,25 +4190,81 @@ OperatorOpt(int plotID, int operatorID, const char *fieldName, int fieldType, vo
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.set_operator_options)
     {
-        retval = (*callbacks->control.set_operator_options)(engine, plotID, operatorID, fieldName, fieldType, fieldVal, fieldLen);
+        retval = (*callbacks->control.set_operator_options)(engine, fieldName, fieldType, fieldVal, fieldLen);
     }
     LIBSIM_API_LEAVE(VisItSetOperatorOptions)
     return retval;
 }
 
-int VisItSetOperatorOptionsC(int pid, int oid,const char*n,char v){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_CHAR_ARRAY,(void*)&v,1); }
-int VisItSetOperatorOptionsUC(int pid, int oid,const char*n,unsigned char v){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_UNSIGNED_CHAR_ARRAY,(void*)&v,1); }
-int VisItSetOperatorOptionsI(int pid, int oid,const char*n,int v){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_INT_ARRAY,(void*)&v,1); }
-int VisItSetOperatorOptionsL(int pid, int oid,const char*n,long v){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_LONG_ARRAY,(void*)&v,1); }
-int VisItSetOperatorOptionsF(int pid, int oid,const char*n,float v){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_FLOAT_ARRAY,(void*)&v,1); }
-int VisItSetOperatorOptionsD(int pid, int oid,const char*n,double v){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_DOUBLE_ARRAY,(void*)&v,1); }
-int VisItSetOperatorOptionsS(int pid, int oid,const char*n,const char *v){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_STRING_ARRAY,(void*)v,1); }
+int VisItSetOperatorOptionsC(const char *name,char v){ return OperatorOpt(name,VISIT_FIELDTYPE_CHAR,(void*)&v,1); }
+int VisItSetOperatorOptionsUC(const char *name,unsigned char v){ return OperatorOpt(name,VISIT_FIELDTYPE_UNSIGNED_CHAR,(void*)&v,1); }
+int VisItSetOperatorOptionsB(const char *name,int v){ return OperatorOpt(name,VISIT_FIELDTYPE_INT,(void*)&v,1); }
+int VisItSetOperatorOptionsI(const char *name,int v){ return OperatorOpt(name,VISIT_FIELDTYPE_INT,(void*)&v,1); }
+int VisItSetOperatorOptionsL(const char *name,long v){ return OperatorOpt(name,VISIT_FIELDTYPE_LONG,(void*)&v,1); }
+int VisItSetOperatorOptionsF(const char *name,float v){ return OperatorOpt(name,VISIT_FIELDTYPE_FLOAT,(void*)&v,1); }
+int VisItSetOperatorOptionsD(const char *name,double v){ return OperatorOpt(name,VISIT_FIELDTYPE_DOUBLE,(void*)&v,1); }
+int VisItSetOperatorOptionsS(const char *name,const char *v){ return OperatorOpt(name,VISIT_FIELDTYPE_STRING,(void*)v,1); }
 
-int VisItSetOperatorOptionsCv(int pid, int oid,const char*n,const char *v,int L){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_CHAR_ARRAY,(void*)v,L); }
-int VisItSetOperatorOptionsUCv(int pid, int oid,const char*n,const unsigned char *v,int L){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_UNSIGNED_CHAR_ARRAY,(void*)v,L); }
-int VisItSetOperatorOptionsIv(int pid, int oid,const char*n,const int *v,int L){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_INT_ARRAY,(void*)v,L); }
-int VisItSetOperatorOptionsLv(int pid, int oid,const char*n,const long *v,int L){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_LONG_ARRAY,(void*)v,L); }
-int VisItSetOperatorOptionsFv(int pid, int oid,const char*n,const float *v,int L){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_FLOAT_ARRAY,(void*)v,L); }
-int VisItSetOperatorOptionsDv(int pid, int oid,const char*n,const double *v,int L){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_DOUBLE_ARRAY,(void*)v,L); }
-int VisItSetOperatorOptionsSv(int pid, int oid,const char*n,const char **v,int L){ return OperatorOpt(pid,oid,n,VISIT_FIELDTYPE_STRING_ARRAY,(void*)v,L); }
+int VisItSetOperatorOptionsCv(const char *name,const char *v,int L){ return OperatorOpt(name,VISIT_FIELDTYPE_CHAR_ARRAY,(void*)v,L); }
+int VisItSetOperatorOptionsUCv(const char *name,const unsigned char *v,int L){ return OperatorOpt(name,VISIT_FIELDTYPE_UNSIGNED_CHAR_ARRAY,(void*)v,L); }
+int VisItSetOperatorOptionsIv(const char *name,const int *v,int L){ return OperatorOpt(name,VISIT_FIELDTYPE_INT_ARRAY,(void*)v,L); }
+int VisItSetOperatorOptionsLv(const char *name,const long *v,int L){ return OperatorOpt(name,VISIT_FIELDTYPE_LONG_ARRAY,(void*)v,L); }
+int VisItSetOperatorOptionsFv(const char *name,const float *v,int L){ return OperatorOpt(name,VISIT_FIELDTYPE_FLOAT_ARRAY,(void*)v,L); }
+int VisItSetOperatorOptionsDv(const char *name,const double *v,int L){ return OperatorOpt(name,VISIT_FIELDTYPE_DOUBLE_ARRAY,(void*)v,L); }
+int VisItSetOperatorOptionsSv(const char *name,const char **v,int L){ return OperatorOpt(name,VISIT_FIELDTYPE_STRING_ARRAY,(void*)v,L); }
 
+/******************************************************************************
+*
+* Name: VisItExportDatabase
+*
+* Purpose: Export the current plots to a database file.
+*
+* Programmer: Brad Whitlock
+* Date:       Thu Sep 18 10:32:29 PDT 2014
+*
+* Modifications:
+*
+******************************************************************************/
+
+int
+VisItExportDatabase(const char *filename, const char *format, visit_handle varNames)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItExportDatabase);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.set_operator_options)
+    {
+        retval = (*callbacks->control.exportdatabase)(engine, filename, format, varNames);
+    }
+    LIBSIM_API_LEAVE(VisItExportDatabase)
+    return retval;
+}
+
+/******************************************************************************
+*
+* Name: VisItRestoreSession
+*
+* Purpose: Export the current plots to a database file.
+*
+* Programmer: Brad Whitlock
+* Date:       Thu Sep 18 10:32:29 PDT 2014
+*
+* Modifications:
+*
+******************************************************************************/
+
+int
+VisItRestoreSession(const char *filename)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItExportDatabase);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.set_operator_options)
+    {
+        retval = (*callbacks->control.restoresession)(engine, filename);
+    }
+    LIBSIM_API_LEAVE(VisItExportDatabase)
+    return retval;
+}

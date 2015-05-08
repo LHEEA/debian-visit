@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,34 @@
 
 #include <avtMTMDFileFormat.h>
 
+#ifdef WIN32
+#include <io.h>
+#define OPEN    ::_open
+#define CLOSE   ::_close
+#define READ    ::_read
+#define WRITE   ::_write
+#define LSEEK64 ::_lseeki64
+#define OFF64_T __int64
+#define ssize_t int
+
+#else
+#include <unistd.h>
+
+#define O_BINARY 0
+#define OPEN  ::open
+#define CLOSE ::close
+#define READ  ::read
+#define WRITE ::write
+#if defined(__APPLE__) || defined(_OSF_SOURCE)
+#define LSEEK64 ::lseek
+#define OFF64_T off_t
+#else
+#define LSEEK64 ::lseek64
+#define OFF64_T off64_t
+#endif
+
+#endif
+
 #include <vector>
 class vtkUnstructuredGrid;
 struct AssemblyType;
@@ -53,9 +81,6 @@ struct Assembly
     int                  iDomain;
     vtkUnstructuredGrid *grid;
 };
-
-
-#include <boost/cstdint.hpp>
 
 // ****************************************************************************
 //  Class: avtSASFileFormat
@@ -104,7 +129,7 @@ class avtSASFileFormat : public avtMTMDFileFormat
     int                    nAssemblyTypes;
     AssemblyType          *aAssemblyTypes;
     int                    nAssemblys;
-    boost::int64_t         iAssemblyDiskLoc;   //location of first assembly
+    OFF64_T                iAssemblyDiskLoc;   //location of first assembly
 
     std::vector<Assembly>  aCachedAssemblies;
 

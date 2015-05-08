@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ class LineSamplerGUIPluginInfo : public virtual GUIOperatorPluginInfo, public vi
     virtual const char **XPMIconData() const;
 };
 
-class LineSamplerViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual LineSamplerCommonPluginInfo
+class LineSamplerViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual LineSamplerCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -97,14 +97,11 @@ class LineSamplerViewerPluginInfo : public virtual ViewerOperatorPluginInfo, pub
     virtual void GetClientAtts(AttributeSubject *atts, const bool, const bool);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
-    virtual const char **XPMIconData() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -112,7 +109,13 @@ class LineSamplerViewerPluginInfo : public virtual ViewerOperatorPluginInfo, pub
     static LineSamplerAttributes *clientAtts;
 };
 
-class LineSamplerEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual LineSamplerCommonPluginInfo
+class LineSamplerViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual LineSamplerViewerEnginePluginInfo
+{
+  public:
+    virtual const char **XPMIconData() const;
+};
+
+class LineSamplerEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual LineSamplerViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -135,6 +135,9 @@ class IVP_API avtIVPVTKField: public avtIVPField
 
     Result             FindCell( const double& t, const avtVector& p ) const;
 
+    Result             SetLastVelocity(const double &t,
+                                       const avtVector &p);
+
     vtkDataSet*        ds;
     avtCellLocator*    loc;
 
@@ -144,6 +147,7 @@ class IVP_API avtIVPVTKField: public avtIVPField
     bool               sclCellBased[256];
 
     mutable avtVector               lastPos;
+    mutable avtVector               lastVel;
     mutable vtkIdType               lastCell;
     mutable avtInterpolationWeights lastWeights;
 

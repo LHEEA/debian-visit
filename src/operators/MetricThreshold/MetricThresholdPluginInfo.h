@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,7 +86,7 @@ class MetricThresholdGUIPluginInfo : public virtual GUIOperatorPluginInfo, publi
         QvisNotepadArea *notepad);
 };
 
-class MetricThresholdViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual MetricThresholdCommonPluginInfo
+class MetricThresholdViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual MetricThresholdCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -95,13 +95,11 @@ class MetricThresholdViewerPluginInfo : public virtual ViewerOperatorPluginInfo,
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -109,7 +107,12 @@ class MetricThresholdViewerPluginInfo : public virtual ViewerOperatorPluginInfo,
     static MetricThresholdAttributes *clientAtts;
 };
 
-class MetricThresholdEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual MetricThresholdCommonPluginInfo
+class MetricThresholdViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual MetricThresholdViewerEnginePluginInfo
+{
+  public:
+};
+
+class MetricThresholdEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual MetricThresholdViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

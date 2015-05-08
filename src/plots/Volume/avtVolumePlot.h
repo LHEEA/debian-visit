@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -139,7 +139,7 @@ avtVolumePlot : public avtVolumeDataPlot
     virtual bool        PlotIsImageBased(void);
     virtual avtImage_p  ImageExecute(avtImage_p, const WindowAttributes &);
     virtual int         GetNumberOfStagesForImageBasedPlot(
-                                                     const WindowAttributes &);
+                                                     const WindowAttributes &) const;
     virtual bool        Equivalent(const AttributeGroup *);
 
     virtual bool        UtilizeRenderingFilters(void) { return false; };

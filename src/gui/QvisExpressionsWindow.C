@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -363,7 +363,8 @@ const char *expr_mesh[] = {
     "revolved_volume",
     "volume",
     "zoneid",
-    "zonetype",
+    "zonetype_label",
+    "zonetype_rank",
     NULL
 };
 
@@ -1584,12 +1585,15 @@ QvisExpressionsWindow::UpdatePythonExpressionEditor(const QString &expr_def)
 //
 //  Modifications:
 //
+//    Kathleen Biagas, Tue Apr 14 08:21:02 PDT 2015
+//    Use 'setPlainText' so html isn't parsed (eg <P> becoming new paragraph).
+//
 // ****************************************************************************
 void
 QvisExpressionsWindow::UpdateStandardExpressionEditor(const QString &expr_def)
 {
     BlockAllSignals(true);
-    stdDefinitionEdit->setText(expr_def);
+    stdDefinitionEdit->setPlainText(expr_def);
     BlockAllSignals(false);
 }
 

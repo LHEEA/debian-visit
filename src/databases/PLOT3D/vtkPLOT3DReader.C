@@ -529,8 +529,8 @@ vtkPLOT3DReader::ReadGeometryHeader(FILE* xyzFp, vtkInformationVector *outputVec
     return VTK_ERROR;
   if (this->GridOffsets == NULL)
     {
-    this->GridOffsets = new int[this->NumberOfGrids];
-    this->GridSizes = new int[this->NumberOfGrids];
+    this->GridOffsets = new long[this->NumberOfGrids];
+    this->GridSizes = new long[this->NumberOfGrids];
     this->GridDimensions = new int[3*this->NumberOfGrids];
 
     for (int i = 0; i < this->NumberOfGrids; i++)
@@ -557,7 +557,7 @@ vtkPLOT3DReader::ReadGeometryHeader(FILE* xyzFp, vtkInformationVector *outputVec
     this->SkipByteCount(xyzFp); //do we do this now?
     this->GridOffsets[0] = ftell(xyzFp);
 
-    for (int i=0, gridSize=0; i<this->NumberOfGrids; i++)
+    for (int i=0; i<this->NumberOfGrids; i++)
       {
       GridSizes[i] = GridDimensions[3*i]*GridDimensions[1+3*i]*GridDimensions[2+3*i];
       }
@@ -591,7 +591,7 @@ int vtkPLOT3DReader::ReadQHeader(FILE* qFp)
 
   if (this->SolutionOffsets == NULL)
     {
-    this->SolutionOffsets = new int[this->NumberOfGrids];
+    this->SolutionOffsets = new long[this->NumberOfGrids];
     for (int i = 0; i < numGrid; ++i)
       this->SolutionOffsets[i] = -1;
 
@@ -650,7 +650,6 @@ int vtkPLOT3DReader::ReadFunctionHeader(FILE* fp, vtkIdList*& counts)
                   << ni << " " << nj << " " << nk
                   << ", " << ns << "Scalars");
     counts->InsertNextId(ns);
-    int extent[6];
     if (this->GridDimensions[    3*i] != ni ||
         this->GridDimensions[1 + 3*i] != nj ||
         this->GridDimensions[2 + 3*i] != nk)
@@ -776,23 +775,25 @@ int vtkPLOT3DReader::RequestInformation(
 
   fclose(xyzFp);
 
-  FILE* qFp;
-  if ( this->CheckSolutionFile(qFp) != VTK_OK)
+  if (this->QFileName && this->QFileName[0] != '\0')
     {
-    return 0;
-    }
+    FILE* qFp;
+    if ( this->CheckSolutionFile(qFp) != VTK_OK)
+      {
+      return 0;
+      }
 
-  if ( this->ReadQHeader(qFp) != VTK_OK )
-    {
-    fclose(qFp);
-    return 0;
+    if ( this->ReadQHeader(qFp) != VTK_OK )
+      {
+      fclose(qFp);
+      return 0;
+      }
+    if ( this->ReadSolutionProperties(qFp) != VTK_OK )
+      {
+      fclose(qFp);
+      return 0;
+      }
     }
-  if ( this->ReadSolutionProperties(qFp) != VTK_OK )
-    {
-    fclose(qFp);
-    return 0;
-    }
-
   return 1;
 }
 
@@ -805,13 +806,8 @@ int vtkPLOT3DReader::RequestData(
   this->SetErrorCode(vtkErrorCode::NoError);
 
   FILE* xyzFp;
-  int i;
-  int ndim, nx, ny, nz;
-  int numberOfDims;
-  vtkIdType index;
 
   vtkStructuredGrid *output = vtkStructuredGrid::GetData(outputVector);
-  vtkPointData *outputPD = output->GetPointData();
 
   if ( this->CheckGeometryFile(xyzFp) != VTK_OK)
     {
@@ -2194,8 +2190,8 @@ vtkPLOT3DReader::ReadGrid(FILE *xyzFp, vtkStructuredGrid *output)
   newPts->Delete();
 
   rewind(xyzFp);
-  int offset = this->ComputeGridOffset(xyzFp);
-  fseek(xyzFp, (long)(offset), SEEK_SET);
+  long offset = this->ComputeGridOffset(xyzFp);
+  fseek(xyzFp, offset, SEEK_SET);
 
   this->SkipByteCount(xyzFp);
   if (this->ReadVector(xyzFp, this->NumberOfPoints, pointArray) == 0)
@@ -2219,7 +2215,7 @@ vtkPLOT3DReader::ReadGrid(FILE *xyzFp, vtkStructuredGrid *output)
   return VTK_OK;
 }
 
-int
+long
 vtkPLOT3DReader::ComputeGridOffset(FILE *xyzFp)
 {
   // If offset known return it else compute.
@@ -2234,10 +2230,10 @@ vtkPLOT3DReader::ComputeGridOffset(FILE *xyzFp)
 
     for (int j = i+1; j <= this->GridNumber; j++)
       {
-      int nd = this->TwoDimensionalGeometry ? 2 : 3;
+      long nd = this->TwoDimensionalGeometry ? 2 : 3;
       if (this->BinaryFile)
         {
-        int bc = this->HasByteCount ? sizeof(int) : 0;
+        long bc = this->HasByteCount ? sizeof(int) : 0;
         if (this->IBlanking)
           {
           this->GridOffsets[j] = (this->GridOffsets[j-1] + (nd+1)*this->GridSizes[j-1]*4) + bc;
@@ -2250,6 +2246,7 @@ vtkPLOT3DReader::ComputeGridOffset(FILE *xyzFp)
             }
           else
             {
+
             this->GridOffsets[j] = (this->GridOffsets[j-1] + nd*this->GridSizes[j-1]*4) + 2*bc;
             }
           }
@@ -2265,7 +2262,7 @@ vtkPLOT3DReader::ComputeGridOffset(FILE *xyzFp)
           {
           numberOfElements = (nd)*GridSizes[j-1];
           }
-        fseek(xyzFp,(long)(this->GridOffsets[j-1]),SEEK_SET);
+        fseek(xyzFp,this->GridOffsets[j-1],SEEK_SET);
         vtkDataArray *numbersToSkip = this->NewFloatArray();
         numbersToSkip->SetNumberOfTuples(numberOfElements);
         this->ReadScalar(xyzFp,numberOfElements,numbersToSkip);
@@ -2288,8 +2285,8 @@ vtkPLOT3DReader::ReadSolutionProperties(FILE *qFp)
 
   //seek to correct spot and read solution
   rewind(qFp);
-  int offset = this->ComputeSolutionOffset(qFp);
-  fseek (qFp, (long)(offset), SEEK_SET);
+  long offset = this->ComputeSolutionOffset(qFp);
+  fseek (qFp, offset, SEEK_SET);
 
   // read parameters
   vtkDataArray *newProp = this->NewFloatArray();
@@ -2378,7 +2375,7 @@ vtkPLOT3DReader::ReadSolution(FILE *qFp, vtkStructuredGrid *output)
   return VTK_OK;
 }
 
-int
+long
 vtkPLOT3DReader::ComputeSolutionOffset(FILE *qFp)
 {
   int i;
@@ -2398,7 +2395,7 @@ vtkPLOT3DReader::ComputeSolutionOffset(FILE *qFp)
       int ns = 1  + 1  + (this->TwoDimensionalGeometry ? 2 : 3);
       if (this->BinaryFile)
         {
-        int bc = this->HasByteCount ? sizeof(int) : 0;
+        long bc = this->HasByteCount ? sizeof(int) : 0;
 
         if (this->DoublePrecision)
           {
@@ -2416,7 +2413,7 @@ vtkPLOT3DReader::ComputeSolutionOffset(FILE *qFp)
       else
         {
         int numberOfElements = 4 + ns*GridSizes[j-1];
-        fseek(qFp,(long)this->SolutionOffsets[j-1],SEEK_SET);
+        fseek(qFp,this->SolutionOffsets[j-1],SEEK_SET);
         vtkDataArray *numbersToSkip = this->NewFloatArray();
         numbersToSkip->SetNumberOfTuples(numberOfElements);
         this->ReadScalar(qFp,numberOfElements,numbersToSkip);

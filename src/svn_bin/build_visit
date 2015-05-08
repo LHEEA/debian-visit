@@ -52,7 +52,7 @@
 #5  bv_<module>_depends_on [not implemented yet], also may be removed in favor of xml structure
 #6. bv_<module>_build builds the module
 
-export VISIT_VERSION=${VISIT_VERSION:-"2.8.2"}
+export VISIT_VERSION=${VISIT_VERSION:-"2.9.1"}
 
 ####
 # Trunk:
@@ -62,11 +62,19 @@ export VISIT_VERSION=${VISIT_VERSION:-"2.8.2"}
 #export SVN_THIRDPARTY_PATH=${SVN_THIRDPARTY_PATH-"trunk/third_party"}
 
 ###
-# Release:
+# RC Branch:
 ###
 export TRUNK_BUILD="no"
-export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
-export SVN_THIRDPARTY_PATH="tags/${VISIT_VERSION}/third_party"
+export SVN_SOURCE_PATH="branches/2.9RC/src"
+export SVN_THIRDPARTY_PATH="branches/2.9RC/third_party"
+
+
+###
+# Tagged Release:
+###
+#export TRUNK_BUILD="no"
+#export SVN_SOURCE_PATH="tags/${VISIT_VERSION}/src"
+#export SVN_THIRDPARTY_PATH="tags/${VISIT_VERSION}/third_party"
 
 export INITIAL_PWD=$PWD
 

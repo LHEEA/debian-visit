@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -349,6 +349,9 @@ class     vtkUnstructuredGrid;
 //    Brad Whitlock, Thu Jun 19 11:12:19 PDT 2014
 //    Pass mesh name to PopulateIOInformation.
 //
+//    Brad Whitlock, Wed Oct 29 17:53:51 PDT 2014
+//    Added CachingRecommended methods.
+//
 // ****************************************************************************
 
 class DATABASE_API avtGenericDatabase : public avtDatasetDatabase
@@ -648,6 +651,10 @@ class DATABASE_API avtGenericDatabase : public avtDatasetDatabase
 
     void                       ManageMemoryForNonCachableVar(vtkDataArray *);
     void                       ManageMemoryForNonCachableMesh(vtkDataSet *);
+
+    bool                       CachingRecommended(vtkDataArray *) const;
+    bool                       CachingRecommended(vtkDataSet *) const;
+    static const float         maxCachePercent;
 };
 
 

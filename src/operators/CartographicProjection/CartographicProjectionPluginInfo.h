@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ class CartographicProjectionGUIPluginInfo : public virtual GUIOperatorPluginInfo
     virtual const char **XPMIconData() const;
 };
 
-class CartographicProjectionViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual CartographicProjectionCommonPluginInfo
+class CartographicProjectionViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual CartographicProjectionCommonPluginInfo
 {
   public:
     virtual AttributeSubject *GetClientAtts();
@@ -96,14 +96,11 @@ class CartographicProjectionViewerPluginInfo : public virtual ViewerOperatorPlug
     virtual void GetClientAtts(AttributeSubject *atts);
 
     virtual void InitializeOperatorAtts(AttributeSubject *atts,
-                                        const ViewerPlot *plot,
+                                        const avtPlotMetaData &plot,
                                         const bool fromDefault);
     virtual void UpdateOperatorAtts(AttributeSubject *atts,
-                                    const ViewerPlot *plot);
-    virtual std::string GetOperatorVarDescription(AttributeSubject *atts,
-                                                  const ViewerPlot *plot);
-    virtual QString *GetMenuName() const;
-    virtual const char **XPMIconData() const;
+                                    const avtPlotMetaData &plot);
+    virtual const char *GetMenuName() const;
 
     static void InitializeGlobalObjects();
   private:
@@ -111,7 +108,13 @@ class CartographicProjectionViewerPluginInfo : public virtual ViewerOperatorPlug
     static CartographicProjectionAttributes *clientAtts;
 };
 
-class CartographicProjectionEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual CartographicProjectionCommonPluginInfo
+class CartographicProjectionViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual CartographicProjectionViewerEnginePluginInfo
+{
+  public:
+    virtual const char **XPMIconData() const;
+};
+
+class CartographicProjectionEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual CartographicProjectionViewerEnginePluginInfo
 {
   public:
     virtual avtPluginFilter *AllocAvtPluginFilter();

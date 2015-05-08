@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -51,6 +51,9 @@
 #   Cameron Christensen, Tuesday, June 10, 2014
 #   Added SetBackendTypeRPC.
 #
+#   Kathleen Biagas, Mon Dec 22 05:53:52 PST 2014
+#   Added SetRemoveDuplicateNodesRPC.
+#
 #****************************************************************************/
 
 SET(ENGINERPC_SOURCES
@@ -73,9 +76,10 @@ QueryParametersRPC.C
 ReadRPC.C
 ReleaseDataRPC.C
 RenderRPC.C
+SetBackendTypeRPC.C
 SetEFileOpenOptionsRPC.C
 SetPrecisionTypeRPC.C
-SetBackendTypeRPC.C
+SetRemoveDuplicateNodesRPC.C
 SetWinAnnotAttsRPC.C
 SimulationCommandRPC.C
 StartPickRPC.C

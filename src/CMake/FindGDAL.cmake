@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -55,7 +55,7 @@ IF (WIN32)
     SET_UP_THIRD_PARTY(GDAL lib include gdal_i)
     # normally handled in InstallThirdParty.cmake, but gdal has a weird
     # naming convention on windows
-    FOREACH(VER 17 19 110)
+    FOREACH(VER 17 19 110 111)
         IF(EXISTS ${GDAL_LIBRARY_DIR}/gdal${VER}.dll)
             EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E copy
                 ${GDAL_LIBRARY_DIR}/gdal${VER}.dll

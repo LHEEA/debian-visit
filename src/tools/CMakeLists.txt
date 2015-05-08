@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -59,6 +59,12 @@
 #   Eric Brugger, Wed Apr 17 12:00:47 PDT 2013
 #   Also build qtssh on unix.
 #
+#   Eric Brugger, Wed Dec 17 12:37:22 PST 2014
+#   Add avtexamples.
+#
+#   Kathleen Biagas, Dec 22, 2014
+#   Add ability to turn off building of avt examples.
+#
 #****************************************************************************/
 
 MACRO(VISIT_TOOLS_ADD_FOLDER type)
@@ -69,11 +75,18 @@ MACRO(VISIT_TOOLS_ADD_FOLDER type)
     ENDIF(${ARGC} GREATER 1)
 ENDMACRO(VISIT_TOOLS_ADD_FOLDER)
 
+IF(VISIT_BUILD_DIAGNOSTICS)
+    ADD_SUBDIRECTORY(diagnostics)
+ENDIF()
+
 IF(VISIT_DBIO_ONLY OR VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
     ADD_SUBDIRECTORY(convert)
 ELSE(VISIT_DBIO_ONLY OR VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
     # We always want these to be built
     ADD_SUBDIRECTORY(annotations)
+    if(VISIT_BUILD_AVTEXAMPLES)
+    ADD_SUBDIRECTORY(avtexamples)
+    endif()
     ADD_SUBDIRECTORY(convert)
     ADD_SUBDIRECTORY(embedviewer)
     ADD_SUBDIRECTORY(imagetools)
@@ -112,16 +125,9 @@ ENDIF(VISIT_DBIO_ONLY OR VISIT_ENGINE_ONLY OR VISIT_SERVER_COMPONENTS_ONLY)
 # These do not need to be built:
 # antialiased_shadows
 # avt_do_add
-# avtprep
 # clidriver
-# curv3dprep
 # doxygenate
 # escan
 # surfcomp
 # vtk_debug_parser
-
-# These should be removed because they are obsolete:
-# windowmaker
-# mpeg_encode
-
 
