@@ -4,7 +4,7 @@ Priority: optional
 Maintainer: Alastair McKinstry <mckinstry@debian.org>
 Build-Depends: debhelper (>= 9), libgl1-mesa-dev, python-all-dev, python3-all-dev, libvtk6-dev (>= 5.8.0~), libgdal1-dev, libhdf5-serial-dev | libhdf5-dev, libcfitsio3-dev, libcgns-dev, libnetcdf-dev, libhdf4-alt-dev, libgoogle-perftools-dev, imagemagick, gfortran, libosmesa6-dev, libsilo-dev, cmake (>= 2.8.0), python-vtk6, libxdmf-dev,libadios-dev, dh-python
 Standards-Version: 3.9.6
-Homepage: http://www.llnl.gov/visit/
+Homepage: http://visit.llnl.gov/
 
 Package: visit
 Architecture: any
