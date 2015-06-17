@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VISIT_VERSION="2.9.0"
+VISIT_VERSION="2.9.1"
 
 ################################################################################
 ## DEFAULT VALUES FOR VARIABLES
