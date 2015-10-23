@@ -51,6 +51,7 @@ class QListWidgetItem;
 class QCheckBox;
 class QComboBox;
 class QLineEdit;
+class QSlider;
 class QSpinBox;
 class QvisColorTableButton;
 class QvisColorButton;
@@ -107,8 +108,16 @@ class QvisLCSWindow : public QvisOperatorWindow
     void UseDataSetEndChanged(int);
     void EndPositionProcessText();
 
+    void auxiliaryGridChanged(int val);
+    void auxiliaryGridSpacingProcessText();
+
+    void thresholdLimitProcessText();
+    void radialLimitProcessText();
+    void boundaryLimitProcessText();
+    void seedLimitChanged(int val);
+
     void fieldTypeChanged(int val);
-    void fieldConstantProccessText();
+    void fieldConstantProcessText();
     void velocitySourceProcessText();
 //    void forceNodalChanged(bool);
 
@@ -126,11 +135,17 @@ class QvisLCSWindow : public QvisOperatorWindow
     void limitMaxDistanceChanged(bool);
 
     void operationTypeChanged(int);
+    void cauchyGreenTensorChanged(int);
     void eigenComponentChanged(int);
-    void operatorTypeChanged(int);
- 
+    void operatorTypeChanged(int); 
+
     void terminationTypeButtonGroupChanged(int);
     void clampLogValuesChanged(bool);
+    void eigenWeightEditProcessText();
+
+    void eigenWeightSliderPressed();
+    void eigenWeightSliderReleased();
+    void eigenWeightSliderChanged(int val);
 
     void maxTimeProcessText();
     void maxDistanceProcessText();
@@ -149,7 +164,10 @@ class QvisLCSWindow : public QvisOperatorWindow
     void pathlinePeriodProcessText();
     void pathlineCMFEButtonGroupChanged(int val);
 
+    void issueWarningForAdvectionChanged(bool);
+    void issueWarningForBoundaryChanged(bool);
     void issueWarningForMaxStepsChanged(bool);
+    void issueWarningForStepsizeChanged(bool);
     void issueWarningForStiffnessChanged(bool);
     void issueWarningForCriticalPointsChanged(bool);
     void criticalPointThresholdProcessText();
@@ -159,12 +177,21 @@ class QvisLCSWindow : public QvisOperatorWindow
 
     // Integration
     QComboBox *sourceType;
-    QLabel *ResolutionLabel;
-    QLineEdit *Resolution;
+    QLabel       *ResolutionLabel;
+    QLineEdit    *Resolution;
     QButtonGroup *UseDataSetStart;
-    QLineEdit *StartPosition;
+    QLineEdit    *StartPosition;
     QButtonGroup *UseDataSetEnd;
-    QLineEdit *EndPosition;
+    QLineEdit    *EndPosition;
+
+    QComboBox *auxiliaryGrid;
+    QLabel    *auxiliaryGridSpacingLabel;
+    QLineEdit *auxiliaryGridSpacing;
+
+    QLineEdit *thresholdLimit;
+    QLineEdit *radialLimit;
+    QLineEdit *boundaryLimit;
+    QSpinBox  *seedLimit;
 
     QComboBox *fieldType;
     QLabel    *fieldConstantLabel;
@@ -190,10 +217,17 @@ class QvisLCSWindow : public QvisOperatorWindow
     QCheckBox *limitMaxDistance;
 
     QComboBox *operationType;
+    QLabel    *cauchyGreenTensorLabel;
+    QComboBox *cauchyGreenTensor;
     QLabel    *eigenComponentLabel;
     QComboBox *eigenComponent;
     QComboBox *operatorType;
     QCheckBox *clampLogValues;
+    QLineEdit *eigenWeightEdit;
+    QSlider   *eigenWeightSlider;
+    QLabel    *eigenWeightLabel;
+
+    bool      sliderDragging;
 
     QButtonGroup *terminationTypeButtonGroup;
     QLineEdit *maxTime;
@@ -216,7 +250,10 @@ class QvisLCSWindow : public QvisOperatorWindow
     QLineEdit *pathlinePeriod;
     QButtonGroup *pathlineCMFEButtonGroup;
 
+    QCheckBox *issueWarningForAdvection;
+    QCheckBox *issueWarningForBoundary;
     QCheckBox *issueWarningForMaxSteps;
+    QCheckBox *issueWarningForStepsize;
     QCheckBox *issueWarningForStiffness;
     QCheckBox *issueWarningForCriticalPoints;
     QLineEdit *criticalPointThreshold;

@@ -44,6 +44,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+// ****************************************************************************
+//   Modifications:
+//    Kathleen Biagas, Fri Jun 26 12:10:08 PDT 2015
+//    Added FileMatchesPatternCB, a callback that can be used with
+//    ReadAndProcessDirectory. (Moved from NetworkManager).
+//
+// ****************************************************************************
+
 namespace FileFunctions
 {
 //
@@ -92,8 +100,8 @@ std::string MISC_API ExpandPath(const std::string &path,
 std::string MISC_API FilteredPath(const std::string &path);
 
 // Filename manipulation
-const char  MISC_API *Basename(const char *path);
-std::string MISC_API  Basename(const std::string &path);
+const char  MISC_API *Basename(const char *path, const char *suffix=0);
+std::string MISC_API  Basename(const std::string &path, const std::string &suffix="");
 const char  MISC_API *Dirname(const char *path);
 std::string MISC_API  Dirname(const std::string &path);
 const char  MISC_API *Absname(const char *cwd_context, 
@@ -111,6 +119,8 @@ void MISC_API         SplitHostDatabase(const std::string &hostDB,
                                         std::string &host, std::string &db);
 std::string MISC_API  ComposeDatabaseName(const std::string &host,
                                           const std::string &db);
+
+void MISC_API  FileMatchesPatternCB(void *, const std::string &, bool, bool, long);
 };
 
 #endif

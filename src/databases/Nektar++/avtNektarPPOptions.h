@@ -37,16 +37,22 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                             avtNektarPPOptions.h                              //
+//                             avtNektarPPOptions.h                          //
 // ************************************************************************* //
 
 #ifndef AVT_NektarPP_OPTIONS_H
 #define AVT_NektarPP_OPTIONS_H
 
-class DBOptionsAttributes;
-
 #include <string>
 
+class DBOptionsAttributes;
+
+namespace NektarPPDBOptions
+{
+    // Read options
+    const char *const NEKTARPP_MESH_REFINEMENT = "Mesh refinement";
+    const char *const NEKTARPP_ASSUME_PLANAR_ELEMENTS = "Assume planar elements";
+}
 
 // ****************************************************************************
 //  Functions: avtNektarPPOptions

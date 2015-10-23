@@ -42,12 +42,13 @@
 #include <QComboBox>
 #include <QLabel>
 #include <QLayout>
-#include <QSpinBox>
 #include <QToolTip>
 
 #include <AnnotationObject.h>
 
 #include <QvisColorButton.h>
+#include <QvisLineWidthWidget.h>
+#include <QvisLineStyleWidget.h>
 #include <QvisOpacitySlider.h>
 #include <QvisScreenPositionEdit.h>
 
@@ -74,6 +75,9 @@
 //   Brad Whitlock, Mon Jul 21 10:39:10 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Biagas, Mon Jul 13 13:03:45 PDT 2015
+//   Add useForegroundColor, colorlabel.
+//
 // ****************************************************************************
 
 QvisLine2DInterface::QvisLine2DInterface(QWidget *parent) :
@@ -86,6 +90,7 @@ QvisLine2DInterface::QvisLine2DInterface(QWidget *parent) :
     topLayout->addLayout(cLayout);
     cLayout->setSpacing(10);
 
+    int row = 0;
     // Add controls for the start position
     positionStartEdit = new QvisScreenPositionEdit(this);
     connect(positionStartEdit, SIGNAL(screenPositionChanged(double, double)),
@@ -93,8 +98,9 @@ QvisLine2DInterface::QvisLine2DInterface(QWidget *parent) :
     QLabel *startLabel = new QLabel(tr("Start"), this);
     QString startTip(tr("Start of line in screen coordinates [0,1]"));
     startLabel->setToolTip(startTip);
-    cLayout->addWidget(positionStartEdit, 0, 1, 1, 3);
-    cLayout->addWidget(startLabel, 0, 0);
+    cLayout->addWidget(positionStartEdit, row, 1, 1, 3);
+    cLayout->addWidget(startLabel, row, 0);
+    ++row;
 
     // Add controls for the end position
     positionEndEdit = new QvisScreenPositionEdit(this);
@@ -103,32 +109,48 @@ QvisLine2DInterface::QvisLine2DInterface(QWidget *parent) :
     QLabel *endLabel = new QLabel(tr("End"), this);
     QString endTip(tr("End of line in screen coordinates [0,1]"));
     endLabel->setToolTip(endTip);
-    cLayout->addWidget(positionEndEdit, 1, 1, 1, 3);
-    cLayout->addWidget(endLabel, 1, 0);
+    cLayout->addWidget(positionEndEdit, row, 1, 1, 3);
+    cLayout->addWidget(endLabel, row, 0);
+    ++row;
    
     // Add controls for width.
-    widthSpinBox = new QSpinBox(this);
-    widthSpinBox->setMinimum(1);
-    widthSpinBox->setMaximum(100);
-    widthSpinBox->setButtonSymbols(QSpinBox::PlusMinus);
-    connect(widthSpinBox, SIGNAL(valueChanged(int)),
+    widthWidget = new QvisLineWidthWidget(0, this);
+    connect(widthWidget, SIGNAL(lineWidthChanged(int)),
             this, SLOT(widthChanged(int)));
-    cLayout->addWidget(widthSpinBox, 2, 1);
-    cLayout->addWidget(new QLabel(tr("Width"), this), 2, 0);
+    cLayout->addWidget(widthWidget, row, 1);
+    cLayout->addWidget(new QLabel(tr("Width"), this), row, 0);
+    ++row;
+
+    // Add controls for style.
+    styleWidget = new QvisLineStyleWidget(0, this);
+    connect(styleWidget, SIGNAL(lineStyleChanged(int)),
+            this, SLOT(styleChanged(int)));
+    cLayout->addWidget(styleWidget, row, 1);
+    cLayout->addWidget(new QLabel(tr("Style"), this), row, 0);
+    ++row;
+
+    // Added a use foreground toggle
+    useForegroundColorCheckBox = new QCheckBox(tr("Use foreground color"), this);
+    connect(useForegroundColorCheckBox, SIGNAL(toggled(bool)),
+            this, SLOT(useForegroundColorToggled(bool)));
+    cLayout->addWidget(useForegroundColorCheckBox, row, 0, 1, 4);
+    ++row;
 
     // Add controls for the line color.
+    colorLabel = new QLabel(tr("Line color"), this);
+    cLayout->addWidget(colorLabel, row, 0, Qt::AlignLeft);
+
     colorButton = new QvisColorButton(this);
     connect(colorButton, SIGNAL(selectedColor(const QColor &)),
             this, SLOT(colorChanged(const QColor &)));
-    cLayout->addWidget(new QLabel(tr("Line color"), this),
-                       3, 0, Qt::AlignLeft);
-    cLayout->addWidget(colorButton, 3, 1);
+    cLayout->addWidget(colorButton, row, 1);
 
     // Add controls for the line opacity.
     opacitySlider = new QvisOpacitySlider(0, 255, 10, 0, this);
     connect(opacitySlider, SIGNAL(valueChanged(int)),
             this, SLOT(opacityChanged(int)));
-    cLayout->addWidget(opacitySlider, 3, 2, 1, 2);
+    cLayout->addWidget(opacitySlider, row, 2, 1, 2);
+    ++row;
 
     // Beginning arrow control.
     beginArrowComboBox = new QComboBox(this);
@@ -138,8 +160,9 @@ QvisLine2DInterface::QvisLine2DInterface(QWidget *parent) :
     beginArrowComboBox->setEditable(false);
     connect(beginArrowComboBox, SIGNAL(activated(int)),
             this, SLOT(beginArrowChanged(int)));
-    cLayout->addWidget(beginArrowComboBox, 4, 1, 1, 3);
-    cLayout->addWidget(new QLabel(tr("Begin arrow"), this), 4, 0);
+    cLayout->addWidget(beginArrowComboBox, row, 1, 1, 3);
+    cLayout->addWidget(new QLabel(tr("Begin arrow"), this), row, 0);
+    ++row;
 
     // Beginning arrow control.
     endArrowComboBox = new QComboBox(this);
@@ -149,14 +172,15 @@ QvisLine2DInterface::QvisLine2DInterface(QWidget *parent) :
     endArrowComboBox->setEditable(false);
     connect(endArrowComboBox, SIGNAL(activated(int)),
             this, SLOT(endArrowChanged(int)));
-    cLayout->addWidget(endArrowComboBox, 5, 1, 1, 3);
-    cLayout->addWidget(new QLabel(tr("End arrow"), this), 5, 0);
+    cLayout->addWidget(endArrowComboBox, row, 1, 1, 3);
+    cLayout->addWidget(new QLabel(tr("End arrow"), this), row, 0);
+    ++row;
 
     // Added a visibility toggle
     visibleCheckBox = new QCheckBox(tr("Visible"), this);
     connect(visibleCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(visibilityToggled(bool)));
-    cLayout->addWidget(visibleCheckBox, 6, 0);
+    cLayout->addWidget(visibleCheckBox, row, 0);
 }
 
 // ****************************************************************************
@@ -220,6 +244,9 @@ QvisLine2DInterface::GetMenuText(const AnnotationObject &annot) const
 //   Brad Whitlock, Mon Jul 21 10:46:14 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Biagas, Mon Jul 13 13:09:20 PDT 2015
+//   Add useForegroundcolor, colorLabel.
+//
 // ****************************************************************************
 void
 QvisLine2DInterface::UpdateControls()
@@ -232,10 +259,14 @@ QvisLine2DInterface::UpdateControls()
     positionEndEdit->setPosition(annot->GetPosition2()[0],
                                  annot->GetPosition2()[1]);
 
-    // Set the spinbox values for the width and height 
-    widthSpinBox->blockSignals(true);
-    widthSpinBox->setValue(annot->GetColor2().Red());
-    widthSpinBox->blockSignals(false);
+    // Set the values for the width and style 
+    widthWidget->blockSignals(true);
+    widthWidget->SetLineWidth(annot->GetIntAttribute1());
+    widthWidget->blockSignals(false);
+
+    styleWidget->blockSignals(true);
+    styleWidget->SetLineStyle(annot->GetIntAttribute2());
+    styleWidget->blockSignals(false);
 
     // Set the begin and end arrow styles.
     beginArrowComboBox->blockSignals(true);
@@ -245,15 +276,34 @@ QvisLine2DInterface::UpdateControls()
     beginArrowComboBox->blockSignals(false);
     endArrowComboBox->blockSignals(false);
 
+    // Set the use foreground color check box.
+    useForegroundColorCheckBox->blockSignals(true);
+    useForegroundColorCheckBox->setChecked(annot->GetUseForegroundForTextColor());
+    useForegroundColorCheckBox->blockSignals(false);
+
     // Change color and opacity.
     colorButton->blockSignals(true);
     opacitySlider->blockSignals(true);
-    QColor tc(annot->GetColor1().Red(),
-              annot->GetColor1().Green(),
-              annot->GetColor1().Blue());
-    colorButton->setButtonColor(tc);
-    opacitySlider->setGradientColor(tc);
-    opacitySlider->setValue(annot->GetColor1().Alpha());
+
+    if (annot->GetUseForegroundForTextColor())
+    {    
+        QColor tmp(255,255,255);
+        colorButton->setButtonColor(tmp);
+        colorLabel->setEnabled(false);
+        colorButton->setEnabled(false);
+        opacitySlider->setGradientColor(tmp);
+    }
+    else
+    {
+        QColor tc(annot->GetColor1().Red(),
+                  annot->GetColor1().Green(),
+                  annot->GetColor1().Blue());
+        colorButton->setButtonColor(tc);
+        colorLabel->setEnabled(true);
+        colorButton->setEnabled(true);
+        opacitySlider->setGradientColor(tc);
+        opacitySlider->setValue(annot->GetColor1().Alpha());
+    }
     opacitySlider->blockSignals(false);
     colorButton->blockSignals(false);
 
@@ -298,16 +348,6 @@ QvisLine2DInterface::GetCurrentValues(int which_widget)
         GetScreenPosition2(positionEndEdit, tr("End"));
     }
 
-    if(which_widget == 2 || doAll)
-    {
-        // Get its new current value and store it in the atts.
-        ForceSpinBoxUpdate(widthSpinBox);
-        ColorAttribute ca;
-        ca.SetRgb(widthSpinBox->value(),
-                  annot->GetColor2().Green(),
-                  annot->GetColor2().Blue());
-        annot->SetColor2(ca);
-    }
 }
 
 //
@@ -439,17 +479,35 @@ QvisLine2DInterface::endArrowChanged(int i)
 void
 QvisLine2DInterface::widthChanged(int w)
 {
-    ColorAttribute ca;
-    ca.SetRgb(w,
-              annot->GetColor2().Green(),
-              annot->GetColor2().Blue());
-    annot->SetColor2(ca);
-    SetUpdate(false);
+    annot->SetIntAttribute1(w);
     Apply();
 }
 
 // ****************************************************************************
-// Method: QvisLine2DInterface::olorChanged
+// Method: QvisLine2DInterface::styleChanged
+//
+// Purpose: 
+//   This is a Qt slot function that is called when the value of the style
+//   widget changes.
+//
+// Arguments:
+//   s : The new style.
+//
+// Programmer: Kathleen Biagas 
+// Creation:   July 13, 2015 
+//
+// Modifications:
+//   
+// ****************************************************************************
+void
+QvisLine2DInterface::styleChanged(int s)
+{
+    annot->SetIntAttribute2(s);
+    Apply();
+}
+
+// ****************************************************************************
+// Method: QvisLine2DInterface::colorChanged
 //
 // Purpose: 
 //   This is a Qt slot function that is called when a new color is
@@ -522,3 +580,28 @@ QvisLine2DInterface::visibilityToggled(bool val)
     SetUpdate(false);
     Apply();
 }
+
+// ****************************************************************************
+// Method: QvisLine2DInterface::useForegroundColorToggled
+//
+// Purpose: 
+//   This is a Qt slot function that is called when the useForegroundColor
+//   check box is clicked.
+//
+// Arguments:
+//   val : The new setting for useForegroundColor
+//
+// Programmer: Kathleen Biagas 
+// Creation:   July 13, 2015
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+QvisLine2DInterface::useForegroundColorToggled(bool val)
+{
+    annot->SetUseForegroundForTextColor(val);
+    Apply();
+}
+

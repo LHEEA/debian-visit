@@ -100,13 +100,14 @@ public:
         SAMPLE_VELOCITY   = 0x0004,
         SAMPLE_VORTICITY  = 0x0008,
         SAMPLE_ARCLENGTH  = 0x0010,
-        SAMPLE_VARIABLE   = 0x0020,
-        SAMPLE_SECONDARY0 = 0x0040,
-        SAMPLE_SECONDARY1 = 0x0080,
-        SAMPLE_SECONDARY2 = 0x0100,
-        SAMPLE_SECONDARY3 = 0x0200,
-        SAMPLE_SECONDARY4 = 0x0400,
-        SAMPLE_SECONDARY5 = 0x0800
+        SAMPLE_DOM_VISIT  = 0x0020,
+        SAMPLE_VARIABLE   = 0x0040,
+        SAMPLE_SECONDARY0 = 0x0080,
+        SAMPLE_SECONDARY1 = 0x0100,
+        SAMPLE_SECONDARY2 = 0x0200,
+        SAMPLE_SECONDARY3 = 0x0400,
+        SAMPLE_SECONDARY4 = 0x0800,
+        SAMPLE_SECONDARY5 = 0x1000
     };
 
     struct Sample
@@ -116,6 +117,7 @@ public:
         avtVector velocity;
         double    vorticity;
         double    arclength;
+        double    numDomainsVisited;
         double    variable;
         double    secondarys[6];
     };
@@ -133,6 +135,12 @@ public:
     avtStateRecorderIntegralCurve();
     virtual ~avtStateRecorderIntegralCurve();
 
+  protected:
+    avtStateRecorderIntegralCurve( const avtStateRecorderIntegralCurve& );
+    avtStateRecorderIntegralCurve& operator=( const avtStateRecorderIntegralCurve& );
+
+ public:
+    virtual void  Finalize();
     virtual void  Serialize(MemStream::Mode mode, MemStream &buff, 
                             avtIVPSolver *solver, SerializeFlags serializeFlags);
     virtual void  PrepareForSend(void)
@@ -142,6 +150,9 @@ public:
 
     virtual avtIntegralCurve* MergeIntegralCurveSequence(
                               std::vector<avtIntegralCurve *> &v);
+
+    virtual void MergeIntegralCurve(avtIntegralCurve *) = 0;
+
     static bool IdSeqCompare(const avtIntegralCurve *slA,
                              const avtIntegralCurve *slB);
     static bool IdRevSeqCompare(const avtIntegralCurve *slA,
@@ -155,37 +166,35 @@ public:
     
     virtual bool CheckForTermination(avtIVPStep &step, avtIVPField *) = 0;
 
-    virtual double GetTime();
-    virtual double GetDistance();
-    virtual avtVector GetEndPoint();
+    virtual void SetHistoryMask (unsigned int mask) { historyMask = mask; };
+
+    virtual double GetTime() { return time; };
+    virtual double GetDistance() { return distance; };
+    virtual avtVector GetEndPoint() { return ivp->GetCurrentY(); };
 
   protected:
-    avtStateRecorderIntegralCurve( const avtStateRecorderIntegralCurve& );
-    avtStateRecorderIntegralCurve& operator=( const avtStateRecorderIntegralCurve& );
-    
-    size_t    GetSampleStride() const;
-
-  public:
-    SerializeFlags      _serializeFlags;
-    long                sequenceCnt;
-    unsigned int        historyMask;
-
-  protected:
-    double time;
-    double distance;
-
-    unsigned int variableIndex;
-
-    std::vector<double>  history;
-    static const double epsilon;
+    virtual void AnalyzeStep( avtIVPStep& step,
+                              avtIVPField* field,
+                              bool firstStep=false);
 
     void RecordStep( const avtIVPField* field, 
                      const avtIVPStep& step, 
-                     double t );
+                     bool firstStep);
 
-    virtual void AnalyzeStep( avtIVPStep& step,
-                              avtIVPField* field );
+    size_t    GetSampleStride() const;
+    size_t    GetSampleIndex(const Attribute &attr) const;
+
+  protected:
+    SerializeFlags       _serializeFlags;
+    long                 sequenceCnt;
+
+    double               time;
+    double               distance;
+
+    unsigned int         variableIndex;
+
+    std::vector<double>  history;
+    unsigned int         historyMask;
 };
 
 #endif 
-

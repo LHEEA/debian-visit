@@ -491,17 +491,20 @@ avtSiloWriter::OpenFile(const string &stemname, int nb)
 //    I modified the writer to handle the case where the meshes in a
 //    multimesh or multivar were not all of the same type.
 //
+//    Brad Whitlock, Tue Oct  6 14:33:41 PDT 2015
+//    Use the right mesh name.
+//
 // ****************************************************************************
 
 void
 avtSiloWriter::WriteHeaders(const avtDatabaseMetaData *md,
-                            vector<string> &scalars, vector<string> &vectors,
-                            vector<string> &materials)
+                            const vector<string> &scalars,
+                            const vector<string> &vectors,
+                            const vector<string> &materials)
 {
-    const avtMeshMetaData *mmd = md->GetMesh(0);
-    meshname = mmd->name;
+    meshname = GetMeshName(md);
     matname = (materials.size() > 0 ? materials[0] : "");
-
+    
     // store args away for eventual use in CloseFile
     headerDbMd      = md;
     headerScalars   = scalars;
@@ -1125,35 +1128,66 @@ avtSiloWriter::WriteChunk(vtkDataSet *ds, int chunk)
 void
 avtSiloWriter::CloseFile(void)
 {
-    size_t i;
- 
-    const avtMeshMetaData *mmd = headerDbMd->GetMesh(0);
-
     // free the optlist
     if (optlist != 0)
     {
         DBFreeOptlist(optlist);
         optlist = 0;
     }
+}
 
-    if (nblocks == 1)
-    {
+// ****************************************************************************
+//  Method: avtSiloWriter::WriteRootFile
+//
+//  Purpose:
+//      Write a root file for the various domains
+//
+//  Programmer: Hank Childs
+//  Creation:   September 11, 2003
+//
+//  Modifcations:
+//    Brad Whitlock, Tue Aug 18 02:37:54 PDT 2015
+//    I moved most of the code from CloseFile to here. This method will be
+//    allowed to do collective communication on the entire set of MPI ranks.
+//
+//    Brad Whitlock, Tue Oct  6 12:52:59 PDT 2015
+//    I changed the code so it will write the root file on a rank that has 
+//    output data before. This prevents a crash when writing the root file 
+//    when using write groups and rank 0 in the global communicator did not
+//    output any data. Use the write mesh name.
+//
+// ****************************************************************************
+
+void
+avtSiloWriter::WriteRootFile()
+{
+    int writerRank = 0;
+#ifdef PARALLEL
+    // NOTE: When we have write groups, the rank 0 process does not necessarily
+    //       have the metadata needed to write data. In that case, let's figure
+    //       out a different rank to write the root file.
+    //
+    //       Take the maximum rank with data.
+    writerRank = (headerDbMd == NULL) ? -1 : writeContext.Rank();
+    writerRank = writeContext.UnifyMaximumValue(writerRank);
+    if(writerRank == -1)
         return;
-    }
+#endif
 
     // Determine the meshtypes of the all the meshes.
     int *globalMeshtypes = NULL;
     int *globalNMesh = NULL;
+    writeContext.CollectIntArraysOnRank(globalMeshtypes, globalNMesh,
+                                        meshtypes, nmeshes, writerRank);
 
-    CollectIntArraysOnRootProc(globalMeshtypes, globalNMesh,
-                               meshtypes, nmeshes);
-
-    if (PAR_Rank() == 0)
+    if (writeContext.Rank() == writerRank && nblocks > 1)
     {
+        debug5 << "Writing Silo root file on rank " << writerRank << endl;
+
+        size_t i;
         char filename[1024];
         string fname = dir + stem;
         sprintf(filename, "%s.silo", fname.c_str());
-
 
         DBfile *dbfile;
         if (singleFile)
@@ -1162,6 +1196,7 @@ avtSiloWriter::CloseFile(void)
             dbfile = DBCreate(filename, 0, DB_LOCAL, 
                          "Silo file written by VisIt", driver);
 
+        const avtMeshMetaData *mmd = headerDbMd->GetMesh(meshname);
         ConstructMultimesh(dbfile, mmd, globalMeshtypes);
         for (i = 0 ; i < headerScalars.size() ; i++)
             ConstructMultivar(dbfile, headerScalars[i], mmd, globalMeshtypes);

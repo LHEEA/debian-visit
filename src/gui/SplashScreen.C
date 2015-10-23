@@ -200,6 +200,9 @@
 //    Eric Brugger, Mon Jun  8 08:38:45 PDT 2015
 //    Changed the date on the splash screen to June 2015.
 //
+//    Eric Brugger, Mon Jun  8 08:38:45 PDT 2015
+//    Changed the date on the splash screen to October 2015.
+//
 // ****************************************************************************
 
 SplashScreen::SplashScreen(bool cyclePictures) : QFrame(0, Qt::SplashScreen)
@@ -273,7 +276,7 @@ SplashScreen::SplashScreen(bool cyclePictures) : QFrame(0, Qt::SplashScreen)
             painter.scale(scale, scale);
             QFont font("helvetica", 20, QFont::Bold, true);
             font.setItalic(false);
-            int x = 250;
+            int x = 260;
             int y = pictures[i].height() - 8;
             painter.setPen(Qt::black);
             painter.drawText(int(x / scale), int(y / scale), ver);
@@ -320,7 +323,7 @@ SplashScreen::SplashScreen(bool cyclePictures) : QFrame(0, Qt::SplashScreen)
            << tr("October")
            << tr("November")
            << tr("December");
-    int currentMonth = 6;
+    int currentMonth = 10;
     lLayout->addWidget(new QLabel(versionText, this));
     lLayout->addWidget(new QLabel(months[currentMonth-1] + " 2015", this));
 

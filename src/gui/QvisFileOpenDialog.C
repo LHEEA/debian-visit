@@ -199,6 +199,10 @@ QvisFileOpenDialog::getOpenFileNameEx(const QString &initialFile,
     std::string oldpath(fileServer->GetPath());
     std::string oldfilter(fileServer->GetFilter());
 
+    bool           (*progressCallback)(void *, int);
+    void            *progressCallbackData;
+    fileServer->GetProgressCallback(progressCallback, progressCallbackData);
+
     // Set up a delayed order to change the path.
     delayedChangePath(initialFile, fltr, fallbackPath);
 
@@ -209,6 +213,7 @@ QvisFileOpenDialog::getOpenFileNameEx(const QString &initialFile,
     // Try and restore the host,path,filter into the file server.
     TRY
     {
+        fileServer->SetProgressCallback(progressCallback, progressCallbackData);
         fileServer->SetHost(oldhost);
         fileServer->SetPath(oldpath);
         fileServer->SetFilter(oldfilter);
@@ -343,10 +348,18 @@ QvisFileOpenDialog::changeThePath()
     {
         TRY
         {
+            // We need to manually update the filename widget contents.
+            SetFilename(f.filename.c_str());
+
+            // This will update the host,path,filter parts of the window.
             fileServer->SetHost(f.host);
             fileServer->SetPath(f.path);
             fileServer->SetFilter(filter.toStdString());
             fileServer->Notify();
+#ifdef DELAYED_WINDOW_SHOW
+            // Only show the window once we've changed the directories, etc.
+            show();
+#endif
             retry_loop = false;
         }
         CATCH(BadHostException)
@@ -435,7 +448,12 @@ QvisFileOpenDialog::exec()
     setAttribute(Qt::WA_ShowModal, true);
     setResult(0);
 
+#ifdef DELAYED_WINDOW_SHOW
+    // Make sure the window is created.
+    CreateEntireWindow();
+#else
     show();
+#endif
 
     in_loop = true;
     QEventLoop eventLoop;

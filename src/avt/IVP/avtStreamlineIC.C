@@ -95,7 +95,6 @@ avtStreamlineIC::avtStreamlineIC(
     maxTime = maxTime_;
 
     terminatedBecauseOfMaxSteps  = false;
-    speedAtTermination = 0.;
 }
 
 
@@ -123,7 +122,6 @@ avtStreamlineIC::avtStreamlineIC() : avtStateRecorderIntegralCurve()
     maxTime = 0.;
 
     terminatedBecauseOfMaxSteps = false;
-    speedAtTermination = 0.;
 }
 
 
@@ -201,15 +199,13 @@ avtStreamlineIC::CheckForTermination(avtIVPStep& step, avtIVPField *field)
         }
     }
 
+    ++numSteps;
+
     if( !shouldTerminate && numSteps >= maxSteps )
     {
         terminatedBecauseOfMaxSteps = true;
         shouldTerminate = true;
-        speedAtTermination = step.GetV(step.GetT1()).length();
     }
-
-    // Update other termination criteria.
-    numSteps += 1;
 
     return shouldTerminate;
 }
@@ -252,5 +248,25 @@ avtStreamlineIC::Serialize(MemStream::Mode mode, MemStream &buff,
     buff.io(mode, doTime);
     buff.io(mode, maxTime);
     buff.io(mode, terminatedBecauseOfMaxSteps);
-    buff.io(mode, speedAtTermination);
+}
+
+
+// ****************************************************************************
+//  Method: avtStreamlineIC::MergeIntegralCurve
+//
+//  Purpose:
+//      Merge a values from one curve into another
+//
+//  Programmer: Allen Sanderson
+//  Creation:   August 4, 2015
+//
+// ****************************************************************************
+
+void
+avtStreamlineIC::MergeIntegralCurve(avtIntegralCurve *ic)
+{
+  avtStreamlineIC *sic = (avtStreamlineIC* ) ic;
+
+  numSteps = sic->numSteps;
+  terminatedBecauseOfMaxSteps = sic->terminatedBecauseOfMaxSteps;
 }

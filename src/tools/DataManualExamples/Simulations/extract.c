@@ -3,27 +3,107 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <stdio.h>
+#include <string.h>
 
-static const char *exportFormat = "FieldViewXDB_1.0";
+static char extract_options_exportFormat[30] = {
+'F','i','e','l','d','V','i','e','w','X','D','B','_','1','.','0',
+'\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0','\0'};
+
+static int extract_options_writeUsingGroups = 0;
+static int extract_options_writeGroupSize = 1;
+
+void extract_set_options(const char *fmt, int writeUsingGroups, int groupSize)
+{
+    strncpy(extract_options_exportFormat, fmt, 30);
+    extract_options_writeUsingGroups = writeUsingGroups;
+    extract_options_writeGroupSize = groupSize;
+}
+
+const char *
+extract_err(int err)
+{
+    const char *ret;
+    switch(err)
+    {
+    case 0:
+        ret = "Success";
+        break;
+    case -1:
+        ret = "Could not create plot and draw it.";
+        break;
+    case -2:
+        ret = "Export failed.";
+        break;
+    default:
+        ret = "?";
+        break;
+    }
+    return ret;
+}
 
 static int export_visit(const char *filebase, const char **extractvars)
 {
     int retval = -1;
     const char *var = NULL;
-    visit_handle vars = VISIT_INVALID_HANDLE;
+    visit_handle vars = VISIT_INVALID_HANDLE, opts = VISIT_INVALID_HANDLE;
     if(VisIt_NameList_alloc(&vars))
     {
         VisIt_NameList_addName(vars, "default");
         while((var = *extractvars++) != NULL)
             VisIt_NameList_addName(vars, var);
-        
-        if(VisItExportDatabase(filebase, exportFormat, vars) == VISIT_OKAY)
+
+        if(VisIt_OptionList_alloc(&opts))
+        {
+            VisIt_OptionList_setValueI(opts, VISIT_EXPORT_WRITE_USING_GROUPS,
+                                       extract_options_writeUsingGroups);
+            VisIt_OptionList_setValueI(opts, VISIT_EXPORT_GROUP_SIZE,
+                                       extract_options_writeGroupSize);
+        }
+
+        if(VisItExportDatabaseWithOptions(filebase, extract_options_exportFormat,
+                                          vars, opts) == VISIT_OKAY)
             retval = 0;
         else
             retval = -2;
+
+        if(opts != VISIT_INVALID_HANDLE)
+            VisIt_OptionList_free(opts);
     }
 
     VisIt_NameList_free(vars);
+
+    return retval;
+}
+
+int extract_slice_origin_normal(const char *filebase,
+                                const double *origin,
+                                const double *normal,
+                                const char **extractvars)
+{
+    int retval = -1;
+    if(filebase == NULL || origin == NULL || normal == NULL || extractvars == NULL)
+        return retval;
+
+    if(VisItAddPlot("Pseudocolor", extractvars[0]) == VISIT_OKAY)
+    {
+        if(VisItAddOperator("Slice", 0) == VISIT_OKAY)
+        {
+            VisItSetOperatorOptionsI("axisType", 3); /* arbitrary */
+            VisItSetOperatorOptionsI("originType", 0); /* point intercept */
+            VisItSetOperatorOptionsDv("originPoint", origin, 3);
+            VisItSetOperatorOptionsDv("normal", normal, 3);
+            VisItSetOperatorOptionsB("project2d", 0);
+
+
+            if(VisItDrawPlots() == VISIT_OKAY)
+            {
+                retval = export_visit(filebase, extractvars);
+            }
+        }
+
+        VisItDeleteActivePlots();
+    }
 
     return retval;
 }
@@ -67,37 +147,6 @@ int extract_slice_3v(const char *filebase,
     return extract_slice_origin_normal(filebase, origin, normal, extractvars);
 }
 
-int extract_slice_origin_normal(const char *filebase,
-                                const double *origin,
-                                const double *normal,
-                                const char **extractvars)
-{
-    int retval = -1;
-    if(filebase == NULL || origin == NULL || normal == NULL || extractvars == NULL)
-        return retval;
-
-    if(VisItAddPlot("Pseudocolor", extractvars[0]) == VISIT_OKAY)
-    {
-        if(VisItAddOperator("Slice", 0) == VISIT_OKAY)
-        {
-            VisItSetOperatorOptionsI("originType", 0); // point intercept
-            VisItSetOperatorOptionsDv("originPoint", origin, 3);
-            VisItSetOperatorOptionsDv("normal", normal, 3);
-            VisItSetOperatorOptionsB("project2d", 0);
-
-
-            if(VisItDrawPlots() == VISIT_OKAY)
-            {
-                retval = export_visit(filebase, extractvars);
-            }
-        }
-
-        VisItDeleteActivePlots();
-    }
-
-    return retval;
-}
-
 int extract_slice(const char *filebase, int axis, double intercept, 
     const char **extractvars)
 {
@@ -109,9 +158,9 @@ int extract_slice(const char *filebase, int axis, double intercept,
     {
         if(VisItAddOperator("Slice", 0) == VISIT_OKAY)
         {
-            VisItSetOperatorOptionsI("originType", 1); // intercept
-            VisItSetOperatorOptionsD("originIntercept", intercept);
             VisItSetOperatorOptionsI("axisType", axis);
+            VisItSetOperatorOptionsI("originType", 1); /* intercept */
+            VisItSetOperatorOptionsD("originIntercept", intercept);
             VisItSetOperatorOptionsB("project2d", 0);
 
             if(VisItDrawPlots() == VISIT_OKAY)
@@ -136,7 +185,7 @@ int extract_iso(const char *filebase, const char *isovar,
 
     if(VisItAddPlot("Contour", isovar) == VISIT_OKAY)
     {
-        VisItSetPlotOptionsI("contourMethod", 1); // value
+        VisItSetPlotOptionsI("contourMethod", 1); /* value */
         VisItSetPlotOptionsDv("contourValue", isovalues, nisovalues);
         if(VisItDrawPlots() == VISIT_OKAY)
         {

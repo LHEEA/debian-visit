@@ -70,7 +70,6 @@
 class IVP_API avtStreamlineIC : public avtStateRecorderIntegralCurve
 {
 public:
-
     avtStreamlineIC(int maxSteps, bool doDistance, double maxDistance,
                     bool doTime, double maxTime,
                     unsigned int mask, const avtIVPSolver* model, 
@@ -81,17 +80,22 @@ public:
     avtStreamlineIC();
     virtual ~avtStreamlineIC();
 
-    virtual void    Serialize(MemStream::Mode mode, MemStream &buff, 
-                              avtIVPSolver *solver, SerializeFlags serializeFlags);
+    virtual void    Serialize(MemStream::Mode mode,
+                              MemStream &buff, 
+                              avtIVPSolver *solver,
+                              SerializeFlags serializeFlags);
+
+    virtual void    MergeIntegralCurve(avtIntegralCurve *);
+
     virtual bool    UseFixedTerminationTime(void) { return doTime; };
     virtual double  FixedTerminationTime(void)    { return maxTime; };
     virtual bool    UseFixedTerminationDistance(void) { return doDistance; };
     virtual double  FixedTerminationDistance(void)    { return maxDistance; };
 
-    bool            TerminatedBecauseOfMaxSteps(void) 
+    virtual void    SetMaxSteps( int ms ) { maxSteps = ms; }
+    virtual int     GetNumSteps() { return numSteps; }
+    virtual bool    TerminatedBecauseOfMaxSteps(void)
                                  { return terminatedBecauseOfMaxSteps; };
-    double          SpeedAtTermination(void) 
-                                 { return speedAtTermination; };
 
   protected:
     avtStreamlineIC( const avtStreamlineIC& );
@@ -99,16 +103,16 @@ public:
     
     virtual bool     CheckForTermination(avtIVPStep& step, avtIVPField *);
 
-  public:
-    unsigned int     maxSteps;
   protected:
-    unsigned int     numSteps;
-    bool             doDistance;
-    double           maxDistance;
     bool             doTime;
     double           maxTime;
+
+    bool             doDistance;
+    double           maxDistance;
+
+    unsigned int     maxSteps;
+    unsigned int     numSteps;
     bool             terminatedBecauseOfMaxSteps;
-    double           speedAtTermination;
 };
 
 #endif 

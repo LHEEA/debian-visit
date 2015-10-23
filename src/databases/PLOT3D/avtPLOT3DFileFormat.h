@@ -43,7 +43,7 @@
 #ifndef AVT_PLOT3D_FILE_FORMAT_H
 #define AVT_PLOT3D_FILE_FORMAT_H
 
-#include <avtSTMDFileFormat.h>
+#include <avtMTMDFileFormat.h>
 
 #include <vector>
 #include <string>
@@ -66,29 +66,55 @@ class     vtkPLOT3DReader;
 //    Kathleen Biagas, Thu Apr 23 10:36:09 PDT 2015
 //    Added 'haveSolutionFile' flag.
 //
+//    Kathleen Biagas, Fri Jun 26 10:24:26 PDT 2015
+//    Change this from type STMD to MTMD.
+//    Add solutionFiles, times, haveReadMetaFile, haveProcessedQ, previousTS.
+//
+//    Kathleen Biagas, Thu Aug 27 12:32:14 PDT 2015
+//    Use GetTime instead of GetTimes. Add solutionHasValidTime.
+//
 // ****************************************************************************
 
-class avtPLOT3DFileFormat : public avtSTMDFileFormat
+class avtPLOT3DFileFormat : public avtMTMDFileFormat
 {
   public:
                           avtPLOT3DFileFormat(const char *, DBOptionsAttributes *);
     virtual              ~avtPLOT3DFileFormat();
     
+    virtual int            GetNTimesteps(void);
+
     virtual const char   *GetType(void) { return "PLOT3D File Format"; };
-    
-    virtual vtkDataSet   *GetMesh(int, const char *);
-    virtual vtkDataArray *GetVar(int, const char *);
-    virtual vtkDataArray *GetVectorVar(int, const char *);
+    virtual void           FreeUpResources(void); 
 
-    virtual void          PopulateDatabaseMetaData(avtDatabaseMetaData *);
+    virtual vtkDataSet    *GetMesh(int, int, const char *);
+    virtual vtkDataArray  *GetVar(int, int, const char *);
+    virtual vtkDataArray  *GetVectorVar(int, int, const char *);
 
+    virtual void           ActivateTimestep(int ts);
   protected:
     vtkPLOT3DReader *reader;
     std::string           visitMetaFile;
-    bool                  ReadVisItMetaFile(void);
+    std::string           xFileName;
+    std::string           qFileName;
+    std::string           solutionRoot;
+    std::vector<std::string> solutionFiles;
     bool                  haveSolutionFile;
-};
+    bool                  haveReadMetaFile;
+    bool                  haveProcessedQ;
+    bool                  solutionHasValidTime;
+    int                   previousTS;
 
+
+    virtual void          PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
+    virtual double        GetTime(int);
+
+
+  private:
+    bool                  ReadVisItMetaFile(void);
+    bool                  ProcessQForTimeSeries(void);
+    void                  SetTimeStep(int timeState);
+    double                time;
+};
 
 #endif
 

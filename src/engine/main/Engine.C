@@ -1679,6 +1679,9 @@ Engine::PAR_EventLoop()
 //    Brad Whitlock, Tue Nov  3 10:58:23 PST 2009
 //    I changed the messaging style so libsim works again.
 //
+//    Kevin Griffin, Thu Sep 17 17:00:22 PDT 2015
+//    Changed buf type from char * to unsigned char *
+//
 // ****************************************************************************
 
 void
@@ -1694,11 +1697,11 @@ Engine::PAR_ProcessInput()
         MPIXfer::VisIt_MPI_Bcast((void *)&msgLength, 1, MPI_INT,
                                  0, VISIT_MPI_COMM);
 
-        char *buf = new char[msgLength];
+        unsigned char *buf = new unsigned char[msgLength];
         MPI_Bcast((void *)buf, msgLength, MPI_UNSIGNED_CHAR,
                   0, VISIT_MPI_COMM);
 
-        par_conn.Append((unsigned char *)buf, msgLength);
+        par_conn.Append(buf, msgLength);
         delete [] buf;
 
         xfer->Process();
@@ -2535,8 +2538,8 @@ SwapAndMergeClonedWriterOutputs(avtDataObject_p dob,
    // swap string lengths and cell counts
    int srcTmp[2] = {srcLen, srcCnt};
    int dstTmp[2];
-   MPI_Sendrecv(&srcTmp, 2, MPI_INT, swapWithProc, mpiSwapLenTag,
-                &dstTmp, 2, MPI_INT, swapWithProc, mpiSwapLenTag,
+   MPI_Sendrecv(srcTmp, 2, MPI_INT, swapWithProc, mpiSwapLenTag,
+                dstTmp, 2, MPI_INT, swapWithProc, mpiSwapLenTag,
                 VISIT_MPI_COMM, &mpiStatus);
 
    dstLen = dstTmp[0];
@@ -2964,8 +2967,10 @@ Engine::GatherData(avtDataObjectWriter_p &writer,
 #ifdef PARALLEL
 
     static const bool polysOnly = true;
-    int mpiSwapLenTag   = GetUniqueMessageTag();
-    int mpiSwapStrTag   = GetUniqueMessageTag();
+    int tags[2];
+    GetUniqueMessageTags(tags, 2);
+    int mpiSwapLenTag = tags[0];
+    int mpiSwapStrTag = tags[1];
 
     //
     // When respond with null is true, this routine still has an obligation
@@ -3951,7 +3956,7 @@ Engine::GetProcessAttributes()
                    allPids, 1, MPI_INT, 0, VISIT_MPI_COMM);
         MPI_Gather(&myPpid, 1, MPI_INT,
                    allPpids, 1, MPI_INT, 0, VISIT_MPI_COMM);
-        MPI_Gather(&myHost, sizeof(myHost), MPI_CHAR,
+        MPI_Gather(myHost, sizeof(myHost), MPI_CHAR,
                    allHosts, sizeof(myHost), MPI_CHAR, 0, VISIT_MPI_COMM);
         int m_size_mb_tmp = (int)m_size_mb;
         MPI_Gather(&m_size_mb_tmp, 1, MPI_INT,

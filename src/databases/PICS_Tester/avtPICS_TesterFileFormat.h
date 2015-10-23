@@ -81,8 +81,7 @@ class avtPICS_TesterFileFormat : public avtMTMDFileFormat
     // Otherwise, VisIt will make up some reasonable ones for you.
     //
     // virtual void        GetCycles(std::vector<int> &);
-    virtual void        GetTimes(std::vector<double> &t) { t = times; };
-    //
+    virtual void           GetTimes(std::vector<double> &t) { t = times; };
 
     virtual int            GetNTimesteps(void);
 
@@ -117,7 +116,7 @@ class avtPICS_TesterFileFormat : public avtMTMDFileFormat
 
     FlowType flowType;
 
-    double global_bounds[3];
+    double global_extents[3];
 
     // Double gyre flow constants
     double dg_A;

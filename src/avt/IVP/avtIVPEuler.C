@@ -77,17 +77,16 @@ static inline double sign( const double& a, const double& b )
 //    Add a tolerance and counter for handling stiffness detection.
 //
 //    Dave Pugmire, Tue Feb 24 14:35:38 EST 2009
-//    Remove moulton corrector code, use RK4 at startup, terminate on numSteps.
+//    Remove moulton corrector code, use RK4 at startup, terminate on numStepss.
 //
 // ****************************************************************************
 
-avtIVPEuler::avtIVPEuler() : vCur(0,0,0)
+avtIVPEuler::avtIVPEuler()
 {
     // set (somewhat) reasonable defaults
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    numStep = 0;
 
     order = 2; // Highest order ODE that the integrator can support.
 }
@@ -104,42 +103,6 @@ avtIVPEuler::avtIVPEuler() : vCur(0,0,0)
 avtIVPEuler::~avtIVPEuler()
 {
 }
-
-
-// ****************************************************************************
-//  Method: avtIVPEuler::GetCurrentV
-//
-//  Purpose:
-//      Gets the current V.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   August 5, 2008
-//
-// ****************************************************************************
-
-avtVector 
-avtIVPEuler::GetCurrentV() const
-{
-    return vCur;
-}
-
-// ****************************************************************************
-//  Method: avtIVPEuler::SetCurrentV
-//
-//  Purpose:
-//      Sets the current V.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   August 5, 2008
-//
-// ****************************************************************************
-
-void
-avtIVPEuler::SetCurrentV(const avtVector &newV)
-{
-    vCur = newV;
-}
-
 
 // ****************************************************************************
 //  Method: avtIVPEuler::Reset
@@ -183,8 +146,6 @@ avtIVPEuler::Reset(const double& t_start,
                    const avtVector &v_start)
 {
     t = t_start;
-    numStep = 0;
-
     yCur = y_start;
     vCur = v_start;
     h = h_max;
@@ -244,9 +205,16 @@ avtIVPEuler::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
         h = t_max - t_local;
     }
 
-    // stepsize underflow?
+    // stepsize underflow??
     if( 0.1*std::abs(h) <= std::abs(t_local)*epsilon )
+    {
+        if (DebugStream::Level5())
+        {
+            debug5 << "\tavtIVPEuler::Step(): exiting at t = " 
+                   << t << ", step size too small (h = " << h << ")\n";
+        }
         return avtIVPSolver::STEPSIZE_UNDERFLOW;
+    }
 
     avtIVPField::Result fieldResult;
     avtVector yNew, vNew;
@@ -266,6 +234,7 @@ avtIVPEuler::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
         if ((fieldResult = (*field)(t_local, yCur, vCur)) != avtIVPField::OK)
             return ConvertResult(fieldResult);
 
+        vNew = vCur;
         yNew = yCur + h * vCur;     // New position
     }
     
@@ -286,12 +255,9 @@ avtIVPEuler::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
     ivpstep->t0 = t;
     ivpstep->t1 = t + h;
 
-    // Update for the next step.
-    numStep++;
-    
     yCur = yNew;
     vCur = vNew;
-    t = t+h;
+    t = t + h;
 
     if( period && last )
       t += FLT_EPSILON;
@@ -323,11 +289,5 @@ avtIVPEuler::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
 void
 avtIVPEuler::AcceptStateVisitor(avtIVPStateHelper& aiss)
 {
-    aiss.Accept(numStep)
-        .Accept(tol)
-        .Accept(h)
-        .Accept(h_max)
-        .Accept(t)
-        .Accept(yCur)
-        .Accept(vCur);
+    avtIVPSolver::AcceptStateVisitor(aiss);
 }

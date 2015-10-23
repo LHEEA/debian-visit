@@ -68,6 +68,9 @@
 #   subdir before adding it.  Call VISIT_SELECTED_PLUGIN_ERROR macro if
 #   necessary.
 #
+#   Kevin Griffin, Wed July 22 18:00:10 PDT 2015
+#   Add SPH Resample Operator 
+#
 #****************************************************************************/
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/operators)
@@ -108,6 +111,7 @@ InverseGhostZone
 Isosurface
 Isovolume
 Lagrangian
+LimitCycle
 Lineout
 LineSampler
 Merge
@@ -116,6 +120,7 @@ MultiresControl
 OnionPeel
 PDF
 PersistentParticles
+#ProgrammableOp
 Project
 RectilinearProject2D
 Reflect
@@ -126,6 +131,7 @@ Revolve
 Slice
 Smooth
 SphereSlice
+SPHResample
 Stagger
 StatisticalTrends
 SurfaceNormal
@@ -192,17 +198,17 @@ ELSE()
     ENDIF(VISIT_BUILD_MINIMAL_PLUGINS)
 ENDIF()
 
-IF(HAVE_LIB_R)
-  IF(NOT DEFINED VISIT_SELECTED_OPERATOR_PLUGINS)
-      LIST(APPEND BUILD_PLUGINS ExtremeValueAnalysis)
-      LIST(APPEND BUILD_PLUGINS PeaksOverThreshold)
-      LIST(APPEND BUILD_PLUGINS ModelBasedClustering)
-  ENDIF()
-ELSE(HAVE_LIB_R)
-  VISIT_SELECTED_PLUGIN_ERROR(OPERATOR 
-      "ExtremeValueAnalysis;PeaksOverThreshold;ModelBasedClustering"
-      "R library not found")
-ENDIF(HAVE_LIB_R)
+#IF(HAVE_LIB_R)
+#  IF(NOT DEFINED VISIT_SELECTED_OPERATOR_PLUGINS)
+#      LIST(APPEND BUILD_PLUGINS ExtremeValueAnalysis)
+#      LIST(APPEND BUILD_PLUGINS PeaksOverThreshold)
+#      LIST(APPEND BUILD_PLUGINS ModelBasedClustering)
+#  ENDIF()
+#ELSE(HAVE_LIB_R)
+#  VISIT_SELECTED_PLUGIN_ERROR(OPERATOR 
+#      "ExtremeValueAnalysis;PeaksOverThreshold;ModelBasedClustering"
+#      "R library not found")
+#ENDIF(HAVE_LIB_R)
 
 # Add the plugin directories
 FOREACH(operator ${BUILD_PLUGINS})

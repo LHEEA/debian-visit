@@ -105,6 +105,10 @@ class avtSpecFEMFileFormat : public avtMTMDFileFormat
     vtkDataSet *     GetRegionMesh(int ts, int dom, int region, bool xyzMesh);
     void             AddRegionMesh(int ts, int dom, int region, vtkDataSet *ds,
                                    bool xyzMesh, int ptOffset=0);
+    vtkDataSet *     GetHotSpotsMesh(bool xyzMesh);
+    vtkDataSet *     GetContinents(bool xyzMesh);
+    vtkDataSet *     GetPlates(bool xyzMesh);
+    vtkDataSet *     LatLonClip(vtkDataSet *ds);
 
     vtkDataArray *   GetVarRegion(std::string &nm, int ts, int dom);
     vtkDataArray *   GetVectorVarRegion(std::string &nm, int ts, int dom);
@@ -112,9 +116,10 @@ class avtSpecFEMFileFormat : public avtMTMDFileFormat
     //std::map<std::string, std::string> variables;
     std::vector<std::string> variables;
     std::vector<std::pair<std::string, int> > domainVarPaths;
+    bool kernelFile;
 
-    static int GetRegion(const std::string &str);
-    static std::string GetVariable(const std::string &str);
+    int GetRegion(const std::string &str);
+    std::string GetVariable(const std::string &str);
     static int NUM_REGIONS;
 };
 #endif

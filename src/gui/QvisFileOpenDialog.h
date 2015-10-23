@@ -58,6 +58,9 @@
 //   Added getOpenFileNameWithFallbackPath, and added fallbackPath arg to
 //   delayedChangePath and getOpenFileNamEx.
 //
+//   David Camp, Thu Aug 27 09:40:00 PDT 2015
+//   Needed access to private functions for new Session dialog box.
+//
 // ****************************************************************************
 
 class QvisFileOpenDialog : public QvisFileOpenWindow
@@ -91,7 +94,7 @@ private slots:
     void reject();
     void changeThePath();
     void userSelectedFile(const QString &s);
-private:
+protected:
     void setResult(int);
     int result() const;
     void delayedChangePath(const QString &initialFile, const QString &fltr, const QString &fallbackPath);
@@ -101,6 +104,7 @@ private:
                               const QString &fallbacKPath = "");
     void done(int r);
 
+private:
     QString filename;
     QString filter;
     QString fallbackPath;

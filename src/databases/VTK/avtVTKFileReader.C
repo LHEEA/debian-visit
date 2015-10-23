@@ -57,6 +57,7 @@
 #include <vtkPolyData.h>
 #include <vtkRectilinearGrid.h>
 #include <vtkStreamingDemandDrivenPipeline.h>
+#include <vtkStringArray.h>
 #include <vtkStructuredGrid.h>
 #include <vtkStructuredPoints.h>
 #include <vtkUnstructuredGrid.h>
@@ -66,6 +67,7 @@
 #include <vtkXMLStructuredGridReader.h>
 #include <vtkXMLUnstructuredGridReader.h>
 #include <vtkVisItXMLPDataReader.h>
+#include <VTMParser.h>
 
 #include <snprintf.h>
 #include <DebugStream.h>
@@ -133,9 +135,13 @@ double avtVTKFileReader::INVALID_TIME = -DBL_MAX;
 //    I modified the reading of pvti, pvtr and pvts files to handle the case
 //    where the piece extent was a subset of the whole extent.
 //
+//    Kathleen Biagas, Thu Aug 13 17:29:21 PDT 2015
+//    Add support for groups and block names.
+//
 // ****************************************************************************
 
-avtVTKFileReader::avtVTKFileReader(const char *fname, DBOptionsAttributes *) 
+avtVTKFileReader::avtVTKFileReader(const char *fname, DBOptionsAttributes *) :
+    vtk_meshname()
 {
     filename = new char[strlen(fname)+1];
     strcpy(filename, fname);
@@ -197,6 +203,7 @@ avtVTKFileReader::avtVTKFileReader(const char *fname, DBOptionsAttributes *)
 //
 //    Mark C. Miller, Wed Jul  2 17:27:35 PDT 2014
 //    Delete everything even VTK datasets read.
+//
 // ****************************************************************************
 void
 avtVTKFileReader::FreeUpResources(void)
@@ -317,6 +324,9 @@ avtVTKFileReader::GetNumberOfDomains()
 //    I modified the reading of pvti, pvtr and pvts files to handle the case
 //    where the piece extent was a subset of the whole extent.
 //
+//    Kathleen Biagas, Thu Aug 13 17:29:21 PDT 2015
+//    Add support for groups and block names, as read from 'vtm' file.
+//
 // ****************************************************************************
 
 void
@@ -332,6 +342,7 @@ avtVTKFileReader::ReadInFile(int _domain)
         xmlpReader->SetFileName(filename);
         xmlpReader->ReadXMLInformation();
 
+        ngroups = 1;
         nblocks = xmlpReader->GetNumberOfPieces();
         pieceFileNames = new char*[nblocks];
         for (int i = 0; i < nblocks; i++)
@@ -360,27 +371,62 @@ avtVTKFileReader::ReadInFile(int _domain)
 
         xmlpReader->Delete();
 
-        pieceDatasets = new vtkDataSet*[nblocks];
-        for (int i = 0; i < nblocks; i++)
-            pieceDatasets[i] = NULL;
-
         pieceExtension = fileExtension.substr(1,3);
+    }
+    else if (fileExtension == "vtm")
+    {
+        VTMParser *parser = new VTMParser;
+        parser->SetFileName(filename);
+        if (!parser->Parse())
+        {
+            string em = parser->GetErrorMessage();
+            delete parser;
+            EXCEPTION2(InvalidFilesException, filename, em);
+            return;
+        }
+
+        nblocks = parser->GetNumberOfBlocks();
+        ngroups = parser->GetNumberOfGroups();
+        if (ngroups > 1)
+        {
+            groupNames = parser->GetGroupNames();
+            groupPieceName = parser->GetGroupPieceName();
+            groupIds   = parser->GetGroupIds();
+        }
+
+        blockNames = parser->GetBlockNames();
+        blockPieceName = parser->GetBlockPieceName();
+
+        pieceFileNames = new char*[nblocks];
+        for (int i = 0; i < nblocks; i++)
+        {
+            string bn = parser->GetBlockFileName(i);
+            pieceFileNames[i] = new char[bn.size()+1];
+            strcpy(pieceFileNames[i], bn.c_str());
+        }
+        pieceExtension = parser->GetBlockExtension();
+        delete parser;
     }
     else
     {
         nblocks = 1;
+        ngroups = 1;
         pieceFileNames = new char*[nblocks];
-
         pieceFileNames[0] = new char[strlen(filename)+1];
         strcpy(pieceFileNames[0], filename);
-
-        pieceDatasets = new vtkDataSet*[nblocks];
-        pieceDatasets[0] = NULL;
-
-        pieceExtents = new int*[nblocks];
-        pieceExtents[0] = NULL;
-
         pieceExtension = fileExtension;
+    }
+
+
+    pieceDatasets = new vtkDataSet*[nblocks];
+    for (int i = 0; i < nblocks; i++)
+        pieceDatasets[i] = NULL;
+
+    if (pieceExtents == NULL)
+    {
+        pieceExtents = new int*[nblocks];
+        for (int i = 0; i < nblocks; i++)
+            pieceExtents[i] = NULL;
     }
 
     ReadInDataset(domain);
@@ -449,6 +495,9 @@ avtVTKFileReader::ReadInFile(int _domain)
 //    Kathleen Biagas, Mon Dec 22 09:49:22 PST 2014
 //    Moved logic for duplicate node removal into avtTransformManager, it
 //    is now controlled by setting a global preference.
+//
+//    Kathleen Biagas, Fri Feb  6 06:00:16 PST 2015
+//    Added ability for parsing 'MeshName' field data from vtk file.
 //
 // ****************************************************************************
 
@@ -577,6 +626,14 @@ avtVTKFileReader::ReadInDataset(int domain)
     if (dataset->GetFieldData()->GetArray("CYCLE") != 0)
     {
         vtk_cycle = (int)dataset->GetFieldData()->GetArray("CYCLE")->GetTuple1(0);
+    }
+    vtk_meshname.clear();
+    if (dataset->GetFieldData()->GetAbstractArray("MeshName") != 0)
+    {
+        vtkStringArray *mn = vtkStringArray::SafeDownCast(
+            dataset->GetFieldData()->GetAbstractArray("MeshName"));
+        if (mn)
+            vtk_meshname = mn->GetValue(0);
     }
 
     if (dataset->GetDataObjectType() == VTK_STRUCTURED_POINTS ||
@@ -840,6 +897,9 @@ avtVTKFileReader::GetAuxiliaryData(const char *var, int domain,
 //    Eric Brugger, Mon Jun 18 12:28:25 PDT 2012
 //    I enhanced the reader so that it can read parallel VTK files.
 //
+//    Kathleen Biagas, Fri Feb  6 06:06:24 PST 2015
+//    Use meshname from file (vtk_meshname), if available.
+
 //    Kathleen Biagas, Thu Apr  2 12:22:55 PDT 2015
 //    Return NULL a dataset with 0 points is read in.
 //
@@ -848,7 +908,8 @@ avtVTKFileReader::GetAuxiliaryData(const char *var, int domain,
 vtkDataSet *
 avtVTKFileReader::GetMesh(int domain, const char *mesh)
 {
-    debug5 << "Getting mesh from VTK file \"" << filename << "\", domain = " << domain << endl;
+    debug5 << "Getting mesh from VTK file \"" << filename << "\", domain = "
+           << domain << endl;
 
     if (!readInDataset)
     {
@@ -874,9 +935,19 @@ avtVTKFileReader::GetMesh(int domain, const char *mesh)
         return pos->second;
     }
 
-    if (strcmp(mesh, MESHNAME) != 0)
+    if(vtk_meshname.empty())
     {
-        EXCEPTION1(InvalidVariableException, mesh);
+        if (strcmp(mesh, MESHNAME) != 0)
+        {
+            EXCEPTION1(InvalidVariableException, mesh);
+        }
+    }
+    else
+    {
+        if (strcmp(mesh, vtk_meshname.c_str()) != 0)
+        {
+            EXCEPTION1(InvalidVariableException, mesh);
+        }
     }
 
     //
@@ -1115,6 +1186,13 @@ avtVTKFileReader::GetVectorVar(int domain, const char *var)
 //    FreeUpResources before leaving. This is to ensure mdserver and non-zero
 //    mpi-ranks don't hang onto the VTK data read here solely for purposes
 //    of populating md.
+//
+//    Kathleen Biagas, Fri Feb  6 06:00:16 PST 2015
+//    Use 'MeshName' from file if provided (stored in vtk_meshname).
+//
+//    Kathleen Biagas, Thu Aug 13 17:29:21 PDT 2015
+//    Add support for groups and block names.
+//
 // ****************************************************************************
 
 void
@@ -1224,14 +1302,43 @@ avtVTKFileReader::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     }
  
     avtMeshMetaData *mesh = new avtMeshMetaData;
-    mesh->name = MESHNAME;
+    if(vtk_meshname.empty())
+    {
+        mesh->name = MESHNAME;
+    }
+    else
+    {
+        mesh->name = vtk_meshname;
+    }
     mesh->meshType = type;
     mesh->spatialDimension = spat;
     mesh->topologicalDimension = topo;
+    if (ngroups > 1)
+    {
+        mesh->numGroups = ngroups;
+        if (!groupNames.empty())
+            mesh->groupNames = groupNames; 
+        if (!groupPieceName.empty())
+        {
+            mesh->groupPieceName = groupPieceName;
+            mesh->groupTitle = groupPieceName + string("s");
+        }
+        mesh->groupIds = groupIds;
+    }
     mesh->numBlocks = nblocks;
     mesh->blockOrigin = 0;
     if (nblocks == 1)
         mesh->SetExtents(bounds);
+    else
+    {
+        if (!blockPieceName.empty())
+        {
+            mesh->blockPieceName = blockPieceName;
+            mesh->blockTitle = blockPieceName + string("s");
+        }
+        if (!blockNames.empty() && (int)blockNames.size() == nblocks)
+            mesh->blockNames = blockNames;
+    }
     if (dataset->GetFieldData()->GetArray("MeshCoordType") != NULL)
     {
         avtMeshCoordType mct = (avtMeshCoordType)
@@ -1313,26 +1420,26 @@ avtVTKFileReader::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         if (ncomp == 1)
         {
             bool ascii = arr->GetDataType() == VTK_CHAR;
-            AddScalarVarToMetaData(md, name, MESHNAME, AVT_NODECENT, NULL, ascii);
+            AddScalarVarToMetaData(md, name, mesh->name, AVT_NODECENT, NULL, ascii);
         }
         else if (ncomp <= 4)
         {
-            AddVectorVarToMetaData(md, name, MESHNAME, AVT_NODECENT, ncomp);
+            AddVectorVarToMetaData(md, name, mesh->name, AVT_NODECENT, ncomp);
         }
         else if (ncomp == 9)
         {
-            AddTensorVarToMetaData(md, name, MESHNAME, AVT_NODECENT);
+            AddTensorVarToMetaData(md, name, mesh->name, AVT_NODECENT);
         }
         else
         {
             if(arr->GetDataType() == VTK_UNSIGNED_CHAR ||
                arr->GetDataType() == VTK_CHAR)
             {
-                md->Add(new avtLabelMetaData(name, MESHNAME, AVT_NODECENT));
+                md->Add(new avtLabelMetaData(name, mesh->name, AVT_NODECENT));
             }
             else
             {
-                AddArrayVarToMetaData(md, name, ncomp, MESHNAME, AVT_NODECENT);
+                AddArrayVarToMetaData(md, name, ncomp, mesh->name, AVT_NODECENT);
                 int compnamelen = strlen(name) + 40;
                 char *exp_name = new char[compnamelen];
                 char *exp_def = new char[compnamelen];
@@ -1397,8 +1504,9 @@ avtVTKFileReader::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                 matnos.push_back(it->first);
             }
 
-            avtMaterialMetaData *mmd = new avtMaterialMetaData("materials", MESHNAME,
-                                              (int)valMap.size(), matnames);
+            avtMaterialMetaData *mmd =
+                new avtMaterialMetaData("materials", mesh->name,
+                                        (int)valMap.size(), matnames);
             md->Add(mmd);
 
             if (strncmp(name, "internal_var_Subsets", strlen("internal_var_Subsets")) == 0)
@@ -1409,26 +1517,26 @@ avtVTKFileReader::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         else if (ncomp == 1)
         {
             bool ascii = arr->GetDataType() == VTK_CHAR;
-            AddScalarVarToMetaData(md, name, MESHNAME, AVT_ZONECENT, NULL, ascii);
+            AddScalarVarToMetaData(md, name, mesh->name, AVT_ZONECENT, NULL, ascii);
         }
         else if (ncomp <= 4)
         {
-            AddVectorVarToMetaData(md, name, MESHNAME, AVT_ZONECENT, ncomp);
+            AddVectorVarToMetaData(md, name, mesh->name, AVT_ZONECENT, ncomp);
         }
         else if (ncomp == 9)
         {
-            AddTensorVarToMetaData(md, name, MESHNAME, AVT_ZONECENT);
+            AddTensorVarToMetaData(md, name, mesh->name, AVT_ZONECENT);
         }
         else
         {
             if(arr->GetDataType() == VTK_UNSIGNED_CHAR ||
                arr->GetDataType() == VTK_CHAR)
             {
-                md->Add(new avtLabelMetaData(name, MESHNAME, AVT_ZONECENT));
+                md->Add(new avtLabelMetaData(name, mesh->name, AVT_ZONECENT));
             }
             else
             {
-                AddArrayVarToMetaData(md, name, ncomp, MESHNAME, AVT_ZONECENT);
+                AddArrayVarToMetaData(md, name, ncomp, mesh->name, AVT_ZONECENT);
                 int compnamelen = strlen(name) + 40;
                 char *exp_name = new char[compnamelen];
                 char *exp_def = new char[compnamelen];

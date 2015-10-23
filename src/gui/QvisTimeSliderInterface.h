@@ -43,6 +43,7 @@
 // Forward declarations
 class QCheckBox;
 class QComboBox;
+class QLabel;
 class QLineEdit;
 class QSpinBox;
 class QvisColorButton;
@@ -66,6 +67,9 @@ class QvisScreenPositionEdit;
 //
 //   Brad Whitlock, Fri Jul 18 16:20:40 PDT 2008
 //   Qt 4.
+//
+//   Kathleen Biagas, Mon Jul 13 13:01:18 PDT 2015
+//   Add textColorLabel.
 //
 // ****************************************************************************
 
@@ -106,6 +110,7 @@ private:
     QvisOpacitySlider      *startColorOpacity;
     QvisColorButton        *endColorButton;
     QvisOpacitySlider      *endColorOpacity;
+    QLabel                 *textColorLabel;
     QvisColorButton        *textColorButton;
     QvisOpacitySlider      *textColorOpacity;
     QCheckBox              *useForegroundColorCheckBox;

@@ -46,8 +46,6 @@
 #include <DebugStream.h>
 #include <VisItStreamUtil.h>
 
-using namespace std;
-
 // ****************************************************************************
 //  Method: avtSerialICAlgorithm::avtSerialICAlgorithm
 //
@@ -108,7 +106,7 @@ avtSerialICAlgorithm::~avtSerialICAlgorithm()
 // ****************************************************************************
 
 void
-avtSerialICAlgorithm::Initialize(vector<avtIntegralCurve *> &seedPts)
+avtSerialICAlgorithm::Initialize(std::vector<avtIntegralCurve *> &seedPts)
 {
     avtICAlgorithm::Initialize(seedPts);
 
@@ -136,7 +134,8 @@ avtSerialICAlgorithm::RestoreInitialize(std::vector<avtIntegralCurve *> &ics, in
     {
         avtIntegralCurve *s = ics[i];
 
-        if (s->blockList.front().timeStep == curTimeSlice)
+        if (!s->blockList.empty() &&
+            s->blockList.front().timeStep == curTimeSlice)
         {
             s->status.ClearAtTemporalBoundary();
             SetDomain(s);
@@ -172,34 +171,37 @@ avtSerialICAlgorithm::RestoreInitialize(std::vector<avtIntegralCurve *> &ics, in
 // ****************************************************************************
 
 void
-avtSerialICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve *> &ics)
+avtSerialICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve *> &ics)
 {
     int nSeeds = ics.size();
     int i0 = 0, i1 = nSeeds;
 
  #ifdef PARALLEL
-    int rank = PAR_Rank();
-    int nProcs = PAR_Size();
+    if( allSeedsSentToAllProcs )
+    {
+        int rank = PAR_Rank();
+        int nProcs = PAR_Size();
 
-    int nSeedsPerProc = (nSeeds / nProcs);
-    int oneExtraUntil = (nSeeds % nProcs);
+        int nSeedsPerProc = (nSeeds / nProcs);
+        int oneExtraUntil = (nSeeds % nProcs);
     
-    if (rank < oneExtraUntil)
-    {
-        i0 = (rank)*(nSeedsPerProc+1);
-        i1 = (rank+1)*(nSeedsPerProc+1);
-    }
-    else
-    {
-        i0 = (rank)*(nSeedsPerProc) + oneExtraUntil;
-        i1 = (rank+1)*(nSeedsPerProc) + oneExtraUntil;
-    }
+        if (rank < oneExtraUntil)
+        {
+            i0 = (rank)*(nSeedsPerProc+1);
+            i1 = (rank+1)*(nSeedsPerProc+1);
+        }
+        else
+        {
+            i0 = (rank)*(nSeedsPerProc) + oneExtraUntil;
+            i1 = (rank+1)*(nSeedsPerProc) + oneExtraUntil;
+        }
     
-    //Delete the seeds I don't need.
-    for (int i = 0; i < i0; i++)
-        delete ics[i];
-    for (int i = i1; i < nSeeds; i++)
-        delete ics[i];
+        //Delete the seeds I don't need.
+        for (int i = 0; i < i0; i++)
+            delete ics[i];
+        for (int i = i1; i < nSeeds; i++)
+            delete ics[i];
+    }
 #endif
     
     for (int i = i0; i < i1; i++)
@@ -211,7 +213,19 @@ avtSerialICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve *> &ics)
 #endif
     }
 
-    debug1 << "I have seeds: "<<i0<<" to "<<i1<<" of "<<nSeeds<<endl;
+    if (DebugStream::Level1()) 
+    {
+      if( i0 < i1 )
+      {
+        debug1 << "Proc " << PAR_Rank() << " has seeds: "
+               << i0 << " to " << (i1-1) << " of " << nSeeds << " seeds"
+               << std::endl;
+      }
+      else
+      {
+        debug1 << "Proc " << PAR_Rank() << " has no seeds " << std::endl;
+      }
+    }
 }
 
 // ****************************************************************************
@@ -228,7 +242,8 @@ avtSerialICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve *> &ics)
 void
 avtSerialICAlgorithm::ActivateICs()
 {
-    list<avtIntegralCurve *>::iterator it = inactiveICs.begin();
+    std::list<avtIntegralCurve *>::iterator it = inactiveICs.begin();
+
     while (it != inactiveICs.end())
     {
         if (!(*it)->status.EncounteredTemporalBoundary())
@@ -305,10 +320,15 @@ avtSerialICAlgorithm::RunAlgorithm()
                 AdvectParticle(ic);
             }
             while (ic->status.Integrateable() &&
+                   !ic->blockList.empty() &&
                    DomainLoaded(ic->blockList.front()));
             
-            if (ic->status.EncounteredSpatialBoundary())
+            // If the user termination criteria was reached so terminate the IC.
+            if( ic->status.TerminationMet() )
+                terminatedICs.push_back(ic);
+            else if (ic->status.EncounteredSpatialBoundary())
                 inactiveICs.push_back(ic);
+            // Some other termination criteria was reached so terminate the IC.
             else
                 terminatedICs.push_back(ic);
 

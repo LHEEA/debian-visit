@@ -165,6 +165,7 @@
 #include <PyLegendAttributesObject.h>
 #include <PyLaunchProfile.h>
 #include <PyLineObject.h>
+#include <PyLine3DObject.h>
 #include <PyLightAttributes.h>
 #include <PyMachineProfile.h>
 #include <PyMaterialAttributes.h>
@@ -4903,6 +4904,8 @@ visit_ChooseCenterOfRotation(PyObject *self, PyObject *args)
 // Creation:   Wed Jul 30 14:36:49 PST 2003
 //
 // Modifications:
+//   David Camp Thu Jul 23 11:00:04 PDT 2015
+//   Added hostname to ImportEntireState.
 //
 // ****************************************************************************
 
@@ -4915,9 +4918,10 @@ visit_RestoreSession(PyObject *self, PyObject *args)
     int sessionStoredInVisItDir = 1;
     if(!PyArg_ParseTuple(args, "si", &filename, &sessionStoredInVisItDir))
         return NULL;
+    std::string hostname;
 
     MUTEX_LOCK();
-        GetViewerMethods()->ImportEntireState(filename, sessionStoredInVisItDir!=0);
+        GetViewerMethods()->ImportEntireState(filename, sessionStoredInVisItDir!=0, hostname);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -4960,10 +4964,11 @@ visit_RestoreSessionWithDifferentSources(PyObject *self, PyObject *args)
                        "tuple of database names");
         return NULL;
     }
+    std::string hostname;
 
     MUTEX_LOCK();
         GetViewerMethods()->ImportEntireStateWithDifferentSources(filename,
-            sessionStoredInVisItDir!=0, dbs);
+            sessionStoredInVisItDir!=0, dbs, hostname);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -4987,6 +4992,9 @@ visit_RestoreSessionWithDifferentSources(PyObject *self, PyObject *args)
 //    Automatically append ".session" to the session file name if not
 //    included by the user.
 //
+//   David Camp Thu Jul 23 11:00:04 PDT 2015
+//   Added hostname to ImportEntireState.
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -5003,9 +5011,10 @@ visit_SaveSession(PyObject *self, PyObject *args)
     size_t rpos = session_file.rfind(".session");
     if( rpos  == std::string::npos || rpos != session_file.size() - 8)
         session_file += ".session";
+    std::string hostname;
         
     MUTEX_LOCK();
-        GetViewerMethods()->ExportEntireState(session_file.c_str());
+        GetViewerMethods()->ExportEntireState(session_file.c_str(), hostname);
     MUTEX_UNLOCK();
 
     // Return the success value.
@@ -14360,6 +14369,9 @@ DeleteAnnotationObjectHelper(AnnotationObject *annot)
 //   Brad Whitlock, Mon Nov 12 16:00:45 PST 2007
 //   Added PyText3DObject.
 //
+//   Kathleen Biagas, Mon Jul 13 18:49:41 PDT 2015
+//   Added PyLine3DObject.
+//
 // ****************************************************************************
 
 PyObject *
@@ -14385,6 +14397,11 @@ CreateAnnotationWrapper(AnnotationObject *annot)
     {
         // Create a Line2D wrapper for the new annotation object.
         retval = PyLineObject_WrapPyObject(annot);
+    }
+    else if(annot->GetObjectType() == AnnotationObject::Line3D)
+    {
+        // Create a Line3D wrapper for the new annotation object.
+        retval = PyLine3DObject_WrapPyObject(annot);
     }
     else if(annot->GetObjectType() == AnnotationObject::Image)
     {
@@ -14462,8 +14479,10 @@ visit_CreateAnnotationObject(PyObject *self, PyObject *args)
         annotTypeIndex = 1;
     else if(strcmp(annotType, "Line2D") == 0)
         annotTypeIndex = 3;
+    else if(strcmp(annotType, "Line3D") == 0)
+        annotTypeIndex = 4;
     else if(strcmp(annotType, "Image") == 0)
-        annotTypeIndex = 7;
+        annotTypeIndex = 8;
     else if(strcmp(annotType, "LegendAttributes") == 0)
     {
         VisItErrorFunc("Legends are created by plots and the legend attributes "

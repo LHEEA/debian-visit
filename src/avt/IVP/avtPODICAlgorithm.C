@@ -44,8 +44,6 @@
 #include <TimingsManager.h>
 #include <VisItStreamUtil.h>
 
-using namespace std;
-
 #ifdef PARALLEL
 
 // ****************************************************************************
@@ -90,7 +88,7 @@ avtPODICAlgorithm::~avtPODICAlgorithm()
 // ****************************************************************************
 
 void
-avtPODICAlgorithm::Initialize(vector<avtIntegralCurve *> &seeds)
+avtPODICAlgorithm::Initialize(std::vector<avtIntegralCurve *> &seeds)
 {
     int numRecvs = 64;
     if (numRecvs > nProcs)
@@ -111,39 +109,124 @@ avtPODICAlgorithm::Initialize(vector<avtIntegralCurve *> &seeds)
 // ****************************************************************************
 
 void
-avtPODICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve*> &ics)
+avtPODICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve*> &ics)
 {
-    //Get the ICs that I own.
-    for (size_t i = 0; i < ics.size(); i++)
+    int nSeeds = ics.size();
+
+    // If the seeds are sent to all procs check to make sure seeds on
+    // domain boundaries do not get sent to mutliple processors.
+    if( allSeedsSentToAllProcs )
     {
-        avtIntegralCurve *ic = ics[i];
-        
-        if (DomainLoaded(ic->blockList.front()))
+        // Sort the curves by their id so all processors are working on
+        // the same curve at the same time.
+        sort(ics.begin(), ics.end(), avtIntegralCurve::IDCompare);
+
+        for (size_t i = 0; i < nSeeds; ++i)
         {
+            avtIntegralCurve *ic = ics[i];
+
+            // The seed is good if in the domain
+            bool goodSeed =
+              (!ic->blockList.empty() && DomainLoaded(ic->blockList.front()));
+
+            // Check for a seed being on multiple processors. 
+            int count = (int) goodSeed;
+            SumIntAcrossAllProcessors( count );
+
+            // If no processor owns the curve then the seed is outside
+            // the domain. Keep the curve on rank 0 so to report the
+            // result and delete it on all other processors.
+            if( count == 0 )
+            {
+              if( PAR_Rank() == 0 )
+              {
+                ic->originatingRank = rank;
+            
+#ifdef USE_IC_STATE_TRACKING
+                ic->InitTrk();
+#endif
+                terminatedICs.push_back(ic);
+              }
+              else
+                delete ic;
+            }
+            else
+            {
+              // Check for the seed being on multiple processors.
+              if( count > 1 )
+              {
+                // If the seed belongs to the processor, pass its rank.
+                // The processor with the highest rank gets the seed.
+                
+                // Otherwise set the rank to -1 to exclude it.
+                int proc = (goodSeed ? PAR_Rank() : -1);
+                
+                // Get the max bid from all the processors.
+                int maxProc = UnifyMaximumValue( proc );
+                
+                // The seed is good only for the processor with the
+                // highest rank.
+                goodSeed = (proc == maxProc);
+              }
+
+              // If the seed is on one processor or is on the
+              // processor with the max rank add it to the active
+              // list, otherwise delete it.
+              if( goodSeed )
+              {
+                ic->originatingRank = rank;
+            
+#ifdef USE_IC_STATE_TRACKING
+                ic->InitTrk();
+#endif
+                activeICs.push_back(ic);
+              }
+              else
+                delete ic;
+            }
+        }
+    }
+
+    // Seeds are sent just to this processor so make them active or inactive.
+    else //if( !allSeedsSentToAllProcs )
+    {
+        // Get the ICs that are on this processor.
+        for (size_t i = 0; i < nSeeds; ++i)
+        {
+            avtIntegralCurve *ic = ics[i];
+            
             ic->originatingRank = rank;
-            activeICs.push_back(ic);
             
 #ifdef USE_IC_STATE_TRACKING
             ic->InitTrk();
 #endif
+            if (!ic->blockList.empty() && DomainLoaded(ic->blockList.front()))
+                activeICs.push_back(ic);
+            else
+                inactiveICs.push_back(ic);
         }
-        else
-            delete ic;
     }
 
     if (DebugStream::Level1())
     {
-        debug1<<"My ICcount= "<<activeICs.size()<<endl;
-        debug1<<"I own: [";
+        debug1 << "Proc " << PAR_Rank()
+               << "  active ICs " << activeICs.size()
+               << "  inactive ICs " << inactiveICs.size()
+               << "  terminated ICs " << terminatedICs.size() << endl;
+
+        std::ostringstream os;
+
         for (int i = 0; i < numDomains; i++)
         {
             BlockIDType d(i,0);
-            if (OwnDomain(d)) 
+            if (OwnDomain(d))
             {
-                debug1<<i<<" ";
+                os << i << " ";
             }
         }
-        debug1<<"]\n";
+
+        debug1 << "Proc " << PAR_Rank()
+               << "  domains: [ " << os.str() << " ]" << std::endl;
     }
 }
 
@@ -181,11 +264,15 @@ avtPODICAlgorithm::PreRunAlgorithm()
 void
 avtPODICAlgorithm::RunAlgorithm()
 {
-    debug1<<"avtPODICAlgorithm::RunAlgorithm() activeICs: "<<activeICs.size()<<" inactiveICs: "<<inactiveICs.size()<<endl;
+    debug1 << "avtPODICAlgorithm::RunAlgorithm() "
+           << "  active ICs " << activeICs.size()
+           << "  inactive ICs " << inactiveICs.size()
+           << "  terminated ICs " << terminatedICs.size() << std::endl;
     
     int timer = visitTimer->StartTimer();
     
     bool done = HandleCommunication();
+
     while (!done)
     {
         int cnt = 0;
@@ -199,15 +286,21 @@ avtPODICAlgorithm::RunAlgorithm()
                 AdvectParticle(ic);
             }
             while (ic->status.Integrateable() &&
+                   !ic->blockList.empty() &&
                    DomainLoaded(ic->blockList.front()));
-            
-            if (ic->status.EncounteredSpatialBoundary())
+
+            // If the user termination criteria was reached so terminate the IC.
+            if( ic->status.TerminationMet() )
+                terminatedICs.push_back(ic);
+            else if (ic->status.EncounteredSpatialBoundary())
             {
-                if (!ic->blockList.empty() && DomainLoaded(ic->blockList.front()))
+                if (!ic->blockList.empty() &&
+                    DomainLoaded(ic->blockList.front()))
                     activeICs.push_back(ic);
                 else
                     inactiveICs.push_back(ic);
             }
+            // Some other termination criteria was reached so terminate the IC.
             else
                 terminatedICs.push_back(ic);
             
@@ -254,20 +347,30 @@ avtPODICAlgorithm::HandleCommunication()
     for (int i = 0; i < nProcs; i++)
         icCounts[i] = 0;
     
-    list<avtIntegralCurve*>::iterator s;
-    map<int, vector<avtIntegralCurve *> > sendICs;
-    map<int, vector<avtIntegralCurve *> >::iterator it;
-    list<avtIntegralCurve*> tmp;
+    std::list<avtIntegralCurve*>::iterator s;
+    std::map<int, std::vector<avtIntegralCurve *> > sendICs;
+    std::map<int, std::vector<avtIntegralCurve *> >::iterator it;
+    std::list<avtIntegralCurve*> tmp;
+
     for (s = inactiveICs.begin(); s != inactiveICs.end(); s++)
     {
-        int domRank = DomainToRank((*s)->blockList.front());
+        // What to if the blocklist is empty ????????
+        // Send it to the next processor ?????
+        // Just do not send it back to the same processor.
+        int domRank;
+
+        if( (*s)->blockList.empty() )
+          domRank = (PAR_Rank() + 1) % PAR_Size();
+        else
+          domRank = DomainToRank((*s)->blockList.front());
+    
         icCounts[domRank]++;
             
         //Add to sending map.
         it = sendICs.find(domRank);
         if (it == sendICs.end())
         {
-            vector<avtIntegralCurve *> v;
+            std::vector<avtIntegralCurve *> v;
             v.push_back(*s);
             sendICs[domRank] = v;
         }
@@ -290,8 +393,8 @@ avtPODICAlgorithm::HandleCommunication()
     //Wait till I get all my ICs.
     while (incomingCnt > 0)
     {
-        list<ICCommData> ics;
-        list<ICCommData>::iterator s;
+        std::list<ICCommData> ics;
+        std::list<ICCommData>::iterator s;
 
         RecvAny(NULL, &ics, NULL, true);
         for (s = ics.begin(); s != ics.end(); s++)
@@ -300,8 +403,9 @@ avtPODICAlgorithm::HandleCommunication()
 
             //See if I have this block.
             BlockIDType blk;
-            list<BlockIDType> tmp;
+            std::list<BlockIDType> tmp;
             bool blockFound = false;
+
             while (!ic->blockList.empty())
             {
                 blk = ic->blockList.front();

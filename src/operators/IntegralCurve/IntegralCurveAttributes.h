@@ -69,7 +69,8 @@ public:
         Plane,
         Sphere,
         Box,
-        Selection
+        Selection,
+        FieldData
     };
     enum DataValue
     {
@@ -177,6 +178,7 @@ public:
     void SelectSphereOrigin();
     void SelectBoxExtents();
     void SelectPointList();
+    void SelectFieldData();
     void SelectDataVariable();
     void SelectVelocitySource();
     void SelectSelection();
@@ -194,6 +196,7 @@ public:
     void SetBoxExtents(const double *boxExtents_);
     void SetUseWholeBox(bool useWholeBox_);
     void SetPointList(const doubleVector &pointList_);
+    void SetFieldData(const doubleVector &fieldData_);
     void SetSampleDensity0(int sampleDensity0_);
     void SetSampleDensity1(int sampleDensity1_);
     void SetSampleDensity2(int sampleDensity2_);
@@ -238,8 +241,10 @@ public:
     void SetRandomSamples(bool randomSamples_);
     void SetRandomSeed(int randomSeed_);
     void SetNumberOfRandomSamples(int numberOfRandomSamples_);
-    void SetForceNodeCenteredData(bool forceNodeCenteredData_);
+    void SetIssueAdvectionWarnings(bool issueAdvectionWarnings_);
+    void SetIssueBoundaryWarnings(bool issueBoundaryWarnings_);
     void SetIssueTerminationWarnings(bool issueTerminationWarnings_);
+    void SetIssueStepsizeWarnings(bool issueStepsizeWarnings_);
     void SetIssueStiffnessWarnings(bool issueStiffnessWarnings_);
     void SetIssueCriticalPointsWarnings(bool issueCriticalPointsWarnings_);
     void SetCriticalPointThreshold(double criticalPointThreshold_);
@@ -271,6 +276,8 @@ public:
     bool               GetUseWholeBox() const;
     const doubleVector &GetPointList() const;
           doubleVector &GetPointList();
+    const doubleVector &GetFieldData() const;
+          doubleVector &GetFieldData();
     int                GetSampleDensity0() const;
     int                GetSampleDensity1() const;
     int                GetSampleDensity2() const;
@@ -317,8 +324,10 @@ public:
     bool               GetRandomSamples() const;
     int                GetRandomSeed() const;
     int                GetNumberOfRandomSamples() const;
-    bool               GetForceNodeCenteredData() const;
+    bool               GetIssueAdvectionWarnings() const;
+    bool               GetIssueBoundaryWarnings() const;
     bool               GetIssueTerminationWarnings() const;
+    bool               GetIssueStepsizeWarnings() const;
     bool               GetIssueStiffnessWarnings() const;
     bool               GetIssueCriticalPointsWarnings() const;
     double             GetCriticalPointThreshold() const;
@@ -408,6 +417,7 @@ public:
         ID_boxExtents,
         ID_useWholeBox,
         ID_pointList,
+        ID_fieldData,
         ID_sampleDensity0,
         ID_sampleDensity1,
         ID_sampleDensity2,
@@ -452,8 +462,10 @@ public:
         ID_randomSamples,
         ID_randomSeed,
         ID_numberOfRandomSamples,
-        ID_forceNodeCenteredData,
+        ID_issueAdvectionWarnings,
+        ID_issueBoundaryWarnings,
         ID_issueTerminationWarnings,
+        ID_issueStepsizeWarnings,
         ID_issueStiffnessWarnings,
         ID_issueCriticalPointsWarnings,
         ID_criticalPointThreshold,
@@ -478,6 +490,7 @@ private:
     double       boxExtents[6];
     bool         useWholeBox;
     doubleVector pointList;
+    doubleVector fieldData;
     int          sampleDensity0;
     int          sampleDensity1;
     int          sampleDensity2;
@@ -522,8 +535,10 @@ private:
     bool         randomSamples;
     int          randomSeed;
     int          numberOfRandomSamples;
-    bool         forceNodeCenteredData;
+    bool         issueAdvectionWarnings;
+    bool         issueBoundaryWarnings;
     bool         issueTerminationWarnings;
+    bool         issueStepsizeWarnings;
     bool         issueStiffnessWarnings;
     bool         issueCriticalPointsWarnings;
     double       criticalPointThreshold;
@@ -537,6 +552,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define INTEGRALCURVEATTRIBUTES_TMFS "iDDDDDDdDDbd*iiiisiibdbddbddiddidDiiiiibbddiibdbdidddbbiibbbbddddis"
+#define INTEGRALCURVEATTRIBUTES_TMFS "iDDDDDDdDDbd*d*iiiisiibdbddbddiddidDiiiiibbddiibdbdidddbbiibbbbbbddddis"
 
 #endif

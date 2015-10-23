@@ -213,8 +213,10 @@ avtPoincareFilter::avtPoincareFilter() :
     randomSeed = 0;
 
     issueWarningForMaxStepsTermination = true;
+    issueWarningForStepsize = true;
     issueWarningForStiffness = true;
     issueWarningForCriticalPoints = true;
+
     criticalPointThreshold = 1e-3;
 
     planes.resize(1);
@@ -515,6 +517,7 @@ avtPoincareFilter::SetAtts(const AttributeGroup *a)
     maxTime = atts.GetTermTime();
 
     IssueWarningForMaxStepsTermination(atts.GetIssueTerminationWarnings());
+    IssueWarningForStepsize(atts.GetIssueStepsizeWarnings());
     IssueWarningForStiffness(atts.GetIssueStiffnessWarnings());
     IssueWarningForCriticalPoints(atts.GetIssueCriticalPointsWarnings(), atts.GetCriticalPointThreshold());
 
@@ -928,7 +931,7 @@ avtPoincareFilter::CreateIntegralCurve( const avtIVPSolver* model,
 }
 
 // ****************************************************************************
-//  Method: avtPoincareFilter::GetFieldlinePoints
+//  Method: avtPoincareFilter::GetIntegralCurvePoints
 //
 //  Purpose:
 //      Gets the points from the fieldline and changes them in to a Vector.
@@ -1088,12 +1091,10 @@ avtPoincareFilter::Execute()
 void
 avtPoincareFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
 {
-    if (ics.size() == 0)
-        return;
-
     int numICs = (int)ics.size();
-//    int numPts = 0;
+
     int numEarlyTerminators = 0;
+    int numStepSize = 0;
     int numStiff = 0;
     int numCritPts = 0;
 
@@ -1101,21 +1102,23 @@ avtPoincareFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
     {
         debug5 << "::ReportWarnings " << ics.size() << endl;
     }
+
     //See how many pts, ics we have so we can preallocate everything.
     for (int i = 0; i < numICs; i++)
     {
         avtPoincareIC *ic = dynamic_cast<avtPoincareIC*>(ics[i]);
 
-        // NOT USED ??????????????????????????
-        // size_t numSamps = (ic ? ic->GetNumberOfSamples() : 0);
-        // if (numSamps > 1)
-        //     numPts += numSamps;
+        if (ic->CurrentVelocity().length() <= criticalPointThreshold)
+          numCritPts++;
 
         if (ic->TerminatedBecauseOfMaxSteps())
           numEarlyTerminators++;
+        
+        if (ic->status.StepSizeUnderflow())
+          numStepSize++;
 
         if (ic->EncounteredNumericalProblems())
-            numStiff++;
+          numStiff++;
     }
 
     char str[4096] = "";
@@ -1132,8 +1135,7 @@ avtPoincareFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
                    "time or distance criteria being too large or of other attributes being "
                    "set incorrectly (example: your step size is too small).  If you are "
                    "confident in your settings and want the particles to advect farther, "
-                   "you should increase the maximum number of steps.  If you want to disable "
-                   "this message, you can do this under the Advaced tab."
+                   "you should increase the maximum number of steps."
                    "  Note that this message does not mean that an error has occurred; it simply "
                    "means that VisIt stopped advecting particles because it reached the maximum "
                    "number of steps. (That said, this case happens most often when other attributes "
@@ -1152,8 +1154,21 @@ avtPoincareFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
                      "to the critical point location and terminate.  However, VisIt was not able "
                      "to do this for these particles due to numerical issues.  In all likelihood, "
                      "additional steps will _not_ help this problem and only cause execution to "
-                     "take longer.  If you want to disable this message, you can do this under "
-                     "the Advanced tab.\n", str, numCritPts);
+                     "take longer.\n", str, numCritPts);
+        }
+    }
+
+    if (issueWarningForStepsize)
+    {
+        SumIntAcrossAllProcessors(numStepSize);
+        if (numStepSize > 0)
+        {
+            SNPRINTF(str, 4096, 
+                     "%s\n%d of your integral curves were unable to advect because of the \"stepsize\".  "
+                     "Often the step size becomes too small when appraoching a spatial "
+                     "or temporal boundary. This especially happens when the step size matches "
+                     "the temporal spacing. This condition is referred to as stepsize underflow and "
+                     "VisIt stops advecting in this case.\n", str, numStepSize);
         }
     }
 
@@ -1167,14 +1182,20 @@ avtPoincareFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
                      "When one component of a velocity field varies quickly and another stays "
                      "relatively constant, then it is not possible to choose step sizes that "
                      "remain within tolerances.  This condition is referred to as stiffness and "
-                     "VisIt stops advecting in this case.  If you want to disable this message, "
-                     "you can do this under the Advanced tab.\n", str,numStiff);
+                     "VisIt stops advecting in this case.\n", str,numStiff);
         }
     }
 
     if( strlen( str ) )
-      avtCallback::IssueWarning(str);
+    {
+        SNPRINTF(str, 4096, 
+                 "%s\nIf you want to disable any of these messages, "
+                     "you can do so under the Advanced tab.\n", str);
+
+        avtCallback::IssueWarning(str);
+    }
 }
+
 
 // ****************************************************************************
 //  Method: avtPoincareFilter::ContinueExecute
@@ -1777,7 +1798,7 @@ avtPoincareFilter::ContinueExecute()
                   for( j=0; j<new_ics.size(); j++ )
                     {
                       newIC = (avtPoincareIC*) new_ics[j];
-                      newIC->maxIntersections = 8 * properties.toroidalWinding + 2;
+                      newIC->SetMaxIntersections( 8 * properties.toroidalWinding + 2 );
                       newIC->properties = poincare_ic->properties;
                       newIC->properties.searchState = FieldlineProperties::MINIMIZING_X2;
                       newIC->properties.type = FieldlineProperties::IRRATIONAL;
@@ -1806,7 +1827,7 @@ avtPoincareFilter::ContinueExecute()
                   for( j=0; j<new_ics.size(); j++ )
                     {
                       newIC = (avtPoincareIC*)new_ics[j];
-                      newIC->maxIntersections = 8 * properties.toroidalWinding + 2;
+                      newIC->SetMaxIntersections( 8 * properties.toroidalWinding + 2 );
                       newIC->properties = poincare_ic->properties;
                       newIC->properties.searchState = FieldlineProperties::MINIMIZING_X1;
                       newIC->properties.analysisMethod = FieldlineProperties::RATIONAL_MINIMIZE;
@@ -1877,7 +1898,7 @@ avtPoincareFilter::ContinueExecute()
                     {
                       success = true;
                       newIC = (avtPoincareIC*)new_ics[j];
-                      newIC->maxIntersections = 8 * (properties.toroidalWinding + 2);
+                      newIC->SetMaxIntersections( 8 * (properties.toroidalWinding + 2) );
                       newIC->properties = poincare_ic->properties;
                       newIC->properties.searchState = FieldlineProperties::MINIMIZING_C;
                       newIC->properties.analysisMethod = FieldlineProperties::RATIONAL_SEARCH;
@@ -2494,8 +2515,7 @@ avtPoincareFilter::ClassifyFieldlines(std::vector<avtIntegralCurve *> &ics)
           // the puncture plane normal while the integral curve uses
           // the plane regardless of the normal.
 
-          poincare_ic->maxIntersections =
-            2 * poincare_ic->properties.nPuncturesNeeded;
+          poincare_ic->SetMaxIntersections( 2 * poincare_ic->properties.nPuncturesNeeded );
 
           // Change the status so more integration steps will be taken.
           poincare_ic->status.SetOK();

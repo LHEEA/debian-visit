@@ -100,11 +100,11 @@ class JobSubmitter_qsub_NERSC(JobSubmitter_qsub):
         if self.launcher.nersc_host == "carver":
             return ["/usr/syscom/opt/torque/default/bin/qsub"]
         elif self.launcher.nersc_host == "edison":
-            return ["/opt/torque/5.0.1/bin/qsub"]
+            return ["/opt/torque/default/bin/qsub"]
         elif self.launcher.nersc_host == "grace":
-            return ["/opt/torque/5.0.1/bin/qsub"]
-        elif self.launcher.nersc_host == "hopper":
             return ["/usr/common/nsg/bin/qsub"]
+        elif self.launcher.nersc_host == "hopper":
+            return ["/usr/common/usg/bin/qsub"]
         else:
             print "Error: unknown NERSC host '%s'. Using default qsub executable." % self.launcher.nersc_host
             print "If this does not work, please contact consult@nersc.gov."
@@ -263,7 +263,7 @@ For more information about running VisIt at NERSC: http://www.nersc.gov/nusers/r
         # ----
             # Add GCC libraries to LD_LIBRARY_PATH
             ld_library_path = self.splitpaths(GETENV("LD_LIBRARY_PATH"))
-            added_ld_library_paths = ["/opt/gcc/4.9.0/snos/lib64"]
+            added_ld_library_paths = ["/opt/gcc/4.8.2/snos/lib64"]
             SETENV("LD_LIBRARY_PATH", self.joinpaths(added_ld_library_paths + ld_library_path))
 
             # Running the gui on Hopper or a serial engine on a login node are "verboten"

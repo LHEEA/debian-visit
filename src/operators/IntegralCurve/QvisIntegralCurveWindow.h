@@ -212,6 +212,7 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     void deletePoint();
     void deletePoints();
     void readPoints();
+    void copyPoints();
     void textChanged(const QString &currentText);
 
     void samplingTypeChanged(int);
@@ -267,7 +268,10 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     void pathlinePeriodProcessText();
     void pathlineCMFEButtonGroupChanged(int val);
 
+    void issueWarningForAdvectionChanged(bool);
+    void issueWarningForBoundaryChanged(bool);
     void issueWarningForMaxStepsChanged(bool);
+    void issueWarningForStepsizeChanged(bool);
     void issueWarningForStiffnessChanged(bool);
     void issueWarningForCriticalPointsChanged(bool);
     void criticalPointThresholdProcessText();
@@ -286,6 +290,8 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     QLabel    *lineEndLabel;
     QListWidget *pointList;
     QPushButton *pointListDelPoint, *pointListDelAllPoints, *pointListAddPoint, *pointListReadPoints;
+    QListWidget *fieldData;
+    QPushButton *fieldDataCopyPoints;
     QLineEdit *planeOrigin;
     QLabel    *planeOriginLabel;
     QLineEdit *planeNormal;
@@ -373,7 +379,10 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     QLineEdit *pathlinePeriod;
     QButtonGroup *pathlineCMFEButtonGroup;
 
+    QCheckBox *issueWarningForAdvection;
+    QCheckBox *issueWarningForBoundary;
     QCheckBox *issueWarningForMaxSteps;
+    QCheckBox *issueWarningForStepsize;
     QCheckBox *issueWarningForStiffness;
     QCheckBox *issueWarningForCriticalPoints;
     QLineEdit *criticalPointThreshold;

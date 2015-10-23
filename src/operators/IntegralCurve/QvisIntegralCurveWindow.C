@@ -66,6 +66,9 @@
 #include <SelectionList.h>
 #include <SelectionProperties.h>
 
+#include <Plot.h>
+#include <PlotList.h>
+#include <PlotInfoAttributes.h>
 
 #include <stdio.h>
 #include <string>
@@ -296,6 +299,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     sourceType->addItem(tr("Sphere"));
     sourceType->addItem(tr("Box"));
     sourceType->addItem(tr("Selection"));
+    sourceType->addItem(tr("Field Data"));
     connect(sourceType, SIGNAL(activated(int)),
             this, SLOT(sourceTypeChanged(int)));
     sourceLayout->addWidget(sourceType, 0, 1, 1, 2);
@@ -452,6 +456,16 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
 
     geometryLayout->addWidget(selectionsLabel, gRow, 0);
     geometryLayout->addWidget(selections, gRow, 1);
+    gRow++;
+
+
+    //Point list.
+    fieldData = new QListWidget(sourceGroup);
+    geometryLayout->addWidget(fieldData, gRow, 0);
+
+    fieldDataCopyPoints = new QPushButton(tr("Copy to point list"), sourceGroup);
+    connect(fieldDataCopyPoints, SIGNAL(clicked()), this, SLOT(copyPoints()));
+    geometryLayout->addWidget(fieldDataCopyPoints, gRow, 1);
     gRow++;
 
 
@@ -998,40 +1012,61 @@ QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
     warningsGLayout->setSpacing(10);
     warningsGLayout->setColumnStretch(1,10);
 
+    issueWarningForAdvection = new QCheckBox(central);
+    connect(issueWarningForAdvection, SIGNAL(toggled(bool)),
+            this, SLOT(issueWarningForAdvectionChanged(bool)));
+    warningsGLayout->addWidget(issueWarningForAdvection, 0, 0);
+    QLabel *advectionLabel = new QLabel(tr("Issue warning if the advection limit is not reached."), warningsGrp);
+    warningsGLayout->addWidget(advectionLabel, 0, 1, 1, 2);
+
+    issueWarningForBoundary = new QCheckBox(central);
+    connect(issueWarningForBoundary, SIGNAL(toggled(bool)),
+            this, SLOT(issueWarningForBoundaryChanged(bool)));
+    warningsGLayout->addWidget(issueWarningForBoundary, 1, 0);
+    QLabel *boundaryLabel = new QLabel(tr("Issue warning if the spatial boundary is reached."), warningsGrp);
+    warningsGLayout->addWidget(boundaryLabel, 1, 1, 1, 2);
+
     issueWarningForMaxSteps = new QCheckBox(central);
     connect(issueWarningForMaxSteps, SIGNAL(toggled(bool)),
             this, SLOT(issueWarningForMaxStepsChanged(bool)));
-    warningsGLayout->addWidget(issueWarningForMaxSteps, 0, 0);
+    warningsGLayout->addWidget(issueWarningForMaxSteps, 2, 0);
     QLabel *maxStepsLabel = new QLabel(tr("Issue warning when the maximum number of steps is reached."), warningsGrp);
-    warningsGLayout->addWidget(maxStepsLabel, 0, 1, 1, 2);
+    warningsGLayout->addWidget(maxStepsLabel, 2, 1, 1, 2);
 
+    issueWarningForStepsize = new QCheckBox(central);
+    connect(issueWarningForStepsize, SIGNAL(toggled(bool)),
+            this, SLOT(issueWarningForStepsizeChanged(bool)));
+    warningsGLayout->addWidget(issueWarningForStepsize, 3, 0);
+    QLabel *stepsizeLabel = new QLabel(tr("Issue warning when a step size underflow is detected."), warningsGrp);
+    warningsGLayout->addWidget(stepsizeLabel, 3, 1, 1, 2);
+    
     issueWarningForStiffness = new QCheckBox(central);
     connect(issueWarningForStiffness, SIGNAL(toggled(bool)),
             this, SLOT(issueWarningForStiffnessChanged(bool)));
-    warningsGLayout->addWidget(issueWarningForStiffness, 1, 0);
-    QLabel *stiffnessLabel = new QLabel(tr("Issue warning when stiffness is detected."), warningsGrp);
-    warningsGLayout->addWidget(stiffnessLabel, 1, 1, 1, 2);
+    warningsGLayout->addWidget(issueWarningForStiffness, 4, 0);
+    QLabel *stiffnessLabel = new QLabel(tr("Issue warning when a stiffness condition is detected."), warningsGrp);
+    warningsGLayout->addWidget(stiffnessLabel, 4, 1, 1, 2);
     QLabel *stiffnessDescLabel1 = new QLabel(tr("(Stiffness refers to one vector component being so much "), warningsGrp);
-    warningsGLayout->addWidget(stiffnessDescLabel1, 2, 1, 1, 2);
+    warningsGLayout->addWidget(stiffnessDescLabel1, 5, 1, 1, 2);
     QLabel *stiffnessDescLabel2 = new QLabel(tr("larger than another that tolerances can't be met.)"), warningsGrp);
-    warningsGLayout->addWidget(stiffnessDescLabel2, 3, 1, 1, 2);
+    warningsGLayout->addWidget(stiffnessDescLabel2, 6, 1, 1, 2);
     
     issueWarningForCriticalPoints = new QCheckBox(central);
     connect(issueWarningForCriticalPoints, SIGNAL(toggled(bool)),
             this, SLOT(issueWarningForCriticalPointsChanged(bool)));
-    warningsGLayout->addWidget(issueWarningForCriticalPoints, 4, 0);
+    warningsGLayout->addWidget(issueWarningForCriticalPoints, 7, 0);
     QLabel *critPointLabel = new QLabel(tr("Issue warning when a curve doesn't terminate at a critical point."), warningsGrp);
-    warningsGLayout->addWidget(critPointLabel, 4, 1, 1, 2);
+    warningsGLayout->addWidget(critPointLabel, 7, 1, 1, 2);
     QLabel *critPointDescLabel = new QLabel(tr("(I.e. the curve circles around the critical point without stopping.)"), warningsGrp);
-    warningsGLayout->addWidget(critPointDescLabel, 5, 1, 1, 2);
+    warningsGLayout->addWidget(critPointDescLabel, 8, 1, 1, 2);
     criticalPointThresholdLabel = new QLabel(tr("Speed cutoff for critical points"), warningsGrp);
     criticalPointThresholdLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
-    warningsGLayout->addWidget(criticalPointThresholdLabel, 6, 1);
+    warningsGLayout->addWidget(criticalPointThresholdLabel, 9, 1);
     criticalPointThreshold = new QLineEdit(warningsGrp);
     criticalPointThreshold->setAlignment(Qt::AlignLeft);
     connect(criticalPointThreshold, SIGNAL(returnPressed()),
             this, SLOT(criticalPointThresholdProcessText()));
-    warningsGLayout->addWidget(criticalPointThreshold, 6, 2);
+    warningsGLayout->addWidget(criticalPointThreshold, 9, 2);
 }
 
 // ****************************************************************************
@@ -1102,6 +1137,82 @@ QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 void
 QvisIntegralCurveWindow::UpdateWindow(bool doAll)
 {
+    // Attach and detach this operator to the plot information.
+    if( SelectedSubject() == GetViewerState()->GetOperatorAttributes(plotType) )
+    {
+      // Detach from plot information objects (maybe keep a list of
+      // ones this window observes)
+      for( int i = 0; i < GetViewerState()->GetNumStateObjects(); ++i)
+      {
+        PlotInfoAttributes *info = GetViewerState()->GetPlotInformation(i);
+
+        if( info )
+          info->Detach(this);
+      }
+      
+      // Attach to the selected plot types
+      for(int i = 0; i < GetViewerState()->GetPlotList()->GetNumPlots(); ++i)
+      {
+        const Plot &p = GetViewerState()->GetPlotList()->GetPlots(i);
+        GetViewerState()->GetPlotInformation(p.GetPlotType())->Attach(this);
+      }
+    }
+
+    // Look for a SelectedSubject that matches one of the plots. Note
+    // the doAll condition which will probably never result in anthing
+    // because nothing will have been executed yet. And the data is
+    // only there after execution.
+    for( int i = 0; i < GetViewerState()->GetPlotList()->GetNumPlots(); ++i)
+    {
+      const Plot &p = GetViewerState()->GetPlotList()->GetPlots(i);
+      
+      PlotInfoAttributes *info =
+        GetViewerState()->GetPlotInformation(p.GetPlotType());
+      
+      if( doAll || SelectedSubject() == info )
+      {
+        MapNode *node = info->GetData().GetEntry("ListOfPoints");
+
+        if( node )
+        {
+          MapNode &ptsNode = *node;
+          int nValues = ptsNode["listofpoints_size"].AsInt();
+          
+          if( nValues )
+          {
+            const doubleVector &points =
+              ptsNode["listofpoints_coordinates"].AsDoubleVector();
+      
+            // Update the GUI
+            fieldData->clear();
+      
+            for (int i = 0; i < nValues; i+= 3)
+            {
+              char tmp[256];
+              sprintf(tmp, "%lf %lf %lf", points[i], points[i+1], points[i+2]);
+              
+              // std::cerr << tmp << std::endl;
+              
+              QString str = tmp;
+              QListWidgetItem *item = new QListWidgetItem(str, fieldData);
+//            item->setFlags(item->flags() | Qt::ItemIsEditable);
+              fieldData->setCurrentItem(item);
+            }
+
+            // Update the attributes.
+            atts->SetFieldData( points );
+
+            if(!doAll)
+              return;
+           else
+             break;
+          }
+        }
+      }
+    }
+
+
+
     for(int i = 0; i < atts->NumAttributes(); ++i)
     {
         if(!doAll)
@@ -1199,7 +1310,8 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
                 for (size_t i = 0; i < points.size(); i+= 3)
                 {
                     char tmp[256];
-                    sprintf(tmp, "%lf %lf %lf", points[i], points[i+1], points[i+2]);
+                    sprintf(tmp, "%lf %lf %lf",
+                            points[i], points[i+1], points[i+2]);
                     QString str = tmp;
                     QListWidgetItem *item = new QListWidgetItem(str, pointList);
                     item->setFlags(item->flags() | Qt::ItemIsEditable);
@@ -1504,6 +1616,18 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             //   forceNodal->blockSignals(false);
             //   break;
 
+            case IntegralCurveAttributes::ID_issueAdvectionWarnings:
+              issueWarningForAdvection->blockSignals(true);
+              issueWarningForAdvection->setChecked(atts->GetIssueAdvectionWarnings());
+              issueWarningForAdvection->blockSignals(false);
+              break;
+              
+            case IntegralCurveAttributes::ID_issueBoundaryWarnings:
+              issueWarningForBoundary->blockSignals(true);
+              issueWarningForBoundary->setChecked(atts->GetIssueBoundaryWarnings());
+              issueWarningForBoundary->blockSignals(false);
+              break;
+
             case IntegralCurveAttributes::ID_issueTerminationWarnings:
               issueWarningForMaxSteps->blockSignals(true);
               issueWarningForMaxSteps->setChecked(atts->GetIssueTerminationWarnings());
@@ -1518,6 +1642,11 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
               issueWarningForCriticalPoints->blockSignals(false);
               break;
 
+            case IntegralCurveAttributes::ID_issueStepsizeWarnings:
+              issueWarningForStepsize->blockSignals(true);
+              issueWarningForStepsize->setChecked(atts->GetIssueStepsizeWarnings());
+              issueWarningForStepsize->blockSignals(false);
+              break;
             case IntegralCurveAttributes::ID_issueStiffnessWarnings:
               issueWarningForStiffness->blockSignals(true);
               issueWarningForStiffness->setChecked(atts->GetIssueStiffnessWarnings());
@@ -1611,6 +1740,9 @@ QvisIntegralCurveWindow::TurnOffSourceAttributes()
     TurnOff(pointListDelAllPoints);
     TurnOff(pointListAddPoint);
     TurnOff(pointListReadPoints);
+
+    TurnOff(fieldData);
+    TurnOff(fieldDataCopyPoints);
 
     TurnOff(fillLabel);
     TurnOff(fillButtons[0]);
@@ -1837,6 +1969,11 @@ QvisIntegralCurveWindow::UpdateSourceAttributes()
             sampleDensity[0]->setMinimum(1);
         }
 
+    }
+    else if (atts->GetSourceType() == IntegralCurveAttributes::FieldData)
+    {
+        TurnOn(fieldData);
+        TurnOn(fieldDataCopyPoints);
     }
 
     if (showSampling)
@@ -2565,7 +2702,6 @@ QvisIntegralCurveWindow::GetCurrentValues(int which_widget)
     }
 }
 
-
 void
 QvisIntegralCurveWindow::sourceTypeChanged(int val)
 {
@@ -3030,6 +3166,28 @@ QvisIntegralCurveWindow::readPoints()
     f.close();
 }
 
+
+void
+QvisIntegralCurveWindow::copyPoints()
+{
+    pointList->clear();
+
+    std::vector<double> points;
+    for (int i = 0; i < fieldData->count(); i++)
+    {
+        QListWidgetItem *item = fieldData->item(i);
+        
+        if (item)
+        {
+            std::string str = item->text().toLatin1().data();
+            item = new QListWidgetItem(str.c_str(), pointList);
+            item->setFlags(item->flags() | Qt::ItemIsEditable);
+            pointList->setCurrentItem(item);
+        }
+    }
+}
+
+
 void
 QvisIntegralCurveWindow::correlationDistanceMinDistTypeChanged(int v)
 {
@@ -3096,9 +3254,30 @@ QvisIntegralCurveWindow::pathlineCMFEButtonGroupChanged(int val)
 }
 
 void
+QvisIntegralCurveWindow::issueWarningForAdvectionChanged(bool val)
+{
+    atts->SetIssueAdvectionWarnings(val);
+    Apply();
+}
+
+void
+QvisIntegralCurveWindow::issueWarningForBoundaryChanged(bool val)
+{
+    atts->SetIssueBoundaryWarnings(val);
+    Apply();
+}
+
+void
 QvisIntegralCurveWindow::issueWarningForMaxStepsChanged(bool val)
 {
     atts->SetIssueTerminationWarnings(val);
+    Apply();
+}
+
+void
+QvisIntegralCurveWindow::issueWarningForStepsizeChanged(bool val)
+{
+    atts->SetIssueStepsizeWarnings(val);
     Apply();
 }
 

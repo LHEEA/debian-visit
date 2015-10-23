@@ -9,6 +9,9 @@
       skelet.C
       dir_graph.C
     </Files>
+    <LDFLAGS>
+      ${NEKTAR++_LIBRARY_DIR} ${NEKTAR++_LIBRARY_DIRS} ${NEKTAR++_TP_LIBRARY_DIRS} ${ACCELERATE_FRAMEWORK_LINK_FLAGS}
+    </LDFLAGS>
     <LIBS components="ESer">
       avtivp_ser
     </LIBS>
@@ -343,6 +346,9 @@
       </Field>
 
       <Field name="issueTerminationWarnings" label="Issue Warning When Termination Criteria Is Not Met" type="bool">
+        true
+      </Field>
+      <Field name="issueStepsizeWarnings" label="Issue warnings when the stepsize is too small" type="bool">
         true
       </Field>
       <Field name="issueStiffnessWarnings" label="Issue warnings when stiffness is encountered" type="bool">

@@ -236,6 +236,18 @@ SimFileServer::GetOpenDatabases()
 }
 
 void
+SimFileServer::SaveSession(const std::string &host, const std::string &filename, const std::string &sessionFile)
+{
+    // Does nothing.
+}
+
+void
+SimFileServer::RestoreSession(const std::string &host, const std::string &filename, std::string &sessionFile)
+{
+    // Does nothing.
+}
+
+void
 SimFileServer::NoFaultStartServer(const std::string &/*host*/, const stringVector &args)
 {
     // Does nothing.

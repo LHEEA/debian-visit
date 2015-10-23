@@ -183,6 +183,9 @@
 #    Changed BOOST logic and added CHECK_THIRDPARTY_SATISIFED, 
 #    which is used for explicitly check 3rd party deps for each db plugin.
 #
+#    Kathleen Biagas, Wed Sep 23 09:38:22 MST 2015 
+#    Don't attempt to build HDFS on Windows.
+#
 #****************************************************************************/
 
 IF(NOT WIN32)
@@ -348,7 +351,7 @@ CHECK_THIRDPARTY_SATISIFED(ZeusMP HDF4)
 CHECK_THIRDPARTY_SATISIFED(MDSplus MDSPLUS)
 CHECK_THIRDPARTY_SATISIFED(Mili    MILI)
 CHECK_THIRDPARTY_SATISIFED(Uintah  UINTAH)
-CHECK_THIRDPARTY_SATISIFED(IDX     VISUS)
+#CHECK_THIRDPARTY_SATISIFED(IDX     VISUS)
 CHECK_THIRDPARTY_SATISIFED(MFEM    MFEM)
 
 
@@ -475,6 +478,7 @@ ENDIF(TARGET vtkIOEnSight)
 IF (NOT WIN32)
     LIST(APPEND REQUIRED_DATABASE_PLUGINS 
         Claw
+        HDFS
         STAR
         TCGA
         Vis5D

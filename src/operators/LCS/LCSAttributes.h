@@ -70,6 +70,12 @@ public:
         Full,
         Subset
     };
+    enum AuxiliaryGrid
+    {
+        None,
+        TwoDim,
+        ThreeDim
+    };
     enum IntegrationDirection
     {
         Forward,
@@ -116,11 +122,20 @@ public:
         EigenVector,
         Lyapunov
     };
+    enum CauchyGreenTensor
+    {
+        Left,
+        Right
+    };
     enum EigenComponent
     {
-        First,
-        Second,
-        Third
+        Smallest,
+        Intermediate,
+        Largest,
+        PosShearVector,
+        NegShearVector,
+        PosLambdaShearVector,
+        NegLambdaShearVector
     };
     enum OperatorType
     {
@@ -177,9 +192,13 @@ public:
     void SetUseDataSetEnd(Extents UseDataSetEnd_);
     void SetEndPosition(const double *EndPosition_);
     void SetIntegrationDirection(IntegrationDirection integrationDirection_);
+    void SetAuxiliaryGrid(AuxiliaryGrid auxiliaryGrid_);
+    void SetAuxiliaryGridSpacing(double auxiliaryGridSpacing_);
     void SetMaxSteps(int maxSteps_);
     void SetOperationType(OperationType operationType_);
+    void SetCauchyGreenTensor(CauchyGreenTensor cauchyGreenTensor_);
     void SetEigenComponent(EigenComponent eigenComponent_);
+    void SetEigenWeight(double eigenWeight_);
     void SetOperatorType(OperatorType operatorType_);
     void SetTerminationType(TerminationType terminationType_);
     void SetTerminateBySize(bool terminateBySize_);
@@ -209,8 +228,14 @@ public:
     void SetPathlinesOverrideStartingTime(double pathlinesOverrideStartingTime_);
     void SetPathlinesPeriod(double pathlinesPeriod_);
     void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
-    void SetForceNodeCenteredData(bool forceNodeCenteredData_);
+    void SetThresholdLimit(double thresholdLimit_);
+    void SetRadialLimit(double radialLimit_);
+    void SetBoundaryLimit(double boundaryLimit_);
+    void SetSeedLimit(int seedLimit_);
+    void SetIssueAdvectionWarnings(bool issueAdvectionWarnings_);
+    void SetIssueBoundaryWarnings(bool issueBoundaryWarnings_);
     void SetIssueTerminationWarnings(bool issueTerminationWarnings_);
+    void SetIssueStepsizeWarnings(bool issueStepsizeWarnings_);
     void SetIssueStiffnessWarnings(bool issueStiffnessWarnings_);
     void SetIssueCriticalPointsWarnings(bool issueCriticalPointsWarnings_);
     void SetCriticalPointThreshold(double criticalPointThreshold_);
@@ -226,9 +251,13 @@ public:
     const double *GetEndPosition() const;
           double *GetEndPosition();
     IntegrationDirection GetIntegrationDirection() const;
+    AuxiliaryGrid GetAuxiliaryGrid() const;
+    double       GetAuxiliaryGridSpacing() const;
     int          GetMaxSteps() const;
     OperationType GetOperationType() const;
+    CauchyGreenTensor GetCauchyGreenTensor() const;
     EigenComponent GetEigenComponent() const;
+    double       GetEigenWeight() const;
     OperatorType GetOperatorType() const;
     TerminationType GetTerminationType() const;
     bool         GetTerminateBySize() const;
@@ -259,8 +288,14 @@ public:
     double       GetPathlinesOverrideStartingTime() const;
     double       GetPathlinesPeriod() const;
     PathlinesCMFE GetPathlinesCMFE() const;
-    bool         GetForceNodeCenteredData() const;
+    double       GetThresholdLimit() const;
+    double       GetRadialLimit() const;
+    double       GetBoundaryLimit() const;
+    int          GetSeedLimit() const;
+    bool         GetIssueAdvectionWarnings() const;
+    bool         GetIssueBoundaryWarnings() const;
     bool         GetIssueTerminationWarnings() const;
+    bool         GetIssueStepsizeWarnings() const;
     bool         GetIssueStiffnessWarnings() const;
     bool         GetIssueCriticalPointsWarnings() const;
     double       GetCriticalPointThreshold() const;
@@ -279,6 +314,11 @@ public:
     static bool Extents_FromString(const std::string &, Extents &);
 protected:
     static std::string Extents_ToString(int);
+public:
+    static std::string AuxiliaryGrid_ToString(AuxiliaryGrid);
+    static bool AuxiliaryGrid_FromString(const std::string &, AuxiliaryGrid &);
+protected:
+    static std::string AuxiliaryGrid_ToString(int);
 public:
     static std::string IntegrationDirection_ToString(IntegrationDirection);
     static bool IntegrationDirection_FromString(const std::string &, IntegrationDirection &);
@@ -309,6 +349,11 @@ public:
     static bool OperationType_FromString(const std::string &, OperationType &);
 protected:
     static std::string OperationType_ToString(int);
+public:
+    static std::string CauchyGreenTensor_ToString(CauchyGreenTensor);
+    static bool CauchyGreenTensor_FromString(const std::string &, CauchyGreenTensor &);
+protected:
+    static std::string CauchyGreenTensor_ToString(int);
 public:
     static std::string EigenComponent_ToString(EigenComponent);
     static bool EigenComponent_FromString(const std::string &, EigenComponent &);
@@ -349,9 +394,13 @@ public:
         ID_UseDataSetEnd,
         ID_EndPosition,
         ID_integrationDirection,
+        ID_auxiliaryGrid,
+        ID_auxiliaryGridSpacing,
         ID_maxSteps,
         ID_operationType,
+        ID_cauchyGreenTensor,
         ID_eigenComponent,
+        ID_eigenWeight,
         ID_operatorType,
         ID_terminationType,
         ID_terminateBySize,
@@ -381,8 +430,14 @@ public:
         ID_pathlinesOverrideStartingTime,
         ID_pathlinesPeriod,
         ID_pathlinesCMFE,
-        ID_forceNodeCenteredData,
+        ID_thresholdLimit,
+        ID_radialLimit,
+        ID_boundaryLimit,
+        ID_seedLimit,
+        ID_issueAdvectionWarnings,
+        ID_issueBoundaryWarnings,
         ID_issueTerminationWarnings,
+        ID_issueStepsizeWarnings,
         ID_issueStiffnessWarnings,
         ID_issueCriticalPointsWarnings,
         ID_criticalPointThreshold,
@@ -397,9 +452,13 @@ private:
     int    UseDataSetEnd;
     double EndPosition[3];
     int    integrationDirection;
+    int    auxiliaryGrid;
+    double auxiliaryGridSpacing;
     int    maxSteps;
     int    operationType;
+    int    cauchyGreenTensor;
     int    eigenComponent;
+    double eigenWeight;
     int    operatorType;
     int    terminationType;
     bool   terminateBySize;
@@ -429,8 +488,14 @@ private:
     double pathlinesOverrideStartingTime;
     double pathlinesPeriod;
     int    pathlinesCMFE;
-    bool   forceNodeCenteredData;
+    double thresholdLimit;
+    double radialLimit;
+    double boundaryLimit;
+    int    seedLimit;
+    bool   issueAdvectionWarnings;
+    bool   issueBoundaryWarnings;
     bool   issueTerminationWarnings;
+    bool   issueStepsizeWarnings;
     bool   issueStiffnessWarnings;
     bool   issueCriticalPointsWarnings;
     double criticalPointThreshold;
@@ -439,6 +504,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define LCSATTRIBUTES_TMFS "iIiDiDiiiiiibdbdbddbddiddidDibiiiibbddibbbbd"
+#define LCSATTRIBUTES_TMFS "iIiDiDiidiiiidiibdbdbddbddiddidDibiiiibbddidddibbbbbbd"
 
 #endif

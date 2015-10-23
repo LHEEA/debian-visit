@@ -53,20 +53,21 @@
 static const char *SourceType_strings[] = {
 "Point", "PointList", "Line_", 
 "Circle", "Plane", "Sphere", 
-"Box", "Selection"};
+"Box", "Selection", "FieldData"
+};
 
 std::string
 IntegralCurveAttributes::SourceType_ToString(IntegralCurveAttributes::SourceType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 8) index = 0;
+    if(index < 0 || index >= 9) index = 0;
     return SourceType_strings[index];
 }
 
 std::string
 IntegralCurveAttributes::SourceType_ToString(int t)
 {
-    int index = (t < 0 || t >= 8) ? 0 : t;
+    int index = (t < 0 || t >= 9) ? 0 : t;
     return SourceType_strings[index];
 }
 
@@ -74,7 +75,7 @@ bool
 IntegralCurveAttributes::SourceType_FromString(const std::string &s, IntegralCurveAttributes::SourceType &val)
 {
     val = IntegralCurveAttributes::Point;
-    for(int i = 0; i < 8; ++i)
+    for(int i = 0; i < 9; ++i)
     {
         if(s == SourceType_strings[i])
         {
@@ -531,8 +532,10 @@ void IntegralCurveAttributes::Init()
     randomSamples = false;
     randomSeed = 0;
     numberOfRandomSamples = 1;
-    forceNodeCenteredData = false;
+    issueAdvectionWarnings = true;
+    issueBoundaryWarnings = true;
     issueTerminationWarnings = true;
+    issueStepsizeWarnings = true;
     issueStiffnessWarnings = true;
     issueCriticalPointsWarnings = true;
     criticalPointThreshold = 0.001;
@@ -597,6 +600,7 @@ void IntegralCurveAttributes::Copy(const IntegralCurveAttributes &obj)
 
     useWholeBox = obj.useWholeBox;
     pointList = obj.pointList;
+    fieldData = obj.fieldData;
     sampleDensity0 = obj.sampleDensity0;
     sampleDensity1 = obj.sampleDensity1;
     sampleDensity2 = obj.sampleDensity2;
@@ -644,8 +648,10 @@ void IntegralCurveAttributes::Copy(const IntegralCurveAttributes &obj)
     randomSamples = obj.randomSamples;
     randomSeed = obj.randomSeed;
     numberOfRandomSamples = obj.numberOfRandomSamples;
-    forceNodeCenteredData = obj.forceNodeCenteredData;
+    issueAdvectionWarnings = obj.issueAdvectionWarnings;
+    issueBoundaryWarnings = obj.issueBoundaryWarnings;
     issueTerminationWarnings = obj.issueTerminationWarnings;
+    issueStepsizeWarnings = obj.issueStepsizeWarnings;
     issueStiffnessWarnings = obj.issueStiffnessWarnings;
     issueCriticalPointsWarnings = obj.issueCriticalPointsWarnings;
     criticalPointThreshold = obj.criticalPointThreshold;
@@ -868,6 +874,7 @@ IntegralCurveAttributes::operator == (const IntegralCurveAttributes &obj) const
             boxExtents_equal &&
             (useWholeBox == obj.useWholeBox) &&
             (pointList == obj.pointList) &&
+            (fieldData == obj.fieldData) &&
             (sampleDensity0 == obj.sampleDensity0) &&
             (sampleDensity1 == obj.sampleDensity1) &&
             (sampleDensity2 == obj.sampleDensity2) &&
@@ -912,8 +919,10 @@ IntegralCurveAttributes::operator == (const IntegralCurveAttributes &obj) const
             (randomSamples == obj.randomSamples) &&
             (randomSeed == obj.randomSeed) &&
             (numberOfRandomSamples == obj.numberOfRandomSamples) &&
-            (forceNodeCenteredData == obj.forceNodeCenteredData) &&
+            (issueAdvectionWarnings == obj.issueAdvectionWarnings) &&
+            (issueBoundaryWarnings == obj.issueBoundaryWarnings) &&
             (issueTerminationWarnings == obj.issueTerminationWarnings) &&
+            (issueStepsizeWarnings == obj.issueStepsizeWarnings) &&
             (issueStiffnessWarnings == obj.issueStiffnessWarnings) &&
             (issueCriticalPointsWarnings == obj.issueCriticalPointsWarnings) &&
             (criticalPointThreshold == obj.criticalPointThreshold) &&
@@ -1190,6 +1199,7 @@ IntegralCurveAttributes::SelectAll()
     Select(ID_boxExtents,                         (void *)boxExtents, 6);
     Select(ID_useWholeBox,                        (void *)&useWholeBox);
     Select(ID_pointList,                          (void *)&pointList);
+    Select(ID_fieldData,                          (void *)&fieldData);
     Select(ID_sampleDensity0,                     (void *)&sampleDensity0);
     Select(ID_sampleDensity1,                     (void *)&sampleDensity1);
     Select(ID_sampleDensity2,                     (void *)&sampleDensity2);
@@ -1234,8 +1244,10 @@ IntegralCurveAttributes::SelectAll()
     Select(ID_randomSamples,                      (void *)&randomSamples);
     Select(ID_randomSeed,                         (void *)&randomSeed);
     Select(ID_numberOfRandomSamples,              (void *)&numberOfRandomSamples);
-    Select(ID_forceNodeCenteredData,              (void *)&forceNodeCenteredData);
+    Select(ID_issueAdvectionWarnings,             (void *)&issueAdvectionWarnings);
+    Select(ID_issueBoundaryWarnings,              (void *)&issueBoundaryWarnings);
     Select(ID_issueTerminationWarnings,           (void *)&issueTerminationWarnings);
+    Select(ID_issueStepsizeWarnings,              (void *)&issueStepsizeWarnings);
     Select(ID_issueStiffnessWarnings,             (void *)&issueStiffnessWarnings);
     Select(ID_issueCriticalPointsWarnings,        (void *)&issueCriticalPointsWarnings);
     Select(ID_criticalPointThreshold,             (void *)&criticalPointThreshold);
@@ -1346,6 +1358,12 @@ IntegralCurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, boo
     {
         addToParent = true;
         node->AddNode(new DataNode("pointList", pointList));
+    }
+
+    if(completeSave || !FieldsEqual(ID_fieldData, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("fieldData", fieldData));
     }
 
     if(completeSave || !FieldsEqual(ID_sampleDensity0, &defaultObject))
@@ -1612,16 +1630,28 @@ IntegralCurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, boo
         node->AddNode(new DataNode("numberOfRandomSamples", numberOfRandomSamples));
     }
 
-    if(completeSave || !FieldsEqual(ID_forceNodeCenteredData, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_issueAdvectionWarnings, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("forceNodeCenteredData", forceNodeCenteredData));
+        node->AddNode(new DataNode("issueAdvectionWarnings", issueAdvectionWarnings));
+    }
+
+    if(completeSave || !FieldsEqual(ID_issueBoundaryWarnings, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("issueBoundaryWarnings", issueBoundaryWarnings));
     }
 
     if(completeSave || !FieldsEqual(ID_issueTerminationWarnings, &defaultObject))
     {
         addToParent = true;
         node->AddNode(new DataNode("issueTerminationWarnings", issueTerminationWarnings));
+    }
+
+    if(completeSave || !FieldsEqual(ID_issueStepsizeWarnings, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("issueStepsizeWarnings", issueStepsizeWarnings));
     }
 
     if(completeSave || !FieldsEqual(ID_issueStiffnessWarnings, &defaultObject))
@@ -1714,7 +1744,7 @@ IntegralCurveAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 8)
+            if(ival >= 0 && ival < 9)
                 SetSourceType(SourceType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1746,6 +1776,8 @@ IntegralCurveAttributes::SetFromNode(DataNode *parentNode)
         SetUseWholeBox(node->AsBool());
     if((node = searchNode->GetNode("pointList")) != 0)
         SetPointList(node->AsDoubleVector());
+    if((node = searchNode->GetNode("fieldData")) != 0)
+        SetFieldData(node->AsDoubleVector());
     if((node = searchNode->GetNode("sampleDensity0")) != 0)
         SetSampleDensity0(node->AsInt());
     if((node = searchNode->GetNode("sampleDensity1")) != 0)
@@ -1960,10 +1992,14 @@ IntegralCurveAttributes::SetFromNode(DataNode *parentNode)
         SetRandomSeed(node->AsInt());
     if((node = searchNode->GetNode("numberOfRandomSamples")) != 0)
         SetNumberOfRandomSamples(node->AsInt());
-    if((node = searchNode->GetNode("forceNodeCenteredData")) != 0)
-        SetForceNodeCenteredData(node->AsBool());
+    if((node = searchNode->GetNode("issueAdvectionWarnings")) != 0)
+        SetIssueAdvectionWarnings(node->AsBool());
+    if((node = searchNode->GetNode("issueBoundaryWarnings")) != 0)
+        SetIssueBoundaryWarnings(node->AsBool());
     if((node = searchNode->GetNode("issueTerminationWarnings")) != 0)
         SetIssueTerminationWarnings(node->AsBool());
+    if((node = searchNode->GetNode("issueStepsizeWarnings")) != 0)
+        SetIssueStepsizeWarnings(node->AsBool());
     if((node = searchNode->GetNode("issueStiffnessWarnings")) != 0)
         SetIssueStiffnessWarnings(node->AsBool());
     if((node = searchNode->GetNode("issueCriticalPointsWarnings")) != 0)
@@ -2097,6 +2133,13 @@ IntegralCurveAttributes::SetPointList(const doubleVector &pointList_)
 {
     pointList = pointList_;
     Select(ID_pointList, (void *)&pointList);
+}
+
+void
+IntegralCurveAttributes::SetFieldData(const doubleVector &fieldData_)
+{
+    fieldData = fieldData_;
+    Select(ID_fieldData, (void *)&fieldData);
 }
 
 void
@@ -2410,10 +2453,17 @@ IntegralCurveAttributes::SetNumberOfRandomSamples(int numberOfRandomSamples_)
 }
 
 void
-IntegralCurveAttributes::SetForceNodeCenteredData(bool forceNodeCenteredData_)
+IntegralCurveAttributes::SetIssueAdvectionWarnings(bool issueAdvectionWarnings_)
 {
-    forceNodeCenteredData = forceNodeCenteredData_;
-    Select(ID_forceNodeCenteredData, (void *)&forceNodeCenteredData);
+    issueAdvectionWarnings = issueAdvectionWarnings_;
+    Select(ID_issueAdvectionWarnings, (void *)&issueAdvectionWarnings);
+}
+
+void
+IntegralCurveAttributes::SetIssueBoundaryWarnings(bool issueBoundaryWarnings_)
+{
+    issueBoundaryWarnings = issueBoundaryWarnings_;
+    Select(ID_issueBoundaryWarnings, (void *)&issueBoundaryWarnings);
 }
 
 void
@@ -2421,6 +2471,13 @@ IntegralCurveAttributes::SetIssueTerminationWarnings(bool issueTerminationWarnin
 {
     issueTerminationWarnings = issueTerminationWarnings_;
     Select(ID_issueTerminationWarnings, (void *)&issueTerminationWarnings);
+}
+
+void
+IntegralCurveAttributes::SetIssueStepsizeWarnings(bool issueStepsizeWarnings_)
+{
+    issueStepsizeWarnings = issueStepsizeWarnings_;
+    Select(ID_issueStepsizeWarnings, (void *)&issueStepsizeWarnings);
 }
 
 void
@@ -2607,6 +2664,18 @@ doubleVector &
 IntegralCurveAttributes::GetPointList()
 {
     return pointList;
+}
+
+const doubleVector &
+IntegralCurveAttributes::GetFieldData() const
+{
+    return fieldData;
+}
+
+doubleVector &
+IntegralCurveAttributes::GetFieldData()
+{
+    return fieldData;
 }
 
 int
@@ -2886,15 +2955,27 @@ IntegralCurveAttributes::GetNumberOfRandomSamples() const
 }
 
 bool
-IntegralCurveAttributes::GetForceNodeCenteredData() const
+IntegralCurveAttributes::GetIssueAdvectionWarnings() const
 {
-    return forceNodeCenteredData;
+    return issueAdvectionWarnings;
+}
+
+bool
+IntegralCurveAttributes::GetIssueBoundaryWarnings() const
+{
+    return issueBoundaryWarnings;
 }
 
 bool
 IntegralCurveAttributes::GetIssueTerminationWarnings() const
 {
     return issueTerminationWarnings;
+}
+
+bool
+IntegralCurveAttributes::GetIssueStepsizeWarnings() const
+{
+    return issueStepsizeWarnings;
 }
 
 bool
@@ -3010,6 +3091,12 @@ IntegralCurveAttributes::SelectPointList()
 }
 
 void
+IntegralCurveAttributes::SelectFieldData()
+{
+    Select(ID_fieldData, (void *)&fieldData);
+}
+
+void
 IntegralCurveAttributes::SelectDataVariable()
 {
     Select(ID_dataVariable, (void *)&dataVariable);
@@ -3063,6 +3150,7 @@ IntegralCurveAttributes::GetFieldName(int index) const
     case ID_boxExtents:                         return "boxExtents";
     case ID_useWholeBox:                        return "useWholeBox";
     case ID_pointList:                          return "pointList";
+    case ID_fieldData:                          return "fieldData";
     case ID_sampleDensity0:                     return "sampleDensity0";
     case ID_sampleDensity1:                     return "sampleDensity1";
     case ID_sampleDensity2:                     return "sampleDensity2";
@@ -3107,8 +3195,10 @@ IntegralCurveAttributes::GetFieldName(int index) const
     case ID_randomSamples:                      return "randomSamples";
     case ID_randomSeed:                         return "randomSeed";
     case ID_numberOfRandomSamples:              return "numberOfRandomSamples";
-    case ID_forceNodeCenteredData:              return "forceNodeCenteredData";
+    case ID_issueAdvectionWarnings:             return "issueAdvectionWarnings";
+    case ID_issueBoundaryWarnings:              return "issueBoundaryWarnings";
     case ID_issueTerminationWarnings:           return "issueTerminationWarnings";
+    case ID_issueStepsizeWarnings:              return "issueStepsizeWarnings";
     case ID_issueStiffnessWarnings:             return "issueStiffnessWarnings";
     case ID_issueCriticalPointsWarnings:        return "issueCriticalPointsWarnings";
     case ID_criticalPointThreshold:             return "criticalPointThreshold";
@@ -3153,6 +3243,7 @@ IntegralCurveAttributes::GetFieldType(int index) const
     case ID_boxExtents:                         return FieldType_doubleArray;
     case ID_useWholeBox:                        return FieldType_bool;
     case ID_pointList:                          return FieldType_doubleVector;
+    case ID_fieldData:                          return FieldType_doubleVector;
     case ID_sampleDensity0:                     return FieldType_int;
     case ID_sampleDensity1:                     return FieldType_int;
     case ID_sampleDensity2:                     return FieldType_int;
@@ -3197,8 +3288,10 @@ IntegralCurveAttributes::GetFieldType(int index) const
     case ID_randomSamples:                      return FieldType_bool;
     case ID_randomSeed:                         return FieldType_int;
     case ID_numberOfRandomSamples:              return FieldType_int;
-    case ID_forceNodeCenteredData:              return FieldType_bool;
+    case ID_issueAdvectionWarnings:             return FieldType_bool;
+    case ID_issueBoundaryWarnings:              return FieldType_bool;
     case ID_issueTerminationWarnings:           return FieldType_bool;
+    case ID_issueStepsizeWarnings:              return FieldType_bool;
     case ID_issueStiffnessWarnings:             return FieldType_bool;
     case ID_issueCriticalPointsWarnings:        return FieldType_bool;
     case ID_criticalPointThreshold:             return FieldType_double;
@@ -3243,6 +3336,7 @@ IntegralCurveAttributes::GetFieldTypeName(int index) const
     case ID_boxExtents:                         return "doubleArray";
     case ID_useWholeBox:                        return "bool";
     case ID_pointList:                          return "doubleVector";
+    case ID_fieldData:                          return "doubleVector";
     case ID_sampleDensity0:                     return "int";
     case ID_sampleDensity1:                     return "int";
     case ID_sampleDensity2:                     return "int";
@@ -3287,8 +3381,10 @@ IntegralCurveAttributes::GetFieldTypeName(int index) const
     case ID_randomSamples:                      return "bool";
     case ID_randomSeed:                         return "int";
     case ID_numberOfRandomSamples:              return "int";
-    case ID_forceNodeCenteredData:              return "bool";
+    case ID_issueAdvectionWarnings:             return "bool";
+    case ID_issueBoundaryWarnings:              return "bool";
     case ID_issueTerminationWarnings:           return "bool";
+    case ID_issueStepsizeWarnings:              return "bool";
     case ID_issueStiffnessWarnings:             return "bool";
     case ID_issueCriticalPointsWarnings:        return "bool";
     case ID_criticalPointThreshold:             return "double";
@@ -3421,6 +3517,11 @@ IntegralCurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) cons
     case ID_pointList:
         {  // new scope
         retval = (pointList == obj.pointList);
+        }
+        break;
+    case ID_fieldData:
+        {  // new scope
+        retval = (fieldData == obj.fieldData);
         }
         break;
     case ID_sampleDensity0:
@@ -3648,14 +3749,24 @@ IntegralCurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) cons
         retval = (numberOfRandomSamples == obj.numberOfRandomSamples);
         }
         break;
-    case ID_forceNodeCenteredData:
+    case ID_issueAdvectionWarnings:
         {  // new scope
-        retval = (forceNodeCenteredData == obj.forceNodeCenteredData);
+        retval = (issueAdvectionWarnings == obj.issueAdvectionWarnings);
+        }
+        break;
+    case ID_issueBoundaryWarnings:
+        {  // new scope
+        retval = (issueBoundaryWarnings == obj.issueBoundaryWarnings);
         }
         break;
     case ID_issueTerminationWarnings:
         {  // new scope
         retval = (issueTerminationWarnings == obj.issueTerminationWarnings);
+        }
+        break;
+    case ID_issueStepsizeWarnings:
+        {  // new scope
+        retval = (issueStepsizeWarnings == obj.issueStepsizeWarnings);
         }
         break;
     case ID_issueStiffnessWarnings:
@@ -3775,7 +3886,6 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         absTolAbsolute != obj.absTolAbsolute ||
         absTolBBox != obj.absTolBBox ||
         absTolSizeType != obj.absTolSizeType ||
-        forceNodeCenteredData != obj.forceNodeCenteredData ||
         cropBeginFlag != obj.cropBeginFlag ||
         cropBegin != obj.cropBegin ||
         cropEndFlag != obj.cropEndFlag ||
@@ -3898,7 +4008,7 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         }
     }
     
-    if (sourceType == PointList)
+    if (sourceType == PointList || sourceType == FieldData)
     {
         if (pointList.size() != obj.pointList.size())
             return true;

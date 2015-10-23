@@ -257,8 +257,6 @@ avtIntegralCurve::Advance(avtIVPField *field)
     double range[2];
     field->GetTimeRange(range);
 
-//    std::cerr << ivp->GetCurrentT() << std::endl;
-
     // Catch cases where the start position is outside the
     // domain of field; in this case, mark the curve 
     avtIVPField::Result fieldRes =
@@ -268,7 +266,8 @@ avtIntegralCurve::Advance(avtIVPField *field)
     {
         if( DebugStream::Level5() )
         {
-            debug5 << "avtIntegralCurve::Advance(): initial point is outside domain\n";
+            debug5 << "avtIntegralCurve::Advance(): "
+                   << "initial point is outside domain\n";
         }
         if (fieldRes == avtIVPField::OUTSIDE_SPATIAL ||
             fieldRes == avtIVPField::OUTSIDE_BOTH)
@@ -277,6 +276,33 @@ avtIntegralCurve::Advance(avtIVPField *field)
             fieldRes == avtIVPField::OUTSIDE_BOTH)
             status.SetAtTemporalBoundary();
         return numStepsTaken;
+    }
+
+    // Some of the test PICS flow fields have periodic boundaries.
+    if( field->HasPeriodicBoundaries() )
+    {
+      double x, y, z;
+
+      field->GetBoundaries( x, y, z );
+
+      ivp->SetBoundaries( x, y, z );
+    }
+
+    // For a directionless field the initial velocity direction needs
+    // to be known.
+    if( field->GetDirectionless() && ivp->GetCurrentV().length() == 0.0 )
+
+    {
+      // Find the value sans orientation checks.
+      field->SetDirectionless( false );
+
+      avtVector vel;
+      (*field)(ivp->GetCurrentT(), ivp->GetCurrentY(), vel);
+
+      ivp->SetCurrentV(vel);
+
+      // Restore the orientation checks.
+      field->SetDirectionless( true );
     }
 
     // Determine the maximum integration time from the field's temporal
@@ -299,19 +325,26 @@ avtIntegralCurve::Advance(avtIVPField *field)
     }
 
     status.SetInsideBlock();
+    bool firstStep = true;
     // Loop doing integration steps.
     do
     {
         avtIVPStep           step;
         avtIVPSolver::Result result;
         result = ivp->Step( field, tfinal, &step );
-        numStepsTaken++;
+        ++numStepsTaken;
 
         if (result == avtIVPSolver::OK || result == avtIVPSolver::TERMINATE)
         {
             // The step was successful, call AnalyzeStep() which will
             // determine((among other things) whether to terminate.
-            AnalyzeStep(step, field);
+            AnalyzeStep(step, field, firstStep);
+            firstStep = false;
+
+            // If the user termination criteria was reached exit the
+            // loop without any further checks.
+            // if( status.TerminationMet() ) 
+            //     break;
 
             // Check if the new position is outside the domain
             // (or in the domain's ghost data); in this case
@@ -323,19 +356,23 @@ avtIntegralCurve::Advance(avtIVPField *field)
             {
                 if( DebugStream::Level5() )
                 {
-                    debug5 << "avtIntegralCurve::Advance(): step ended in ghost data\n";
+                    debug5 << "avtIntegralCurve::Advance(): "
+                           << "step ended in ghost data\n";
                 }
+
                 if (fieldRes == avtIVPField::OUTSIDE_SPATIAL ||
                     fieldRes == avtIVPField::OUTSIDE_BOTH)
                     status.SetAtSpatialBoundary();
+
                 if (fieldRes == avtIVPField::OUTSIDE_TEMPORAL ||
                     fieldRes == avtIVPField::OUTSIDE_BOTH)
                     status.SetAtTemporalBoundary();
+
                 break;
             }
 
             // Not out side the domain but hit a terminate criteria so
-            // bounce out.
+            // exit the loop.
             if (result == avtIVPSolver::TERMINATE)
             {
                 break;
@@ -463,6 +500,17 @@ avtIntegralCurve::Advance(avtIVPField *field)
             // Retry with halved stepsize.
             ivp->SetNextStepSize(h/2.0);
         }
+        else if (result == avtIVPSolver::STEPSIZE_UNDERFLOW)
+        {
+            // If we get here, the integration step size was too small
+            // as it approached a spatial or temporal boundary.
+            if (DebugStream::Level5())
+            {
+                debug5 << "avtIntegralCurve::Advance(): "
+                       << "step size underflow during step, finished\n";
+            }
+            status.SetStepSizeUnderflow();
+        }
         else
         {
             // If we get here, the integration resulted in a (likely
@@ -479,10 +527,13 @@ avtIntegralCurve::Advance(avtIVPField *field)
     
     status.ClearInsideBlock();
 
-    if (DebugStream::Level5())
-    {
-        debug5 << "avtIntegralCurve::Advance(): done, status: "<<status<<endl;
-    }
+    // if (DebugStream::Level5())
+    // {
+    //     debug5 << "avtIntegralCurve::Advance(): done, "
+    //            << "numver of steps taken " << numStepsTaken << "  "
+    //            << "status: " << status << std::endl;
+    // }
+
     return numStepsTaken;
 }
 
@@ -635,6 +686,23 @@ avtIntegralCurve::DomainCompare(const avtIntegralCurve *icA,
     if (!icA->blockList.empty() && !icB->blockList.empty()) 
         return icA->blockList.front().domain < icB->blockList.front().domain; 
     return false;
+}
+
+
+// ****************************************************************************
+// Method:  avtIntegralCurve::IDCompare
+//
+//
+// Programmer:  Dave Pugmire
+// Creation:    August 30, 2011
+//
+// ****************************************************************************
+
+bool
+avtIntegralCurve::IDCompare(const avtIntegralCurve *icA,
+                            const avtIntegralCurve *icB)
+{  
+    return icA->id < icB->id;
 }
 
 

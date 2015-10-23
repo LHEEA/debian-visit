@@ -55,6 +55,8 @@
 
 class vtkDataSet;
 
+#define PID (int) (0.31415*(double)nTuples)
+//#define PID (int) (17990)
 
 // ****************************************************************************
 //  Class: avtLCSFilter
@@ -68,7 +70,7 @@ class vtkDataSet;
 // ****************************************************************************
 
 class avtLCSFilter : public virtual avtPluginFilter, 
-                      public virtual avtPICSFilter
+                     public virtual avtPICSFilter
 {
   public:
     // default constructor
@@ -98,6 +100,8 @@ class avtLCSFilter : public virtual avtPluginFilter,
                       const avtVector &v_start,
                       long ID); //id
 
+    virtual bool GetAllSeedsSentToAllProcs();
+
     /** Construct the initial locations to emanate integral curves */
     virtual std::vector<avtVector> GetInitialLocations();
     virtual std::vector<avtVector> GetInitialVelocities();
@@ -117,6 +121,7 @@ class avtLCSFilter : public virtual avtPluginFilter,
     virtual avtContract_p   ModifyContract(avtContract_p);
 
     virtual void  PreExecute(void);
+    virtual void  PostExecute(void);
     virtual void  Execute(void);
     virtual bool  ContinueExecute();
 
@@ -140,6 +145,8 @@ protected:
     void RectilinearGridSingleCalc( std::vector<avtIntegralCurve*> &ics );
     void NativeMeshSingleCalc( std::vector<avtIntegralCurve*> &ics );
 
+    avtDataTree_p MultiBlockDataTree( avtDataTree_p inDT );
+
     avtDataTree_p MultiBlockSingleCalc( avtDataTree_p,
                                         std::vector<avtIntegralCurve*> &,
                                         int &, double &, double & );
@@ -151,16 +158,24 @@ protected:
                                   vtkDataArray* result );
 
     void ComputeEigenValues( vtkDataArray* jacobian[3], 
-                              vtkDataArray* result );
+                             vtkDataArray* result );
 
     void ComputeEigenVectors( vtkDataArray* jacobian[3], 
-                              vtkDataArray* result,
-                              vtkDataArray* secondary );
+                              vtkDataArray* secondary,
+                              vtkDataArray* result );
 
-    void ComputeRightCauchyGreenTensor(double **j);
+    void ComputeLeftCauchyGreenTensor2D(double **j);
+    void ComputeLeftCauchyGreenTensor3D(double **j);
 
-    int Jacobi(double **a, double *w);
+    void ComputeRightCauchyGreenTensor2D(double **j);
+    void ComputeRightCauchyGreenTensor3D(double **j);
+
+    int Jacobi2D(double **j, double *w);
+    int Jacobi2D(double **j, double *w, double **v);
+    int Jacobi3D(double **a, double *w);
   
+    void GetSeedPoints( vtkDataSet *in_ds, bool getMax );
+
     // Iterative cacluation methods for FSLE, and similar methods
     bool RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics );
     bool NativeMeshIterativeCalc( std::vector<avtIntegralCurve*> &ics );
@@ -210,8 +225,14 @@ protected:
 
     void          SetVelocitySource(const double *v);
 
+    void          IssueWarningForAdvection(bool v) 
+                               { issueWarningForAdvection = v; };
+    void          IssueWarningForBoundary(bool v) 
+                               { issueWarningForBoundary = v; };
     void          IssueWarningForMaxStepsTermination(bool v) 
                                { issueWarningForMaxStepsTermination = v; };
+    void          IssueWarningForStepsize(bool v) 
+                               { issueWarningForStepsize = v; };
     void          IssueWarningForStiffness(bool v) 
                                { issueWarningForStiffness = v; };
     void          IssueWarningForCriticalPoints(bool v, double speed) 
@@ -219,6 +240,8 @@ protected:
                                  criticalPointThreshold = speed; };
 
   protected:
+    bool replicateData;
+
     double timeCached;
     int    cycleCached;
 
@@ -230,6 +253,14 @@ protected:
     int             global_resolution[3];
     int             timeState;
 
+    LCSAttributes::CauchyGreenTensor cgTensor;
+    LCSAttributes::EigenComponent eigenComponent;
+
+    int nDim;
+    LCSAttributes::AuxiliaryGrid auxIdx;
+    int nAuxPts;
+    double auxSpacing;
+
     int      numSteps;
     int      maxSteps;
     bool     doDistance;
@@ -239,12 +270,19 @@ protected:
     bool     doSize;
     double   maxSize;
 
-    double    minSizeValue, maxSizeValue;
+    double   absMaxTime;
 
-    bool      issueWarningForMaxStepsTermination;
-    bool      issueWarningForStiffness;
-    bool      issueWarningForCriticalPoints;
-    double    criticalPointThreshold;
+    double   minSizeValue, maxSizeValue;
+
+    bool     clampLogValues;
+
+    bool     issueWarningForAdvection;
+    bool     issueWarningForBoundary;
+    bool     issueWarningForMaxStepsTermination;
+    bool     issueWarningForStepsize;
+    bool     issueWarningForStiffness;
+    bool     issueWarningForCriticalPoints;
+    double   criticalPointThreshold;
 
     avtVector seedVelocity;
 

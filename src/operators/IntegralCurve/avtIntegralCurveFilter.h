@@ -98,7 +98,7 @@ class avtStateRecorderIntegralCurve;
 // ****************************************************************************
 
 class avtIntegralCurveFilter : public virtual avtPluginFilter,
-                               public avtPICSFilter
+                               public virtual avtPICSFilter
 {
   public:
     // default constructor
@@ -112,6 +112,10 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     virtual const char       *GetDescription(void) {
       return "Performing Integral Curve"; };
 
+    //turn off on demand processing, I cannot handle this functionality yet..
+    virtual bool OperatingOnDemand(void) const { return false; }
+    virtual bool CheckOnDemandViability(void) { return false; }
+
     virtual void         SetAtts(const AttributeGroup*);
     virtual bool         Equivalent(const AttributeGroup*);
 
@@ -123,6 +127,8 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
                                         const avtVector &p_start,
                                         const avtVector &v_start,
                                         long ID);
+
+    virtual bool             GetAllSeedsSentToAllProcs() { return true; };
 
     void SetTermination(int maxSteps, 
                         bool doDistance, double maxDistance, 
@@ -150,6 +156,7 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     void SetSelectionSource(std::string selectionName,
                             int stride,
                             bool random, int seed, int numPts);
+    void SetFieldDataSource();
     
     void SetDisplayGeometry(int d);
     void SetDataValue(int, const std::string &var="");
@@ -164,8 +171,14 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
 
     void SetVelocitiesForLighting(bool v) { storeVelocitiesForLighting = v; };
 
+    void IssueWarningForAdvection(bool v) 
+                 { issueWarningForAdvection = v; };
+    void IssueWarningForBoundary(bool v) 
+                 { issueWarningForBoundary = v; };
     void IssueWarningForMaxStepsTermination(bool v) 
                  { issueWarningForMaxStepsTermination = v; };
+    void IssueWarningForStepsize(bool v) 
+                 { issueWarningForStepsize = v; };
     void IssueWarningForStiffness(bool v) 
                  { issueWarningForStiffness = v; };
     void IssueWarningForCriticalPoints(bool v, double speed) 
@@ -204,6 +217,9 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     void GenerateSeedPointsFromCircle(std::vector<avtVector> &pts);
     void GenerateSeedPointsFromPointList(std::vector<avtVector> &pts);
     void GenerateSeedPointsFromSelection(std::vector<avtVector> &pts);
+    void GenerateSeedPointsFromFieldData(std::vector<avtVector> &pts);
+    void GenerateSeedPointsFromFieldData(avtDataTree_p inDT);
+    void GenerateSeedPointsFromFieldData(vtkDataSet *in_ds);
 
     unsigned int GenerateAttributeFields() const;
 
@@ -242,6 +258,8 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     bool     doTime;
     double   maxTime;
 
+    double   absMaxTime;
+
     // Various starting locations for streamlines.
     std::vector<avtVector> pointList;
     avtVector points[2];
@@ -256,7 +274,10 @@ class avtIntegralCurveFilter : public virtual avtPluginFilter,
     std::string sourceSelection;
     bool      storeVelocitiesForLighting;
 
+    bool      issueWarningForAdvection;
+    bool      issueWarningForBoundary;
     bool      issueWarningForMaxStepsTermination;
+    bool      issueWarningForStepsize;
     bool      issueWarningForStiffness;
     bool      issueWarningForCriticalPoints;
     double    criticalPointThreshold;

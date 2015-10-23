@@ -70,7 +70,7 @@
 // ****************************************************************************
 
 class avtPoincareFilter : public virtual avtPluginFilter,
-                          public avtPICSFilter
+                          public virtual avtPICSFilter
 {
   public:
     // default constructor
@@ -171,6 +171,8 @@ class avtPoincareFilter : public virtual avtPluginFilter,
                                                    const avtVector &v_start,
                                                    long ID );
 
+    virtual bool             GetAllSeedsSentToAllProcs() { return true; };
+
     /** Construct the initial locations to emanate integral curves */
     virtual std::vector<avtVector> GetInitialLocations();
     virtual std::vector<avtVector> GetInitialVelocities();
@@ -240,6 +242,8 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
     void IssueWarningForMaxStepsTermination(bool v) 
                  { issueWarningForMaxStepsTermination = v; };
+    void IssueWarningForStepsize(bool v) 
+                 { issueWarningForStepsize = v; };
     void IssueWarningForStiffness(bool v) 
                  { issueWarningForStiffness = v; };
     void IssueWarningForCriticalPoints(bool v, double speed) 
@@ -310,6 +314,7 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     std::vector<avtVector> seedPoints;
 
     bool      issueWarningForMaxStepsTermination;
+    bool      issueWarningForStepsize;
     bool      issueWarningForStiffness;
     bool      issueWarningForCriticalPoints;
     double    criticalPointThreshold;

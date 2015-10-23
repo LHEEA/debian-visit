@@ -37,15 +37,14 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                             avtNektarPPOptions.C                              //
+//                             avtNektarPPOptions.C                          //
 // ************************************************************************* //
 
 #include <avtNektarPPOptions.h>
 
 #include <DBOptionsAttributes.h>
 
-#include <string>
-
+using namespace NektarPPDBOptions;
 
 // ****************************************************************************
 //  Function: GetNektarPPReadOptions
@@ -67,24 +66,25 @@ DBOptionsAttributes *
 GetNektarPPReadOptions(void)
 {
     DBOptionsAttributes *rv = new DBOptionsAttributes;
-    return rv;
-/* EXAMPLE OF OPTIONS
-    rv->SetBool("Binary format", true);
-    rv->SetBool("Big Endian", false);
-    rv->SetEnum("Dimension", 1);
-    vector<string> dims;
-    dims.push_back("0D");
-    dims.push_back("1D");
-    dims.push_back("2D");
-    dims.push_back("3D");
-    rv->SetEnumStrings("Dimension", dims);
-    rv->SetInt("Number of variables", 5);
-    rv->SetString("Name of auxiliary file", );
-    rv->SetDouble("Displacement factor", 1.0);
 
-    // When reading or writing the file, you can get the options out of this object like:
-    rv->GetDouble("Displacement factor");
-*/
+    rv->SetEnum(NEKTARPP_MESH_REFINEMENT, 0);
+    std::vector<std::string> refinement;
+    refinement.push_back("auto");
+    refinement.push_back("1");
+    refinement.push_back("2");
+    refinement.push_back("3");
+    refinement.push_back("4");
+    refinement.push_back("5");
+    refinement.push_back("6");
+    refinement.push_back("7");
+    refinement.push_back("8");
+    refinement.push_back("9");
+    refinement.push_back("10");
+    rv->SetEnumStrings(NEKTARPP_MESH_REFINEMENT, refinement);
+
+    rv->SetBool(NEKTARPP_ASSUME_PLANAR_ELEMENTS, true);
+
+    return rv;
 }
 
 

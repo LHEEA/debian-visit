@@ -67,6 +67,7 @@ class vtkAppendPolyData;
 #define PICS_COLOR_ID          5
 #define PICS_COLOR_VARIABLE    6
 #define PICS_CORRELATION_DISTANCE 7
+#define PICS_COLOR_NUM_DOM_VISIT 8
 
 #define PICS_DISPLAY_LINES     0
 #define PICS_DISPLAY_TUBES     1
@@ -245,6 +246,8 @@ class IVP_API avtStreamlineFilter : virtual public avtPICSFilter
                                         const avtVector &p_start,
                                         const avtVector &v_start,
                                         long ID);
+
+    virtual bool                 GetAllSeedsSentToAllProcs() { return true; };
 
     void SetTermination(int maxSteps, 
     bool doDistance, double maxDistance, 

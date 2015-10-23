@@ -58,6 +58,13 @@
 #include <vtkStructuredGrid.h>
 #include <snprintf.h>
 
+#include <vtkEarthSource.h>
+#include <vtkImplicitBoolean.h>
+#include <vtkPlane.h>
+#include <vtkClipPolyData.h>
+#include <vtkAppendPolyData.h>
+#include <vtkCellArray.h>
+
 #include <set>
 #include <string>
 #include <vector>
@@ -160,6 +167,8 @@ avtSpecFEMFileFormat::avtSpecFEMFileFormat(const char *nm)
     initialized = false;
     //This needs to be put into the file.
     ngllx = nglly = ngllz = 5;
+    //ngllx = nglly = ngllz = 1;
+    kernelFile = false;
 }
 
 // ****************************************************************************
@@ -311,21 +320,41 @@ avtSpecFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int time
         }
     }
 
+    AddMeshToMetaData(md, "hotSpots", AVT_POINT_MESH, NULL, 1, 0, 3, 1);
+    AddMeshToMetaData(md, "LatLon_hotSpots", AVT_POINT_MESH, NULL, 1, 0, 3, 1);
+
+    AddMeshToMetaData(md, "continents", AVT_SURFACE_MESH, NULL, 1, 0, 3, 2);
+    AddMeshToMetaData(md, "LatLon_continents", AVT_SURFACE_MESH, NULL, 1, 0, 3, 2);
+
+    AddMeshToMetaData(md, "plates", AVT_SURFACE_MESH, NULL, 1, 0, 3, 2);
+    AddMeshToMetaData(md, "LatLon_plates", AVT_SURFACE_MESH, NULL, 1, 0, 3, 2);
+
     bool allRegionsPresent = true;
     for (int i = 0; i < regions.size(); i++)
         allRegionsPresent &= regions[i];
-
+    
     //Add the variables
     map<string, ADIOS_VARINFO*>::const_iterator it;
     for (it = dataFile->variables.begin(); it != dataFile->variables.end(); it++)
     {
         string vname = GetVariable(it->first);
+        if (kernelFile)
+        {
+            if (vname != "betav_kl_crust_mantle")
+                continue;
+            AddScalarVarToMetaData(md, vname, "reg1/mesh", AVT_NODECENT);
+            char var[128];
+            sprintf(var, "LatLon/%s", vname.c_str());
+            AddScalarVarToMetaData(md, var, "reg1/LatLon_mesh", AVT_NODECENT);
+        }
+        else
+        {
         //Add var only if all regions present.
         if (allRegionsPresent)
         {
             AddScalarVarToMetaData(md, vname, "mesh", AVT_NODECENT);
             AddScalarVarToMetaData(md, vname, "LatLon_mesh", AVT_NODECENT);
-
+            
             AddVectorVarToMetaData(md, "LatLonR_coords", "mesh", AVT_NODECENT, 3);
         }
         
@@ -340,12 +369,287 @@ avtSpecFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int time
                 sprintf(var2, "reg%d/LatLon/%s", i+1, vname.c_str());
                 AddScalarVarToMetaData(md, var, mesh, AVT_NODECENT);
                 AddScalarVarToMetaData(md, var2, mesh2, AVT_NODECENT);
-
+                    
                 sprintf(var, "reg%d/LatLonR_coords", i+1);
                 AddVectorVarToMetaData(md, var, mesh, AVT_NODECENT, 3);
             }
         }
+        }
     }
+}
+
+//****************************************************************************
+// Method:  avtSpecFEMFileFormat::GetHotSpotsMesh
+//
+// Purpose:
+//   Get mesh of hot spots.
+//
+// Programmer:  Dave Pugmire
+// Creation:    April  9, 2014
+//
+// Modifications:
+//
+//****************************************************************************
+
+vtkDataSet *
+avtSpecFEMFileFormat::GetHotSpotsMesh(bool xyzMesh)
+{
+    vector<pair<int, int> > hotspots;
+
+    hotspots.push_back(make_pair(12, 42)); //"AFAR
+    hotspots.push_back(make_pair(-37, 77)); //AMSTERDAM/ST.PAUL
+    hotspots.push_back(make_pair(-8, -14)); //ASCENSION
+    hotspots.push_back(make_pair(38, -28)); //AZORES
+    hotspots.push_back(make_pair(27, -113)); //BAJA/GUADALUPE
+    hotspots.push_back(make_pair(-67, 165)); //BALLENY
+    hotspots.push_back(make_pair(30, -60)); //BERMUDA
+    hotspots.push_back(make_pair(-54, 3)); //BOUVET
+    hotspots.push_back(make_pair(54, -136)); //"BOWIE SEAMOUNT
+    hotspots.push_back(make_pair(-54, 9)); //CAMEROON LINE
+    hotspots.push_back(make_pair(28, -17)); //CANARY ISLANDS
+    hotspots.push_back(make_pair(15, -24)); //CAPE VERDE
+    hotspots.push_back(make_pair(5, 166)); //CAROLINE ISLANDS
+    hotspots.push_back(make_pair(-35, 80)); //CHRISTMAS
+    hotspots.push_back(make_pair(46, -130)); //COBB
+    hotspots.push_back(make_pair(-12, 44)); //COMORES ISLANDS
+    hotspots.push_back(make_pair(-29, -140)); //COOK-AUSTRALS
+    hotspots.push_back(make_pair(-46, 45)); //CROZET/PRINCE EDWARD
+    hotspots.push_back(make_pair(13, 24)); //DARFUR
+    hotspots.push_back(make_pair(-42, 0)); //DISCOVERY
+    hotspots.push_back(make_pair(6, 34)); //E.AFRICA
+    hotspots.push_back(make_pair(-38, 143)); //E.AUSTRALIA
+    hotspots.push_back(make_pair(-27, -109)); //EASTER/SALA Y GOMEZ
+    hotspots.push_back(make_pair(50, 7)); //EIFEL
+    hotspots.push_back(make_pair(-4, -32)); //FERNANDO DO NORONA
+    hotspots.push_back(make_pair(-39, -111)); //FOUNDATION SMTS.
+    hotspots.push_back(make_pair(1, -86)); //GALAPAGOS
+    hotspots.push_back(make_pair(-40, -10)); //GOUGH
+    hotspots.push_back(make_pair(30, 28)); //GREAT METEOR
+    hotspots.push_back(make_pair(29, -118)); //GUADALUPE
+    hotspots.push_back(make_pair(20, -155)); //HAWAII
+    hotspots.push_back(make_pair(23, 6)); //"HOGGAR MOUNTAINS
+    hotspots.push_back(make_pair(64, -20)); //ICELAND
+    hotspots.push_back(make_pair(71, -8)); //JAN MAYEN
+    hotspots.push_back(make_pair(-34, -79)); //JUAN FERNANDEZ
+    hotspots.push_back(make_pair(-49, 63)); //KERGUELEN
+    hotspots.push_back(make_pair(-31, 159)); //LORD HOWE
+    hotspots.push_back(make_pair(-51, -138)); //LOUISVILLE HOTSPOT
+    hotspots.push_back(make_pair(-29, -140)); //MACDONALD
+    hotspots.push_back(make_pair(33, -17)); //MADEIRA
+    hotspots.push_back(make_pair(-47, 38)); //MARION
+    hotspots.push_back(make_pair(-8, -138)); //MARQUESAS ISLANDS
+    hotspots.push_back(make_pair(-21, -154)); //MARSHALL-GILBERT ISLANDS
+    hotspots.push_back(make_pair(-21, -29)); //MARTEN VAZ
+    hotspots.push_back(make_pair(-52, 1)); //METEOR
+    hotspots.push_back(make_pair(-78, 167)); //MOUNT EREBUS
+    hotspots.push_back(make_pair(-32, 28)); //NEW ENGLAND
+    hotspots.push_back(make_pair(-24, -130)); //PITCAIRN ISLAND
+    hotspots.push_back(make_pair(36, -104)); //"RATON
+    hotspots.push_back(make_pair(-21, 56)); //REUNION (FOURNAISE) (GVP)
+    hotspots.push_back(make_pair(-77, 168)); //ROSS SEA
+    hotspots.push_back(make_pair(-14, -170)); //SAMOA
+    hotspots.push_back(make_pair(-26, -80)); //SAN FELIX
+    hotspots.push_back(make_pair(-52, 0)); //SHONA
+    hotspots.push_back(make_pair(19, -111)); //SOCORRO
+    hotspots.push_back(make_pair(-17, -10)); //ST. HELENA
+    hotspots.push_back(make_pair(-39, 78)); //ST. PAUL ISLAND (GVP)
+    hotspots.push_back(make_pair(-18, -150)); //TAHITI
+    hotspots.push_back(make_pair(-39, 157)); //TASMANTID
+    hotspots.push_back(make_pair(21, 17)); //"TIBESTI
+    hotspots.push_back(make_pair(-21, -29)); //TRINIDADE/MARTEN
+    hotspots.push_back(make_pair(-37, -12)); //TRISTAN DA CUNHA
+    hotspots.push_back(make_pair(-32, 16)); //VEMA SEAMOUNT
+    hotspots.push_back(make_pair(44, -111)); //YELLOWSTONE
+
+    int nPts = hotspots.size();
+    vtkPoints *pts = vtkPoints::New();
+    vtkUnstructuredGrid *mesh = vtkUnstructuredGrid::New();
+    mesh->SetPoints(pts);
+
+    vtkIdType vid;
+    const double toRad = M_PI/180.0;
+    for (int i = 0; i < nPts; i++)
+    {
+        //first, convert to x,y,z
+        double lat = hotspots[i].first * toRad;
+        double lon = hotspots[i].second * toRad;
+        double x = cos(lat)*cos(lon);
+        double y = cos(lat)*sin(lon);
+        double z = sin(lat);
+
+        if (xyzMesh)
+            vid = pts->InsertNextPoint(x,y,z);
+        else
+        {
+            double nx, ny, nz;
+            convertToLatLon(x,y,z, nx,ny,nz);
+            vid = pts->InsertNextPoint(nx,ny,nz);
+        }
+        mesh->InsertNextCell(VTK_VERTEX, 1, &vid);
+    }
+    pts->Delete();
+
+    return mesh;
+}
+
+//****************************************************************************
+// Method:  avtSpecFEMFileFormat::GetHotSpotsMesh
+//
+// Purpose:
+//   Get mesh of hot spots.
+//
+// Programmer:  Dave Pugmire
+// Creation:    April  9, 2014
+//
+// Modifications:
+//
+//****************************************************************************
+
+vtkDataSet *
+avtSpecFEMFileFormat::GetContinents(bool xyzMesh)
+{
+    vtkEarthSource *es = vtkEarthSource::New();
+    es->SetRadius(1.0);
+    es->SetOnRatio(0);
+    es->SetOutline(1);
+    es->Update();
+    
+    vtkDataSet *ds = es->GetOutput();
+
+    if (xyzMesh)
+        return ds;
+    
+    return LatLonClip(ds);
+}
+
+#include <platePoints.h>
+
+vtkDataSet *
+avtSpecFEMFileFormat::GetPlates(bool xyzMesh)
+{
+    vtkPolyData *ds = vtkPolyData::New();
+    vtkPoints *pts = vtkPoints::New();
+    vtkCellArray *lines = vtkCellArray::New();
+
+
+    //First, make an XYZ plates mesh.
+    const double toRad = M_PI/180.;
+    int idx = 0, numPts;
+    vtkIdType ptID = 0;
+    while (1)
+    {
+        numPts = (int)platePts[idx];
+        if (numPts == 0)
+            break;
+        
+        idx++;
+        std::vector<vtkIdType> ids(numPts);
+        for (int i = 0; i < numPts; i++, idx+=2)
+        {
+            double lon_rad = toRad*(platePts[idx]-180);
+            double lat_rad = toRad*platePts[idx+1];
+            double x = cos(lat_rad) * cos(lon_rad);
+            double y = cos(lat_rad) * sin(lon_rad);
+            double z = sin(lat_rad);
+            
+            pts->InsertNextPoint(x,y,z);
+            ids[i] = ptID;
+            ptID++;
+        }
+        lines->InsertNextCell(numPts, &(ids[0]));
+    }
+
+    ds->SetPoints(pts);
+    ds->SetLines(lines);
+    pts->Delete();
+    lines->Delete();
+
+    if (xyzMesh)
+        return ds;
+    return LatLonClip(ds);
+}
+
+vtkDataSet *
+avtSpecFEMFileFormat::LatLonClip(vtkDataSet *ds)
+{
+    //For lat/lon, we need to clip it and merge.
+    //create the earth from 180 to 360
+    vtkImplicitBoolean *func0 = vtkImplicitBoolean::New();
+    vtkPlane *pln0 = vtkPlane::New();
+    pln0->SetOrigin(0,0,0);
+    pln0->SetNormal(0,1,0);
+    func0->AddFunction(pln0);
+    vtkClipPolyData *clip0 = vtkClipPolyData::New();
+    clip0->SetInputData(ds);
+    clip0->SetClipFunction(func0);
+    clip0->SetInsideOut(true);
+    clip0->Update();
+    vtkDataSet *ds0 = clip0->GetOutput();
+
+    //convert to lat/lon
+    vtkPolyData *pd = static_cast<vtkPolyData *>(ds0);
+    vtkIdType nPts = pd->GetPoints()->GetNumberOfPoints();
+    double pt[3];
+    for (vtkIdType i = 0; i < nPts; i++)
+    {
+        pd->GetPoints()->GetPoint(i, pt);
+
+        double nx, ny, nz;
+        convertToLatLon(pt[0], pt[1], pt[2], nx,ny,nz);
+        if (nx < 180.0) nx = 360.0;
+        pt[0] = nx;
+        pt[1] = ny;
+        pt[2] = nz;
+        pd->GetPoints()->SetPoint(i, pt);
+    }
+
+    //create the earth from 0 to 180
+    vtkImplicitBoolean *func1 = vtkImplicitBoolean::New();
+    vtkPlane *pln1 = vtkPlane::New();
+    pln1->SetOrigin(0,0,0);
+    pln1->SetNormal(0,-1,0);
+    func1->AddFunction(pln1);
+    vtkClipPolyData *clip1 = vtkClipPolyData::New();
+    clip1->SetInputData(ds);
+    clip1->SetClipFunction(func1);
+    clip1->SetInsideOut(true);
+    clip1->Update();
+    vtkDataSet *ds1 = clip1->GetOutput();
+    
+    //convert to lat/lon
+    pd = static_cast<vtkPolyData *>(ds1);
+    nPts = pd->GetPoints()->GetNumberOfPoints();
+    for (vtkIdType i = 0; i < nPts; i++)
+    {
+        pd->GetPoints()->GetPoint(i, pt);
+
+        double nx, ny, nz;
+        convertToLatLon(pt[0], pt[1], pt[2], nx,ny,nz);
+        if (nx > 359) nx = 0.0;
+        pt[0] = nx;
+        pt[1] = ny;
+        pt[2] = nz;
+        pd->GetPoints()->SetPoint(i, pt);
+    }
+    
+    vtkAppendPolyData *app = vtkAppendPolyData::New();
+    app->AddInputData(static_cast<vtkPolyData *>(ds0));
+    app->AddInputData(static_cast<vtkPolyData *>(ds1));
+    app->Update();
+
+    vtkDataSet *out_ds = app->GetOutput();
+    out_ds->Register(NULL);
+
+    ds->Delete();
+    pln0->Delete();
+    func0->Delete();
+    clip0->Delete();
+    pln1->Delete();
+    func1->Delete();
+    clip1->Delete();
+    app->Delete();
+
+    return out_ds;
 }
 
 //****************************************************************************
@@ -360,7 +664,6 @@ avtSpecFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int time
 // Modifications:
 //
 //****************************************************************************
-
 
 vtkDataSet *
 avtSpecFEMFileFormat::GetWholeMesh(int ts, int dom, bool xyzMesh)
@@ -527,10 +830,10 @@ avtSpecFEMFileFormat::AddRegionMesh(int ts, int dom, int region, vtkDataSet *ds,
                             for (int q = 0; cellGood && q < 8; q++)
                                 if (p != q)
                                 {
+                                    double dx = fabs(verts[p][0]-verts[q][0]);
                                     double dy = fabs(verts[p][1]-verts[q][1]);
-                                    double dz = fabs(verts[p][2]-verts[q][2]);
+                                    if (dx > M_PI) cellGood = false;
                                     if (dy > M_PI) cellGood = false;
-                                    if (dz > M_PI) cellGood = false;
                                 }
                         if (cellGood)
                         {
@@ -603,6 +906,18 @@ avtSpecFEMFileFormat::GetMesh(int ts, int domain, const char *meshname)
 {
     debug1 << "avtSpecFEMFileFormat::GetMesh " << meshname << endl;
     Initialize();
+    if (!strcmp(meshname, "hotSpots"))
+        return GetHotSpotsMesh(true);
+    else if (!strcmp(meshname, "LatLon_hotSpots"))
+        return GetHotSpotsMesh(false);
+    else if (!strcmp(meshname, "continents"))
+        return GetContinents(true);
+    else if (!strcmp(meshname, "LatLon_continents"))
+        return GetContinents(false);
+    else if (!strcmp(meshname, "plates"))
+        return GetPlates(true);
+    else if (!strcmp(meshname, "LatLon_plates"))
+        return GetPlates(false);
 
     bool xyzMesh = string(meshname).find("LatLon") == string::npos;
     bool wholeMesh = string(meshname).find("reg") == string::npos;
@@ -653,7 +968,7 @@ avtSpecFEMFileFormat::GetVarRegion(std::string &nm, int ts, int dom)
     }
     for (int i = 0; i < N; i++)
         ptMask[i] = false;
-
+    
     string vname = nm+"/array";
     dataFile->ReadScalarData(vname, ts, dom, &arr);
     vtkFloatArray *var = vtkFloatArray::New();
@@ -704,7 +1019,7 @@ avtSpecFEMFileFormat::GetVar(int ts, int domain, const char *varname)
     if ((i = vName.find("LatLon")) != string::npos)
         vName = vName.substr(0, i) + vName.substr((i+7), string::npos);
     
-    if (vName.find("reg") != string::npos)
+    if (vName.find("reg") != string::npos || kernelFile)
         return GetVarRegion(vName, ts, domain);
 
     //Determine how many total values.
@@ -804,15 +1119,10 @@ avtSpecFEMFileFormat::GetVectorVarRegion(std::string &nm, int ts, int dom)
     for (int i = 0; i < nPts; i++)
     {
         mesh->GetPoint(i, pt);
-        convertToLatLon(pt[0], pt[1], pt[2], r, lat, lon);
-        lat = 90.0 - lat;
-        /*
-        if (lon > 180.0)
-            lon = lon - 360.0;
-        */
+        convertToLatLon(pt[0], pt[1], pt[2], lon, lat, r);
         
-        arr->SetComponent(i, 0, lat);
-        arr->SetComponent(i, 1, lon);
+        arr->SetComponent(i, 0, lon);
+        arr->SetComponent(i, 1, lat);
         arr->SetComponent(i, 2, r);
     }
 
@@ -846,6 +1156,18 @@ avtSpecFEMFileFormat::Initialize()
     regions.resize(NUM_REGIONS, false);
 
     map<string, ADIOS_VARINFO*>::const_iterator it;
+
+    //See if it's a kernel file.
+    for (it = dataFile->variables.begin(); it != dataFile->variables.end(); it++)
+    {
+        if (it->first.find("betav_kl_crust_mantle") != string::npos)
+        {
+            kernelFile = true;
+            break;
+        }
+    }
+
+    //Find number of regions and numBlocks.
     numBlocks = 1;
     for (it = dataFile->variables.begin(); it != dataFile->variables.end(); it++)
     {
@@ -968,6 +1290,9 @@ avtSpecFEMFileFormat::IsDataFile(ADIOSFileObject *f)
 int
 avtSpecFEMFileFormat::GetRegion(const string &str)
 {
+    if (kernelFile)
+        return 1;
+
     int region, n;
     char t1[128];
     
@@ -994,13 +1319,16 @@ avtSpecFEMFileFormat::GetRegion(const string &str)
 string
 avtSpecFEMFileFormat::GetVariable(const string &str)
 {
-    char t1[128], t2[128], v[128];
-    string::size_type i0 = str.find("/");
+    string::size_type i0 = (kernelFile?0:i0 = str.find("/"));
     string::size_type i1 = str.rfind("/");
+    
     if (i0 == string::npos || i1 == string::npos)
         EXCEPTION1(ImproperUseException, "Invalid variable");
-
-    return str.substr(i0+1, i1-i0-1);
+    
+    if (kernelFile)
+        return str.substr(0, i1);
+    else
+        return str.substr(i0+1, i1-i0-1);
 }
 
 //****************************************************************************
@@ -1024,8 +1352,29 @@ convertToLatLon(double x, double y, double z, double &nx, double &ny, double &nz
 {
     const double twopi = 2.0*M_PI;
     const double toDeg = 180./M_PI;
+    const double earthRad = 6371.0; //6371.0; // km
 
     double R = sqrt(x*x + y*y + z*z);
+    double lon = atan2(y,x);
+    double lat = acos(z/R);
+    
+    if (lon < 0.0)
+        lon += twopi;
+
+    nx = lon * toDeg;
+    ny = lat * toDeg;
+    //nz = (R-1.0) * earthRad;
+    nz = R * earthRad;
+
+    ny = -ny + 90.0;
+
+    //normalize it....
+    //nx /= 360.;
+    //ny /= 180.;
+    //nz = (R - 1.0) * 6.371;
+
+    /*
+    
     nx = R;
     ny = acos(z/R);
     nz = atan2(y, x);
@@ -1035,4 +1384,14 @@ convertToLatLon(double x, double y, double z, double &nx, double &ny, double &nz
     //nx *= 6371.0; //Convert to km
     ny *= toDeg;
     nz *= toDeg;
+
+    ny = -ny + 90.0;
+    //ny -= 90.0;
+    nz -= 180.0;
+    */
+    
+/*
+    if (nz > 340.0)
+        nz = -(360.0-nz);
+*/
 }

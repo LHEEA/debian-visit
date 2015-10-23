@@ -77,7 +77,7 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
     char tmpStr[1000];
 
     const char *sourceType_names = "Point, PointList, Line_, Circle, Plane, "
-        "Sphere, Box, Selection";
+        "Sphere, Box, Selection, FieldData";
     switch (atts->GetSourceType())
     {
       case IntegralCurveAttributes::Point:
@@ -110,6 +110,10 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
           break;
       case IntegralCurveAttributes::Selection:
           SNPRINTF(tmpStr, 1000, "%ssourceType = %sSelection  # %s\n", prefix, prefix, sourceType_names);
+          str += tmpStr;
+          break;
+      case IntegralCurveAttributes::FieldData:
+          SNPRINTF(tmpStr, 1000, "%ssourceType = %sFieldData  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
       default:
@@ -259,6 +263,22 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
             SNPRINTF(tmpStr, 1000, "%g", pointList[i]);
             str += tmpStr;
             if(i < pointList.size() - 1)
+            {
+                SNPRINTF(tmpStr, 1000, ", ");
+                str += tmpStr;
+            }
+        }
+        SNPRINTF(tmpStr, 1000, ")\n");
+        str += tmpStr;
+    }
+    {   const doubleVector &fieldData = atts->GetFieldData();
+        SNPRINTF(tmpStr, 1000, "%sfieldData = (", prefix);
+        str += tmpStr;
+        for(size_t i = 0; i < fieldData.size(); ++i)
+        {
+            SNPRINTF(tmpStr, 1000, "%g", fieldData[i]);
+            str += tmpStr;
+            if(i < fieldData.size() - 1)
             {
                 SNPRINTF(tmpStr, 1000, ", ");
                 str += tmpStr;
@@ -622,15 +642,25 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%snumberOfRandomSamples = %d\n", prefix, atts->GetNumberOfRandomSamples());
     str += tmpStr;
-    if(atts->GetForceNodeCenteredData())
-        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 1\n", prefix);
+    if(atts->GetIssueAdvectionWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueAdvectionWarnings = 1\n", prefix);
     else
-        SNPRINTF(tmpStr, 1000, "%sforceNodeCenteredData = 0\n", prefix);
+        SNPRINTF(tmpStr, 1000, "%sissueAdvectionWarnings = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetIssueBoundaryWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueBoundaryWarnings = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sissueBoundaryWarnings = 0\n", prefix);
     str += tmpStr;
     if(atts->GetIssueTerminationWarnings())
         SNPRINTF(tmpStr, 1000, "%sissueTerminationWarnings = 1\n", prefix);
     else
         SNPRINTF(tmpStr, 1000, "%sissueTerminationWarnings = 0\n", prefix);
+    str += tmpStr;
+    if(atts->GetIssueStepsizeWarnings())
+        SNPRINTF(tmpStr, 1000, "%sissueStepsizeWarnings = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%sissueStepsizeWarnings = 0\n", prefix);
     str += tmpStr;
     if(atts->GetIssueStiffnessWarnings())
         SNPRINTF(tmpStr, 1000, "%sissueStiffnessWarnings = 1\n", prefix);
@@ -689,15 +719,16 @@ IntegralCurveAttributes_SetSourceType(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the sourceType in the object.
-    if(ival >= 0 && ival < 8)
+    if(ival >= 0 && ival < 9)
         obj->data->SetSourceType(IntegralCurveAttributes::SourceType(ival));
     else
     {
         fprintf(stderr, "An invalid sourceType value was given. "
-                        "Valid values are in the range of [0,7]. "
+                        "Valid values are in the range of [0,8]. "
                         "You can also use the following names: "
                         "Point, PointList, Line_, Circle, Plane, "
-                        "Sphere, Box, Selection.");
+                        "Sphere, Box, Selection, FieldData"
+                        ".");
         return NULL;
     }
 
@@ -1253,6 +1284,69 @@ IntegralCurveAttributes_GetPointList(PyObject *self, PyObject *args)
     PyObject *retval = PyTuple_New(pointList.size());
     for(size_t i = 0; i < pointList.size(); ++i)
         PyTuple_SET_ITEM(retval, i, PyFloat_FromDouble(pointList[i]));
+    return retval;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_SetFieldData(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+
+    doubleVector  &vec = obj->data->GetFieldData();
+    PyObject     *tuple;
+    if(!PyArg_ParseTuple(args, "O", &tuple))
+        return NULL;
+
+    if(PyTuple_Check(tuple))
+    {
+        vec.resize(PyTuple_Size(tuple));
+        for(int i = 0; i < PyTuple_Size(tuple); ++i)
+        {
+            PyObject *item = PyTuple_GET_ITEM(tuple, i);
+            if(PyFloat_Check(item))
+                vec[i] = PyFloat_AS_DOUBLE(item);
+            else if(PyInt_Check(item))
+                vec[i] = double(PyInt_AS_LONG(item));
+            else if(PyLong_Check(item))
+                vec[i] = PyLong_AsDouble(item);
+            else
+                vec[i] = 0.;
+        }
+    }
+    else if(PyFloat_Check(tuple))
+    {
+        vec.resize(1);
+        vec[0] = PyFloat_AS_DOUBLE(tuple);
+    }
+    else if(PyInt_Check(tuple))
+    {
+        vec.resize(1);
+        vec[0] = double(PyInt_AS_LONG(tuple));
+    }
+    else if(PyLong_Check(tuple))
+    {
+        vec.resize(1);
+        vec[0] = PyLong_AsDouble(tuple);
+    }
+    else
+        return NULL;
+
+    // Mark the fieldData in the object as modified.
+    obj->data->SelectFieldData();
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_GetFieldData(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+    // Allocate a tuple the with enough entries to hold the fieldData.
+    const doubleVector &fieldData = obj->data->GetFieldData();
+    PyObject *retval = PyTuple_New(fieldData.size());
+    for(size_t i = 0; i < fieldData.size(); ++i)
+        PyTuple_SET_ITEM(retval, i, PyFloat_FromDouble(fieldData[i]));
     return retval;
 }
 
@@ -2429,7 +2523,7 @@ IntegralCurveAttributes_GetNumberOfRandomSamples(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-IntegralCurveAttributes_SetForceNodeCenteredData(PyObject *self, PyObject *args)
+IntegralCurveAttributes_SetIssueAdvectionWarnings(PyObject *self, PyObject *args)
 {
     IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
 
@@ -2437,18 +2531,42 @@ IntegralCurveAttributes_SetForceNodeCenteredData(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the forceNodeCenteredData in the object.
-    obj->data->SetForceNodeCenteredData(ival != 0);
+    // Set the issueAdvectionWarnings in the object.
+    obj->data->SetIssueAdvectionWarnings(ival != 0);
 
     Py_INCREF(Py_None);
     return Py_None;
 }
 
 /*static*/ PyObject *
-IntegralCurveAttributes_GetForceNodeCenteredData(PyObject *self, PyObject *args)
+IntegralCurveAttributes_GetIssueAdvectionWarnings(PyObject *self, PyObject *args)
 {
     IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(obj->data->GetForceNodeCenteredData()?1L:0L);
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueAdvectionWarnings()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_SetIssueBoundaryWarnings(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the issueBoundaryWarnings in the object.
+    obj->data->SetIssueBoundaryWarnings(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_GetIssueBoundaryWarnings(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueBoundaryWarnings()?1L:0L);
     return retval;
 }
 
@@ -2473,6 +2591,30 @@ IntegralCurveAttributes_GetIssueTerminationWarnings(PyObject *self, PyObject *ar
 {
     IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
     PyObject *retval = PyInt_FromLong(obj->data->GetIssueTerminationWarnings()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_SetIssueStepsizeWarnings(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the issueStepsizeWarnings in the object.
+    obj->data->SetIssueStepsizeWarnings(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_GetIssueStepsizeWarnings(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetIssueStepsizeWarnings()?1L:0L);
     return retval;
 }
 
@@ -2705,6 +2847,8 @@ PyMethodDef PyIntegralCurveAttributes_methods[INTEGRALCURVEATTRIBUTES_NMETH] = {
     {"GetUseWholeBox", IntegralCurveAttributes_GetUseWholeBox, METH_VARARGS},
     {"SetPointList", IntegralCurveAttributes_SetPointList, METH_VARARGS},
     {"GetPointList", IntegralCurveAttributes_GetPointList, METH_VARARGS},
+    {"SetFieldData", IntegralCurveAttributes_SetFieldData, METH_VARARGS},
+    {"GetFieldData", IntegralCurveAttributes_GetFieldData, METH_VARARGS},
     {"SetSampleDensity0", IntegralCurveAttributes_SetSampleDensity0, METH_VARARGS},
     {"GetSampleDensity0", IntegralCurveAttributes_GetSampleDensity0, METH_VARARGS},
     {"SetSampleDensity1", IntegralCurveAttributes_SetSampleDensity1, METH_VARARGS},
@@ -2793,10 +2937,14 @@ PyMethodDef PyIntegralCurveAttributes_methods[INTEGRALCURVEATTRIBUTES_NMETH] = {
     {"GetRandomSeed", IntegralCurveAttributes_GetRandomSeed, METH_VARARGS},
     {"SetNumberOfRandomSamples", IntegralCurveAttributes_SetNumberOfRandomSamples, METH_VARARGS},
     {"GetNumberOfRandomSamples", IntegralCurveAttributes_GetNumberOfRandomSamples, METH_VARARGS},
-    {"SetForceNodeCenteredData", IntegralCurveAttributes_SetForceNodeCenteredData, METH_VARARGS},
-    {"GetForceNodeCenteredData", IntegralCurveAttributes_GetForceNodeCenteredData, METH_VARARGS},
+    {"SetIssueAdvectionWarnings", IntegralCurveAttributes_SetIssueAdvectionWarnings, METH_VARARGS},
+    {"GetIssueAdvectionWarnings", IntegralCurveAttributes_GetIssueAdvectionWarnings, METH_VARARGS},
+    {"SetIssueBoundaryWarnings", IntegralCurveAttributes_SetIssueBoundaryWarnings, METH_VARARGS},
+    {"GetIssueBoundaryWarnings", IntegralCurveAttributes_GetIssueBoundaryWarnings, METH_VARARGS},
     {"SetIssueTerminationWarnings", IntegralCurveAttributes_SetIssueTerminationWarnings, METH_VARARGS},
     {"GetIssueTerminationWarnings", IntegralCurveAttributes_GetIssueTerminationWarnings, METH_VARARGS},
+    {"SetIssueStepsizeWarnings", IntegralCurveAttributes_SetIssueStepsizeWarnings, METH_VARARGS},
+    {"GetIssueStepsizeWarnings", IntegralCurveAttributes_GetIssueStepsizeWarnings, METH_VARARGS},
     {"SetIssueStiffnessWarnings", IntegralCurveAttributes_SetIssueStiffnessWarnings, METH_VARARGS},
     {"GetIssueStiffnessWarnings", IntegralCurveAttributes_GetIssueStiffnessWarnings, METH_VARARGS},
     {"SetIssueCriticalPointsWarnings", IntegralCurveAttributes_SetIssueCriticalPointsWarnings, METH_VARARGS},
@@ -2859,6 +3007,8 @@ PyIntegralCurveAttributes_getattr(PyObject *self, char *name)
         return PyInt_FromLong(long(IntegralCurveAttributes::Box));
     if(strcmp(name, "Selection") == 0)
         return PyInt_FromLong(long(IntegralCurveAttributes::Selection));
+    if(strcmp(name, "FieldData") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::FieldData));
 
     if(strcmp(name, "pointSource") == 0)
         return IntegralCurveAttributes_GetPointSource(self, NULL);
@@ -2882,6 +3032,8 @@ PyIntegralCurveAttributes_getattr(PyObject *self, char *name)
         return IntegralCurveAttributes_GetUseWholeBox(self, NULL);
     if(strcmp(name, "pointList") == 0)
         return IntegralCurveAttributes_GetPointList(self, NULL);
+    if(strcmp(name, "fieldData") == 0)
+        return IntegralCurveAttributes_GetFieldData(self, NULL);
     if(strcmp(name, "sampleDensity0") == 0)
         return IntegralCurveAttributes_GetSampleDensity0(self, NULL);
     if(strcmp(name, "sampleDensity1") == 0)
@@ -3067,10 +3219,14 @@ PyIntegralCurveAttributes_getattr(PyObject *self, char *name)
         return IntegralCurveAttributes_GetRandomSeed(self, NULL);
     if(strcmp(name, "numberOfRandomSamples") == 0)
         return IntegralCurveAttributes_GetNumberOfRandomSamples(self, NULL);
-    if(strcmp(name, "forceNodeCenteredData") == 0)
-        return IntegralCurveAttributes_GetForceNodeCenteredData(self, NULL);
+    if(strcmp(name, "issueAdvectionWarnings") == 0)
+        return IntegralCurveAttributes_GetIssueAdvectionWarnings(self, NULL);
+    if(strcmp(name, "issueBoundaryWarnings") == 0)
+        return IntegralCurveAttributes_GetIssueBoundaryWarnings(self, NULL);
     if(strcmp(name, "issueTerminationWarnings") == 0)
         return IntegralCurveAttributes_GetIssueTerminationWarnings(self, NULL);
+    if(strcmp(name, "issueStepsizeWarnings") == 0)
+        return IntegralCurveAttributes_GetIssueStepsizeWarnings(self, NULL);
     if(strcmp(name, "issueStiffnessWarnings") == 0)
         return IntegralCurveAttributes_GetIssueStiffnessWarnings(self, NULL);
     if(strcmp(name, "issueCriticalPointsWarnings") == 0)
@@ -3130,6 +3286,8 @@ PyIntegralCurveAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = IntegralCurveAttributes_SetUseWholeBox(self, tuple);
     else if(strcmp(name, "pointList") == 0)
         obj = IntegralCurveAttributes_SetPointList(self, tuple);
+    else if(strcmp(name, "fieldData") == 0)
+        obj = IntegralCurveAttributes_SetFieldData(self, tuple);
     else if(strcmp(name, "sampleDensity0") == 0)
         obj = IntegralCurveAttributes_SetSampleDensity0(self, tuple);
     else if(strcmp(name, "sampleDensity1") == 0)
@@ -3218,10 +3376,14 @@ PyIntegralCurveAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = IntegralCurveAttributes_SetRandomSeed(self, tuple);
     else if(strcmp(name, "numberOfRandomSamples") == 0)
         obj = IntegralCurveAttributes_SetNumberOfRandomSamples(self, tuple);
-    else if(strcmp(name, "forceNodeCenteredData") == 0)
-        obj = IntegralCurveAttributes_SetForceNodeCenteredData(self, tuple);
+    else if(strcmp(name, "issueAdvectionWarnings") == 0)
+        obj = IntegralCurveAttributes_SetIssueAdvectionWarnings(self, tuple);
+    else if(strcmp(name, "issueBoundaryWarnings") == 0)
+        obj = IntegralCurveAttributes_SetIssueBoundaryWarnings(self, tuple);
     else if(strcmp(name, "issueTerminationWarnings") == 0)
         obj = IntegralCurveAttributes_SetIssueTerminationWarnings(self, tuple);
+    else if(strcmp(name, "issueStepsizeWarnings") == 0)
+        obj = IntegralCurveAttributes_SetIssueStepsizeWarnings(self, tuple);
     else if(strcmp(name, "issueStiffnessWarnings") == 0)
         obj = IntegralCurveAttributes_SetIssueStiffnessWarnings(self, tuple);
     else if(strcmp(name, "issueCriticalPointsWarnings") == 0)

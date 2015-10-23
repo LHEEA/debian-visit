@@ -1,10 +1,3 @@
-#/usr/gapps/visit/thirdparty_shared/2.8.1/cmake/2.8.12.2/linux-x86_64_gcc-4.4/bin/cmake
-##
-## ./build_visit2_8_1 generated host.cmake
-## created: Wed Oct  8 09:46:15 PDT 2014
-## system: Linux kickit 2.6.32-431.29.2.el6.x86_64 #1 SMP Sun Jul 27 15:55:46 EDT 2014 x86_64 x86_64 x86_64 GNU/Linux
-## by: brugger1
-
 ##
 ## Setup VISITHOME & VISITARCH variables.
 ##

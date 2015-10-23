@@ -186,10 +186,12 @@ class IVP_API avtPICSFilter :
                                         const avtVector &v_start,
                                         long ID) = 0;
 
+    virtual bool                    GetAllSeedsSentToAllProcs() = 0;
+
     virtual std::vector<avtVector>  GetInitialLocations() = 0;
     virtual std::vector<avtVector>  GetInitialVelocities() = 0;
     virtual CommunicationPattern    GetCommunicationPattern() = 0;
-    std::vector<std::pair<int,int> > GetFwdBwdICPairs() { return fwdBwdICPairs; }
+    std::vector<std::pair<int,int> > GetICPairs() { return ICPairs; }
     
     // Methods to set the filter's attributes.
     void SetFieldType(int val);
@@ -257,7 +259,7 @@ class IVP_API avtPICSFilter :
     std::vector<int> domainToRank;
     std::vector<vtkDataSet*>dataSets;
     std::map<BlockIDType, avtCellLocator_p> domainToCellLocatorMap;
-    std::vector<std::pair<int,int> > fwdBwdICPairs;
+    std::vector<std::pair<int,int> > ICPairs;
 
     std::vector<double> pointList;
 
@@ -269,7 +271,7 @@ class IVP_API avtPICSFilter :
 
     // Timings helpers.
     int                       MaxID;
-    int                       method;
+    int                       selectedAlgo;
     int                       maxCount, workGroupSz;
     double                    InitialIOTime;
     int                       InitialDomLoads;
@@ -290,19 +292,12 @@ class IVP_API avtPICSFilter :
     bool                      ICInRectilinearBlock(const avtIntegralCurve *ic, 
                                                    const BlockIDType &block,
                                                    vtkDataSet *ds);
-    bool                      OnFaceAndPushedOut(const avtIntegralCurve *ic,
-                                                 const BlockIDType &block,
-                                                 vtkDataSet *ds,
-                                                 double *bbox);
-    bool                      OnFaceAndPushedIn(const avtIntegralCurve *ic,
-                                                const BlockIDType &block,
-                                                vtkDataSet *ds,
-                                                double *bbox);
+    int                       OnFace(const avtIntegralCurve *ic, double *bbox);
     int                       GetNextCurveID(){ int id = MaxID; MaxID++; return id;}
     void                      CreateIntegralCurvesFromSeeds(std::vector<avtVector> &pts,
-                                                         std::vector<avtVector> &vels,
-                                                         std::vector<avtIntegralCurve *> &ics,
-                                                         std::vector<std::vector<int> > &ids);
+                                                            std::vector<avtVector> &vels,
+                                                            std::vector<avtIntegralCurve *> &ics,
+                                                            std::vector<std::vector<int> > &ids);
     void                      GetIntegralCurvesFromInitialSeeds(std::vector<avtIntegralCurve *> &ics);
     void                      AddSeedPoint(avtVector &pt,
                                            avtVector &vel,
@@ -323,7 +318,6 @@ class IVP_API avtPICSFilter :
     int                       DomainToRank(BlockIDType &domain);
     void                      ComputeDomainToRankMapping();
     bool                      OwnDomain(BlockIDType &domain);
-    void                      Initialize();
     void                      InitializeTimeInformation(int);
     void                      ComputeRankList(const std::vector<int> &domList,
                                               std::vector<int> &ranks,
@@ -335,6 +329,9 @@ class IVP_API avtPICSFilter :
     void                      ClearDomainToCellLocatorMap();
     virtual avtIVPField      *GetFieldForDomain(const BlockIDType&, vtkDataSet*);
 
+    void                      SetICAlgorithm();
+
+    void                      InitializeIntervalTree();
     void                      UpdateIntervalTree(int timeSlice);
 
     // Use this to be able to save the ICs for restart.

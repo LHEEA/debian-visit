@@ -956,7 +956,17 @@ avtParICAlgorithm::DoSendICs(int dst, vector<avtIntegralCurve*> &ics)
 {
     if (dst == rank)
     {
-        EXCEPTION1(VisItException, "avtParICAlgorithm::DoSendICs() Sending ICs to yourself. Error.");
+        std::cerr << "Error in avtParICAlgorithm::DoSendICs() Sending ICs to yourself" << std::endl;
+
+        for (size_t i = 0; i < ics.size(); i++)
+          std::cerr << "Proc " << rank << "  "
+                    << "curve id  " << ics[i]->id << "  "
+                    << "location  " << ics[i]->CurrentLocation() << "  "
+                    << "status  " << ics[i]->status << "  "
+                    << std::endl;
+
+        // Removed exception as it will cause other MPI processed to hang.
+        // EXCEPTION1(VisItException, "avtParICAlgorithm::DoSendICs() Sending ICs to yourself. Error.");
     }
     
     if (ics.empty())
@@ -1079,6 +1089,8 @@ avtParICAlgorithm::RecvDS(vector<DSCommData> &ds)
 void
 avtParICAlgorithm::PostRunAlgorithm()
 {
+    avtICAlgorithm::PostRunAlgorithm();
+    
     // We are enumerating the possible communication styles and then just
     // calling the correct one.  This is an okay solution if there are a small
     // number of styles (which there are right now).  That said, it would be
@@ -1504,7 +1516,7 @@ avtParICAlgorithm::RestoreIntegralCurve(bool uniformlyDistrubute)
                 owner = s->id % nProcs;
             else
                 owner = s->originatingRank;
-            
+
             //IC is mine.
             if (owner == rank)
             {

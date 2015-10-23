@@ -114,11 +114,9 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
     virtual void     AcceptStateVisitor(avtIVPStateHelper &aiss);
     
   private:
-    int abStep, abNSteps;
-    int numStep;
-    int degenerate_iterations;
-    double stiffness_eps;
+    int abCIndex, abNSteps;
     avtVector history[ADAMS_BASHFORTH_NSTEPS];
 //    avtVector dhistory[ADAMS_BASHFORTH_NSTEPS];
 };
+
 #endif

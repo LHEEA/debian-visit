@@ -164,13 +164,12 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
         if (numSamps > 1)
             numPts += numSamps;
 
+        if (ic->CurrentVelocity().length() <= criticalPointThreshold)
+          numCritPts++;
+
         if (ic->TerminatedBecauseOfMaxSteps())
-        {
-            if (ic->SpeedAtTermination() <= criticalPointThreshold)
-                numCritPts++;
-            else
-                numEarlyTerminators++;
-        }
+          numEarlyTerminators++;
+
         if (ic->EncounteredNumericalProblems())
             numStiff++;
     }
@@ -307,8 +306,6 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
 
         float theta = 0.0, prevT = 0.0;
 
-        //cerr << phiScaling << "  " << (phiScaling == 0.0) << endl;
-
         for (size_t j = 0; j < numSamps; j++)
         {
             avtStateRecorderIntegralCurve::Sample s = ic->GetSample(j);
@@ -361,6 +358,9 @@ avtStreamlinePolyDataFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCu
                 break;
               case PICS_COLOR_ARCLENGTH:
                 scalars->InsertTuple1(pIdx, s.arclength);
+                break;
+              case PICS_COLOR_NUM_DOM_VISIT:
+                scalars->InsertTuple1(pIdx, s.numDomainsVisited);
                 break;
               case PICS_COLOR_VARIABLE:
                 scalars->InsertTuple1(pIdx, s.secondarys[0]);
@@ -546,10 +546,10 @@ static avtStateRecorderIntegralCurve * icFromID(int id, std::vector<avtIntegralC
 void
 avtStreamlinePolyDataFilter::ProcessVaryTubeRadiusByScalar(std::vector<avtIntegralCurve *> &ics)
 {
-    for (size_t i = 0; i < fwdBwdICPairs.size(); i++)
+    for (size_t i = 0; i < ICPairs.size(); i++)
     {
-        avtStateRecorderIntegralCurve *ic[2] = {icFromID(fwdBwdICPairs[i].first, ics),
-                                                icFromID(fwdBwdICPairs[i].second, ics)};
+        avtStateRecorderIntegralCurve *ic[2] = {icFromID(ICPairs[i].first, ics),
+                                                icFromID(ICPairs[i].second, ics)};
         if (ic[0] == NULL || ic[1] == NULL)
         {
             EXCEPTION1(ImproperUseException, "Integral curve ID not found.");

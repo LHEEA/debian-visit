@@ -52,6 +52,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QSlider>
+#include <QSpinBox>
 #include <QWidget>
 
 #include <QvisVariableButton.h>
@@ -268,6 +269,9 @@ QvisExportDBWindow::SubjectRemoved(Subject *TheRemovedSubject)
 //   Brad Whitlock, Thu Jul 24 13:55:34 EDT 2014
 //   Added check box for doing all time steps.
 //
+//   Brad Whitlock, Mon Aug 10 17:16:32 PDT 2015
+//   Add support for grouping.
+//
 // ****************************************************************************
 
 void
@@ -353,6 +357,31 @@ QvisExportDBWindow::CreateWindowContents()
             this, SLOT(variableProcessText()));
     varLayout->addWidget(varsLineEdit, 1, 1, 1, 2);
 
+    // I/O group box.
+    QGroupBox *ioGroup = new QGroupBox(tr("I/O Options"), infoBox);
+    infoLayout->addWidget(ioGroup, 5, 0, 1, 2);
+    QGridLayout *ioLayout = new QGridLayout(ioGroup);
+    ioLayout->setMargin(5);
+
+    coordinateGroups = new QCheckBox(tr("Coordinate parallel writes with groups."), ioGroup);
+    connect(coordinateGroups, SIGNAL(toggled(bool)),
+            this, SLOT(coordinateGroupsToggled(bool)));
+    ioLayout->addWidget(coordinateGroups, 0, 0, 1, 2);
+    coordinateGroups->setToolTip(tr(
+"Large scale write access to parallel file systems is sometimes accomplished \n"
+"most efficiently using groups of processors instead of allowing all processors \n"
+"to write to the file system simultaneously. Certain database plug-ins can \n"
+"coordinate their aggregation and file writing to be more efficient when \n"
+"writing to the parallel file system at large scale.\n"
+)); 
+    groupSizeLabel = new QLabel(tr("Write group size"), ioGroup);
+    ioLayout->addWidget(groupSizeLabel, 1, 0);
+    groupSize = new QSpinBox(ioGroup);
+    groupSize->setMinimum(1);
+    connect(groupSize, SIGNAL(valueChanged(int)),
+            this, SLOT(groupSizeChanged(int)));
+    ioLayout->addWidget(groupSize, 1, 1);
+
     // The export button.
     QHBoxLayout *exportButtonLayout = new QHBoxLayout();
     topLayout->addLayout(exportButtonLayout);
@@ -420,6 +449,9 @@ QvisExportDBWindow::CreateWindowContents()
 //
 //   Brad Whitlock, Thu Jul 24 13:55:34 EDT 2014
 //   Added check box for doing all time steps.
+//
+//   Brad Whitlock, Mon Aug 10 17:16:32 PDT 2015
+//   Add support for grouping.
 //
 // ****************************************************************************
 
@@ -502,6 +534,19 @@ QvisExportDBWindow::UpdateWindow(bool doAll)
             break;
           case ExportDBAttributes::ID_variables:
             UpdateVariablesList();
+            break;
+          case ExportDBAttributes::ID_writeUsingGroups:
+            coordinateGroups->blockSignals(true);
+            coordinateGroups->setChecked(exportDBAtts->GetWriteUsingGroups());
+            coordinateGroups->blockSignals(false);
+
+            groupSizeLabel->setEnabled(exportDBAtts->GetWriteUsingGroups());
+            groupSize->setEnabled(exportDBAtts->GetWriteUsingGroups());
+            break;
+          case ExportDBAttributes::ID_groupSize:
+            groupSize->blockSignals(true);
+            groupSize->setValue(exportDBAtts->GetGroupSize());
+            groupSize->blockSignals(false);
             break;
         }
     } // end for
@@ -785,9 +830,6 @@ QvisExportDBWindow::fileFormatChanged(int)
 // Creation:   May 25, 2005
 //
 // Modifications:
-//   Brad Whitlock, Thu Mar 20 14:04:35 PDT 2014
-//   Show license text.
-//   Work partially supported by DOE Grant SC0007548.
 //
 // ****************************************************************************
 
@@ -795,29 +837,6 @@ void
 QvisExportDBWindow::exportDB()
 {
     Apply();
-
-    // See if we can get a license string for the plugin.
-    QString license;
-    int ntypes = dbPluginInfoAtts->GetTypes().size();
-    for (int i = 0 ; i < ntypes ; i++)
-    {
-        if (dbPluginInfoAtts->GetTypes()[i] == exportDBAtts->GetDb_type())
-        {
-            license = QString(dbPluginInfoAtts->GetLicense()[i].c_str());
-            break;
-        }
-    }
-    // If we have a non-empty license string that we have not shown before,
-    // show the license.
-    if(!license.isEmpty())
-    {
-        QString dbType(exportDBAtts->GetDb_type().c_str());
-        if(licenseShown.indexOf(dbType) == -1)
-        {
-            QMessageBox::information(this, tr("%1 License").arg(dbType), license);
-            licenseShown.append(dbType);
-        }
-    }
 
     if(isVisible() && !posted())
         hide();
@@ -844,12 +863,42 @@ QvisExportDBWindow::exportDB()
 //   Cyrus Harrison, Tue Jun 24 11:15:28 PDT 2008
 //   Initial Qt4 Port.
 //
+//   Brad Whitlock, Thu Mar 20 14:04:35 PDT 2014
+//   Show license text.
+//   Work partially supported by DOE Grant SC0007548.
+//
+//   Brad Whitlock, Mon Sep 28 17:48:50 PDT 2015
+//   Notify export attributes to make sure the viewer has the user-set options.
+//
 // ****************************************************************************
 
 void
 QvisExportDBWindow::exportButtonClicked()
 {
     apply();
+
+    // See if we can get a license string for the plugin.
+    QString license;
+    int ntypes = dbPluginInfoAtts->GetTypes().size();
+    for (int i = 0 ; i < ntypes ; i++)
+    {
+        if (dbPluginInfoAtts->GetTypes()[i] == exportDBAtts->GetDb_type())
+        {
+            license = QString(dbPluginInfoAtts->GetLicense()[i].c_str());
+            break;
+        }
+    }
+    // If we have a non-empty license string that we have not shown before,
+    // show the license.
+    if(!license.isEmpty())
+    {
+        QString dbType(exportDBAtts->GetDb_type().c_str());
+        if(licenseShown.indexOf(dbType) == -1)
+        {
+            QMessageBox::information(this, tr("%1 License").arg(dbType), license);
+            licenseShown.append(dbType);
+        }
+    }
 
     int result = QDialog::Accepted;
     if (exportDBAtts->GetOpts().GetNumberOfOptions() > 0)
@@ -864,6 +913,9 @@ QvisExportDBWindow::exportButtonClicked()
     }
     if (result == QDialog::Accepted)
     {
+        // Make sure the new write options get sent to the viewer.
+        exportDBAtts->Notify();
+
         exportDB();
     }
     else
@@ -1003,6 +1055,25 @@ void
 QvisExportDBWindow::allTimesToggled(bool val)
 {
     exportDBAtts->SetAllTimes(val);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisExportDBWindow::coordinateGroupsToggled(bool value)
+{
+    exportDBAtts->SetWriteUsingGroups(value);
+    SetUpdate(false);
+    Apply();
+
+    groupSizeLabel->setEnabled(value);
+    groupSize->setEnabled(value);
+}
+
+void
+QvisExportDBWindow::groupSizeChanged(int value)
+{
+    exportDBAtts->SetGroupSize(value);
     SetUpdate(false);
     Apply();
 }

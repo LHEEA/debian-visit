@@ -75,21 +75,16 @@ class IVP_API avtIVPLeapfrog: public avtIVPSolver
                           avtIVPStep* ivpstep = NULL);
     virtual void    OnExitDomain();
 
-    virtual avtVector GetCurrentV() const;
-    virtual void      SetCurrentV( const avtVector &newV );
-
     virtual avtIVPLeapfrog* Clone() const
     {
         return new avtIVPLeapfrog( *this );
     }
 
   protected:
+    bool firstStep;
+
     // state serialization
     virtual void     AcceptStateVisitor(avtIVPStateHelper &aiss);
-    
-  private:
-    int numStep;
-    avtVector vCur;
 };
 
 #endif

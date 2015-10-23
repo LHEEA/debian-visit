@@ -127,6 +127,8 @@ using std::map;
 static map<int, bool> childDied=std::map<int, bool>();
 
 #if !defined(_WIN32)
+static void (*old_signal_handler)(int) = SIG_DFL;
+
 // ****************************************************************************
 //  Function:  catch_dead_child
 //
@@ -1196,8 +1198,11 @@ RemoteProcess::Open(const MachineProfile &profile, int numRead, int numWrite,
     FinishMakingConnection(numRead, numWrite);
 
 #if !defined(_WIN32)
-    // Stop watching for dead children
-    signal(SIGCHLD, SIG_DFL);
+    // Install the old signal handler
+    if(old_signal_handler != SIG_ERR)
+        signal(SIGCHLD, old_signal_handler);
+    else
+        signal(SIGCHLD, SIG_DFL);
 #endif
 
     debug5 << mName << "Returning true" << endl;
@@ -1492,6 +1497,17 @@ RemoteProcess::StartMakingConnection(const std::string &remoteHost,
 //   Brad Whitlock, Tue Oct 14 15:59:18 PDT 2014
 //   Added code to enable fixed buffer socket mode.
 //
+//   Eric Brugger, Wed Sep 16 16:43:54 PDT 2015
+//   I corrected a bug where setting up of the connections might hang.
+//   This was caused by the connections not being formed in the same order
+//   between the two processes, which resulted in the read and write
+//   connections being mismatched between the local and remote processes,
+//   resulting in hangs. This only appeared to happen going from Windows
+//   to linux with ssh forwarding over a gateway. To solve the issue I
+//   added code that wrote the index of the creation on the local side
+//   over each connection so that the order could be duplicated on the
+//   remote side.
+//
 // ****************************************************************************
 
 void
@@ -1558,9 +1574,13 @@ RemoteProcess::FinishMakingConnection(int numRead, int numWrite)
         }
 
         //
-        // Now that the sockets are open, exchange type representation info
-        // and set that info in the socket connections.
+        // Now that the sockets are open, order the connections and
+        // exchange type representation info and set that info in the
+        // socket connections.
         //
+        debug5 << mName << "Ordering the connections." << endl;
+        OrderConnections();
+
         debug5 << mName << "Exchanging type representations" << endl;
         ExchangeTypeRepresentations();
     }
@@ -1578,6 +1598,46 @@ RemoteProcess::FinishMakingConnection(int numRead, int numWrite)
     debug5 << mName << "Call the progress callback(2)" << endl;
     CallProgressCallback(2);
     CloseListenSocket();
+}
+
+// ****************************************************************************
+// Method: RemoteProcess::OrderConnections
+//
+// Purpose: 
+//   Sends the index of the creation of the connection to each connection
+//   to be read on the remote side to match up the read and write connections
+//   properly.
+//
+// Programmer: Eric Brugger
+// Creation:   Wed Sep 16 16:43:54 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+RemoteProcess::OrderConnections()
+{
+    unsigned char buf[4];
+    buf[0] = 0; buf[1] = 0; buf[2] = 0; buf[3] = 0;
+
+    int iSocket = 0;
+    for (int i = 0; i < nReadConnections; i++)
+    {
+        debug5 << "Sending " << iSocket << " to readConnection[" 
+               << i << "]" << endl;
+        buf[3] = iSocket;
+        readConnections[i]->DirectWrite(buf, 4);
+        iSocket++;
+    }
+    for (int i = 0; i < nWriteConnections; i++)
+    {
+        debug5 << "Sending " << iSocket << " to writeConnection["
+               << i << "]" << endl;
+        buf[3] = iSocket;
+        writeConnections[i]->DirectWrite(buf, 4);
+        iSocket++;
+    }
 }
 
 // ****************************************************************************
@@ -2305,18 +2365,23 @@ RemoteProcess::LaunchRemote(const std::string &host, const std::string &password
     int ptyFileDescriptor;
     if (!disablePTY)
     {
+        // Get the old signal handler.
+        old_signal_handler = signal(SIGCHLD, SIG_DFL);
+        if(old_signal_handler != SIG_ERR)
+            signal(SIGCHLD, old_signal_handler);
+
         // we will tell pty_fork to set up the signal handler for us, because
         // this call must come after the grantpt call inside pty_fork()
         remoteProgramPid = pty_fork(ptyFileDescriptor, catch_dead_child);
     }
     else
     {
-        signal(SIGCHLD, catch_dead_child);
+        old_signal_handler = signal(SIGCHLD, catch_dead_child);
         remoteProgramPid = fork();
     }
 #else
     debug5 << mName << "Starting child process using fork" << endl;
-    signal(SIGCHLD, catch_dead_child);
+    old_signal_handler = signal(SIGCHLD, catch_dead_child);
     remoteProgramPid = fork();
 #endif
     switch (remoteProgramPid)
@@ -2484,6 +2549,10 @@ RemoteProcess::KillProcess()
 
         // Kill the process
         kill(remoteProgramPid, SIGTERM);
+
+        // Reinstall the old signal handler.
+        if(old_signal_handler != SIG_ERR)
+            signal(SIGCHLD, old_signal_handler);
 #endif
         remoteProgramPid = -1;
     }
@@ -2586,7 +2655,7 @@ RemoteProcess::LaunchLocal(const stringVector &args)
     remoteProgramPid = _spawnvp(_P_NOWAIT, argv[0], argv);
 #else
     // Watch for a remote process who died
-    signal(SIGCHLD, catch_dead_child);
+    old_signal_handler = signal(SIGCHLD, catch_dead_child);
 
     debug5 << mName << "Starting child process using fork" << endl;
     int rv, i;

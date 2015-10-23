@@ -161,8 +161,8 @@ avtPoincareIC::CheckForTermination(avtIVPStep& step, avtIVPField *)
     bool shouldTerminate = false;
 
     // Check for termination.
-    if (IntersectPlane( step.GetP0(), step.GetP1(),
-                        step.GetT0(), step.GetT1() ))
+    if (numSteps && IntersectPlane( step.GetP0(), step.GetP1(),
+                                    step.GetT0(), step.GetT1() ))
     {
         numIntersections++;
 
@@ -173,7 +173,7 @@ avtPoincareIC::CheckForTermination(avtIVPStep& step, avtIVPField *)
         }
     }
 
-    // When doing a double puncture plot many points are exained and
+    // When doing a double puncture plot many points are examined and
     // one may not get enough points for the analysis thus allow a cut
     // off so not to integrate forever.
     if( puncturePeriod )
@@ -184,17 +184,16 @@ avtPoincareIC::CheckForTermination(avtIVPStep& step, avtIVPField *)
             (direction == DIRECTION_BACKWARD && step.GetT1() <= maxTime) )
             shouldTerminate = true;
       }
-      
-      // If max steps is zero ignore the test.
-      if( !shouldTerminate && maxSteps && numSteps >= maxSteps )
-      {
-        terminatedBecauseOfMaxSteps = true;
-        shouldTerminate = true;
-      }
-    }
+    }      
+     
+    ++numSteps;
 
-    // Update other termination criteria.
-    numSteps += 1;
+    // If max steps is zero ignore the test.
+    if( !shouldTerminate && maxSteps && numSteps >= maxSteps )
+    {
+      terminatedBecauseOfMaxSteps = true;
+      shouldTerminate = true;
+    }
 
     return shouldTerminate;
 }
@@ -224,14 +223,14 @@ avtPoincareIC::SetIntersectionCriteria(vtkObject *obj, int maxInts)
         EXCEPTION1(ImproperUseException, "Can not SetIntersectionCriteria in avtPoincare, the Poincare plot only supports plane intersections.");
 
 
-    avtVector intersectPlanePt = avtVector(((vtkPlane *)obj)->GetOrigin());
-    avtVector intersectPlaneNorm = avtVector(((vtkPlane *)obj)->GetNormal());
+    intersectPlanePt   = avtVector(((vtkPlane *)obj)->GetOrigin());
+    intersectPlaneNorm = avtVector(((vtkPlane *)obj)->GetNormal());
 
     intersectPlaneNorm.normalize();
     intersectPlaneEq[0] = intersectPlaneNorm.x;
     intersectPlaneEq[1] = intersectPlaneNorm.y;
     intersectPlaneEq[2] = intersectPlaneNorm.z;
-    intersectPlaneEq[3] = intersectPlanePt.length();
+    intersectPlaneEq[3] = intersectPlanePt.dot(intersectPlaneNorm);
 
     maxIntersections = maxInts;
 }
@@ -283,49 +282,49 @@ bool
 avtPoincareIC::IntersectPlane(const avtVector &p0, const avtVector &p1,
                               const double    &t0, const double    &t1)
 {
+    bool foundIntersection = false;
+
     double distP0 = intersectPlaneEq[0] * p0.x +
                     intersectPlaneEq[1] * p0.y +
-                    intersectPlaneEq[2] * p0.z +
+                    intersectPlaneEq[2] * p0.z -
                     intersectPlaneEq[3];
 
     double distP1 = intersectPlaneEq[0] * p1.x +
                     intersectPlaneEq[1] * p1.y +
-                    intersectPlaneEq[2] * p1.z +
+                    intersectPlaneEq[2] * p1.z -
                     intersectPlaneEq[3];
 
 #define SIGN(x) ((x) < 0.0 ? -1 : 1)
 
     // If either point on the plane, or points on opposite
     // sides of the plane, the line intersects.
-    if( //distP0 == 0.0 || distP1 == 0.0 ||
+    if( // distP0 == 0.0 || distP1 == 0.0 ||
         SIGN(distP0) != SIGN(distP1) )
     {
       avtVector dir(p1-p0);
       
       double dot = intersectPlaneEq[0] * dir.x +
                    intersectPlaneEq[1] * dir.y +
-                   intersectPlaneEq[2] * dir.z +
-                   intersectPlaneEq[3];
+                   intersectPlaneEq[2] * dir.z;
 
-      // If the segment is in the same direction as the poloidal plane
-      // then find where it intersects the plane.
+      // If the segment is in the same direction as the plane then
+      // count the intersection.
       if( dot > 0.0 )
       {
         // Double Poincare puncture test.
         if( puncturePeriod > 0 )
         {
-          avtVector planePt(0,0,0);
-
-          avtVector w = (avtVector) p0 - planePt;
+          avtVector w = p1 - intersectPlanePt;
           
+          // Find where it intersects the plane.
           double t = -(intersectPlaneEq[0] * w.x +
                        intersectPlaneEq[1] * w.y +
-                       intersectPlaneEq[2] * w.z +
+                       intersectPlaneEq[2] * w.z -
                        intersectPlaneEq[3]) / dot;
           
-//        avtVector point = avtVector(p0 + dir * t);
+          avtVector point = avtVector(p1 + dir * t);
 
-          double time = t0 + (t1-t0) * t;
+          double time = t0 + (t1-t0) * (point - p0).length() / (p1-p0).length();
 
           // Get the number of periods traversed.
           double nPeriods = time / puncturePeriod;
@@ -334,23 +333,17 @@ avtPoincareIC::IntersectPlane(const avtVector &p0, const avtVector &p1,
           // to zero for an even period.
           double intPart, fracPart = modf(nPeriods, &intPart);
           
-          // std::cerr << t0 << "  " << t1 << "  "
-          //        << time << "  " << nPeriods << "  "
-          //        << intPart << "  " << fracPart << "  "
-          //        << (fracPart < puncturePeriodTolerance ||
-          //            1.0-puncturePeriodTolerance < fracPart ? "save" : "")
-          //        << std::endl;
-          
           if( fracPart < puncturePeriodTolerance ||
               1.0-puncturePeriodTolerance < fracPart )
-            return true;
+            foundIntersection = true;
         }
         else
-          return true;
+            foundIntersection = true;
+
       }
     }
     
-    return false;
+    return foundIntersection;
 }
 
 
@@ -376,5 +369,44 @@ avtPoincareIC::Serialize(MemStream::Mode mode, MemStream &buff,
     // Have the base class serialize its part
     avtStateRecorderIntegralCurve::Serialize(mode, buff, solver, serializeFlags);
 
+    buff.io(mode, intersectPlanePt);
+    buff.io(mode, intersectPlaneNorm);
+
+    buff.io( mode, intersectPlaneEq[0]);
+    buff.io( mode, intersectPlaneEq[1]);
+    buff.io( mode, intersectPlaneEq[2]);
+    buff.io( mode, intersectPlaneEq[3]);
+
+    buff.io(mode, numSteps);
+    buff.io(mode, maxSteps);
+    buff.io(mode, doTime);
+    buff.io(mode, maxTime);
+    buff.io(mode, terminatedBecauseOfMaxSteps);
     buff.io(mode, numIntersections);
+    buff.io(mode, maxIntersections);
+    buff.io(mode, terminatedBecauseOfMaxIntersections);
+}
+
+// ****************************************************************************
+//  Method: avtPoincareIC::MergeIntegralCurve
+//
+//  Purpose:
+//      Merge a values from one curve into another
+//
+//  Programmer: Allen Sanderson
+//  Creation:   August 4, 2015
+//
+// ****************************************************************************
+
+void
+avtPoincareIC::MergeIntegralCurve(avtIntegralCurve *ic)
+{
+    avtPoincareIC *pic = (avtPoincareIC *) ic;
+
+    numSteps = pic->numSteps;
+    terminatedBecauseOfMaxSteps = pic->terminatedBecauseOfMaxSteps;
+
+    numIntersections = pic->numIntersections;
+    terminatedBecauseOfMaxIntersections =
+    pic->terminatedBecauseOfMaxIntersections;
 }

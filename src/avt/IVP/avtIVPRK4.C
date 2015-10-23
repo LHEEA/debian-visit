@@ -85,7 +85,6 @@ avtIVPRK4::avtIVPRK4()
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    numStep = 0;
 
     order = 2; // Highest order ODE that the integrator can support.
 }
@@ -146,9 +145,8 @@ avtIVPRK4::Reset(const double& t_start,
                  const avtVector &v_start)
 {
     t = t_start;
-    numStep = 0;
-
     yCur = y_start;
+    vCur = v_start;
     h = h_max;
 }
 
@@ -206,31 +204,45 @@ avtIVPRK4::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
         h = t_max - t_local;
     }
 
-    // stepsize underflow?
+    // stepsize underflow??
     if( 0.1*std::abs(h) <= std::abs(t_local)*epsilon )
+    {
+        if (DebugStream::Level5())
+        {
+            debug5 << "\tavtIVPRK4::Step(): exiting at t = " 
+                   << t << ", step size too small (h = " << h << ")\n";
+        }
         return avtIVPSolver::STEPSIZE_UNDERFLOW;
+    }
 
     avtIVPField::Result fieldResult;
 
+    avtVector yNew, vNew, k1, k2, k3, k4;
+
     // Compute the RK4 values.
-    avtVector k1;
+    k1 = vCur;  // Set for usage with directionless fields
+                // so that the current direction is known.
     if ((fieldResult = (*field)(t_local, yCur, k1)) != avtIVPField::OK )
         return ConvertResult(fieldResult);
 
-    avtVector k2;
-    if ((fieldResult = (*field)(t_local+0.5*h, yCur+0.5*h*k1, k2)) != avtIVPField::OK)
+    k2 = k1 * 0.5;
+    yNew = yCur + h * k2;
+    if ((fieldResult = (*field)(t_local+0.5*h, yNew, k2)) != avtIVPField::OK)
         return ConvertResult(fieldResult);
     
-    avtVector k3;
-    if ((fieldResult = (*field)(t_local+0.5*h, yCur+0.5*h*k2, k3)) != avtIVPField::OK)
+    k3 = k2 * 0.5;
+    yNew = yCur + h * k3;
+    if ((fieldResult = (*field)(t_local+0.5*h, yNew, k3)) != avtIVPField::OK)
         return ConvertResult(fieldResult);
 
-    avtVector k4;
-    if ((fieldResult = (*field)(t_local+h, yCur+h*k3, k4)) != avtIVPField::OK)
+    k4 = k3;
+    yNew = yCur + h * k4;
+    if ((fieldResult = (*field)(t_local+h, yNew, k4)) != avtIVPField::OK)
         return ConvertResult(fieldResult);
 
     // Calculate the new position.
-    avtVector yNew = yCur + h*(k1 + 2.0*k2 + 2.0*k3 + k4)/6.0;
+    vNew = (k1 + 2.0*k2 + 2.0*k3 + k4) / 6.0;
+    yNew = yCur + h * vNew;
 
     // Convert and save the position.
     ivpstep->resize(2);
@@ -248,12 +260,10 @@ avtIVPRK4::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
     
     ivpstep->t0 = t;
     ivpstep->t1 = t + h;
-
-    // Update for the next step.
-    numStep++;
     
     yCur = yNew;
-    t = t+h;
+    vCur = vNew;
+    t = t + h;
     
     if( period && last )
       t += FLT_EPSILON;
@@ -285,10 +295,5 @@ avtIVPRK4::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
 void
 avtIVPRK4::AcceptStateVisitor(avtIVPStateHelper& aiss)
 {
-    aiss.Accept(numStep)
-        .Accept(tol)
-        .Accept(h)
-        .Accept(h_max)
-        .Accept(t)
-        .Accept(yCur);
+    avtIVPSolver::AcceptStateVisitor(aiss);
 }

@@ -386,6 +386,9 @@
 #    Kathleen Biagas, Tue Apr 14 14:56:12 MST 2015
 #    Added find_file for MS HPC Scheduler.
 #
+#    Matthieu Dorier  via Cyrus Harrison, Thu Aug 20 09:07:08 PDT 2015
+#    Added Damaris support.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 2.8.8 FATAL_ERROR)
@@ -777,6 +780,7 @@ VISIT_3RDPARTY_VAR(CCMIO_DIR     "Path containing the CCMIO library's include an
 VISIT_3RDPARTY_VAR(CFITSIO_DIR   "Path containing the CFITSIO library's include and lib")
 VISIT_3RDPARTY_VAR(CGNS_DIR      "Path containing the CGNS library's include and lib")
 VISIT_3RDPARTY_DEP(CGNS_LIBDEP   "CGNS library dependencies")
+VISIT_3RDPARTY_VAR(DAMARIS_DIR   "Path containing the Damaris library's include and lib")
 VISIT_3RDPARTY_VAR(EAVL_DIR      "Path containing the eavl library's include and lib")
 VISIT_3RDPARTY_VAR(FASTBIT_DIR   "Path containing the Fastbit library's include and lib")
 VISIT_3RDPARTY_VAR(GDAL_DIR      "Path containing the GDAL library's include and lib")
@@ -802,6 +806,8 @@ VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include a
 VISIT_3RDPARTY_VAR(VISUS_DIR     "Path containing the Visus library's include and lib")
 VISIT_3RDPARTY_VAR(XDMF_DIR      "Path containing the Xdmf library's include and lib")
 VISIT_3RDPARTY_DEP(XDMF_LIBDEP   "Xdmf library dependencies")
+VISIT_3RDPARTY_VAR(XERCESC_DIR   "Path containing the Xerces-C library's include and lib")
+VISIT_3RDPARTY_VAR(XSD_DIR       "Path containing the XSD library's include and lib")
 VISIT_3RDPARTY_VAR(MDSPLUS_DIR   "Path containing the MDSplus library's include and lib")
 VISIT_3RDPARTY_VAR(MANTA_DIR     "Path containing the Manta library's include and lib")
 VISIT_3RDPARTY_VAR(ZLIB_DIR      "Path containing the zlib library's include and lib")
@@ -1037,6 +1043,10 @@ IF(NEKTAR++_FOUND)
     SET(HAVE_LIBNEKTAR++ 1)
 ENDIF(NEKTAR++_FOUND)
 
+INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItDamaris.cmake)
+IF(DAMARIS_FOUND)
+    SET(HAVE_DAMARIS 1)
+ENDIF(DAMARIS_FOUND)
 
 INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItBoost.cmake)
 IF(BOOST_FOUND)
@@ -1452,10 +1462,10 @@ FUNCTION(DETECT_MPI_SETTINGS COMP mlibs mflags mlflags mrpath)
         FOREACH(MLIB ${MPI_LIBRARIES})
             GET_FILENAME_COMPONENT(MLIB_PATH ${MLIB} PATH)
             # make sure it is not an implicit path - we need to skip these
-            LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES ${MLIB_PATH} pidx)
-            IF(${pidx} EQUAL -1)
+            LIST(FIND CMAKE_PLATFORM_IMPLICIT_LINK_DIRECTORIES "${MLIB_PATH}" pidx)
+            IF("${pidx}" EQUAL -1)
                 LIST(APPEND MPI_RPATH ${MLIB_PATH})
-            ENDIF(${pidx} EQUAL -1)
+            ENDIF()
         ENDFOREACH(MLIB ${MPI_LIBRARIES})
         LIST(REMOVE_DUPLICATES MPI_RPATH)
         SET(${mrpath} "${MPI_RPATH}" CACHE STRING "Parallel rpath(s)")
@@ -1519,18 +1529,22 @@ IF(VISIT_PARALLEL)
             ENDIF(VISIT_MPI_CXX_FLAGS)
 
             IF(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS "${VPFLAGS} ${VISIT_MPI_FORTRAN_FLAGS}"
+                SET(VISIT_PARALLEL_FORTRAN_FLAGS "${VPFLAGS} ${VISIT_MPI_FORTRAN_FLAGS}"
                     CACHE STRING "Parallel Fortran flags")
             ELSE(VISIT_MPI_FORTRAN_FLAGS)
-                SET(VISIT_PARALLEL_FORTRANFLAGS  "${VPFLAGS}"
+                SET(VISIT_PARALLEL_FORTRAN_FLAGS  "${VPFLAGS}"
                     CACHE STRING "Parallel flags for Fortran")
             ENDIF(VISIT_MPI_FORTRAN_FLAGS)
 
             IF(VISIT_MPI_LD_FLAGS)
                 SET(VISIT_PARALLEL_LINKER_FLAGS "${VISIT_MPI_LD_FLAGS}"
                     CACHE STRING "Parallel LDFLAGS")
+                SET(VISIT_PARALLEL_FORTRAN_LINKER_FLAGS "${VISIT_MPI_LD_FLAGS}"
+                    CACHE STRING "Parallel LDFLAGS")
             ELSE(VISIT_MPI_LD_FLAGS)
                 SET(VISIT_PARALLEL_LINKER_FLAGS ""
+                    CACHE STRING "Parallel LDFLAGS")
+                SET(VISIT_PARALLEL_FORTRAN_LINKER_FLAGS ""
                     CACHE STRING "Parallel LDFLAGS")
             ENDIF(VISIT_MPI_LD_FLAGS)
         ELSE(VISIT_MPI_LIBS OR VISIT_MPI_FORTRAN_LIBS)

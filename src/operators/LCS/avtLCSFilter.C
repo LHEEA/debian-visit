@@ -58,7 +58,6 @@
 #include <avtCallback.h>
 
 #include <avtOriginatingSource.h>
-#include <avtGradientExpression.h>
 #include <vtkVisItScalarTree.h>
 
 #include <VisItException.h>
@@ -70,7 +69,6 @@
 #include <vtkStructuredGrid.h>
 #include <vtkDoubleArray.h>
 #include <vtkPointData.h>
-#include <vtkStreamer.h>
 
 #include <iostream>
 #include <limits>
@@ -93,6 +91,8 @@ avtLCSFilter::avtLCSFilter() : seedVelocity(0,0,0)
 {
     outVarRoot = std::string("operators/LCS/");
 
+    replicateData = false;
+
     //outVarName ="operators/LCS/mesh";
     //doPathlines();
     //SetPathlines(atts.GetPathlines(),
@@ -110,12 +110,27 @@ avtLCSFilter::avtLCSFilter() : seedVelocity(0,0,0)
     absTol = 1e-6;
     relTol = 1e-7;
 
+    nDim = 3;
+    auxIdx = LCSAttributes::None;
+    nAuxPts = 1;
+    auxSpacing = 0;
+
     numSteps = 0;
     fsle_dt = 0;
     fsle_ds = 0;
 
-    minSizeValue = std::numeric_limits<double>::max();
-    maxSizeValue = std::numeric_limits<double>::min();
+    cgTensor = LCSAttributes::Right;
+    eigenComponent = LCSAttributes::Largest;
+
+    minSizeValue =  std::numeric_limits<double>::max();
+    maxSizeValue = -std::numeric_limits<double>::max();
+
+    issueWarningForMaxStepsTermination = true;
+    issueWarningForStepsize = true;
+    issueWarningForStiffness = true;
+    issueWarningForCriticalPoints = true;
+
+    criticalPointThreshold = 1e-3;
 }
 
 
@@ -178,6 +193,49 @@ avtLCSFilter::SetAtts(const AttributeGroup *a)
     needsRecalculation =
       atts.ChangesRequireRecalculation(*(const LCSAttributes*)a);
 
+    eigenComponent = atts.GetEigenComponent();
+    clampLogValues = atts.GetClampLogValues();
+
+    auxIdx = atts.GetAuxiliaryGrid();
+
+    if( atts.GetOperationType() == LCSAttributes::IntegrationTime ||
+        atts.GetOperationType() == LCSAttributes::ArcLength ||
+        atts.GetOperationType() == LCSAttributes::AverageDistanceFromSeed )
+    {
+      nDim = 3;
+      nAuxPts = 1;
+      auxSpacing = 0;
+
+      if( auxIdx != LCSAttributes::None )
+      {
+        avtCallback::IssueWarning("Requesting an auxiliary grid when none is needed. Ignoring request.");
+
+        auxIdx = LCSAttributes::None;
+      }
+    }
+    
+    else if( auxIdx == LCSAttributes::None )
+    {
+      nDim = 3;
+
+      nAuxPts = 1;
+      auxSpacing = 0;
+    }
+    else if( auxIdx == LCSAttributes::TwoDim )
+    {
+      nDim = 2;
+      nAuxPts = 4;
+      auxSpacing = atts.GetAuxiliaryGridSpacing();
+    }
+    else if( auxIdx == LCSAttributes::ThreeDim )
+    {
+      nDim = 3;
+      nAuxPts = 6;
+      auxSpacing = atts.GetAuxiliaryGridSpacing();
+    }
+
+    cgTensor = atts.GetCauchyGreenTensor();
+        
     int CMFEType = (atts.GetPathlinesCMFE() == LCSAttributes::CONN_CMFE
                     ? PICS_CONN_CMFE : PICS_POS_CMFE);
 
@@ -194,6 +252,7 @@ avtLCSFilter::SetAtts(const AttributeGroup *a)
     SetVelocitySource(atts.GetVelocitySource());
 
     SetIntegrationType(atts.GetIntegrationType());
+
     SetParallelizationAlgorithm(atts.GetParallelizationAlgorithmType(), 
                                 atts.GetMaxProcessCount(),
                                 atts.GetMaxDomainCacheSize(),
@@ -239,7 +298,10 @@ avtLCSFilter::SetAtts(const AttributeGroup *a)
                    atts.GetTerminateBySize(),
                    atts.GetTermSize());
 
+    IssueWarningForAdvection(atts.GetIssueAdvectionWarnings());
+    IssueWarningForBoundary(atts.GetIssueBoundaryWarnings());
     IssueWarningForMaxStepsTermination(atts.GetIssueTerminationWarnings());
+    IssueWarningForStepsize(atts.GetIssueStepsizeWarnings());
     IssueWarningForStiffness(atts.GetIssueStiffnessWarnings());
     IssueWarningForCriticalPoints(atts.GetIssueCriticalPointsWarnings(),
                                   atts.GetCriticalPointThreshold());
@@ -336,91 +398,6 @@ avtLCSFilter::SetTermination(int maxSteps_,
 
 
 // ****************************************************************************
-//  Method: avtLCSFilter::CreateIntegralCurve
-//
-//  Purpose:
-//      Create an uninitialized integral curve.
-//
-//  Programmer: Hari Krishnan
-//  Creation:   December 5, 2011
-//
-// ****************************************************************************
-
-avtIntegralCurve*
-avtLCSFilter::CreateIntegralCurve(void)
-{
-  if( doSize ) 
-    return (new avtStreamlineIC());
-  else
-    return (new avtLCSIC());
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::CreateIntegralCurve
-//
-//  Purpose:
-//      Create an integral curve with specific IDs and parameters.
-//
-//  Programmer: Hari Krishnan
-//  Creation:   December 5, 2011
-//
-// ****************************************************************************
-
-avtIntegralCurve*
-avtLCSFilter::CreateIntegralCurve(const avtIVPSolver* model,
-                                   avtIntegralCurve::Direction dir,
-                                   const double& t_start,
-                                   const avtVector &p_start,
-                                   const avtVector& v_start, long ID)
-{
-    double t;
-
-    if (doPathlines)
-    {
-        if (dir == avtIntegralCurve::DIRECTION_BACKWARD)
-            t = seedTime0 - maxTime;
-        else
-            t = seedTime0 + maxTime;
-    }
-    else
-    {
-        if (dir == avtIntegralCurve::DIRECTION_BACKWARD)
-            t = -maxTime;
-        else
-            t = maxTime;
-    }
-
-    if( doSize )
-    {
-      // For now use the avtLCSIC as the state does not need to be
-      // recorded for the FSLE. That is because currently the
-      // integration is being done step by step rather than in
-      // chunks. However, the code is set up to use
-      // avtStreamlineIC. Which if the integration is done in chucks
-      // will probably be more efficient.
-
-      // unsigned char attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
-      // attr |= avtStateRecorderIntegralCurve::SAMPLE_TIME;
-      // attr |= avtStateRecorderIntegralCurve::SAMPLE_ARCLENGTH;
-      
-      // return
-      //   (new avtStreamlineIC(numSteps, doDistance, maxDistance, doTime, t,
-      //                        attr, model, dir, t_start, p_start, v_start, ID));
-      return
-        (new avtLCSIC(numSteps, doDistance, maxDistance, doTime, t,
-                       model, dir, t_start, p_start, v_start, ID));
-    }
-    else
-    {
-      return
-        (new avtLCSIC(maxSteps, doDistance, maxDistance, doTime, t,
-                       model, dir, t_start, p_start, v_start, ID));
-    }
-}
-
-
-// ****************************************************************************
 //  Method: avtLCSFilter::ModifyContract
 //
 //  Purpose:
@@ -435,21 +412,26 @@ avtContract_p
 avtLCSFilter::ModifyContract(avtContract_p in_contract)
 {
     avtDataRequest_p in_dr = in_contract->GetDataRequest();
-    std::string var =  in_dr->GetOriginalVariable();
+    avtDataRequest_p out_dr = NULL;
+    std::string var = in_dr->GetOriginalVariable();
+
+    // This request is from an IC operator downstream. 
+    replicateData = in_contract->ReplicateSingleDomainOnAllProcessors();
+
 //    in_contract->SetReplicateSingleDomainOnAllProcessors(true);
 //    in_contract->SetOnDemandStreaming(false);
 //    in_contract->GetDataRequest();
     in_dr->SetUsesAllDomains(true);
+
     if( strncmp(var.c_str(), "operators/LCS/", strlen("operators/LCS/")) == 0)
     {
         std::string justTheVar = var.substr(strlen("operators/LCS/"));
 
         outVarName = justTheVar;
-        avtDataRequest_p out_dr = new avtDataRequest(in_dr,justTheVar.c_str());
+
+        out_dr = new avtDataRequest(in_dr, justTheVar.c_str());
         //out_dr->SetDesiredGhostDataType(GHOST_NODE_DATA);
         //out_dr->SetDesiredGhostDataType(GHOST_ZONE_DATA);
-
-        return avtPICSFilter::ModifyContract( new avtContract(in_contract,out_dr) );
     }
     else
     {
@@ -457,7 +439,14 @@ avtLCSFilter::ModifyContract(avtContract_p in_contract)
       outVarRoot = "";
     }
 
-    return avtPICSFilter::ModifyContract(in_contract);
+    avtContract_p out_contract;
+
+    if ( *out_dr )
+        out_contract = new avtContract(in_contract, out_dr);
+    else
+        out_contract = new avtContract(in_contract);
+
+    return avtPICSFilter::ModifyContract(out_contract);
 }
 
 
@@ -484,6 +473,13 @@ avtLCSFilter::UpdateDataObjectInfo(void)
     avtDataAttributes &out_dataatts = GetOutput()->GetInfo().GetAttributes();
 
     timeState = in_dataatts.GetTimeIndex();
+
+    // If there is an IC operator downstream the results may be
+    // replicated on all processors.
+
+    // std::cerr << "replicateData  "  << replicateData << std::endl;
+
+    out_dataatts.SetDataIsReplicatedOnAllProcessors(replicateData);
 
     //the outvarname has been assigned and will be added.
     //outVarName = "velocity";
@@ -533,10 +529,11 @@ avtLCSFilter::UpdateDataObjectInfo(void)
 //
 // ****************************************************************************
 
-// void 
-// avtLCSFilter::PostExecute(void)
-// {
-// }
+void 
+avtLCSFilter::PostExecute(void)
+{
+    avtPICSFilter::PostExecute();
+}
 
 // ****************************************************************************
 //  Method: avtLCSFilter::PreExecute
@@ -667,11 +664,8 @@ avtLCSFilter::Execute(void)
     if (!needsRecalculation && *dt != NULL)
     {
         debug1 << "LCS: using cached version" << std::endl;
-        if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-            if (PAR_Rank() != 0)
-                dt = new avtDataTree();
+
         SetOutputDataTree(dt);
-        return;
     }
     else
     {
@@ -684,6 +678,25 @@ avtLCSFilter::Execute(void)
       
       ReportWarnings( ics );
     }
+
+#ifdef PARALLEL
+    if (selectedAlgo == PICS_PARALLEL_OVER_DOMAINS && 
+        atts.GetSourceType() == LCSAttributes::NativeMesh &&
+        auxIdx == LCSAttributes::None )
+      {
+        char str[1028];
+
+        SNPRINTF(str, 1028,
+                 "\n\nWhen using the native mesh with mutliple domains "
+                 "and no auxilliary grid it is currently not possible "
+                 "to compute the gradients across domain boundaries. "
+                 "For the best results utilize an auzilliary grid." );
+
+        avtCallback::IssueWarning(str);
+      }
+#endif
+
+
 }
 
 // ****************************************************************************
@@ -708,8 +721,6 @@ avtLCSFilter::ContinueExecute()
     {
       if( doSize )
       {
-//      std::cerr << "Continue execute " << numSteps << std::endl;
-        
         std::vector<avtIntegralCurve *> ics;
         
         GetTerminatedIntegralCurves(ics);
@@ -732,37 +743,6 @@ avtLCSFilter::ContinueExecute()
     }
 
     return false;
-}
-
-// ****************************************************************************
-//  Method: avtLCSFilter::CreateIntegralCurveOutput
-//
-//  Purpose:
-//      Computes the LCS output (via sub-routines) after the PICS filter has
-//      calculated the final particle positions.
-//
-//  Programmer: Hari Krishnan
-//  Creation:   December 5, 2011
-//
-// ****************************************************************************
-
-void 
-avtLCSFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCurve*> &ics)
-{
-  if( atts.GetOperationType() == LCSAttributes::Lyapunov && doSize )
-  {
-      if (atts.GetSourceType() == LCSAttributes::NativeMesh)
-        CreateNativeMeshIterativeCalcOutput(ics);
-      else //if (atts.GetSourceType() == LCSAttributes::RegularGrid)
-        CreateRectilinearGridIterativeCalcOutput(ics);
-  }
-  else
-  {
-      if (atts.GetSourceType() == LCSAttributes::NativeMesh)
-          NativeMeshSingleCalc(ics);
-      else //if (atts.GetSourceType() == LCSAttributes::RegularGrid)
-          RectilinearGridSingleCalc(ics);
-    }
 }
 
 
@@ -804,7 +784,7 @@ avtLCSFilter::GetInitialLocations()
 //
 //  Arguments:
 //      inDT          A pointer to a data tree.  
-//
+ //
 //  Programmer: Hank Childs
 //  Creation:   December 5, 2011
 //
@@ -813,6 +793,17 @@ avtLCSFilter::GetInitialLocations()
 void
 avtLCSFilter::GetInitialLocationsFromNativeMesh(avtDataTree_p inDT)
 {
+    const double offset[3][6][3] = { { { 0., 0., 0.}, { 0., 0., 0.},
+                                       { 0., 0., 0.}, { 0., 0., 0.},
+                                       { 0., 0., 0.}, { 0., 0., 0.} },
+                                     
+                                     { {-1., 0., 0.}, { 1., 0., 0.},
+                                       { 0.,-1., 0.}, { 0., 1., 0.},
+                                       { 0., 0.,-1.}, { 0., 0., 1.} },
+                                     
+                                     { {-1., 0., 0.}, { 1., 0., 0.},
+                                       { 0.,-1., 0.}, { 0., 1., 0.},
+                                       { 0., 0.,-1.}, { 0., 0., 1.} } };
     if (*inDT == NULL)
         return;
 
@@ -832,15 +823,23 @@ avtLCSFilter::GetInitialLocationsFromNativeMesh(avtDataTree_p inDT)
         size_t pts = in_ds->GetNumberOfPoints();
 
         size_t numberOfSeeds = seedPoints.size();
-        size_t totalNumberOfSeeds = numberOfSeeds + pts;
-
+        size_t totalNumberOfSeeds = numberOfSeeds + pts*nAuxPts;
         seedPoints.resize( totalNumberOfSeeds );
 
-        double points[3];
+        double base[3], point[3];
+        
+        // Insert the auxiliary points - the base point is not needed.
         for(size_t i = 0; i < pts; ++i)
         {
-          in_ds->GetPoint(i, points);
-          seedPoints[numberOfSeeds+i].set(points);
+          in_ds->GetPoint(i, base);
+
+          for(size_t a = 0; a < nAuxPts; ++a)
+          {
+            for(size_t l = 0; l < 3; ++l)
+              point[l] = base[l] + auxSpacing * offset[auxIdx][a][l];
+
+            seedPoints[numberOfSeeds++].set(point);
+          }
         }
     }
     else
@@ -874,14 +873,27 @@ avtLCSFilter::GetInitialLocationsFromNativeMesh(avtDataTree_p inDT)
 void
 avtLCSFilter::GetInitialLocationsFromRectilinearGrid()
 {
+    const double offset[3][6][3] = { { { 0., 0., 0.}, { 0., 0., 0.},
+                                       { 0., 0., 0.}, { 0., 0., 0.},
+                                       { 0., 0., 0.}, { 0., 0., 0.} },
+                                     
+                                     { {-1., 0., 0.}, { 1., 0., 0.},
+                                       { 0.,-1., 0.}, { 0., 1., 0.},
+                                       { 0., 0.,-1.}, { 0., 0., 1.} },
+
+                                     { {-1., 0., 0.}, { 1., 0., 0.},
+                                       { 0.,-1., 0.}, { 0., 1., 0.},
+                                       { 0., 0.,-1.}, { 0., 0., 1.} } };
+
     //compute total number of seeds that will be generated.
-    size_t totalNumberOfSeeds =
+    size_t numberOfSeeds = 0;
+    size_t totalNumberOfSeeds = nAuxPts *
       global_resolution[0] * global_resolution[1] * global_resolution[2];
     
     seedPoints.resize(totalNumberOfSeeds);
 
-    size_t l = 0; //current line of the seed.
-  
+    double base[3], point[3];
+        
     //add sample points by looping over in x,y,z
     for(int k = 0; k < global_resolution[2]; ++k)
     {
@@ -890,7 +902,7 @@ avtLCSFilter::GetInitialLocationsFromRectilinearGrid()
         if (global_resolution[2] > 1)
           zpcnt = ((double)k)/((double)global_resolution[2]-1);
 
-        double z = global_bounds[4]*(1.0-zpcnt) + global_bounds[5]*zpcnt;
+        base[2] = global_bounds[4]*(1.0-zpcnt) + global_bounds[5]*zpcnt;
         
         for(int j = 0; j < global_resolution[1]; ++j)
         {
@@ -899,7 +911,7 @@ avtLCSFilter::GetInitialLocationsFromRectilinearGrid()
             if (global_resolution[1] > 1)
               ypcnt = ((double)j)/((double)global_resolution[1]-1);
 
-            double y = global_bounds[2]*(1.0-ypcnt) + global_bounds[3]*ypcnt;
+            base[1] = global_bounds[2]*(1.0-ypcnt) + global_bounds[3]*ypcnt;
             
             for(int i = 0; i < global_resolution[0]; ++i)
             {
@@ -908,11 +920,16 @@ avtLCSFilter::GetInitialLocationsFromRectilinearGrid()
                 if (global_resolution[0] > 1)
                   xpcnt = ((double)i)/((double)global_resolution[0]-1);
 
-                double x =
-                  global_bounds[0]*(1.0-xpcnt) +
-                  global_bounds[1]*xpcnt;
+                base[0] = (global_bounds[0]*(1.0-xpcnt) +
+                           global_bounds[1]*xpcnt);
                 
-                seedPoints[l++].set(x,y,z);
+                for(size_t a = 0; a < nAuxPts; ++a)
+                {
+                  for(size_t l = 0; l < 3; ++l)
+                    point[l] = base[l] + auxSpacing * offset[auxIdx][a][l];
+
+                  seedPoints[numberOfSeeds++].set(point);
+                }
             }
         }
     }
@@ -920,840 +937,167 @@ avtLCSFilter::GetInitialLocationsFromRectilinearGrid()
 
 
 // ****************************************************************************
-//  Method: avtLCSFilter::NativeMeshSingleCalc
+//  Method: avtLCSFilter::CreateIntegralCurve
 //
 //  Purpose:
-//      Computes the FTLE and similar values that are neighbor
-//      independent after the particles have been advected.
+//      Create an uninitialized integral curve.
 //
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
 //
 // ****************************************************************************
 
-void avtLCSFilter::NativeMeshSingleCalc(std::vector<avtIntegralCurve*> &ics)
+avtIntegralCurve*
+avtLCSFilter::CreateIntegralCurve(void)
 {
-    //accumulate all of the points then do jacobian?
-    //or do jacobian then accumulate?
-    //picking the first.
-
-    double minv   = std::numeric_limits<double>::max();
-    double maxv   = std::numeric_limits<double>::min();
-    int    offset = 0;
-
-    avtDataTree_p outTree =
-      MultiBlockSingleCalc(GetInputDataTree(), ics, offset, minv, maxv);
-
-    if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-        if (PAR_Rank() != 0)
-            outTree = new avtDataTree();
-    SetOutputDataTree(outTree);
-
-    avtDataAttributes &dataatts = GetOutput()->GetInfo().GetAttributes();
-    avtExtents* e = dataatts.GetThisProcsActualDataExtents();
-
-    double range[6];
-    range[0] = minv;
-    range[1] = maxv;
-    range[2] = minv;
-    range[3] = maxv;
-    range[4] = minv;
-    range[5] = maxv;
-    e->Set(range);
-
-    e = dataatts.GetThisProcsOriginalDataExtents();
-    e->Set(range);
-
-    e = dataatts.GetThisProcsActualSpatialExtents();
-    e->Set(global_bounds);
-    e = dataatts.GetThisProcsOriginalSpatialExtents();
-    e->Set(global_bounds);
+  if( doSize ) 
+    return (new avtStreamlineIC());
+  else
+    return (new avtLCSIC());
 }
 
 
 // ****************************************************************************
-//  Method: avtLCSFilter::MultiBlockSingleCalc
+//  Method: avtLCSFilter::CreateIntegralCurve
 //
 //  Purpose:
-//      Computes the FTLE and similar values that are neighbor
-//      independent for the whole data set, using the final particle
-//      locations, at the blocks native mesh resolution.
+//      Create an integral curve with specific IDs and parameters.
 //
 //  Programmer: Hari Krishnan
 //  Creation:   December 5, 2011
 //
 // ****************************************************************************
 
-avtDataTree_p
-avtLCSFilter::MultiBlockSingleCalc( avtDataTree_p inDT,
-                                    std::vector<avtIntegralCurve*> &ics,
-                                    int &offset, double &minv, double &maxv )
+avtIntegralCurve*
+avtLCSFilter::CreateIntegralCurve(const avtIVPSolver* model,
+                                  avtIntegralCurve::Direction dir,
+                                  const double& t_start,
+                                  const avtVector &p_start,
+                                  const avtVector& v_start, long ID)
 {
-    if (*inDT == NULL)
-        return 0;
-
-    int nc = inDT->GetNChildren();
-
-    if (nc < 0 && !inDT->HasData())
+    if (doPathlines)
     {
-        return 0;
-    }
-
-    if (nc == 0)
-    {
-        //
-        // there is only one dataset to process
-        //
-        vtkDataSet *in_ds = inDT->GetDataRepresentation().GetDataVTK();
-        int dom = inDT->GetDataRepresentation().GetDomain();
-        std::string label = inDT->GetDataRepresentation().GetLabel();
-
-        vtkDataSet *out_ds =
-          SingleBlockSingleCalc( in_ds, ics, offset, dom, minv, maxv );
-        avtDataTree_p rv = new avtDataTree(out_ds, dom, label);
-        out_ds->Delete();
-        return rv;
-    }
-    else
-    {
-      //
-      // there is more than one input dataset to process
-      // and we need an output datatree for each
-      //
-      avtDataTree_p *outDT = new avtDataTree_p[nc];
-      for (int j = 0; j < nc; j++)
-      {
-          if (inDT->ChildIsPresent(j))
-            outDT[j] = MultiBlockSingleCalc( inDT->GetChild(j), ics, 
-                                                    offset, minv, maxv );
-          else
-            outDT[j] = NULL;
-      }
-      avtDataTree_p rv = new avtDataTree(nc, outDT);
-      delete [] outDT;
-      return rv;
-    }
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::SingleBlockSingleCalc
-//
-//  Purpose:
-//      Computes the FTLE and similar values that are neighbor
-//      independent for a single block of a data set, using the final
-//      particle locations, at the blocks native mesh resolution.
-//
-//  Arguments:
-//      in_ds   The block to calculate the value on
-//      ics     The list of particles for all blocks on this MPI task.
-//      domain  The domain number of in_ds
-//      minv    The minimum value (output)
-//      maxv    The maximum value (output)
-//
-//  Returns:    The new version of in_ds that includes the scalar
-//              variable.  The calling function is responsible for
-//              dereferencing this VTK object.
-//
-//  Programmer: Hari Krishnan
-//  Creation:   December 5, 2011
-//
-//  Modifications:
-//
-//    Hank Childs, Tue Feb  5 08:12:33 PST 2013
-//    Fix parallelization bug and memory leak.
-//
-// ****************************************************************************
-
-vtkDataSet *
-avtLCSFilter::SingleBlockSingleCalc( vtkDataSet *in_ds,
-                                     std::vector<avtIntegralCurve*> &ics,
-                                     int &offset, int domain,
-                                     double &minv, double &maxv )
-{
-    //variable name.
-    std::string var = outVarRoot + outVarName;
-
-    //create new instance from old.
-    vtkDataSet* out_grid = in_ds->NewInstance();
-    out_grid->ShallowCopy(in_ds);
-    int nTuples = in_ds->GetNumberOfPoints();
-
-    //an array for the initial locations.
-    std::vector<avtVector> remapPoints;
-    remapPoints.resize(nTuples);
-
-    if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-    {
-        // The parallel synchronization for when data is replicated involves
-        // a sum across all processors.  So we want remapPoints to have the
-        // location of the particle on one processor, and zero on the rest.
-        // Do that here.
-        // Special care is needed for the case where the particle never
-        // advected.  Then we need to put the initial location on just one
-        // processor.  We do this on rank 0.
-        std::vector<int> iHavePoint(nTuples, 0);
-        std::vector<int> anyoneHasPoint;
-
-        for (size_t idx = 0; idx < ics.size(); idx++)
-        {
-            size_t index = ics[idx]->id;
-            size_t l = (index-offset);
-            if(l < remapPoints.size()) ///TODO: l >=0 is always true
-            {
-                iHavePoint[l] = 1;
-            }
-        }
-
-        UnifyMaximumValue(iHavePoint, anyoneHasPoint);
-        avtVector zero;
-        zero.x = zero.y = zero.z = 0.;
-        for (size_t i = 0; i < (size_t)nTuples; i++)
-            if (PAR_Rank() == 0 && !anyoneHasPoint[i])
-                remapPoints[i] = seedPoints.at(offset + i);
-            else
-                remapPoints[i] = zero;
-    }
-    else
-    {
-        //copy the original seed points
-        for(size_t i = 0; i < remapPoints.size(); ++i)
-            remapPoints[i] = seedPoints.at(offset + i);
-    }
-
-    for(size_t i = 0; i < ics.size(); ++i)
-    {
-        size_t index = ics[i]->id;
-        int l = (int)(index-offset);
-        //std::cout << "l = " << l << " " << nTuples << std::endl;
-        if(l >= 0 && l < (int)remapPoints.size())
-        {
-
-          // remapPoints[l] = ((avtLCSIC*)ics[i])->GetEndPoint() -
-          //                ((avtLCSIC*)ics[i])->GetStartPoint();
-
-          if( atts.GetOperationType() == LCSAttributes::EigenValue ||
-              atts.GetOperationType() == LCSAttributes::EigenVector ||
-              atts.GetOperationType() == LCSAttributes::Lyapunov )
-          {
-            remapPoints.at(l) = ((avtLCSIC*)ics[i])->GetEndPoint();
-          }
-          else
-          {
-            double ave = 0;
-
-            if( ((avtLCSIC*)ics[i])->GetNumSteps() )
-              remapPoints.at(l) =
-                avtVector( ((avtLCSIC*)ics[i])->GetTime(),
-                           ((avtLCSIC*)ics[i])->GetDistance(),
-                           (((avtLCSIC*)ics[i])->GetSummation0() /
-                            (double) ((avtLCSIC*)ics[i])->GetNumSteps()) );
-            else
-              remapPoints.at(l) =
-                avtVector( ((avtLCSIC*)ics[i])->GetTime(),
-                           ((avtLCSIC*)ics[i])->GetDistance(),
-                           0 );
-          }
-        }
-    }
-
-    //done with offset, increment it for the next call to this
-    //function.
-    offset += nTuples;
-
-    //use static function in avtGradientExpression to calculate
-    //gradients.  since this function only does scalar, break our
-    //vectors into scalar components and calculate one at a time.
-    vtkDoubleArray *outputArray = vtkDoubleArray::New();
-    outputArray->SetName(var.c_str());
-    if( atts.GetOperationType() == LCSAttributes::EigenVector )
-      outputArray->SetNumberOfComponents(3);
-    else
-      outputArray->SetNumberOfComponents(1);
-    outputArray->SetNumberOfTuples(nTuples);
-    out_grid->GetPointData()->AddArray(outputArray);
-
-    vtkDoubleArray *workingArray = vtkDoubleArray::New();
-    workingArray->SetName("workingArray");
-    workingArray->SetNumberOfComponents(1);
-    workingArray->SetNumberOfTuples(nTuples);
-    out_grid->GetPointData()->AddArray(workingArray);
-    out_grid->GetPointData()->SetActiveScalars("workingArray");
-
-    if( atts.GetOperationType() == LCSAttributes::EigenValue ||
-        atts.GetOperationType() == LCSAttributes::EigenVector ||
-        atts.GetOperationType() == LCSAttributes::Lyapunov )
-    {
-      vtkDataArray* jacobian[3];
-    
-      for(int i = 0; i < 3; ++i)
-      {
-        for(size_t j = 0; j < (size_t)nTuples; ++j)
-            workingArray->SetTuple1(j, remapPoints[j][i]);
-
-        // ARS FIX ME - what does this do?
-        if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-        {
-            double *newvals = new double[nTuples];
-            double *origvals = (double *) workingArray->GetVoidPointer(0);
-            SumDoubleArrayAcrossAllProcessors(origvals, newvals, nTuples);
-            // copy newvals back into origvals
-            memcpy(origvals, newvals, nTuples*sizeof(double));
-            delete [] newvals;
-        }
-
-        jacobian[i] =
-          avtGradientExpression::CalculateGradient(out_grid, var.c_str());
-      }
-
-      for (int i = 0; i < nTuples; i++)
-        outputArray->SetTuple1(i, std::numeric_limits<double>::epsilon());
-
-      //now have the jacobian - 3 arrays with 3 workingArrays.
-      if( atts.GetOperationType() == LCSAttributes::EigenValue )
-        ComputeEigenValues(jacobian, outputArray);
-      else if( atts.GetOperationType() == LCSAttributes::EigenVector )
-        ComputeEigenVectors(jacobian, workingArray, outputArray);
-      else //if( atts.GetOperationType() == LCSAttributes::Lyapunov )
-        ComputeLyapunovExponent(jacobian, outputArray);
-
-      jacobian[0]->Delete();
-      jacobian[1]->Delete();
-      jacobian[2]->Delete();
-    }
-
-    // The value stored in the points is the arc length, integration
-    // time, and average distance form the seed. So just move it into
-    // the output array.
-    else if( atts.GetOperatorType() == LCSAttributes::BaseValue )
-    {
-      int index = (atts.GetOperationType()-LCSAttributes::IntegrationTime);
-
-      for(size_t j = 0; j < (size_t)nTuples; ++j)
-        outputArray->SetTuple1(j, remapPoints[j][index]);
-
-      // ARS FIX ME - what does this do?
-      if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-      {
-        double *newvals = new double[nTuples];
-        double *origvals = (double *) outputArray->GetVoidPointer(0);
-        SumDoubleArrayAcrossAllProcessors(origvals, newvals, nTuples);
-        // copy newvals back into origvals
-        memcpy(origvals, newvals, nTuples*sizeof(double));
-        delete [] newvals;
-      }
-    }
-    else if( atts.GetOperatorType() == LCSAttributes::Gradient )
-    {
-      int index = (atts.GetOperationType()-LCSAttributes::IntegrationTime);
-      
-      // The base value is used to clamp the log values to be only
-      // positive or both positive and negative.
-      double baseValue;
-      
-      if (atts.GetClampLogValues() == true )
-        baseValue = 1.0;
-      else
-        baseValue = std::numeric_limits<double>::epsilon();
-      
-      for (size_t l = 0; l < nTuples; l++)
-        workingArray->SetTuple1(l, remapPoints[l][index]);
-
-      // ARS FIX ME - what does this do?
-      if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-      {
-        double *newvals = new double[nTuples];
-        double *origvals = (double *) workingArray->GetVoidPointer(0);
-        SumDoubleArrayAcrossAllProcessors(origvals, newvals, nTuples);
-        // copy newvals back into origvals
-        memcpy(origvals, newvals, nTuples*sizeof(double));
-        delete [] newvals;
-      }
-      
-      vtkDataArray* gradient =
-        avtGradientExpression::CalculateGradient(out_grid, var.c_str());
-      
-      for (size_t l = 0; l < nTuples; l++)
-      {
-        double *grad = gradient->GetTuple3(l);
-        
-        double lambda = baseValue;
-        lambda = std::max( lambda, grad[0]*grad[0] );
-        lambda = std::max( lambda, grad[1]*grad[1] );
-        lambda = std::max( lambda, grad[2]*grad[2] );
-        lambda = log( sqrt( lambda ) );
-        
-        if( doTime )
-          lambda /= maxTime;
-        else if( doDistance )
-          lambda /= maxDistance;
-        
-        outputArray->SetTuple1(l, lambda);
-      }
-      
-      gradient->Delete();
-    }
-
-    if( atts.GetOperationType() == LCSAttributes::EigenVector )
-    {
-      minv = 0;
-      maxv = 1;
-
-      // for(int i = 0; i < nTuples; ++i)
-      // {
-      //   double *vals = outputArray->GetTuple3(i);
-      //   double mag = sqrt(vals[0]*vals[0]+vals[1]*vals[1]+vals[2]*vals[2]);
-
-      //   minv = std::min(mag, minv);
-      //   maxv = std::max(mag, maxv);
-      // }
-    }
-    else
-    {
-      for(int i = 0; i < nTuples; ++i)
-      {
-        minv = std::min(outputArray->GetTuple1(i), minv);
-        maxv = std::max(outputArray->GetTuple1(i), maxv);
-      }
-    }
-
-    outputArray->Delete();
-    workingArray->Delete();
-
-    // Set the vectors to be the active data
-    if( atts.GetOperationType() == LCSAttributes::EigenVector )
-      out_grid->GetPointData()->SetActiveVectors(var.c_str());
-    else
-      out_grid->GetPointData()->SetActiveScalars(var.c_str());
-
-    // Remove the working array.
-    out_grid->GetPointData()->RemoveArray("workingArray");
-
-    //Store this dataset in Cache for next time.
-    std::string str = CreateCacheString();
-    StoreArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
-                            outVarName.c_str(), domain, -1,
-                            str.c_str(), out_grid);
-
-    // Calling function must free this.
-    return out_grid;
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::RectilinearGridSingleCalc
-//
-//  Purpose:
-//      Computes the FTLE and similar values that are neighbor
-//      independent on a rectilinear grid.
-//
-//  Programmer: Hari Krishnan
-//  Creation:   December 5, 2011
-//
-//    Mark C. Miller, Wed Aug 22 19:22:40 PDT 2012
-//    Fix leak of all_indices, index_counts, all_points, result_counts on 
-//    rank 0 (root).
-// ****************************************************************************
-
-void
-avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
-{
-    int    maxSteps = std::numeric_limits<int>::min();
-    double maxTime = std::numeric_limits<double>::min();
-    double maxLength = std::numeric_limits<double>::min();
-
-    //variable name.
-    std::string var = outVarRoot + outVarName;
-
-    //algorithm sends index to global datastructure as well as end points.
-    //Send List of index into global array to rank 0
-    //Send end positions into global array to rank 0
-
-    //loop over all the intelgral curves and add it back to the
-    //original list of seeds.
-    intVector indices(ics.size());
-    doubleVector points(ics.size()*3);
-    doubleVector times(ics.size());
-    doubleVector lengths(ics.size());
-
-    for(size_t i=0, j=0; i<ics.size(); ++i, j+=3)
-    {
-        indices[i] = ics[i]->id;
-        times[i] = ((avtLCSIC*)ics[i])->GetTime();
-        lengths[i] = ((avtLCSIC*)ics[i])->GetArcLength();
-
-        maxSteps  = std::max( ((avtLCSIC*)ics[i])->GetNumSteps(), maxSteps);
-        maxTime   = std::max( ((avtLCSIC*)ics[i])->GetTime(), maxTime);
-        maxLength = std::max( ((avtLCSIC*)ics[i])->GetArcLength(), maxLength);
-
-        if( atts.GetOperationType() == LCSAttributes::EigenValue ||
-            atts.GetOperationType() == LCSAttributes::EigenVector ||
-            atts.GetOperationType() == LCSAttributes::Lyapunov )
-        {
-          avtVector end_point = ((avtLCSIC*)ics[i])->GetEndPoint();
-          
-          // std::cout << PAR_Rank() << " ics: " << indices[i] << " "
-          //             << end_point << std::endl;
-
-          points[j+0] = end_point[0];
-          points[j+1] = end_point[1];
-          points[j+2] = end_point[2];
-        }
+        if (dir == avtIntegralCurve::DIRECTION_BACKWARD)
+            absMaxTime = seedTime0 - maxTime;
         else
-        {
-          points[j+0] = ((avtLCSIC*)ics[i])->GetTime();
-          points[j+1] = ((avtLCSIC*)ics[i])->GetArcLength();
-
-          if( ((avtLCSIC*)ics[i])->GetNumSteps() )
-            points[j+2] = (((avtLCSIC*)ics[i])->GetSummation0() /
-                           (double) ((avtLCSIC*)ics[i])->GetNumSteps());
-          else
-            points[j+2] = 0;
-        }
-    }
-
-    // std::cerr << "Max steps " << maxSteps
-    //           << "  max time " << maxTime
-    //           << "  max arc length " << maxLength
-    //           << std::endl;
-
-    // std::cout << PAR_Rank() << " total integral pts: "
-    //        << ics.size() << std::endl;
-    // std::flush(cout);
-
-    int* all_indices = 0;
-    int* index_counts = 0;
-
-    double* all_times = 0;
-    int *time_counts = 0;
-
-    double* all_lengths = 0;
-    int *length_counts = 0;
-
-    double* all_points = 0;
-    int *point_counts = 0;
-
-    Barrier();
-
-    CollectIntArraysOnRootProc(all_indices, index_counts,
-                               &indices.front(), (int)indices.size());
-
-    CollectDoubleArraysOnRootProc(all_times, time_counts,
-                                  &times.front(), (int)times.size());
-
-    CollectDoubleArraysOnRootProc(all_lengths, time_counts,
-                                  &lengths.front(), (int)lengths.size());
-
-    CollectDoubleArraysOnRootProc(all_points, point_counts,
-                                  &points.front(), (int)points.size());
-
-    Barrier();
-
-    //root should now have index into global structure and all
-    //matching end positions.
-    if(PAR_Rank() != 0)
-    {
-        //std::cout << PAR_Rank() << " creating dummy output" << std::endl;
-        avtDataTree* dummy = new avtDataTree();
-        SetOutputDataTree(dummy);
+            absMaxTime = seedTime0 + maxTime;
     }
     else
     {
-        //rank 0
-        //now create a rectilinear grid.
-        vtkRectilinearGrid* rect_grid = vtkRectilinearGrid::New();
-
-        vtkDoubleArray* lxcoord = vtkDoubleArray::New();
-        vtkDoubleArray* lycoord = vtkDoubleArray::New();
-        vtkDoubleArray* lzcoord = vtkDoubleArray::New();
-
-        rect_grid->SetDimensions(global_resolution);
-
-        lxcoord->SetNumberOfTuples(global_resolution[0]);
-        for (int i = 0; i < global_resolution[0]; i++)
-        {
-            double pcnt = 0;
-            if (global_resolution[0] > 1)
-                pcnt = ((double)i)/((double)global_resolution[0]-1);
-            lxcoord->SetTuple1(i, global_bounds[0]*(1.0-pcnt) + global_bounds[1]*pcnt);
-        }
-
-        lycoord->SetNumberOfTuples(global_resolution[1]);
-        for (int i = 0; i < global_resolution[1]; i++)
-        {
-            double pcnt = 0;
-            if (global_resolution[1] > 1)
-                pcnt = ((double)i)/((double)global_resolution[1]-1);
-            lycoord->SetTuple1(i, global_bounds[2]*(1.0-pcnt) + global_bounds[3]*pcnt);
-        }
-
-        lzcoord->SetNumberOfTuples(global_resolution[2]);
-        for (int i = 0; i < global_resolution[2]; i++)
-        {
-            double pcnt = 0;
-            if (global_resolution[2] > 1)
-                pcnt = ((double)i)/((double)global_resolution[2]-1);
-            lzcoord->SetTuple1(i, global_bounds[4]*(1.0-pcnt) + global_bounds[5]*pcnt);
-        }
-
-        rect_grid->SetXCoordinates(lxcoord);
-        rect_grid->SetYCoordinates(lycoord);
-        rect_grid->SetZCoordinates(lzcoord);
-
-        //cleanup
-        lxcoord->Delete();
-        lycoord->Delete();
-        lzcoord->Delete();
-
-        //now global grid has been created.
-        size_t nTuples =
-          global_resolution[0] * global_resolution[1] * global_resolution[2];
-
-        // std::cout << "final resolution: " << PAR_Rank() << " "
-        //         << global_resolution[0] << " "
-        //         << global_resolution[1] << " "
-        //         << global_resolution[2] << std::endl;
-
-        vtkDoubleArray *outputArray = vtkDoubleArray::New();
-        outputArray->SetName(var.c_str());
-        if( atts.GetOperationType() == LCSAttributes::EigenVector )
-          outputArray->SetNumberOfComponents(3);
+        if (dir == avtIntegralCurve::DIRECTION_BACKWARD)
+            absMaxTime = -maxTime;
         else
-          outputArray->SetNumberOfComponents(1);
-        outputArray->SetNumberOfTuples(nTuples);
-        rect_grid->GetPointData()->AddArray(outputArray);
+            absMaxTime = maxTime;
+    }
 
-        vtkDoubleArray *workingArray = vtkDoubleArray::New();
-        workingArray->SetName("workingArray");
-        workingArray->SetNumberOfComponents(1);
-        workingArray->SetNumberOfTuples(nTuples);
-        rect_grid->GetPointData()->AddArray(workingArray);
-        rect_grid->GetPointData()->SetActiveScalars("workingArray");
-    
-        //calculate jacobian in parts (x,y,z).
-        std::vector<double> remapTimes(nTuples);
-        std::vector<double> remapLengths(nTuples);
-        std::vector<avtVector> remapPoints(nTuples);
+    if( doSize )
+    {
+      // For now use the avtLCSIC as the state does not need to be
+      // recorded for the FSLE. That is because currently the
+      // integration is being done step by step rather than in
+      // chunks. However, the code is set up to use
+      // avtStreamlineIC. Which if the integration is done in chucks
+      // will probably be more efficient.
 
-        //update remapPoints with new value bounds from integral curves.
-        int par_size = PAR_Size();
-        size_t total = 0;
-        for(int i = 0; i < par_size; ++i)
-        {
-            if(index_counts[i]*3 != point_counts[i])
-            {
-              EXCEPTION1(VisItException,
-                         "Index count does not the result count." );
-            }
-            total += index_counts[i];
-        }
+      // unsigned char attr = avtStateRecorderIntegralCurve::SAMPLE_POSITION;
+      // attr |= avtStateRecorderIntegralCurve::SAMPLE_TIME;
+      // attr |= avtStateRecorderIntegralCurve::SAMPLE_ARCLENGTH;
+      
+      // return
+      //   (new avtStreamlineIC(numSteps, doDistance, maxDistance, doTime, absMaxTime,
+      //                        attr, model, dir, t_start, p_start, v_start, ID));
+      return
+        (new avtLCSIC(numSteps, doDistance, maxDistance, doTime, absMaxTime,
+                      model, dir, t_start, p_start, v_start, ID));
+    }
+    else
+    {
+      return
+        (new avtLCSIC(maxSteps, doDistance, maxDistance, doTime, absMaxTime,
+                      model, dir, t_start, p_start, v_start, ID));
+    }
+}
 
-        // std::cout << "total number integrated: " << total << std::endl;
 
-        for(size_t j = 0,k = 0; j < total; ++j, k += 3)
-        {
-            size_t index = all_indices[j];
+// ****************************************************************************
+//  Method: avtLCSFilter::GetAllSeedsSentToAllProcs
+//
+//  Purpose:
+//      
+//
+//  Programmer: Allen Sanderson
+//  Creation:   August 5, 2015
+//
+// ****************************************************************************
 
-            if(index >= nTuples)
-            {
-              EXCEPTION1(VisItException,
-                         "More integral curves were generatated than "
-                         "grid points." );
-            }
+bool
+avtLCSFilter::GetAllSeedsSentToAllProcs(void)
+{
+  if (atts.GetSourceType() == LCSAttributes::NativeMesh)
+  {
+ #ifdef PARALLEL
+    if (selectedAlgo == PICS_SERIAL)
+      return true;
+    else if (selectedAlgo == PICS_PARALLEL_OVER_DOMAINS)
+      return false;
+    // else if (selectedAlgo == PICS_PARALLEL_COMM_DOMAINS)
+    //   return false;
+    // else if (selectedAlgo == PICS_PARALLEL_MASTER_SLAVE)
+    //   return false;
+#else
+    return true;
+#endif
+  }
+  //  else if (atts.GetSourceType() == LCSAttributes::RegularGrid)
+    return true;
+}
 
-            // std::cout << index << " before " << remapPoints[index]
-            //        << std::endl;
 
-            remapTimes[index] = all_times[j];
-            remapLengths[index] = all_lengths[j];
-            remapPoints[index].set( all_points[k+0],
-                                    all_points[k+1],
-                                    all_points[k+2]);
-            
-            // std::cout << PAR_Rank() << " " << index << " "
-            //        << remapPoints[index] << std::endl;
-            // std::cout << "middle: " << avtVector( all_points[k+0],
-            //                                    all_points[k+1],
-            //                                    all_points[k+2])
-            //        << std::endl;
-            // std::cout << index << " after " << remapPoints[index]
-            //        << std::endl;
-        }
+// ****************************************************************************
+//  Method: avtLCSFilter::CreateIntegralCurveOutput
+//
+//  Purpose:
+//      Computes the LCS output (via sub-routines) after the PICS filter has
+//      calculated the final particle positions.
+//
+//  Programmer: Hari Krishnan
+//  Creation:   December 5, 2011
+//
+// ****************************************************************************
 
-        if( atts.GetOperationType() == LCSAttributes::EigenValue ||
-            atts.GetOperationType() == LCSAttributes::EigenVector ||
-            atts.GetOperationType() == LCSAttributes::Lyapunov )
-        {
-          vtkDataArray* jacobian[3];
+void 
+avtLCSFilter::CreateIntegralCurveOutput(std::vector<avtIntegralCurve*> &ics)
+{
+  if( atts.GetOperationType() == LCSAttributes::Lyapunov && doSize )
+  {
+      if (atts.GetSourceType() == LCSAttributes::NativeMesh)
+        CreateNativeMeshIterativeCalcOutput(ics);
+      else //if (atts.GetSourceType() == LCSAttributes::RegularGrid)
+        CreateRectilinearGridIterativeCalcOutput(ics);
+  }
+  else
+  {
+      if (atts.GetSourceType() == LCSAttributes::NativeMesh)
+          NativeMeshSingleCalc(ics);
+      else //if (atts.GetSourceType() == LCSAttributes::RegularGrid)
+      {
+          RectilinearGridSingleCalc(ics);
 
-          for(int i = 0; i < 3; ++i)
-          {
-            for (size_t l = 0; l < nTuples; l++)
-                workingArray->SetTuple1(l, remapPoints[l][i]);
-
-            jacobian[i] =
-              avtGradientExpression::CalculateGradient(rect_grid, var.c_str());
-          }
-
-          for (size_t l = 0; l < nTuples; l++)
-            outputArray->SetTuple1(l, std::numeric_limits<double>::epsilon());
-
-          if( atts.GetOperationType() == LCSAttributes::EigenValue )
-            ComputeEigenValues(jacobian, outputArray);
-          else if( atts.GetOperationType() == LCSAttributes::EigenVector )
-            ComputeEigenVectors(jacobian, workingArray, outputArray);
-          else if( atts.GetOperationType() == LCSAttributes::Lyapunov )
-            ComputeLyapunovExponent(jacobian, outputArray);
-
-          jacobian[0]->Delete();
-          jacobian[1]->Delete();
-          jacobian[2]->Delete();
-        }
-
-        // The value stored in the points is the arc length, integration
-        // time, and average distance form the seed. So just move it into
-        // the output array.
-        else if( atts.GetOperatorType() == LCSAttributes::BaseValue )
-        {
-          int index = (atts.GetOperationType()-LCSAttributes::IntegrationTime);
-
-          for (size_t l = 0; l < nTuples; l++)
-            outputArray->SetTuple1(l, remapPoints[l][index]);
-        }
-
-        else if( atts.GetOperatorType() == LCSAttributes::Gradient )
-        {
-          int index = (atts.GetOperationType()-LCSAttributes::IntegrationTime);
-          
-          // The base value is used to clamp the log values to be only
-          // positive or both positive and negative.
-          double baseValue;
-
-          if (atts.GetClampLogValues() == true )
-            baseValue = 1.0;
-          else
-            baseValue = std::numeric_limits<double>::epsilon();
-
-          for (size_t l = 0; l < nTuples; l++)
-            workingArray->SetTuple1(l, remapPoints[l][index]);
-
-          vtkDataArray* gradient =
-            avtGradientExpression::CalculateGradient(rect_grid, var.c_str());
-
-          for (size_t l = 0; l < nTuples; l++)
-          {
-            double *grad = gradient->GetTuple3(l);
-
-            double lambda = baseValue;
-            lambda = std::max( lambda, grad[0]*grad[0] );
-            lambda = std::max( lambda, grad[1]*grad[1] );
-            lambda = std::max( lambda, grad[2]*grad[2] );
-            lambda = log( sqrt( lambda ) );
-
-            if( doTime )
-              lambda /= maxTime;
-            else if( doDistance )
-              lambda /= maxDistance;
-
-            outputArray->SetTuple1(l, lambda);
-          }
-
-          gradient->Delete();
-        }
-
-        //min and max values over all datasets of the tree.
-        double minv = std::numeric_limits<double>::max();
-        double maxv = std::numeric_limits<double>::min();
-
-        if( atts.GetOperationType() == LCSAttributes::EigenVector )
-        {
-          minv = 0;
-          maxv = 1;
-
-          // for(int i = 0; i < nTuples; ++i)
+          // if( GetInputDataTree()->GetNChildren() )
           // {
-          //   double *vals = outputArray->GetTuple3(i);
-          //   double mag = sqrt(vals[0]*vals[0]+vals[1]*vals[1]+vals[2]*vals[2]);
-
-          //   minv = std::min(mag, minv);
-          //   maxv = std::max(mag, maxv);
+          //   std::cerr << "Creating new data tree " << std::endl;
+            
+          //   avtDataTree_p outTree = MultiBlockDataTree( GetInputDataTree() );
+            
+          //   SetOutputDataTree(outTree);
           // }
-        }
-        else
-        {
-          for(size_t l = 0; l < nTuples; ++l)
-          {
-            minv = std::min(outputArray->GetTuple1(l), minv);
-            maxv = std::max(outputArray->GetTuple1(l), maxv);
-          }
-        }
-
-        outputArray->Delete();
-        workingArray->Delete();
-
-        // Set the vectors to be the active data
-        if( atts.GetOperationType() == LCSAttributes::EigenVector )
-          rect_grid->GetPointData()->SetActiveVectors(var.c_str());
-        else
-          rect_grid->GetPointData()->SetActiveScalars(var.c_str());
-
-        // Remove the working array.
-        rect_grid->GetPointData()->RemoveArray("workingArray");
-
-        if (all_indices)  delete [] all_indices;
-        if (index_counts) delete [] index_counts;
-
-        if (all_times)  delete [] all_times;
-        if (time_counts) delete [] time_counts;
-
-        if (all_lengths)  delete [] all_lengths;
-        if (length_counts) delete [] length_counts;
-
-        if (all_points)   delete [] all_points;
-        if (point_counts) delete [] point_counts;
-
-        //store this dataset in Cache for next time.
-        // double bounds[6];
-        // rect_grid->GetBounds(bounds);
-
-        // std::cout << "final size and bounds: "
-        //        << PAR_Rank() << " " << nTuples << " "
-        //        << bounds[0] << " " << bounds[1] << " " << bounds[2]
-        //        << " " << bounds[3] << " " << bounds[4] << " "
-        //        << bounds[5] << std::endl;
-
-        std::string str = CreateCacheString();
-        StoreArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
-                                outVarName.c_str(), -1, -1,
-                                str.c_str(), rect_grid);
-
-        int index = 0;//what does index mean in this context?
-        avtDataTree* dt = new avtDataTree(rect_grid,index);
-        int x = 0;
-        dt->GetAllLeaves(x);
-
-        // std::cout << "total leaves:: " << x << std::endl;
-
-        SetOutputDataTree(dt);
-
-        //set atts.
-        avtDataAttributes &dataatts = GetOutput()->GetInfo().GetAttributes();
-        avtExtents* e = dataatts.GetThisProcsActualDataExtents();
-
-        double range[6];
-        range[0] = minv;
-        range[1] = maxv;
-        range[2] = minv;
-        range[3] = maxv;
-        range[4] = minv;
-        range[5] = maxv;
-        e->Set(range);
-    }
+      }
+  }
 }
 
 
 // ****************************************************************************
-//  Method: avtLCSFilter::ComputeRightCauchyGreenTensor
+//  Method: avtLCSFilter::ComputeLeftCauchyGreenTensor2D
 //
 //  Purpose:
 //      Given a Gradient in place compute the Right Cauchy Green Tensor.
@@ -1765,19 +1109,58 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
 //
 // ****************************************************************************
 
-void avtLCSFilter::ComputeRightCauchyGreenTensor(double **j)
+void avtLCSFilter::ComputeLeftCauchyGreenTensor2D(double **j)
+{
+    double *j0 = j[0];
+    double *j1 = j[1];
+    
+    // From the gradients compute the left Cauchy-Green Tensor J*J^T
+
+    // j0[0]  j0[1] |  j0[0]  j1[0]
+    // j1[0]  j1[1] |  j0[1]  j1[1]
+
+    double a = j0[0]*j0[0] + j0[1]*j0[1];
+    double b = j0[0]*j1[0] + j0[1]*j1[1];
+
+    double d = j1[0]*j1[0] + j1[1]*j1[1];
+
+    j0[0] = a;       j0[1] = b;
+    j1[0] = b;       j1[1] = d;
+}
+
+
+// ****************************************************************************
+//  Method: avtLCSFilter::ComputeLeftCauchyGreenTensor3D
+//
+//  Purpose:
+//      Given a Gradient in place compute the Right Cauchy Green Tensor.
+//
+//  Programmer: Allen Sanderson
+//  Creation:   March 5, 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void avtLCSFilter::ComputeLeftCauchyGreenTensor3D(double **j)
 {
     double *j0 = j[0];
     double *j1 = j[1];
     double *j2 = j[2];
     
     // From the gradients compute the right Cauchy-Green Tensor J*J^T   
+
+    // j0[0]  j0[1] j0[2] |  j0[0]  j1[0]  j2[0]
+    // j1[0]  j1[1] j1[2] |  j0[1]  j1[1]  j2[1]
+    // j2[0]  j2[1] j2[2] |  j0[2]  j1[2]  j2[2]
+
     double a = j0[0]*j0[0] + j0[1]*j0[1] + j0[2]*j0[2];
     double b = j0[0]*j1[0] + j0[1]*j1[1] + j0[2]*j1[2];
     double c = j0[0]*j2[0] + j0[1]*j2[1] + j0[2]*j2[2];
-    
+
     double d = j1[0]*j1[0] + j1[1]*j1[1] + j1[2]*j1[2];
     double e = j1[0]*j2[0] + j1[1]*j2[1] + j1[2]*j2[2];
+ 
     double f = j2[0]*j2[0] + j2[1]*j2[1] + j2[2]*j2[2];
 
     j0[0] = a;       j0[1] = b;       j0[2] = c;
@@ -1787,10 +1170,10 @@ void avtLCSFilter::ComputeRightCauchyGreenTensor(double **j)
 
 
 // ****************************************************************************
-//  Method: avtLCSFilter::ComputeEigenValue
+//  Method: avtLCSFilter::ComputeRightCauchyGreenTensor2D
 //
 //  Purpose:
-//      Computes the eigen vectors given a Jacobian.
+//      Given a Gradient in place compute the Right Cauchy Green Tensor.
 //
 //  Programmer: Allen Sanderson
 //  Creation:   March 5, 2015
@@ -1799,12 +1182,189 @@ void avtLCSFilter::ComputeRightCauchyGreenTensor(double **j)
 //
 // ****************************************************************************
 
-int avtLCSFilter::Jacobi(double **j, double *w)
+void avtLCSFilter::ComputeRightCauchyGreenTensor2D(double **j)
+{
+    double *j0 = j[0];
+    double *j1 = j[1];
+    
+    // From the gradients compute the right Cauchy-Green Tensor J^T*J
+
+    // j0[0]  j1[0] | j0[0]  j0[1]
+    // j0[1]  j1[1] | j1[0]  j1[1]
+
+    double a = j0[0]*j0[0] + j1[0]*j1[0];
+    double b = j0[0]*j0[1] + j1[0]*j1[1];
+
+    double d = j0[1]*j0[1] + j1[1]*j1[1];
+
+    j0[0] = a;       j0[1] = b;
+    j1[0] = b;       j1[1] = d;
+}
+
+
+// ****************************************************************************
+//  Method: avtLCSFilter::ComputeRightCauchyGreenTensor3D
+//
+//  Purpose:
+//      Given a Gradient in place compute the Right Cauchy Green Tensor.
+//
+//  Programmer: Allen Sanderson
+//  Creation:   March 5, 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void avtLCSFilter::ComputeRightCauchyGreenTensor3D(double **j)
 {
     double *j0 = j[0];
     double *j1 = j[1];
     double *j2 = j[2];
 
+    // From the gradients compute the right Cauchy-Green Tensor J^T*J   
+
+    // j0[0]  j1[0]  j2[0] | j0[0]  j0[1] j0[2]
+    // j0[1]  j1[1]  j2[1] | j1[0]  j1[1] j1[2]
+    // j0[2]  j1[2]  j2[2] | j2[0]  j2[1] j2[2]
+
+
+    double a = j0[0]*j0[0] + j1[0]*j1[0] + j2[0]*j2[0];
+    double b = j0[0]*j0[1] + j1[0]*j1[1] + j2[0]*j2[1];
+    double c = j0[0]*j0[2] + j1[0]*j1[2] + j2[0]*j2[2];
+
+    double d = j0[1]*j0[1] + j1[1]*j1[1] + j2[1]*j2[1];
+    double e = j0[1]*j0[2] + j1[1]*j1[2] + j2[1]*j2[2];
+ 
+    double f = j0[2]*j0[2] + j1[2]*j1[2] + j2[2]*j2[2];
+
+    j0[0] = a;       j0[1] = b;       j0[2] = c;
+    j1[0] = b;       j1[1] = d;       j1[2] = e;
+    j2[0] = c;       j2[1] = e;       j2[2] = f;
+}
+
+
+// ****************************************************************************
+//  Method: avtLCSFilter::Jacobi2D
+//
+//  Purpose:
+//      Computes the eigen vectors given a symmetric Jacobian.
+//
+//  Programmer: Allen Sanderson
+//  Creation:   March 5, 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+int avtLCSFilter::Jacobi2D(double **j, double *w)
+{
+    double *j0 = j[0];
+    double *j1 = j[1];
+
+    // Assume a symetric matrix
+    // a b
+    // b c
+
+    double a = j0[0];
+    double b = j0[1];
+    double c = j1[1];
+
+    double trace = (a + c) / 2.0;
+    double det = a*c - b*b;
+    double sqrtr = sqrt(trace * trace - det);
+
+    // Order the largest first to match VTK
+    w[0] = trace + sqrtr;
+    w[1] = trace - sqrtr;
+
+    return 1;
+}
+
+// ****************************************************************************
+//  Method: avtLCSFilter::Jacobi2D
+//
+//  Purpose:
+//      Computes the eigen vectors given a symmetric Jacobian.
+//
+//  Programmer: Allen Sanderson
+//  Creation:   March 5, 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+int avtLCSFilter::Jacobi2D(double **j, double *w, double **v)
+{
+    double *j0 = j[0];
+    double *j1 = j[1];
+    
+    // Assume a symetric matrix
+    // a b
+    // b c
+
+    double a = j0[0];
+    double b = j0[1];
+    double c = j1[1];
+
+    double trace = (a + c) / 2.0;
+    double det = a*c - b*b;
+    double sqrtr = sqrt(trace * trace - det);
+
+    // Order the largest first to match VTK
+    w[0] = trace + sqrtr;
+    w[1] = trace - sqrtr;
+
+    // Use the largest value to get the first vector.
+    avtVector vec0 = avtVector( -b, a-w[0], 0.0 );
+    vec0.normalize();
+    avtVector vec1 = avtVector( vec0.y, -vec0.x, 0.0 );
+
+    v[0][0] = vec0.x;   v[0][1] = vec0.y; 
+    v[1][0] = vec1.x;   v[1][1] = vec1.y; 
+
+
+    // // Sorted in decreasing order.
+    // double eigenvals[2];
+    // double *eigenvecs[2];
+
+    // double outrow0[2];
+    // double outrow1[2];
+    
+    // eigenvecs[0] = outrow0;
+    // eigenvecs[1] = outrow1;
+
+    // vtkMath::JacobiN(j, 2, w, eigenvecs);
+
+    // avtVector vec0 = avtVector( eigenvecs[0][0], eigenvecs[1][0], 0.0 );
+    // vec0.normalize();
+    // avtVector vec1 = avtVector( vec0.y, -vec0.x, 0.0 );
+
+    // v[0][0] = vec0.x;   v[0][1] = vec0.y; 
+    // v[1][0] = vec1.x;   v[1][1] = vec1.y; 
+
+    return 1;
+}
+
+// ****************************************************************************
+//  Method: avtLCSFilter::Jacobi3D
+//
+//  Purpose:
+//      Computes the eigen vectors given a symmetric Jacobian.
+//
+//  Programmer: Allen Sanderson
+//  Creation:   March 5, 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+int avtLCSFilter::Jacobi3D(double **j, double *w)
+{
+    double *j0 = j[0];
+    double *j1 = j[1];
+    double *j2 = j[2];
+
+    // Assume a symetric matrix
     // a b c
     // b d e
     // c e f
@@ -1830,10 +1390,6 @@ int avtLCSFilter::Jacobi(double **j, double *w)
     double D = (r*r*r - q*q);
     double phi = 0.0f;
 
-    // std::cout << a << " " << b << " " << c << " " << d << " "
-    //           << e << " " << f << " " << x << " " << q << " "
-    //           << r << std::endl;
-
     if( D < std::numeric_limits<double>::epsilon())
       phi = 0.0f;
     else
@@ -1851,9 +1407,32 @@ int avtLCSFilter::Jacobi(double **j, double *w)
     sinphi = sinf(phi);
     cosphi = cosf(phi);
 
-    w[0] = x + 2.0f*sqrtr*cosphi;
-    w[1] = x - sqrtr*(cosphi - sqrt3*sinphi);
-    w[2] = x - sqrtr*(cosphi + sqrt3*sinphi);
+    // Sorted in decreasing order.
+    double w0 = x + 2.0*sqrtr*cosphi;
+    double w1 = x - sqrtr*(cosphi - sqrt3*sinphi);
+    double w2 = x - sqrtr*(cosphi + sqrt3*sinphi);
+
+    if( w0 >= w1 && w0 >= w2 )
+    {
+      w[0] = w0;
+
+      if( w1 >= w2 ) { w[1] = w1;       w[2] = w2; }
+      else           { w[1] = w2;       w[2] = w1; }
+    }
+    else if( w1 >= w0 && w1 >= w2 )
+    {
+      w[0] = w1;
+
+      if( w0 >= w2 ) { w[1] = w0;       w[2] = w2; }
+      else           { w[1] = w2;       w[2] = w0; }
+    }
+    else if( w2 >= w0 && w2 >= w1 )
+    {
+      w[0] = w2;
+
+      if( w0 >= w1 ) { w[1] = w0;       w[2] = w1; }
+      else           { w[1] = w1;       w[2] = w0; }
+    }
 
     return 1;
 }
@@ -1873,35 +1452,57 @@ int avtLCSFilter::Jacobi(double **j, double *w)
 // ****************************************************************************
 
 void avtLCSFilter::ComputeEigenValues(vtkDataArray *jacobian[3],
-                                      vtkDataArray *result)
+                                      vtkDataArray *valArray)
 {
-    size_t nTuples = result->GetNumberOfTuples();
+    size_t nTuples = valArray->GetNumberOfTuples();
 
-    for(size_t l = 0; l < nTuples; ++l)
+    if( auxIdx == LCSAttributes::TwoDim ||
+        GetInput()->GetInfo().GetAttributes().GetSpatialDimension() == 2 )
     {
+      for(size_t l = 0; l < nTuples; ++l)
+      {
+        double *input[2];
+        input[0] = jacobian[0]->GetTuple3(l);
+        input[1] = jacobian[1]->GetTuple3(l);
+
+        if( cgTensor == LCSAttributes::Right )
+          ComputeRightCauchyGreenTensor2D(input);
+        else //if( cgTensor == LCSAttributes::Left )
+          ComputeLeftCauchyGreenTensor2D(input);
+
+        double eigenvals[2];
+        Jacobi2D(input, eigenvals);
+
+        if( eigenComponent == LCSAttributes::Largest )
+          valArray->SetTuple1(l, eigenvals[0]);
+        else // if( eigenComponent == LCSAttributes::Smallest )
+          valArray->SetTuple1(l, eigenvals[1]);
+      }
+    }
+    else
+    {
+      for(size_t l = 0; l < nTuples; ++l)
+      {
         double *input[3];
         input[0] = jacobian[0]->GetTuple3(l);
         input[1] = jacobian[1]->GetTuple3(l);
         input[2] = jacobian[2]->GetTuple3(l);
 
-        input[0][2] = 0;
-        input[1][2] = 0;
-        input[2][0] = 0;
-        input[2][1] = 0;
-        input[2][2] = 0;
-
-        ComputeRightCauchyGreenTensor(input);
+        if( cgTensor == LCSAttributes::Right )
+          ComputeRightCauchyGreenTensor3D(input);
+        else //if( cgTensor == LCSAttributes::Left )
+          ComputeLeftCauchyGreenTensor3D(input);
 
         double eigenvals[3];
+        Jacobi3D(input, eigenvals);
 
-        Jacobi(input, eigenvals);
-
-        if( atts.GetEigenComponent() == LCSAttributes::First )
-          result->SetTuple1(l, eigenvals[0]);
-        else if( atts.GetEigenComponent() == LCSAttributes::Second )
-          result->SetTuple1(l, eigenvals[1]);
-        else // if( atts.GetEigenComponent() == LCSAttributes::Third )
-          result->SetTuple1(l, eigenvals[2]);
+        if( eigenComponent == LCSAttributes::Largest )
+          valArray->SetTuple1(l, eigenvals[0]);
+        else if( eigenComponent == LCSAttributes::Intermediate )
+          valArray->SetTuple1(l, eigenvals[1]);
+        else // if( eigenComponent == LCSAttributes::Smallest )
+          valArray->SetTuple1(l, eigenvals[2]);
+        }
     }
 }
 
@@ -1920,72 +1521,178 @@ void avtLCSFilter::ComputeEigenValues(vtkDataArray *jacobian[3],
 // ****************************************************************************
 
 void avtLCSFilter::ComputeEigenVectors(vtkDataArray *jacobian[3],
-                                       vtkDataArray *result,
-                                       vtkDataArray *secondary)
+                                       vtkDataArray *valArray,
+                                       vtkDataArray *vecArray)
 {
-    size_t nTuples = result->GetNumberOfTuples();
+    double t0, t1, t2, sign, weight = atts.GetEigenWeight();
 
-    int cc = 0;
-    double maxDiff = 0;
+    if( eigenComponent == LCSAttributes::PosShearVector ||
+        eigenComponent == LCSAttributes::PosLambdaShearVector )
+      sign = +1;
+    else
+      sign = -1;
+    
+    size_t nTuples = valArray->GetNumberOfTuples();
 
-    for(size_t l = 0; l < nTuples; ++l)
+    if( auxIdx == LCSAttributes::TwoDim ||
+        GetInput()->GetInfo().GetAttributes().GetSpatialDimension() == 2 )
     {
+      for(size_t l = 0; l < nTuples; ++l)
+      {
+        double *input[2];
+        input[0] = jacobian[0]->GetTuple3(l);
+        input[1] = jacobian[1]->GetTuple3(l);
+
+        if( cgTensor == LCSAttributes::Right )
+          ComputeRightCauchyGreenTensor2D(input);
+        else //if( cgTensor == LCSAttributes::Left )
+          ComputeLeftCauchyGreenTensor2D(input);
+
+        // Sorted in decreasing order.
+        double eigenval, eigenvals[2];
+        double eigenvec[3], *eigenvecs[2];
+
+        double outrow0[3];
+        double outrow1[3];
+        eigenvecs[0] = outrow0;
+        eigenvecs[1] = outrow1;
+
+        Jacobi2D(input, eigenvals, eigenvecs);
+
+        if( eigenComponent == LCSAttributes::Largest )
+        {
+          eigenvecs[0][2] = 0;
+          valArray->SetTuple1(l, eigenvals[0]);
+          vecArray->SetTuple (l, eigenvecs[0]);
+        }
+        else if( eigenComponent == LCSAttributes::Smallest )
+        {
+          eigenvecs[1][2] = 0;
+          valArray->SetTuple1(l, eigenvals[1]);
+          vecArray->SetTuple (l, eigenvecs[1]);
+        }
+        else if( eigenComponent == LCSAttributes::PosShearVector ||
+                 eigenComponent == LCSAttributes::NegShearVector )
+        {
+          eigenval = sqrt(eigenvals[0]) + sqrt(eigenvals[1]);
+
+          t0 = sqrt( sqrt(eigenvals[0]) / eigenval );
+          t1 = sqrt( sqrt(eigenvals[1]) / eigenval );
+
+          // With the plus (minus) sign referring to the direction of
+          // maximal positive (negative) shear in the frame of [ξ1,ξ0].
+          eigenvec[0] = t0 * eigenvecs[1][0] + sign * t1 * eigenvecs[0][0];
+          eigenvec[1] = t0 * eigenvecs[1][1] + sign * t1 * eigenvecs[0][1];
+          eigenvec[2] = 0;
+
+          valArray->SetTuple1(l, eigenval);
+          vecArray->SetTuple (l, eigenvec);
+        }
+        else if( eigenComponent == LCSAttributes::PosLambdaShearVector ||
+                 eigenComponent == LCSAttributes::NegLambdaShearVector )
+        {
+          eigenval = weight * weight;
+//        eigenval = eigenvals[1] * weight + eigenvals[0] * (1.0-weight);
+
+          t0 = sqrt( (eigenvals[0]-eigenval) / (eigenvals[0]-eigenvals[1]) );
+          t1 = sqrt( (eigenval-eigenvals[1]) / (eigenvals[0]-eigenvals[1]) );
+          
+          // With the plus (minus) sign referring to the direction of
+          // maximal positive (negative) shear in the frame of [ξ1,ξ0].
+          eigenvec[0] = t0 * eigenvecs[1][0] + sign * t1 * eigenvecs[0][0];
+          eigenvec[1] = t0 * eigenvecs[1][1] + sign * t1 * eigenvecs[0][1];
+          eigenvec[2] = 0;
+
+          valArray->SetTuple1(l, eigenval);
+          vecArray->SetTuple (l, eigenvec);
+        }
+      }
+    }
+    else
+    {
+      for(size_t l = 0; l < nTuples; ++l)
+      {
         double *input[3];
         input[0] = jacobian[0]->GetTuple3(l);
         input[1] = jacobian[1]->GetTuple3(l);
         input[2] = jacobian[2]->GetTuple3(l);
 
-        input[0][2] = 0;
-        input[1][2] = 0;
-        input[2][0] = 0;
-        input[2][1] = 0;
-        input[2][2] = 0;
+        if( cgTensor == LCSAttributes::Right )
+          ComputeRightCauchyGreenTensor3D(input);
+        else //if( cgTensor == LCSAttributes::Left )
+          ComputeLeftCauchyGreenTensor3D(input);
 
-        ComputeRightCauchyGreenTensor(input);
-        
-        double eigenvals[3];
-        double *eigenvecs[3];
+        // Sorted in decreasing order.
+        double eigenval,     eigenvals[3];
+        double eigenvec[3], *eigenvecs[3];
 
+        double outrow0[3];
         double outrow1[3];
         double outrow2[3];
-        double outrow3[3];
-        eigenvecs[0] = outrow1;
-        eigenvecs[1] = outrow2;
-        eigenvecs[2] = outrow3;
+        eigenvecs[0] = outrow0;
+        eigenvecs[1] = outrow1;
+        eigenvecs[2] = outrow2;
 
         vtkMath::Jacobi(input, eigenvals, eigenvecs);
 
-        double diff = fabs(eigenvecs[0][0] * eigenvecs[0][0] +
-                           eigenvecs[0][1] * eigenvecs[0][1] +
-                           eigenvecs[0][2] * eigenvecs[0][2] - 1.0);
+        // vtkMath::Jacobi and vtkMath::JacobiN return the vectors in
+        // a column ordering. That is the first vector is in:
+        // eigenvecs[0][0] eigenvecs[1][0] eigenvecs[2][0] and that
+        // output[0] output[1] output[1] does NOT contain the first
+        // eigen value but the first component of each eigen vector.
+            
+        if( eigenComponent == LCSAttributes::Largest )
+        {
+          valArray->SetTuple1(l, eigenvals[0]);
+          vecArray->SetTuple3(l, eigenvecs[0][0], eigenvecs[1][0], eigenvecs[2][0]);
+        }
+        else if( eigenComponent == LCSAttributes::Intermediate )
+        {
+          valArray->SetTuple1(l, eigenvals[1]);
+          vecArray->SetTuple3(l, eigenvecs[0][1], eigenvecs[1][1], eigenvecs[2][1]);
+        }
+        else if( eigenComponent == LCSAttributes::Smallest )
+        {
+          valArray->SetTuple1(l, eigenvals[2]);
+          vecArray->SetTuple3(l, eigenvecs[0][2], eigenvecs[1][2], eigenvecs[2][2]);
+        }
+        else if( eigenComponent == LCSAttributes::PosShearVector ||
+                 eigenComponent == LCSAttributes::NegShearVector )
+        {
+          eigenval = sqrt(eigenvals[0]) + sqrt(eigenvals[2]);
 
-        if( diff > std::numeric_limits<double>::round_error() )
-        {
-          ++cc;
+          t0 = sqrt( sqrt(eigenvals[0]) / eigenval );
+          t2 = sqrt( sqrt(eigenvals[2]) / eigenval );
 
-          if( maxDiff < diff )
-            maxDiff = diff;
-        }
+          // With the plus (minus) sign referring to the direction of
+          // maximal positive (negative) shear in the frame of [ξ2,ξ0].
+          eigenvec[0] = t0 * eigenvecs[0][2] + sign * t2 * eigenvecs[0][0];
+          eigenvec[1] = t0 * eigenvecs[1][2] + sign * t2 * eigenvecs[1][0];
+          eigenvec[2] = t0 * eigenvecs[2][2] + sign * t2 * eigenvecs[2][0];
 
-        if( atts.GetEigenComponent() == LCSAttributes::First )
-        {
-          result->SetTuple1(l, eigenvals[0]);
-          secondary->SetTuple(l, eigenvecs[0]);
+          valArray->SetTuple1(l, eigenval);
+          vecArray->SetTuple (l, eigenvec);
         }
-        else if( atts.GetEigenComponent() == LCSAttributes::Second )
+        else if( eigenComponent == LCSAttributes::PosLambdaShearVector ||
+                 eigenComponent == LCSAttributes::NegLambdaShearVector )
         {
-          result->SetTuple1(l, eigenvals[1]);
-          secondary->SetTuple(l, eigenvecs[1]);
+          eigenval = weight * weight;
+//        eigenval = eigenvals[1] * weight + eigenvals[0] * (1.0-weight);
+
+          t0 = sqrt( (eigenvals[0]-eigenval) / (eigenvals[0]-eigenvals[2]) );
+          t2 = sqrt( (eigenval-eigenvals[2]) / (eigenvals[0]-eigenvals[2]) );
+          
+          // With the plus (minus) sign referring to the direction of
+          // maximal positive (negative) shear in the frame of [ξ2,ξ0].
+          eigenvec[0] = t0 * eigenvecs[0][2] + sign * t2 * eigenvecs[0][0];
+          eigenvec[1] = t0 * eigenvecs[1][2] + sign * t2 * eigenvecs[1][0];
+          eigenvec[2] = t0 * eigenvecs[2][2] + sign * t2 * eigenvecs[2][0];
+
+          valArray->SetTuple1(l, eigenval);
+          vecArray->SetTuple (l, eigenvec);
         }
-        else // if( atts.GetEigenComponent() == LCSAttributes::Third )
-        {
-          result->SetTuple1(l, eigenvals[2]);
-          secondary->SetTuple(l, eigenvecs[2]);
-        }
+      }
     }
-
-    if( cc )
-      std::cerr << cc << "VTK bad eigen vector(s) " << maxDiff << std::endl;
 }
 
 
@@ -2010,1348 +1717,110 @@ void avtLCSFilter::ComputeEigenVectors(vtkDataArray *jacobian[3],
 // ****************************************************************************
 
 void avtLCSFilter::ComputeLyapunovExponent(vtkDataArray *jacobian[3],
-                                           vtkDataArray *result)
+                                           vtkDataArray *expArray)
 {
     bool takeLog = doTime || doDistance;
 
-    size_t nTuples = result->GetNumberOfTuples();
+    size_t nTuples = expArray->GetNumberOfTuples();
 
     // The base value is used to clamp the log values to be only
     // positive or both positive and negative.
     double baseValue, denominator = 1.0;
 
     // Clamp only if taking the log.
-    if (takeLog && atts.GetClampLogValues() == true )
+    if (takeLog && clampLogValues == true )
       baseValue = 1.0;
     else
-      baseValue = std::numeric_limits<double>::epsilon();
+      baseValue = -std::numeric_limits<double>::max();
 
     if( doTime )
       denominator /= maxTime;
     else if( doDistance )
       denominator /= maxDistance;
 
-    for(size_t l = 0; l < nTuples; ++l)
+    if( auxIdx == LCSAttributes::TwoDim ||
+        GetInput()->GetInfo().GetAttributes().GetSpatialDimension() == 2 )
     {
-        double *input[3];
-        input[0] = jacobian[0]->GetTuple3(l);
-        input[1] = jacobian[1]->GetTuple3(l);
-        input[2] = jacobian[2]->GetTuple3(l);
+      for(size_t l = 0; l < nTuples; ++l)
+      {
+        // if( (doTime &&
+        //      (fabs(expArray->GetTuple1(l) - absMaxTime) > FLT_MIN)) ||
+        //     (doDistance &&
+        //      (expArray->GetTuple1(l) < maxDistance)) )
+        //   expArray->SetTuple1(l, 0);
+        // else
+        {
+          double *input[2];
+          input[0] = jacobian[0]->GetTuple3(l);
+          input[1] = jacobian[1]->GetTuple3(l);
 
-        ComputeRightCauchyGreenTensor(input);
+          if( cgTensor == LCSAttributes::Right ) 
+            ComputeRightCauchyGreenTensor2D(input);
+          else //if( cgTensor == LCSAttributes::Left )
+            ComputeLeftCauchyGreenTensor2D(input);
 
-        double eigenvals[3];
+          // Get the eigen values.
+          double  eigenvals[2];
+          Jacobi2D( input, eigenvals );
 
-        // Get the eigen values.
-        Jacobi( input, eigenvals );
+          double lambda = baseValue;
 
-        double lambda = baseValue;
+          if( eigenComponent == LCSAttributes::Largest )
+            lambda = sqrt( std::max( lambda, eigenvals[0] ) );
+          else // if( eigenComponent == LCSAttributes::Smallest )
+            lambda = sqrt( std::max( lambda, eigenvals[1] ) );
 
-        if( atts.GetEigenComponent() == LCSAttributes::First )
-          lambda = sqrt( std::max( lambda, eigenvals[0] ) );
-        else if( atts.GetEigenComponent() == LCSAttributes::Second )
-          lambda = sqrt( std::max( lambda, eigenvals[1] ) );
-        else if( atts.GetEigenComponent() == LCSAttributes::Third )
-          lambda = sqrt( std::max( lambda, eigenvals[2] ) );
+          if( takeLog )
+            lambda = log( lambda );
 
-        if( takeLog )
-          lambda = log( lambda );
+          lambda *= denominator;
 
-        lambda *= denominator;
-
-        result->SetTuple1(l, lambda);
-    }
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::CreateIterativeCalcDataTree
-//
-//  Purpose:
-//      Create the output tree for the whole data set, using the 
-//      input tree using the blocks native resolution.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-avtDataTree_p
-avtLCSFilter::CreateIterativeCalcDataTree(avtDataTree_p inDT)
-{
-    if (*inDT == NULL)
-        return 0;
-    
-    int nc = inDT->GetNChildren();
-    
-    if (nc < 0 && !inDT->HasData())
-    {
-        return 0;
-    }
-
-    if (nc == 0)
-    {
-        //variable name.
-        std::string var = outVarRoot + outVarName;
-
-        //
-        // there is only one dataset to process
-        //
-        vtkDataSet *in_ds = inDT->GetDataRepresentation().GetDataVTK();
-
-        //create new instance from old.
-        vtkDataSet* out_ds = in_ds->NewInstance();
-        out_ds->ShallowCopy(in_ds);
-        int nTuples = in_ds->GetNumberOfPoints();
-
-        // Create storage for the components that need to be used
-        // for calculating the exponent. All arrays but the exponent
-        // array will be deleted when done.
-        vtkDoubleArray *exponents = vtkDoubleArray::New();
-        exponents->SetName(var.c_str());
-        exponents->SetNumberOfTuples(nTuples);
-        out_ds->GetPointData()->AddArray(exponents);
-        // Will set the exponents to be the active scalars when
-        // finished. In the mean time the component is the working
-        // active scalars.
-//      out_ds->GetPointData()->SetActiveScalars(var.c_str());
-
-        for (size_t i = 0; i < (size_t)nTuples; i++)
-          exponents->SetTuple1(i, std::numeric_limits<double>::min() );
-
-        vtkDoubleArray *component = vtkDoubleArray::New();
-        component->SetName("component");
-        component->SetNumberOfTuples(nTuples);
-        out_ds->GetPointData()->AddArray(component);
-        out_ds->GetPointData()->SetActiveScalars("component");
-        
-        vtkDoubleArray *times = vtkDoubleArray::New();
-        times->SetName("times");
-        times->SetNumberOfTuples(nTuples);
-        out_ds->GetPointData()->AddArray(times);
-
-        //cleanup
-        exponents->Delete();
-        component->Delete();
-        times->Delete();
-        
-        int dom = inDT->GetDataRepresentation().GetDomain();
-        std::string label = inDT->GetDataRepresentation().GetLabel();
-        avtDataTree_p rv = new avtDataTree(out_ds, dom, label);
-        out_ds->Delete();
-        return rv;
+          expArray->SetTuple1(l, lambda);
+        }
+      }
     }
     else
     {
-      //
-      // there is more than one input dataset to process
-      // and we need an output datatree for each
-      //
-      avtDataTree_p *outDT = new avtDataTree_p[nc];
-      for (int j = 0; j < nc; j++)
+      for(size_t l = 0; l < nTuples; ++l)
       {
-          if (inDT->ChildIsPresent(j))
-            outDT[j] = CreateIterativeCalcDataTree(inDT->GetChild(j));
-          else
-            outDT[j] = NULL;
-      }
-      avtDataTree_p rv = new avtDataTree(nc, outDT);
-      delete [] outDT;
-      return rv;
-    }
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::CreateIterativeCalcDataSet
-//
-//  Purpose:
-//      Create the output tree for the whole data set, using the 
-//      input tree using the blocks native resolution.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-vtkDataSet*
-avtLCSFilter::CreateIterativeCalcDataSet()
-{
-  //rank 0
-  //variable name.
-  std::string var = outVarRoot + outVarName;
-
-  //now create a rectilinear grid.
-  size_t nTuples =
-    global_resolution[0] * global_resolution[1] * global_resolution[2];
-
-          
-  // The grid is stored so not to be created as each curve is
-  // extended.
-  vtkRectilinearGrid* rect_grid = vtkRectilinearGrid::New();
-
-  vtkDoubleArray* lxcoord = vtkDoubleArray::New();
-  vtkDoubleArray* lycoord = vtkDoubleArray::New();
-  vtkDoubleArray* lzcoord = vtkDoubleArray::New();
-
-  rect_grid->SetDimensions(global_resolution);
-      
-  lxcoord->SetNumberOfTuples(global_resolution[0]);
-  for (int i = 0; i < global_resolution[0]; i++)
-  {
-      double pcnt = 0;
-      if (global_resolution[0] > 1)
-        pcnt = ((double)i)/((double)global_resolution[0]-1);
-      lxcoord->SetTuple1(i, global_bounds[0]*(1.0-pcnt) + global_bounds[1]*pcnt);
-  }
-
-  lycoord->SetNumberOfTuples(global_resolution[1]);
-  for (int i = 0; i < global_resolution[1]; i++)
-  {
-      double pcnt = 0;
-      if (global_resolution[1] > 1)
-        pcnt = ((double)i)/((double)global_resolution[1]-1);
-      lycoord->SetTuple1(i, global_bounds[2]*(1.0-pcnt) + global_bounds[3]*pcnt);
-  }
-
-  lzcoord->SetNumberOfTuples(global_resolution[2]);
-  for (int i = 0; i < global_resolution[2]; i++)
-  {
-      double pcnt = 0;
-      if (global_resolution[2] > 1)
-        pcnt = ((double)i)/((double)global_resolution[2]-1);
-      lzcoord->SetTuple1(i, global_bounds[4]*(1.0-pcnt) + global_bounds[5]*pcnt);
-  }
-      
-  rect_grid->SetXCoordinates(lxcoord);
-  rect_grid->SetYCoordinates(lycoord);
-  rect_grid->SetZCoordinates(lzcoord);
-        
-  //cleanup
-  lxcoord->Delete();
-  lycoord->Delete();
-  lzcoord->Delete();
-
-  // std::cout << "final resolution: " << PAR_Rank() << " "
-  //         << global_resolution[0] << " "
-  //         << global_resolution[1] << " "
-  //         << global_resolution[2] << std::endl;
-
-  // Create storage for the components that need to be used
-  // for calculating the exponent. All arrays but the exponent
-  // array will be deleted when done.
-  vtkDoubleArray *exponents = vtkDoubleArray::New();
-  exponents->SetName(var.c_str());
-  exponents->SetNumberOfTuples(nTuples);
-  rect_grid->GetPointData()->AddArray(exponents);
-  // Will set the exponents to be the active scalars when
-  // finished. In the mean time the component is the working
-  // active scalars.
-  // rect_grid->GetPointData()->SetActiveScalars(var.c_str());
-
-  for (size_t i = 0; i < nTuples; i++)
-    exponents->SetTuple1(i, std::numeric_limits<double>::min() );
-
-  vtkDoubleArray *component = vtkDoubleArray::New();
-  component->SetName("component");
-  component->SetNumberOfTuples(nTuples);
-  rect_grid->GetPointData()->AddArray(component);
-  rect_grid->GetPointData()->SetActiveScalars("component");
-
-  vtkDoubleArray *times = vtkDoubleArray::New();
-  times->SetName("times");
-  times->SetNumberOfTuples(nTuples);
-  rect_grid->GetPointData()->AddArray(times);
-
-  //cleanup
-  exponents->Delete();
-  component->Delete();
-  times->Delete();
-
-  return rect_grid;
-}
-  
-
-// ****************************************************************************
-//  Method: avtLCSFilter::NativeMeshIterativeCalc
-//
-//  Purpose:
-//      Computes the FSLE and similar values that are neighbor
-//      dependent on a native resolution grid.
-//
-//  Programmer: Hari Krishnan
-//  Creation:   December 5, 2011
-//
-//    Mark C. Miller, Wed Aug 22 19:22:40 PDT 2012
-//    Fix leak of all_indices, index_counts, all_result, result_counts on 
-//    rank 0 (root).
-// ****************************************************************************
-
-bool
-avtLCSFilter::NativeMeshIterativeCalc(std::vector<avtIntegralCurve*> &ics)
-{
-    int offset = 0;
-
-    if( *fsle_dt == NULL )
-    {
-      fsle_dt = CreateIterativeCalcDataTree(GetInputDataTree());
-      
-      if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-        if (PAR_Rank() != 0)
-          fsle_dt = new avtDataTree();
-
-      SetOutputDataTree(fsle_dt);
-    }
-
-    return MultiBlockIterativeCalc(fsle_dt, ics, offset);
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::MultiBlockIterativeCalc
-//
-//  Purpose:
-//      Computes the FSLE and similar values that are neighbor
-//      dependent for the whole data set, using the final particle
-//      locations, at the blocks native resolution.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-// ****************************************************************************
-
-bool
-avtLCSFilter::MultiBlockIterativeCalc(avtDataTree_p inDT,
-                                     std::vector<avtIntegralCurve*> &ics,
-                                     int &offset)
-{
-    if (*inDT == NULL)
-        return true;
-
-    int nc = inDT->GetNChildren();
-
-    if (nc < 0 && !inDT->HasData())
-        return true;
-
-    if (nc == 0)
-    {
-        //
-        // there is only one dataset to process
-        //
-        vtkDataSet *in_ds = inDT->GetDataRepresentation().GetDataVTK();
-
-        return SingleBlockIterativeCalc( in_ds, ics, offset );
-    }
-    else
-    {
-      bool haveAllExponents = true;
-
-      //
-      // there is more than one input dataset to process
-      // and we need an input datatree for each
-      //
-      for (int j = 0; j < nc; j++)
-      {
-        if (inDT->ChildIsPresent(j) )
+        // if( (doTime &&
+        //      (fabs(expArray->GetTuple1(l) - absMaxTime) > FLT_MIN)) ||
+        //     (doDistance &&
+        //      (expArray->GetTuple1(l) < maxDistance)) )
+        //   expArray->SetTuple1(l, 0);
+        // else
         {
-          if( MultiBlockIterativeCalc( inDT->GetChild(j), ics, offset ) == false )
-            haveAllExponents = false;
+          double *input[3];
+          input[0] = jacobian[0]->GetTuple3(l);
+          input[1] = jacobian[1]->GetTuple3(l);
+          input[2] = jacobian[2]->GetTuple3(l);
+
+          if( cgTensor == LCSAttributes::Right ) 
+            ComputeRightCauchyGreenTensor3D(input);
+          else //if( cgTensor == LCSAttributes::Left ) 
+            ComputeLeftCauchyGreenTensor3D(input);
+
+          // Get the eigen values.
+          double eigenvals[3];
+          Jacobi3D( input, eigenvals );
+
+          double lambda = baseValue;
+
+          if( eigenComponent == LCSAttributes::Largest )
+            lambda = sqrt( std::max( lambda, eigenvals[0] ) );
+          else if( eigenComponent == LCSAttributes::Intermediate )
+            lambda = sqrt( std::max( lambda, eigenvals[1] ) );
+          else // if( eigenComponent == LCSAttributes::Smallest )
+            lambda = sqrt( std::max( lambda, eigenvals[2] ) );
+
+          if( takeLog )
+            lambda = log( lambda );
+
+          lambda *= denominator;
+
+          expArray->SetTuple1(l, lambda);
         }
       }
-
-      return haveAllExponents;
-    }
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::SingleBlockIterativeCalc
-//
-//  Purpose:
-//      Computes the FSLE and similar values that are neighbor
-//      dependent for a single block of a data set, using the final
-//      particle locations, at the blocks native resolution.
-//
-//  Arguments:
-//      out_ds  The block to calculate the FSLE on
-//      ics     The list of particles for all blocks on this MPI task.
-//
-//  Returns:    The new version of in_ds that includes the FSLE scalar
-//              variable.  The calling function is responsible for
-//              dereferencing this VTK object.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//  Modifications:
-//
-//    Hank Childs, Tue Feb  5 08:12:33 PST 2013
-//    Fix parallelization bug and memory leak.
-//
-// ****************************************************************************
-
-bool
-avtLCSFilter::SingleBlockIterativeCalc( vtkDataSet *out_ds,
-                                        std::vector<avtIntegralCurve*> &ics,
-                                        int &offset )
-{
-    //variable name.
-    std::string var = outVarRoot + outVarName;
-
-    int nTuples = out_ds->GetNumberOfPoints();
-    
-    int dims[3];
-
-    if (out_ds->GetDataObjectType() == VTK_UNIFORM_GRID)
-    {
-      ((vtkUniformGrid*)out_ds)->GetDimensions(dims);
-    }      
-    else if (out_ds->GetDataObjectType() == VTK_RECTILINEAR_GRID)
-    {
-      ((vtkRectilinearGrid*)out_ds)->GetDimensions(dims);
-    }      
-    else if (out_ds->GetDataObjectType() == VTK_STRUCTURED_GRID)
-    {
-      ((vtkStructuredGrid*)out_ds)->GetDimensions(dims);
-    }      
-    else
-    {
-      EXCEPTION1(VisItException,
-                 "Can only compute SingleBlockIterativeCalc on "
-                 "imagedata, rectilinear grids, or structured grids. ");
-    }
-
-    // Get the stored data arrays
-    vtkDataArray* jacobian[3];
-    
-    vtkDoubleArray *exponents = (vtkDoubleArray *)
-      out_ds->GetPointData()->GetArray(var.c_str());
-    vtkDoubleArray *component = (vtkDoubleArray *)
-      out_ds->GetPointData()->GetArray("component");
-    vtkDoubleArray *times = (vtkDoubleArray *)
-      out_ds->GetPointData()->GetArray("times");
-
-    // Storage for the points and times
-    std::vector<avtVector> remapPoints(nTuples);
-    std::vector<double> remapTimes(nTuples);
-
-    if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-    {
-        // The parallel synchronization for when data is replicated involves
-        // a sum across all processors.  So we want remapPoints to have the
-        // location of the particle on one processor, and zero on the rest.
-        // Do that here.
-        // Special care is needed for the case where the particle never
-        // advected.  Then we need to put the initial location on just one
-        // processor.  We do this on rank 0.
-        std::vector<int> iHavePoint(nTuples, 0);
-        std::vector<int> anyoneHasPoint;
-
-        for (size_t idx = 0; idx < ics.size(); idx++)
-        {
-            size_t index = ics[idx]->id;
-            size_t l = (index-offset);
-            if(l < remapPoints.size()) ///l >= 0 is always true
-            {
-                iHavePoint[l] = 1;
-            }
-        }
-
-        UnifyMaximumValue(iHavePoint, anyoneHasPoint);
-        avtVector zero;
-        zero.x = zero.y = zero.z = 0.;
-        for (size_t i = 0; i < (size_t)nTuples; i++)
-        {
-            if (PAR_Rank() == 0 && !anyoneHasPoint[i])
-            {
-                remapPoints[i] = seedPoints.at(offset + i);
-                remapTimes[i] = 0;
-            }
-            else
-            {
-                remapPoints[i] = zero;
-                remapTimes[i] = 0;
-            }
-        }
-    }
-    else
-    {
-        //copy the original seed points
-        for(size_t i = 0; i < remapPoints.size(); ++i)
-        {
-            remapPoints[i] = seedPoints.at(offset + i);
-            remapTimes[i] = 0;
-        }
-    }
-
-    for(size_t i = 0; i < ics.size(); ++i)
-    {
-        avtStreamlineIC * ic = (avtStreamlineIC *) ics[i];
-
-        size_t index = ic->id;
-        int l = (int)(index-offset);
-
-        //std::cout << "l = " << l << " " << nTuples << std::endl;
-        if(l >= 0 && l < (int)remapPoints.size())
-        {
-          // remapPoints[l] = ((avtLCSIC*)ics[i])->GetEndPoint() -
-          //                ((avtLCSIC*)ics[i])->GetStartPoint();
-
-          remapPoints.at(l) = ic->GetEndPoint();
-
-          if( doPathlines )
-            remapTimes.at(l) = ic->GetTime() - seedTime0;
-          else
-            remapTimes.at(l) = ic->GetTime();
-        }
-    }
-
-    //use static function in avtGradientExpression to calculate
-    //gradients.  since this function only does scalar, break our
-    //vectors into scalar components and calculate one at a time.
-
-    // Note the mesh is uniform with all distances being one.
-    for(int i = 0; i < 3; ++i)
-    {
-        for(size_t j = 0; j < (size_t)nTuples; ++j)
-            component->SetTuple1(j, remapPoints[j][i]);
-
-        if (GetInput()->GetInfo().GetAttributes().DataIsReplicatedOnAllProcessors())
-        {
-            float *newvals = new float[nTuples];
-            float *origvals = (float *) component->GetVoidPointer(0);
-            SumFloatArrayAcrossAllProcessors(origvals, newvals, nTuples);
-            // copy newvals back into origvals
-            memcpy(origvals, newvals, nTuples*sizeof(float));
-            delete [] newvals;
-        }
-
-        jacobian[i] =
-          avtGradientExpression::CalculateGradient(out_ds, var.c_str());
-    }
-
-    // Store the times for the exponent.
-    for(size_t l = 0; l < (size_t)nTuples; ++l)
-    {
-      times->SetTuple1(l, remapTimes[l]);
-    }
-
-    for (int i = 0; i < nTuples; i++)
-      component->SetTuple1(i, std::numeric_limits<double>::epsilon());
-
-    //now have the jacobian - 3 arrays with 3 components.
-    ComputeLyapunovExponent(jacobian, component);
-    
-    jacobian[0]->Delete();
-    jacobian[1]->Delete();
-    jacobian[2]->Delete();
-    
-    // Compute the FSLE
-    ComputeFSLE( component, times, exponents );
-
-    bool haveAllExponents = true;
-
-    // For each integral curve check it's mask value to see it
-    // additional integration is required.
-    for(size_t i=0; i<ics.size(); ++i)
-    {
-      avtStreamlineIC * ic = (avtStreamlineIC *) ics[i];
-
-      size_t index = ic->id;
-      size_t l = (index-offset);
-
-      if( ic->maxSteps < (unsigned int)maxSteps )
-      {
-        ic->maxSteps++;
-        ic->status.ClearTerminationMet();
-      }
-
-      // Check to see if all exponents have been found.
-      if( exponents->GetTuple1(l) == std::numeric_limits<double>::min() &&
-          ic->maxSteps < (unsigned int)maxSteps )
-        haveAllExponents = false;
-    }
-    
-    //done with offset, increment it for the next call to this
-    //function.
-    offset += nTuples;
-
-    return haveAllExponents;
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::RectilinearGridIterativeCalc
-//
-//  Purpose:
-//      Computes the FSLE and similar values that are neighbor
-//      dependent on a rectilinear grid.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//    Mark C. Miller, Wed Aug 22 19:22:40 PDT 2012
-//    Fix leak of all_indices, index_counts, all_result, result_counts on 
-//    rank 0 (root).
-// ****************************************************************************
-
-bool
-avtLCSFilter::RectilinearGridIterativeCalc( std::vector<avtIntegralCurve*> &ics )
-{
-//  std::cerr << "Computing ... " << std::endl;
-
-    //algorithm sends index to global datastructure as well as end points.
-    //Send List of index into global array to rank 0
-    //Send end positions into global array to rank 0
-
-    //loop over all the intelgral curves and add it back to the
-    //original list of seeds.
-    intVector indices(ics.size());
-    doubleVector points(ics.size()*3);
-    doubleVector times(ics.size());
-
-    for(size_t i=0, j=0; i<ics.size(); ++i, j+=3)
-    {
-        avtStreamlineIC * ic = (avtStreamlineIC *) ics[i];
-
-        indices[i] = ic->id;
-
-//        avtVector spoint = ic->GetStartPoint();
-
-        avtVector point = ic->GetEndPoint();
-
-//      if( spoint[0] == 79 && spoint[1] == 90 && spoint[2] == 10 )
-        // if( spoint[0] == 76 && spoint[1] == 88 && spoint[2] == 10 )
-        //   std::cerr << i << "   " << ic->id << "   "
-        //          << spoint[0] << "  " << spoint[1] << "  " << spoint[2] << "    "
-
-        //          << point[0] << "  " << point[1] << "  " << point[2] << "  "
-        //          << std::endl;
-
-        points[j+0] = point[0];
-        points[j+1] = point[1];
-        points[j+2] = point[2];
-
-        if( doPathlines )
-          times[i] = ic->GetTime() - seedTime0;
-        else
-          times[i] = ic->GetTime();
-
-        // std::cout << PAR_Rank() << " ics: " << indices[i] << " "
-        //             << end_point << std::endl;
-    }
-
-    // std::cout << PAR_Rank() << " total integral pts: "
-    //        << ics.size() << std::endl;
-    // std::flush(cout);
-
-    int* all_indices = 0;
-    int* index_counts = 0;
-
-    double* all_points = 0;
-    int *point_counts = 0;
-
-    double* all_times = 0;
-    int *time_counts = 0;
-
-    Barrier();
-
-    CollectIntArraysOnRootProc(all_indices, index_counts,
-                               &indices.front(), (int)indices.size());
-
-    CollectDoubleArraysOnRootProc(all_points, point_counts,
-                                  &points.front(), (int)points.size());
-
-    CollectDoubleArraysOnRootProc(all_times, time_counts,
-                                  &times.front(), (int)times.size());
-
-    Barrier();
-
-    //root should now have index into global structure and all
-    //matching end positions.
-    if(PAR_Rank() != 0)
-    {
-        return true;
-    }
-    else
-    {
-        //variable name.
-        std::string var = outVarRoot + outVarName;
-
-        //now global grid has been created.
-        if( fsle_ds == 0 )
-          fsle_ds = CreateIterativeCalcDataSet();
-
-        // Get the stored data arrays
-        vtkDoubleArray *exponents = (vtkDoubleArray *)
-          fsle_ds->GetPointData()->GetArray(var.c_str());
-        vtkDoubleArray *component = (vtkDoubleArray *)
-          fsle_ds->GetPointData()->GetArray("component");
-        vtkDoubleArray *times = (vtkDoubleArray *)
-          fsle_ds->GetPointData()->GetArray("times");
-
-        size_t nTuples = exponents->GetNumberOfTuples();
-
-        // Storage for the points and times
-        std::vector<avtVector> remapPoints(nTuples);
-        std::vector<double> remapTimes(nTuples);
-
-        //update remapPoints with new value bounds from integral curves.
-        int par_size = PAR_Size();
-        size_t total = 0;
-        for(int i = 0; i < par_size; ++i)
-        {
-            if(index_counts[i]*3 != point_counts[i] ||
-               index_counts[i]   != time_counts[i])
-            {
-              EXCEPTION1(VisItException,
-                         "Index count does not the result count." );
-            }
-
-            total += index_counts[i];
-        }
-
-        // std::cout << "total number integrated: " << total << std::endl;
-
-        for(size_t j=0, k=0; j<total; ++j, k+=3)
-        {
-            size_t index = all_indices[j];
-
-            if(nTuples <= index)
-            {
-              EXCEPTION1(VisItException,
-                         "More integral curves were generatated than "
-                         "grid points." );
-            }
-
-            // std::cout << index << " before " << remapPoints[index]
-            //        << std::endl;
-            
-            remapPoints[index].set( all_points[k+0],
-                                    all_points[k+1],
-                                    all_points[k+2]);
-
-            remapTimes[index] = all_times[j];
-
-            // std::cout << PAR_Rank() << " " << index << " "
-            //        << remapPoints[index] << std::endl;
-            // std::cout << "middle: " << avtVector( all_points[k+0],
-            //                                    all_points[k+1],
-            //                                    all_points[k+2])
-            //        << std::endl;
-            // std::cout << index << " after " << remapPoints[index]
-            //        << std::endl;
-        }
-
-        // Store the times for the exponent.
-        for(size_t l=0; l<nTuples; ++l)
-          times->SetTuple1(l, remapTimes[l]);
-
-        //use static function in avtGradientExpression to calculate
-        //gradients.  since this function only does scalar, break our
-        //vectors into scalar components and calculate one at a time.
-
-        vtkDataArray* jacobian[3];
-
-        for(int i = 0; i < 3; ++i)
-        {
-            // Store the point component by component
-            for(size_t l=0; l<nTuples; ++l)
-                component->SetTuple1(l, remapPoints[l][i]);
-
-            jacobian[i] =
-              avtGradientExpression::CalculateGradient(fsle_ds, "component");
-        }
-
-        for (size_t i = 0; i < nTuples; i++)
-          component->SetTuple1(i, std::numeric_limits<double>::epsilon());
-
-        //now have the jacobian - 3 arrays with 3 components.
-        ComputeLyapunovExponent(jacobian, component);
-        
-        jacobian[0]->Delete();
-        jacobian[1]->Delete();
-        jacobian[2]->Delete();
-      
-        // Compute the FSLE
-        ComputeFSLE( component, times, exponents );
-
-        bool haveAllExponents = true;
-
-        // For each integral curve check it's mask value to see it
-        // additional integration is required.
-
-        for(size_t i=0; i<ics.size(); ++i)
-        {
-          avtStreamlineIC * ic = (avtStreamlineIC *) ics[i];
-
-          if( ic->maxSteps < (unsigned int)maxSteps )
-          {
-            ic->maxSteps++;
-            ic->status.ClearTerminationMet();
-          }
-
-          size_t l = ic->id; // The curve id is the index into the VTK data.
-
-          // Check to see if all exponents have been found.
-          if( exponents->GetTuple1(l) == std::numeric_limits<double>::min() &&
-              ic->maxSteps < (unsigned int)maxSteps )
-            haveAllExponents = false;
-        }
-
-//      std::cerr << haveAllExponents << std::endl;
-
-        //cleanup.
-        if (all_indices)   delete [] all_indices;
-        if (index_counts)  delete [] index_counts;
-
-        if (all_points)    delete [] all_points;
-        if (point_counts)  delete [] point_counts;
-
-        if (all_times)    delete [] all_times;
-        if (time_counts)  delete [] time_counts;
-
-        return haveAllExponents;
-    }
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::ComputeFSLE
-//
-//  Purpose:
-//      Computes the FSLE given the distances.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-void avtLCSFilter::ComputeFSLE( vtkDataArray *component,
-                                vtkDataArray *times,
-                                vtkDataArray *exponents )
-{
-  size_t nTuples = component->GetNumberOfTuples();
-
-  for(size_t l = 0; l < nTuples; ++l)
-  {
-    double lambda = exponents->GetTuple1(l);
-
-    // if( l == 20200 )
-    //   std::cerr << lambda << std::endl;
-
-    // If the exponent was previously set skip checking it.
-    if( lambda == std::numeric_limits<double>::min() )
-    {
-      // if( l == 20200 )
-      //        std::cerr
-      //          << floor( fabs(times->GetTuple1(l)) / maxStepLength + 0.5) << "  "
-      //          << numSteps << std::endl;
-
-      // Check for a curve that has terminated which will not have
-      // taken a step forward or backwards.
-      if( floor( fabs(times->GetTuple1(l)) / maxStepLength + 0.5) != numSteps )
-      {
-        // If a curve has terminated set the exponent to zero.
-        lambda = 0;
-        exponents->SetTuple1(l, lambda);
-      }            
-
-      // Check the distances between neighbors.
-      else
-      {
-        double size = component->GetTuple1(l);
-
-        minSizeValue = std::min(size, minSizeValue);
-        maxSizeValue = std::max(size, maxSizeValue);
-
-        // Record the Lyapunov exponent if the max
-        // size has been reached.
-        if( maxSize < size )
-        {
-          lambda = log( size ) / fabs(times->GetTuple1(l));
-              
-          exponents->SetTuple1(l, lambda);
-        }
-      }
-    }
-  }
-
-  // std::cerr << minSizeValue << "  " << maxSizeValue << std::endl;
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::InBounds
-//
-//  Purpose:
-//      Returns true if indexes are in bounds.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-int avtLCSFilter::InBounds( int x, int y, int z,
-                            int x_max, int y_max, int z_max )
-{
-  if( 0 <= x && x < x_max &&
-      0 <= y && y < y_max &&
-      0 <= z && z < z_max )
-    return (z * y_max + y) * x_max + x;
-  else
-    return -1;
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::Increment
-//
-//  Purpose:
-//      Increments a counter
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-void avtLCSFilter::Increment( int x, int y, int z, vtkDataArray *array,
-                              int x_max, int y_max, int z_max )
-{
-  int l = InBounds( x, y, z, x_max, y_max, z_max );
-  
-  if( 0 <= l && l < array->GetNumberOfTuples() )
-  {      
-    int cc = array->GetTuple1(l);
-    ++cc;
-    array->SetTuple1(l, cc);
-  }
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::Value
-//
-//  Purpose:
-//      Returns the value for a coordinate
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-double avtLCSFilter::Value( int x, int y, int z, vtkDataArray *array,
-                            int x_max, int y_max, int z_max )
-{
-  int l = InBounds( x, y, z, x_max, y_max, z_max );
-
-  if( 0 <= l && l < array->GetNumberOfTuples() )
-    return array->GetTuple1(l);
-  else
-    return 0;
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::CreateNativeMeshIterativeCalcOutput
-//
-//  Purpose:
-//      Computes the IterativeCalc output (via sub-routines) after the PICS filter
-//      has calculated the particle positions.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-// ****************************************************************************
-
-void 
-avtLCSFilter::CreateNativeMeshIterativeCalcOutput(std::vector<avtIntegralCurve*> &ics)
-{
-    //accumulate all of the points then do jacobian?
-    //or do jacobian then accumulate?
-    //picking the first.
-
-    int    offset = 0;
-    double minv   = std::numeric_limits<double>::max();
-    double maxv   = std::numeric_limits<double>::min();
-    int    count  = 0;
-
-    CreateMultiBlockIterativeCalcOutput(GetInputDataTree(), GetDataTree(),
-                                        ics, offset, minv, maxv, count);
-
-    int nTuples = (int)ics.size();
-
-    if( 1 || count <= nTuples/10 )
-    {
-      if( minSizeValue == std::numeric_limits<double>::max() )
-        minSizeValue = 0.0;
-      
-      if( maxSizeValue == std::numeric_limits<double>::min() )
-        maxSizeValue = 0.0;
-      
-      char str[1028];
-      
-      SNPRINTF(str, 1028, "\n%d%% of the nodes (%d of %d nodes) "
-               "exaimed produced a valid exponent (%f to %f). "
-               "This may be due to too large of a size limit (%f), "
-               "too small of an integration step (%f), or "
-               "too few integration steps (%d out of %d where taken), or "
-               "simply due to the nature of the data. "
-               "The size range was from %f to %f. ",
-               (int) (100.0 * (double) count / (double) nTuples),
-               count, nTuples,
-               minv, maxv,
-               maxSize, maxStepLength, numSteps, maxSteps,
-               minSizeValue, maxSizeValue );
-      
-      avtCallback::IssueWarning(str);
-    }
-
-    avtDataAttributes &dataatts = GetOutput()->GetInfo().GetAttributes();
-    avtExtents* e = dataatts.GetThisProcsActualDataExtents();
-
-    double range[2];
-    range[0] = minv;
-    range[1] = maxv;
-    e->Set(range);
-
-    e = dataatts.GetThisProcsOriginalDataExtents();
-    e->Set(range);
-
-    e = dataatts.GetThisProcsActualSpatialExtents();
-    e->Set(global_bounds);
-    e = dataatts.GetThisProcsOriginalSpatialExtents();
-    e->Set(global_bounds);
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::CreateMultiBlockIterativeCalcOutput
-//
-//  Purpose:
-//      Computes the finial FSLE and similar values that are neighbor
-//      dependent for the whole data set, using the final particle
-//      locations, at the blocks native resolution.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-// ****************************************************************************
-
-void
-avtLCSFilter::CreateMultiBlockIterativeCalcOutput( avtDataTree_p inDT,
-                                                   avtDataTree_p outDT,
-                                                   std::vector<avtIntegralCurve*> &ics,
-                                                   int &offset,
-                                                   double &minv, double &maxv,
-                                                   int &count)
-{
-    if (*inDT == NULL || *outDT == NULL)
-        return;
-
-    int nc = inDT->GetNChildren();
-
-    if (nc < 0 && !inDT->HasData())
-        return;
-
-    if (nc == 0)
-    {
-        //
-        // there is only one dataset to process
-        //
-        vtkDataSet *in_ds = inDT->GetDataRepresentation().GetDataVTK();
-        vtkDataSet *out_ds = outDT->GetDataRepresentation().GetDataVTK();
-
-        int dom = inDT->GetDataRepresentation().GetDomain();
-        std::string label = inDT->GetDataRepresentation().GetLabel();
-
-        CreateSingleBlockIterativeCalcOutput(in_ds, out_ds, ics,
-                                             offset, dom, minv, maxv, count);
-    }
-    else
-    {
-      //
-      // there is more than one input dataset to process
-      // and we need an output datatree for each
-      //
-      for (int j = 0; j < nc; j++)
-      {
-          if (inDT->ChildIsPresent(j))
-            CreateMultiBlockIterativeCalcOutput(inDT->GetChild(j),
-                                                outDT->GetChild(j),
-                                                ics, offset, minv, maxv, count);
-      }
-    }
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::CreateSingleBlockIterativeCalcOutput
-//
-//  Purpose:
-//      Computes the finial FSLE and similar values that are neighbor
-//      dependent for a single block of a data set, using the final
-//      particle locations, at the blocks native resolution.
-//
-//  Arguments:
-//      in_ds   The block to calculate the value on
-//      ics     The list of particles for all blocks on this MPI task.
-//      domain  The domain number of in_ds
-//      minv    The minimum value (output)
-//      maxv    The maximum value (output)
-//      count   The number of nodes with a valid exponent
-//
-//  Returns:    The new version of in_ds that includes the scalar
-//              variable.  The calling function is responsible for
-//              dereferencing this VTK object.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-//  Modifications:
-//
-//    Hank Childs, Tue Feb  5 08:12:33 PST 2013
-//    Fix parallelization bug and memory leak.
-//
-// ****************************************************************************
-
-void
-avtLCSFilter::CreateSingleBlockIterativeCalcOutput( vtkDataSet *in_ds,
-                                                    vtkDataSet *out_ds,
-                                                    std::vector<avtIntegralCurve*> &ics,
-                                                    int &offset, int domain,
-                                                    double &minv, double &maxv,
-                                                    int &count )
-{
-  //variable name.
-  std::string var = outVarRoot + outVarName;
-
-  vtkDoubleArray *exponents = (vtkDoubleArray *)
-    out_ds->GetPointData()->GetArray(var.c_str());
-
-  int nTuples = exponents->GetNumberOfTuples();
-
-  bool clampLogValues = atts.GetClampLogValues();
-
-  for(size_t i=0; i<ics.size(); ++i)
-  {
-    avtStreamlineIC * ic = (avtStreamlineIC *) ics[i];
-    
-    size_t index = ic->id;
-    size_t l = (index-offset);
-
-    double lambda = exponents->GetTuple1(l);
-    
-    if( lambda == std::numeric_limits<double>::min() )
-    {
-      lambda = 0;
-      exponents->SetTuple1(l, lambda );
-    }
-    else
-    {
-      ++count;
-      ic->status.ClearTerminationMet();
-
-      if( clampLogValues && lambda < 0 )
-      {
-        lambda = 0;
-        exponents->SetTuple1(l, lambda );
-      }
-    }
-    
-    minv = std::min(lambda, minv);
-    maxv = std::max(lambda, maxv);
-    
-  }
-
-  // Make the exponents the the active scalars.
-  out_ds->GetPointData()->SetActiveScalars(var.c_str());
-
-  // Remove the working arrays.
-  out_ds->GetPointData()->RemoveArray("component");
-  out_ds->GetPointData()->RemoveArray("times");
-
-  //done with offset, increment it for the next call to this
-  //function.
-  offset += nTuples;
-
-  //store this dataset in Cache for next time.
-  // double bounds[6];
-  // fsle_ds->GetBounds(bounds);
-          
-  // std::cout << "final size and bounds: "
-  //          << PAR_Rank() << " " << nTuples << " "
-  //          << bounds[0] << " " << bounds[1] << " " << bounds[2]
-  //          << " " << bounds[3] << " " << bounds[4] << " "
-  //          << bounds[5] << std::endl;
-
-  // std::cerr << "Caching fsle_ds" << std::endl;
-  
-  
-  //Store this dataset in Cache for next time.
-  std::string str = CreateCacheString();  
-  StoreArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
-                          outVarName.c_str(), domain, -1,
-                          str.c_str(), out_ds);
-}
-
-
-// ****************************************************************************
-//  Method: avtLCSFilter::CreateRectilinearGridIterativeCalcOutput
-//
-//  Purpose:
-//      Computes the finial FSLE and similar values that are neighbor
-//      dependent output (via sub-routines) after the PICS filter has
-//      calculated the particle positions.
-//
-//  Programmer: Allen Sanderson
-//  Creation:   September 5, 2013
-//
-// ****************************************************************************
-
-void 
-avtLCSFilter::CreateRectilinearGridIterativeCalcOutput(std::vector<avtIntegralCurve*> &ics)
-{
-    //root should now have index into global structure and all
-    //matching end positions.
-    if(PAR_Rank() != 0)
-    {
-        //std::cout << PAR_Rank() << " creating dummy output" << std::endl;
-        avtDataTree* dummy = new avtDataTree();
-        SetOutputDataTree(dummy);
-    }
-    else
-    {
-      if (fsle_ds->GetDataObjectType() != VTK_RECTILINEAR_GRID)
-      {
-        EXCEPTION1(VisItException,
-                   "Can only compute CreateRectilinearGridIterativeCalcOutput on "
-                   "rectilinear grids. ");
-      }
-
-      //variable name.
-      std::string var = outVarRoot + outVarName;
-
-      vtkDoubleArray *exponents = (vtkDoubleArray *)
-        fsle_ds->GetPointData()->GetArray(var.c_str());
-
-      int nTuples = exponents->GetNumberOfTuples();
-
-      //min and max values over all datasets of the tree.
-      double minv = std::numeric_limits<double>::max();
-      double maxv = std::numeric_limits<double>::min();
-      
-      int count = 0;
-
-      bool clampLogValues = atts.GetClampLogValues();
-
-      for(size_t i=0; i<ics.size(); ++i)
-      {
-        avtStreamlineIC * ic = (avtStreamlineIC *) ics[i];
-
-        size_t l = ic->id; // The curve id is the index into the VTK data.
-
-        double lambda = exponents->GetTuple1(l);
-
-        if( lambda == std::numeric_limits<double>::min() )
-        {
-          lambda = 0;
-          exponents->SetTuple1(l, lambda );
-        }
-        else
-        {
-          ++count;
-          ic->status.ClearTerminationMet();
-
-          if( clampLogValues && lambda < 0 )
-          {
-            lambda = 0;
-            exponents->SetTuple1(l, lambda );
-          }
-        }
-
-        minv = std::min(lambda, minv);
-        maxv = std::max(lambda, maxv);
-      }
-
-      if( count <= nTuples/10 )
-      {
-        if( minSizeValue == std::numeric_limits<double>::max() )
-          minSizeValue = 0.0;
-
-        if( maxSizeValue == std::numeric_limits<double>::min() )
-          maxSizeValue = 0.0;
-
-        char str[1028];
-
-        SNPRINTF(str, 1028, "\n%d%% of the nodes (%d of %d nodes) "
-                 "exaimed produced a valid exponent (%f to %f). "
-                 "This may be due to too large of a size limit (%f), "
-                 "too small of an integration step (%f), or "
-                 "too few integration steps (%d out of %d where taken), or "
-                 "simply due to the nature of the data. "
-                 "The size range was from %f to %f. ",
-                 (int) (100.0 * (double) count / (double) nTuples),
-                 count, nTuples,
-                 minv, maxv,
-                 maxSize, maxStepLength, numSteps, maxSteps,
-                 minSizeValue, maxSizeValue );
-
-        avtCallback::IssueWarning(str);
-      }
-      
-      // Make the exponents the the active scalars.
-      fsle_ds->GetPointData()->SetActiveScalars(var.c_str());
-
-      // Remove the working arrays.
-      fsle_ds->GetPointData()->RemoveArray("component");
-      fsle_ds->GetPointData()->RemoveArray("times");
-
-      //store this dataset in Cache for next time.
-      // double bounds[6];
-      // fsle_ds->GetBounds(bounds);
-          
-      // std::cout << "final size and bounds: "
-      //          << PAR_Rank() << " " << nTuples << " "
-      //          << bounds[0] << " " << bounds[1] << " " << bounds[2]
-      //          << " " << bounds[3] << " " << bounds[4] << " "
-      //          << bounds[5] << std::endl;
-
-      // std::cerr << "Caching fsle_ds" << std::endl;
-      std::string str = CreateCacheString();
-      StoreArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
-                              outVarName.c_str(), -1, -1,
-                              str.c_str(), fsle_ds);
-      
-      int index = 0;//what does index mean in this context?
-      avtDataTree* dt = new avtDataTree(fsle_ds,index);
-      int x = 0;
-      dt->GetAllLeaves(x);
-      
-      // std::cout << "total leaves:: " << x << std::endl;
-      
-      SetOutputDataTree(dt);
-      
-      //set atts.
-      avtDataAttributes &dataatts = GetOutput()->GetInfo().GetAttributes();
-      avtExtents* e = dataatts.GetThisProcsActualDataExtents();
-      
-      double range[2];
-      range[0] = minv;
-      range[1] = maxv;
-      e->Set(range);
     }
 }
 
@@ -3372,58 +1841,106 @@ avtLCSFilter::CreateRectilinearGridIterativeCalcOutput(std::vector<avtIntegralCu
 void
 avtLCSFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
 {
-    if (ics.size() == 0)
-        return;
-
     int numICs = (int)ics.size();
-//    int numPts = 0;
+
+    int numAdvection = 0;
+    int numBoundary = 0;
+
     int numEarlyTerminators = 0;
+    int numStepSize = 0;
     int numStiff = 0;
     int numCritPts = 0;
 
     if (DebugStream::Level5())
     {
-        debug5 << "::CreateIntegralCurveOutput " << ics.size() << endl;
+        debug5 << "::ReportWarnings " << ics.size() << endl;
     }
 
-    //See how many pts, ics we have so we can preallocate everything.
-    for (int i = 0; i < numICs; i++)
+    // Loop through all the IC for warnings.
+    if (doSize)
     {
-        bool terminatedBecauseOfMaxSteps;
-        bool encounteredNumericalProblems;
-
-        if( doSize )
+        for (int i = 0; i < numICs; ++i)
         {
             avtStreamlineIC *ic = dynamic_cast<avtStreamlineIC*>(ics[i]);
-            terminatedBecauseOfMaxSteps  = ic->TerminatedBecauseOfMaxSteps();
-            encounteredNumericalProblems = ic->EncounteredNumericalProblems();
+
+            bool badSize = (doSize && ic->GetTime() < maxSize);
+
+            if (ic->CurrentVelocity().length() <= criticalPointThreshold)
+              ++numCritPts;
+
+            if (ic->TerminatedBecauseOfMaxSteps())
+              ++numEarlyTerminators;
+            
+            if (ic->status.StepSizeUnderflow() && badSize)
+              ++numStepSize;
+
+            if (ic->EncounteredNumericalProblems())
+              ++numStiff;
+
+            if (ic->status.ExitedSpatialBoundary())
+              ++numBoundary;
+
+            if (badSize)
+              ++numAdvection;         
         }
-        else
+    }
+    else // if (doTime || doDistance)
+    {
+        for (int i = 0; i < numICs; ++i)
         {
             avtLCSIC *ic = dynamic_cast<avtLCSIC*>(ics[i]);
-            terminatedBecauseOfMaxSteps  = ic->TerminatedBecauseOfMaxSteps();
-            encounteredNumericalProblems = ic->EncounteredNumericalProblems();
+
+            bool badTime = (doTime && (fabs(ic->GetTime() - absMaxTime) > FLT_MIN));
+            bool badDistance = (doDistance && (ic->GetDistance() < maxDistance));
+
+            if (ic->CurrentVelocity().length() <= criticalPointThreshold)
+              ++numCritPts;
+
+            if (ic->TerminatedBecauseOfMaxSteps())
+              ++numEarlyTerminators;
+            
+            if (ic->status.StepSizeUnderflow() && (badTime || badDistance))
+              ++numStepSize;
+
+            if (ic->EncounteredNumericalProblems())
+              ++numStiff;
+
+            if (ic->status.ExitedSpatialBoundary())
+              ++numBoundary;
+
+            if (badTime || badDistance)
+              ++numAdvection;
         }
-
-        // NOT USED ??????????????????????????
-        // size_t numSamps = (ic ? ic->GetNumberOfSamples() : 0);
-        // if (numSamps > 1)
-        //     numPts += numSamps;
-
-        if (terminatedBecauseOfMaxSteps)
-        {
-            // Calculated only with avtStateRecorderIntegralCurve
-            // if (ic->SpeedAtTermination() <= criticalPointThreshold)
-            //     numCritPts++;
-            // else
-            numEarlyTerminators++;
-        }
-
-        if (encounteredNumericalProblems)
-            numStiff++;
     }
 
     char str[4096] = "";
+
+    if (issueWarningForAdvection)
+    {
+        SumIntAcrossAllProcessors(numAdvection);
+
+        if (numAdvection)
+        {
+          SNPRINTF(str, 4096,
+                   "%s\n%d of your integral curves terminated before they reached "
+                   "the maximum advection criteria.  This may be indicative of your "
+                   "time, distance, or size criteria being too large or the curve leaving the domain."
+                   "  Note that this message does not mean that an error has occurred; it simply "
+                   "means that VisIt stopped advecting particles before they reached the maximum.\n",
+                   str, numAdvection);
+        }
+    }
+
+    if ((doDistance || doTime || doSize) && issueWarningForBoundary)
+    {
+        SumIntAcrossAllProcessors(numBoundary);
+        if (numBoundary > 0)
+        {
+            SNPRINTF(str, 4096, 
+                     "%s\n%d of your integral curves exited the spatial domain. This will all likelihood, "
+                     "skew the results of any relative gradient based (Eigen value/vector) calculations.\n", str, numBoundary);
+        }
+    }
 
     if ((doDistance || doTime || doSize) && issueWarningForMaxStepsTermination)
     {
@@ -3436,8 +1953,7 @@ avtLCSFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
                    "time or distance criteria being too large or of other attributes being "
                    "set incorrectly (example: your step size is too small).  If you are "
                    "confident in your settings and want the particles to advect farther, "
-                   "you should increase the maximum number of steps.  If you want to disable "
-                   "this message, you can do this under the Advaced tab."
+                   "you should increase the maximum number of steps."
                    "  Note that this message does not mean that an error has occurred; it simply "
                    "means that VisIt stopped advecting particles because it reached the maximum "
                    "number of steps. (That said, this case happens most often when other attributes "
@@ -3456,8 +1972,21 @@ avtLCSFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
                      "to the critical point location and terminate.  However, VisIt was not able "
                      "to do this for these particles due to numerical issues.  In all likelihood, "
                      "additional steps will _not_ help this problem and only cause execution to "
-                     "take longer.  If you want to disable this message, you can do this under "
-                     "the Advanced tab.\n", str, numCritPts);
+                     "take longer.\n", str, numCritPts);
+        }
+    }
+
+    if (issueWarningForStepsize)
+    {
+        SumIntAcrossAllProcessors(numStepSize);
+        if (numStepSize > 0)
+        {
+            SNPRINTF(str, 4096, 
+                     "%s\n%d of your integral curves were unable to advect because of the \"stepsize\".  "
+                     "Often the step size becomes too small when appraoching a spatial "
+                     "or temporal boundary. This especially happens when the step size matches "
+                     "the temporal spacing. This condition is referred to as stepsize underflow and "
+                     "VisIt stops advecting in this case.\n", str, numStepSize);
         }
     }
 
@@ -3471,13 +2000,18 @@ avtLCSFilter::ReportWarnings(std::vector<avtIntegralCurve *> &ics)
                      "When one component of a velocity field varies quickly and another stays "
                      "relatively constant, then it is not possible to choose step sizes that "
                      "remain within tolerances.  This condition is referred to as stiffness and "
-                     "VisIt stops advecting in this case.  If you want to disable this message, "
-                     "you can do this under the Advanced tab.\n", str,numStiff);
+                     "VisIt stops advecting in this case.\n", str, numStiff);
         }
     }
 
     if( strlen( str ) )
-      avtCallback::IssueWarning(str);
+    {
+        SNPRINTF(str, 4096, 
+                 "\n%s\nIf you want to disable any of these messages, "
+                 "you can do so under the Advanced tab.\n", str);
+
+        avtCallback::IssueWarning(str);
+    }
 }
 
 
@@ -3510,8 +2044,10 @@ avtLCSFilter::CreateCacheString(void)
   // simple but most attributes can not be changed unless an option is
   // selected. As such, for the most part the brute force approach is
   // acceptable.
-  os << cycleCached << "  "
+  os << PAR_Rank() << "  "
+     << cycleCached << "  "
      << timeCached << "  "
+
      << atts.GetSourceType() << " "
      << resolution[0] << " "
      << resolution[1] << " "
@@ -3524,19 +2060,18 @@ avtLCSFilter::CreateCacheString(void)
      << endPosition[0] << " "
      << endPosition[1] << " "
      << endPosition[2] << " "
+
+     << atts.GetAuxiliaryGrid() << " "
+     << atts.GetAuxiliaryGridSpacing() << " "
      << atts.GetIntegrationDirection() << " "
-     << atts.GetMaxSteps() << " "
-     << atts.GetOperationType() << " "
-     << atts.GetEigenComponent() << " "
-     << atts.GetOperatorType() << " "
-     << atts.GetClampLogValues() << " "
-     << atts.GetTerminationType() << " "
-     << atts.GetTerminateBySize() << " "
-     << atts.GetTermSize() << " "
-     << atts.GetTerminateByDistance() << " "
-     << atts.GetTermDistance() << " "
-     << atts.GetTerminateByTime() << " "
-     << atts.GetTermTime() << " "
+
+     << atts.GetFieldType() << " "
+     << atts.GetFieldConstant() << " "
+     << velocitySource[0] << " "
+     << velocitySource[1] << " "
+     << velocitySource[2] << " "
+
+     << atts.GetIntegrationType() << " "
      << atts.GetMaxStepLength() << " "
      << atts.GetLimitMaximumTimestep() << " "
      << atts.GetMaxTimeStep() << " "
@@ -3544,22 +2079,42 @@ avtLCSFilter::CreateCacheString(void)
      << atts.GetAbsTolSizeType() << " "
      << atts.GetAbsTolAbsolute() << " "
      << atts.GetAbsTolBBox() << " "
-     << atts.GetFieldType() << " "
-     << atts.GetFieldConstant() << " "
-     << velocitySource[0] << " "
-     << velocitySource[1] << " "
-     << velocitySource[2] << " "
-     << atts.GetIntegrationType() << " "
-     << atts.GetParallelizationAlgorithmType() << " "
-     << atts.GetMaxProcessCount() << " "
-     << atts.GetMaxDomainCacheSize() << " "
-     << atts.GetWorkGroupSize() << " "
+
+     << atts.GetOperationType() << " "
+     << atts.GetEigenComponent() << " "
+     << atts.GetEigenWeight() << " "
+     << atts.GetOperatorType() << " "
+     << atts.GetCauchyGreenTensor() << " "
+     << atts.GetClampLogValues() << " "
+
+     << atts.GetTerminationType() << " "
+     << atts.GetTerminateBySize() << " "
+     << atts.GetTermSize() << " "
+     << atts.GetTerminateByDistance() << " "
+     << atts.GetTermDistance() << " "
+     << atts.GetTerminateByTime() << " "
+     << atts.GetTermTime() << " "
+     << atts.GetMaxSteps() << " "
+
+     << atts.GetThresholdLimit() << " "
+     << atts.GetRadialLimit() << " "
+     << atts.GetBoundaryLimit() << " "
+     << atts.GetSeedLimit() << " "
+
      << atts.GetPathlines() << " "
      << atts.GetPathlinesOverrideStartingTimeFlag() << " "
      << atts.GetPathlinesOverrideStartingTime() << " "
      << atts.GetPathlinesCMFE() << " "
-     << atts.GetForceNodeCenteredData() << " "
+
+     << atts.GetParallelizationAlgorithmType() << " "
+     << atts.GetMaxProcessCount() << " "
+     << atts.GetMaxDomainCacheSize() << " "
+     << atts.GetWorkGroupSize() << " "
+
+     << atts.GetIssueAdvectionWarnings() << " "
+     << atts.GetIssueBoundaryWarnings() << " "
      << atts.GetIssueTerminationWarnings() << " "
+     << atts.GetIssueStepsizeWarnings() << " "
      << atts.GetIssueStiffnessWarnings() << " "
      << atts.GetIssueCriticalPointsWarnings() << " "
      << atts.GetCriticalPointThreshold() << " ";
@@ -3589,26 +2144,37 @@ avtDataTree_p
 avtLCSFilter::GetCachedDataSet()
 {
     avtDataTree_p rv = NULL;
+
     if (atts.GetSourceType() == LCSAttributes::NativeMesh)
     {
-        rv = GetCachedNativeDataSet(GetInputDataTree());
         int looksOK = 1;
+
+        rv = GetCachedNativeDataSet(GetInputDataTree());
+      
         if ((*rv == NULL) && (*(GetInputDataTree()) != NULL))
             looksOK = 0;
-        looksOK = UnifyMinimumValue(looksOK); // if any fails, we all fail
+
+        // Gather operation from all procs, if any fails, we all fail.
+        looksOK = UnifyMinimumValue(looksOK);
+
         if (looksOK == 0)
             rv = NULL;
     }
     else //if (atts.GetSourceType() == LCSAttributes::RegularGrid)
     {
         rv = GetCachedResampledDataSet();
+
         int looksOK = (*rv == NULL ? 0 : 1);
-        looksOK = UnifyMaximumValue(looksOK); // if one has it, we're all OK
+
+        // Gather operation from all procs, if any fails, we all fail.
+        looksOK = UnifyMaximumValue(looksOK);
+
         if (looksOK == 0)
             rv = NULL;
         else if ((looksOK == 1) && (*rv == NULL))
             rv = new avtDataTree();
     }
+
     return rv;
 }
 
@@ -3646,9 +2212,11 @@ avtLCSFilter::GetCachedNativeDataSet(avtDataTree_p inDT)
         int domain = inDT->GetDataRepresentation().GetDomain();
         std::string label = inDT->GetDataRepresentation().GetLabel();
         std::string str = CreateCacheString();
+
         vtkDataSet *rv = (vtkDataSet *)
           FetchArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
                                   outVarName.c_str(), domain, -1, str.c_str());
+
         if (rv == NULL)
             return NULL;
         else
@@ -3660,14 +2228,23 @@ avtLCSFilter::GetCachedNativeDataSet(avtDataTree_p inDT)
     // and we need an output datatree for each
     //
     avtDataTree_p *outDT = new avtDataTree_p[nc];
+    int cc = 0;
     bool badOne = false;
     for (int j = 0; j < nc; j++)
     {
         if (inDT->ChildIsPresent(j))
         {
             outDT[j] = GetCachedNativeDataSet(inDT->GetChild(j));
+
             if (*(outDT[j]) == NULL)
+            {
                 badOne = true;
+                break;
+            }
+            else
+            {
+                ++cc;
+            }
         }
         else
         {
@@ -3676,9 +2253,13 @@ avtLCSFilter::GetCachedNativeDataSet(avtDataTree_p inDT)
     }
 
     avtDataTree_p rv = NULL;
-
-    if (!badOne) // if we don't have LCS for one domain, then just re-calc whole thing
+    
+    // if we don't have LCS for one domain, then just re-calc whole thing
+    if (cc && !badOne)
+    {
         rv = new avtDataTree(nc, outDT);
+    }
+
     delete [] outDT;
     return rv;
 }
@@ -3705,10 +2286,21 @@ avtLCSFilter::GetCachedResampledDataSet()
       FetchArbitraryVTKObject(SPATIAL_DEPENDENCE | DATA_DEPENDENCE,
                               outVarName.c_str(), -1, -1, str.c_str());
 
-    if(rv != NULL)
+    if( rv )
     {
-        return new avtDataTree(rv, -1);
-    }
+      int dims[3];
+      rv->GetDimensions( dims );
+            
+      int extent[6];
+      rv->GetExtent( extent );
 
-    return NULL;
+      double bounds[6];
+      rv->GetBounds( bounds );
+    }
+    
+
+    if(rv != NULL)
+        return new avtDataTree(rv, 0);
+    else
+        return NULL;
 }

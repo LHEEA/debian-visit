@@ -27,16 +27,16 @@ function bv_nektarpp_alt_nektarpp_dir
 
 function bv_nektarpp_depends_on
 {
-    depends_on="cmake boost"
+    depends_on="cmake boost zlib"
 
     if [[ "$USE_SYSTEM_NEKTAR_PLUS_PLUS" == "yes" ]]; then
         echo ""
-    else
-        if [[ "$DO_ZLIB" == "yes" ]] ; then
-           depends_on="$depends_on zlib"    
-        fi
+#    else
+#        if [[ "$DO_ZLIB" == "yes" ]] ; then
+#           depends_on="$depends_on zlib"    
+#        fi
 
-        echo $depends_on
+#        echo $depends_on
     fi
 }
 
@@ -49,7 +49,7 @@ function bv_nektarpp_initialize_vars
 
 function bv_nektarpp_info
 {
-export NEKTAR_PLUS_PLUS_VERSION=${NEKTAR_PLUS_PLUS_VERSION:-"4.0.1"}
+export NEKTAR_PLUS_PLUS_VERSION=${NEKTAR_PLUS_PLUS_VERSION:-"4.1.0"}
 export NEKTAR_PLUS_PLUS_FILE=${NEKTAR_PLUS_PLUS_FILE:-"nektar++-${NEKTAR_PLUS_PLUS_VERSION}.tar.gz"}
 export NEKTAR_PLUS_PLUS_COMPATIBILITY_VERSION=${NEKTAR_PLUS_PLUS_COMPATIBILITY_VERSION:-"1.8"}
 export NEKTAR_PLUS_PLUS_BUILD_DIR=${NEKTAR_PLUS_PLUS_BUILD_DIR:-"nektar++-${NEKTAR_PLUS_PLUS_VERSION}"}

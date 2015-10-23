@@ -46,11 +46,13 @@
 #include <vtkDataSet.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
+#include <vtkFieldData.h>
+#include <vtkDoubleArray.h>
 #include <vtkGenericCell.h>
-#include <DebugStream.h>
 
-#include <iostream>
 #include <limits>
+
+#include <DebugStream.h>
 
 //const char* avtIVPVTKTimeVaryingField::NextTimePrefix = "__nextTimePrefix_";
 const char* avtIVPVTKTimeVaryingField::NextTimePrefix = "__pathlineNextTimeVar__";
@@ -113,6 +115,23 @@ avtIVPVTKTimeVaryingField::avtIVPVTKTimeVaryingField( vtkDataSet* dataset,
     std::fill( sclCellBased, sclCellBased+256, false );
 
     sclDataName.resize( 256 );
+
+    // Periodic boundaries are posible.
+    vtkFieldData *fieldData = ds->GetFieldData();
+
+    vtkDoubleArray *boundaries = 
+      (vtkDoubleArray *) fieldData->GetAbstractArray("Periodic Boundaries");
+    
+    if( boundaries )
+    {
+      hasPeriodicBoundaries = true;
+      periodic_boundary_x = boundaries->GetValue(0);
+      periodic_boundary_y = boundaries->GetValue(1);
+      periodic_boundary_z = boundaries->GetValue(2);
+    }
+    else
+      hasPeriodicBoundaries =
+        periodic_boundary_x = periodic_boundary_y = periodic_boundary_z = 0;
 }
 
 // ****************************************************************************
@@ -176,9 +195,6 @@ avtIVPVTKTimeVaryingField::GetExtents( double extents[6] ) const
 //   Hank Childs, Fri Mar  9 16:50:48 PST 2012
 //   Add support for reverse pathlines.
 //
-//   Dave Pugmire, Wed Jun  5 09:57:41 EDT 2013
-//   Fix for pathlines. change from >=, <= to >, < in inclusion for time.
-//
 // ****************************************************************************
 
 avtIVPField::Result
@@ -188,12 +204,39 @@ avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) 
 
     if( pos != lastPos )
     {
-        lastPos  = pos;
-        
-        lastCell = loc->FindCell(&pos.x, &lastWeights, false);
+        lastPos = pos;
+
+        if( hasPeriodicBoundaries )
+        {
+          avtVector pt = pos;
+
+          if( periodic_boundary_x > 0 )
+          {
+            while(                pt.x < 0    ) pt.x += periodic_boundary_x;
+            while( periodic_boundary_x < pt.x ) pt.x -= periodic_boundary_x;
+          }
+
+          if( periodic_boundary_y > 0 )
+          {
+            while(                pt.y < 0    ) pt.y += periodic_boundary_y;
+            while( periodic_boundary_y < pt.y ) pt.y -= periodic_boundary_y;
+          }
+
+          if( periodic_boundary_z > 0 )
+          {
+            while(                pt.z < 0    ) pt.z += periodic_boundary_z;
+            while( periodic_boundary_z < pt.z ) pt.z -= periodic_boundary_z;
+          }
+
+          lastCell = loc->FindCell(&pt.x, &lastWeights, false);
+        }
+        else
+          lastCell = loc->FindCell(&pos.x, &lastWeights, false);
+
         inside[0] = (lastCell != -1);
     }       
-    
+
+    // For computation the time can include the temporal boundaries.
     if (t0 < t1)
     {
         if( time < t0 || t1 < time )
@@ -215,6 +258,7 @@ avtIVPVTKTimeVaryingField::FindCell( const double& time, const avtVector& pos ) 
     else
         return OUTSIDE_TEMPORAL;
 }
+
 
 // ****************************************************************************
 //  Method: avtIVPVTKTimeVaryingField::operator
@@ -266,19 +310,17 @@ avtIVPVTKTimeVaryingField::operator()( const double &t,
     }
     else
     {
+        vel.x = vel.y = vel.z = 0.0;
+
         for( avtInterpolationWeights::const_iterator wi=lastWeights.begin();
              wi!=lastWeights.end(); ++wi )
         {
             velData[0]->GetTuple( wi->i, v0 );
             velData[1]->GetTuple( wi->i, v1 );
 
-            v0[0] = p1 * v1[0] + p0 * v0[0];
-            v0[1] = p1 * v1[1] + p0 * v0[1];
-            v0[2] = p1 * v1[2] + p0 * v0[2];
-
-            vel.x += wi->w * v0[0];
-            vel.y += wi->w * v0[1];
-            vel.z += wi->w * v0[2];
+            vel.x += wi->w * (p1 * v1[0] + p0 * v0[0]);
+            vel.y += wi->w * (p1 * v1[1] + p0 * v0[1]);
+            vel.z += wi->w * (p1 * v1[2] + p0 * v0[2]);
         }
     }
 
@@ -341,8 +383,8 @@ avtIVPVTKTimeVaryingField::ConvertToCylindrical(const avtVector& pt) const
 //    Switch from avtVec to avtVector.
 //
 //    Christoph Garth, Fri Jul 9, 10:10:22 PDT 2010
-//    Incorporate vtkVisItInterpolatedVelocityField in avtIVPVTKTimeVaryingField, and
-//    use vtkGenericCell for thread safety.
+//    Incorporate vtkVisItInterpolatedVelocityField in
+//    avtIVPVTKTimeVaryingField, and use vtkGenericCell for thread safety.
 //
 // ****************************************************************************
 
@@ -546,9 +588,68 @@ avtIVPVTKTimeVaryingField::SetScalarVariable(unsigned char index, const std::str
 // ****************************************************************************
 
 avtIVPField::Result
-avtIVPVTKTimeVaryingField::IsInside( const double& t, const avtVector &pt ) const
+avtIVPVTKTimeVaryingField::IsInside( const double& time, const avtVector &pos ) const
 {
-    return FindCell( t, pt );
+    bool inside[2] = {true, true};
+
+    if( pos != lastPos )
+    {
+        lastPos = pos;
+
+        if( hasPeriodicBoundaries )
+        {
+          avtVector pt = pos;
+
+          if( periodic_boundary_x > 0 )
+          {
+            while(                pt.x < 0    ) pt.x += periodic_boundary_x;
+            while( periodic_boundary_x < pt.x ) pt.x -= periodic_boundary_x;
+          }
+
+          if( periodic_boundary_y > 0 )
+          {
+            while(                pt.y < 0    ) pt.y += periodic_boundary_y;
+            while( periodic_boundary_y < pt.y ) pt.y -= periodic_boundary_y;
+          }
+
+          if( periodic_boundary_z > 0 )
+          {
+            while(                pt.z < 0    ) pt.z += periodic_boundary_z;
+            while( periodic_boundary_z < pt.z ) pt.z -= periodic_boundary_z;
+          }
+
+          lastCell = loc->FindCell(&pt.x, &lastWeights, false);
+        }
+        else
+          lastCell = loc->FindCell(&pos.x, &lastWeights, false);
+
+        inside[0] = (lastCell != -1);
+    }       
+
+    // The time interval should begin with and including the start time
+    // (t0) up to BUT not include the last time (t1). Once the last
+    // time is reached the next time domain should be used.
+    if (t0 < t1)
+    {
+        if( time < t0 || t1 < time )
+            inside[1] = false;
+    }
+    else
+    {
+        // backwards integration
+        if( time < t1 || t0 < time )
+            inside[1] = false;
+    }
+
+    if (inside[0] && inside[1])
+        return OK;
+    else if (!inside[0] && !inside[1])
+        return OUTSIDE_BOTH;
+    else if (!inside[0])
+        return OUTSIDE_SPATIAL;
+    else
+        return OUTSIDE_TEMPORAL;
+    //    return FindCell( timt, pos );
 }
 
 // ****************************************************************************
@@ -601,4 +702,44 @@ avtIVPVTKTimeVaryingField::GetTimeRange( double range[2] ) const
         range[0] = t1;
         range[1] = t0;
     }
+}
+
+
+// ****************************************************************************
+//  Method: avtIVPVTKField::HasPeriodicBoundaries
+//
+//  Purpose:
+//      
+//
+//  Programmer: Allen Sanderson
+//  Creation:   April 16, 2015
+//
+// ****************************************************************************
+
+bool
+avtIVPVTKTimeVaryingField::HasPeriodicBoundaries() const
+{
+  return hasPeriodicBoundaries;
+}
+
+
+// ****************************************************************************
+//  Method: avtIVPVTKField::HasPeriodicBoundaries
+//
+//  Purpose:
+//      
+//
+//  Programmer: Allen Sanderson
+//  Creation:   April 16, 2015
+//
+// ****************************************************************************
+
+void
+avtIVPVTKTimeVaryingField::GetBoundaries( double& x,
+                                          double& y,
+                                          double& z) const
+{
+  x = periodic_boundary_x;
+  y = periodic_boundary_y;
+  z = periodic_boundary_z;
 }

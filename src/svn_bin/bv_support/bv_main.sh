@@ -75,13 +75,17 @@ if [[ "$OPSYS" == "Darwin" ]]; then
       export MACOSX_DEPLOYMENT_TARGET=10.9
       export C_COMPILER=${C_COMPILER:-"clang"}
       export CXX_COMPILER=${CXX_COMPILER:-"clang++"}
+   elif [[ ${VER%%.*} == 14 ]] ; then
+      export MACOSX_DEPLOYMENT_TARGET=10.10
+      export C_COMPILER=${C_COMPILER:-"clang"}
+      export CXX_COMPILER=${CXX_COMPILER:-"clang++"}
    else
-      export MACOSX_DEPLOYMENT_TARGET=10.9
+      export MACOSX_DEPLOYMENT_TARGET=10.10
       export C_COMPILER=${C_COMPILER:-"clang"}
       export CXX_COMPILER=${CXX_COMPILER:-"clang++"}
    fi
-   
-   
+
+
    export C_COMPILER=${C_COMPILER:-"gcc"}
    export CXX_COMPILER=${CXX_COMPILER:-"g++"}
 
@@ -336,7 +340,7 @@ if [[ "$CXX_COMPILER" == "g++" ]] ; then
 fi
 
 
-export SVN_ANON_ROOT_PATH="http://portal.nersc.gov/svn/visit"
+export SVN_ANON_ROOT_PATH="http://visit.ilight.com/svn/visit"
 # Setup svn path: use SVN_NERSC_NAME if set
 if test -z "$SVN_NERSC_NAME" ; then
     export SVN_REPO_ROOT_PATH="svn+ssh://portal-auth.nersc.gov/project/projectdirs/visit/svn/visit"
@@ -1007,12 +1011,12 @@ done
 #error check to make sure that next arg is not left blank..
 if [[ $next_arg != "" ]] ; then
     echo "command line arguments are used incorrectly: argument $next_arg not fullfilled"
-    exit 0
+    exit 1
 fi
 
 if [[ "$ANY_ERRORS" == "yes" ]] ; then
     echo "command line arguments are used incorrectly. unrecognized options..."
-    exit 0
+    exit 1
 fi
 
 if test -n "${deprecated}" ; then
@@ -1021,7 +1025,7 @@ if test -n "${deprecated}" ; then
     echo "$summary"
     echo ""
     echo "$0 ${deprecated}"
-    exit 0
+    exit 1
 fi
 
 if test -n "${next_action}" ; then
