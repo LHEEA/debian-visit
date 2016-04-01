@@ -412,30 +412,50 @@ F_VISITSETUPENV2(VISIT_F77STRING env, int *lenv)
  * Date:       Tue Jun  4 09:27:04 PDT 2013
  *
  * Modifications:
- *
+ *   Brad Whitlock, Tue Oct 27 11:01:11 PDT 2015
+ *   Fixed potential memory issue.
  *****************************************************************************/
+
+#define FMINLENGTH(A,B) (((A) < (B)) ? (A) : (B))
 
 FORTRAN
 F_VISITGETENV(VISIT_F77STRING env, int *lenv)
 {
-    char *src = VisItGetEnvironment();
-
-    if(src != NULL)
+    if(*lenv <= 0)
     {
-        size_t len, sz = 1; /// TODO: WARNING sz was uninitalized setting to 1 so the sz == 0 gets triggered if it needs to be (CHECK)
-        len = strlen(src);
-        sz = (len < *lenv) ? (sz - 1) : (*lenv - 1);
-        if(sz == 0)
-            *lenv = 0;
-        else
-        {
-            memcpy(env, src, sz);
-            env[sz] = '\0';
-        }
+        *lenv = 0;
+        return VISIT_ERROR;
     }
     else
     {
-        *lenv = 0;
+        char *src = VisItGetEnvironment();
+        if(src != NULL)
+        {
+            /* We have lenv which is the size of the destination buffer. 
+               We have len which is the length of the string. */
+            size_t len, sz;
+            len = strlen(src);
+
+            /* Fill the output buffer with NULL characters */
+            memset(env, 0, *lenv);
+
+            /* Copy the amount of string that will fit into the output buffer
+              (leaving 1 element for a NULL terminator).*/
+            sz = FMINLENGTH(len, *lenv-1);
+            if(sz > 0)
+                memcpy(env, src, sz);
+
+            /* Return the length of the string in lenv */
+            *lenv = (int)sz;
+
+            /* VisItGetEnvironment returns a strdup'd copy of the 
+               environment now. Free it.*/
+            free(src);
+        }
+        else
+        {
+            *lenv = 0;
+        }
     }
 
     return VISIT_OKAY;

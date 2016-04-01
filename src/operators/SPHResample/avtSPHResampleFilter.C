@@ -74,9 +74,10 @@ using std::max;
 //
 // ****************************************************************************
 
-avtSPHResampleFilter::avtSPHResampleFilter() : keepNodeZone(false)
+avtSPHResampleFilter::avtSPHResampleFilter()
 {
-    
+    cellCentered = false;
+    keepNodeZone = false;
 }
 
 
@@ -487,7 +488,7 @@ tensorVectorMult(tensorStruct& T,vector<double>& v) {
     if(Dim==3)
     {
         result[0] = v[0]*T.xx + v[1]*T.xy + v[2]*T.xz;
-        result[1] = v[0]*T.yz + v[1]*T.yy + v[2]*T.yz;
+        result[1] = v[0]*T.yx + v[1]*T.yy + v[2]*T.yz;
         result[2] = v[0]*T.zx + v[1]*T.zy + v[2]*T.zz;
     }
     else
@@ -718,6 +719,12 @@ avtSPHResampleFilter::CreateTensorStruct(vtkDataArray* const input_support, cons
 //  Programmer: Cody Raskin
 //  Creation:   Fri Dec 5 13:50:31 PST 2014
 //
+//  Modifications:
+//
+//      Kevin Griffin, Thu Mar 24 18:28:09 PDT 2016
+//      Added check for datasets = 0 and for NULL PointData to prevent Engine
+//      crash.
+//
 // ****************************************************************************
 template<int Dim>
 void
@@ -764,7 +771,6 @@ avtSPHResampleFilter::SampleNMS(vector<double>& scalarValues)
     {
         //        int var_ncomps = GetInput()->GetInfo().GetAttributes().GetVariableDimension(varname.c_str());
         // number of components can be used in the future to deal with resampled scalars, tensors, etc
-        
         vtkIdType npart = 0;    // number of particles
         vtkDataSet *dset = data_sets[0];
         vtkAppendPolyData *appender = NULL;
@@ -810,25 +816,53 @@ avtSPHResampleFilter::SampleNMS(vector<double>& scalarValues)
         vector<tensorStruct> m2(ntot);
         vector<double> A;   // correction terms
         vector<vector<double> > B;  // correction terms
-        /*
-         vector<double> gradm0;
-         vector<tensorStruct> gradm1(ntot);
-         vector<tensorStruct> gradm2(ntot);
-         */
-        scalarValues = vector<double>();
+        
+        scalarValues.resize(ntot, 0.0);
+        m0.resize(ntot, 0.0);
+        A.resize(ntot, 0.0);
+        
         for(int k=0;k<ntot;++k)
         {
-            scalarValues.push_back(0.0);
-            m0.push_back(0.0);
             m1.push_back(vector<double>(Dim,0.0));
-            A.push_back(0.0);
             B.push_back(vector<double>(Dim,0.0));
-            //gradm0.push_back(0.0);
         }
         
-        vtkDataArray *input_var     = dset->GetPointData()->GetArray(varname.c_str());
-        vtkDataArray *input_support = dset->GetPointData()->GetArray(supportVarName.c_str());
-        vtkDataArray *input_weight  = dset->GetPointData()->GetArray(weightVarName.c_str());
+        vtkDataArray *input_var = NULL;
+        vtkDataArray *input_support = NULL;
+        vtkDataArray *input_weight = NULL;
+        
+        input_var = dset->GetPointData()->GetArray(varname.c_str());
+        
+        if(input_var != NULL) {
+            input_support = dset->GetPointData()->GetArray(supportVarName.c_str());
+            input_weight  = dset->GetPointData()->GetArray(weightVarName.c_str());
+        } else {
+            input_var = dset->GetCellData()->GetArray(varname.c_str());
+            input_support = dset->GetCellData()->GetArray(supportVarName.c_str());
+            input_weight  = dset->GetCellData()->GetArray(weightVarName.c_str());
+        }
+        
+        std::string errMsg;
+        
+        if(input_var == NULL) {
+            errMsg.append(varname);
+            errMsg.append(" must exist and have the same centering");
+            EXCEPTION1(InvalidVariableException, errMsg);
+        }
+        
+        if(input_support == NULL) {
+            errMsg.clear();
+            errMsg.append(supportVarName);
+            errMsg.append(" must exist and have the same centering");
+            EXCEPTION1(InvalidVariableException, errMsg);
+        }
+        
+        if(input_weight == NULL) {
+            errMsg.clear();
+            errMsg.append(weightVarName);
+            errMsg.append(" must exist and have the same centering");
+            EXCEPTION1(InvalidVariableException, errMsg);
+        }
         
         int nCompSupport;
         nCompSupport = input_support->GetNumberOfComponents();
@@ -1101,8 +1135,7 @@ avtSPHResampleFilter::SampleNMS(vector<double>& scalarValues)
     }
     else
     {           // For processors without any datasets
-#ifdef PARALLEL
-        scalarValues = vector<double>(ntot, 0.0);
+        scalarValues.resize(ntot, 0.0);
         vector<double> m0(ntot, 0.0);  // moments of data points
         vector<double> m1(Dim*ntot, 0.0); // data points?
         vector<double> m2(ntot*9, 0.0);
@@ -1121,7 +1154,6 @@ avtSPHResampleFilter::SampleNMS(vector<double>& scalarValues)
         double *m2Out = new double[9*ntot];
         SumDoubleArrayAcrossAllProcessors(m2.data(), m2Out, ntot*9);
         delete [] m2Out;
-#endif
     }
 }
 
@@ -1136,6 +1168,12 @@ avtSPHResampleFilter::SampleNMS(vector<double>& scalarValues)
 //
 //  Programmer: Cody Raskin
 //  Creation:   Fri Dec 5 13:50:31 PST 2014
+//
+//  Modifications:
+//
+//      Kevin Griffin, Thu Mar 24 18:28:09 PDT 2016
+//      Added check for datasets = 0 and for NULL PointData to prevent Engine
+//      crash.
 //
 // ****************************************************************************
 template<int Dim>
@@ -1208,9 +1246,42 @@ avtSPHResampleFilter::Sample(vector<double>& scalarValues)
         vector<double> A;   // correction terms
         vector<vector<double> > B;  // correction terms
         
-        vtkDataArray *input_var     = dset->GetPointData()->GetArray(varname.c_str());
-        vtkDataArray *input_support = dset->GetPointData()->GetArray(supportVarName.c_str());
-        vtkDataArray *input_weight  = dset->GetPointData()->GetArray(weightVarName.c_str());
+        vtkDataArray *input_var = NULL;
+        vtkDataArray *input_support = NULL;
+        vtkDataArray *input_weight = NULL;
+        
+        input_var = dset->GetPointData()->GetArray(varname.c_str());
+        
+        if(input_var != NULL) {
+            input_support = dset->GetPointData()->GetArray(supportVarName.c_str());
+            input_weight  = dset->GetPointData()->GetArray(weightVarName.c_str());
+        } else {
+            input_var = dset->GetCellData()->GetArray(varname.c_str());
+            input_support = dset->GetCellData()->GetArray(supportVarName.c_str());
+            input_weight  = dset->GetCellData()->GetArray(weightVarName.c_str());
+        }
+        
+        std::string errMsg;
+        
+        if(input_var == NULL) {
+            errMsg.append(varname);
+            errMsg.append(" must exist and have the same centering");
+            EXCEPTION1(InvalidVariableException, errMsg);
+        }
+        
+        if(input_support == NULL) {
+            errMsg.clear();
+            errMsg.append(supportVarName);
+            errMsg.append(" must exist and have the same centering");
+            EXCEPTION1(InvalidVariableException, errMsg);
+        }
+        
+        if(input_weight == NULL) {
+            errMsg.clear();
+            errMsg.append(weightVarName);
+            errMsg.append(" must exist and have the same centering");
+            EXCEPTION1(InvalidVariableException, errMsg);
+        }
         
         // assemble your input data arrays ...
         vtkIdType npart = dset->GetNumberOfPoints();
@@ -1503,11 +1574,10 @@ avtSPHResampleFilter::Sample(vector<double>& scalarValues)
     }
     else
     {           // For processors without any datasets
-#ifdef PARALLEL
         int myRank = PAR_Rank();
         
         vector<int> latticeIndexList(1, 0);
-        scalarValues = vector<double>(1, 0.0);
+        scalarValues.resize(1, 0.0);
         
         vector<double> m0(1, 0.0);  // moments of data points
         vector<double> m1(Dim, 0.0); // data points?
@@ -1547,7 +1617,6 @@ avtSPHResampleFilter::Sample(vector<double>& scalarValues)
         }
         
         i_latticeIndexList.erase(i_latticeIndexList.begin(), i_latticeIndexList.end());
-#endif
     }
 }
 
@@ -1567,10 +1636,16 @@ avtSPHResampleFilter::Sample(vector<double>& scalarValues)
 //  Programmer: harrison37 -- generated by xml2avt
 //  Creation:   Fri Dec 5 13:50:31 PST 2014
 //
+//  Modifications:
+//  Kevin Griffin, Mon Jan 4 17:51:20 PST 2016
+//  Added a check for cell-centered data.
+//
 // ****************************************************************************
 void
 avtSPHResampleFilter::Execute()
 {
+     cellCentered = (GetInput()->GetInfo().GetAttributes().GetCentering() == AVT_ZONECENT) ? true : false;
+    
     if(!atts.GetMemScale()) { // Non-Memory Scaling
         ExecuteNMS();
     }
@@ -1732,17 +1807,24 @@ avtSPHResampleFilter::Execute()
                 out_var->SetTuple1(i, vectorofScalars[i]);
             }
             
-            vtkDataSet *out_dset = CreateLocalOutputGrid(l_xMin, l_yMin, l_zMin, dx, dy, dz, l_dims);
+            vtkRectilinearGrid *out_dset = CreateLocalOutputGrid(l_xMin, l_yMin, l_zMin, dx, dy, dz, l_dims);
             
-            out_dset->GetPointData()->AddArray(out_var);
-            out_dset->GetPointData()->SetActiveScalars(out_var->GetName());
+            if(!cellCentered)
+            {
+                out_dset->GetPointData()->AddArray(out_var);
+                out_dset->GetPointData()->SetActiveScalars(out_var->GetName());
+            }
+            else
+            {
+                out_dset->GetCellData()->AddArray(out_var);
+                out_dset->GetCellData()->SetActiveScalars(out_var->GetName());
+            }
             
             out_var->Delete();
             
             avtDataTree_p out_tree = new avtDataTree(out_dset, 0);
-            SetOutputDataTree(out_tree);
-            
             out_dset->Delete();
+            SetOutputDataTree(out_tree);
         } else {
             avtDataTree_p dummy = new avtDataTree();
             SetOutputDataTree(dummy);
@@ -1765,6 +1847,10 @@ avtSPHResampleFilter::Execute()
 //
 //  Programmer: Kevin Griffin
 //  Creation:   Fri Dec 5 13:50:31 PST 2014
+//
+//  Modifications:
+//  Kevin Griffin, Mon Jan 4 17:51:20 PST 2016
+//  Added a check for cell-centered data.
 //
 // ****************************************************************************
 void
@@ -1824,16 +1910,24 @@ avtSPHResampleFilter::ExecuteNMS()
             out_var->SetTuple1(i,vectorofScalars[i]);
         }
         
-        vtkDataSet *out_dset = CreateOutputGrid();
-        out_dset->GetPointData()->AddArray(out_var);
-        out_dset->GetPointData()->SetActiveScalars(out_var->GetName());
+        vtkRectilinearGrid *out_dset = CreateOutputGrid();
+        
+        if(!cellCentered)
+        {
+            out_dset->GetPointData()->AddArray(out_var);
+            out_dset->GetPointData()->SetActiveScalars(out_var->GetName());
+        }
+        else
+        {
+            out_dset->GetCellData()->AddArray(out_var);
+            out_dset->GetCellData()->SetActiveScalars(out_var->GetName());
+        }
         
         out_var->Delete();
         
         avtDataTree_p out_tree = new avtDataTree(out_dset, 0);
-        SetOutputDataTree(out_tree);
-        
         out_dset->Delete();
+        SetOutputDataTree(out_tree);
     }
     else
     {
@@ -1905,8 +1999,13 @@ avtSPHResampleFilter::GetLocalMinMaxIndex(const int dims[], int &min, int &max, 
 // Programmer:  Kevin Griffin
 // Creation:    Tue Aug 25 18:01:32 PDT 2015
 //
+//  Modifications:
+//  Kevin Griffin, Mon Jan 4 17:51:20 PST 2016
+//  Changed return type to vtkRectilinearGrid and added a check for cell
+//  centered data.
+//
 // ****************************************************************************
-vtkDataSet *
+vtkRectilinearGrid *
 avtSPHResampleFilter::CreateLocalOutputGrid(const double l_xmin, const double l_ymin, const double l_zmin,
                                             const double dx, const double dy, const double dz, int dims[])
 {
@@ -1920,7 +2019,7 @@ avtSPHResampleFilter::CreateLocalOutputGrid(const double l_xmin, const double l_
     
     for(int i=0; i<dims[0]; i++)
     {
-        double val = l_xmin + i * dx + dx/2.0;
+        double val = cellCentered ? (l_xmin + i * dx + dx/2.0) : (l_xmin + i * dx);
         out_xcoords->SetTuple1(i,val);
     }
     
@@ -1929,14 +2028,15 @@ avtSPHResampleFilter::CreateLocalOutputGrid(const double l_xmin, const double l_
     
     // create the ycoords
     vtkDoubleArray *out_ycoords = vtkDoubleArray::New();
+    out_ycoords->SetNumberOfComponents(1);
+    
     if(dims[1] > 1)
     {
         out_ycoords->SetNumberOfTuples(dims[1]);
-        out_ycoords->SetNumberOfComponents(1);
         
         for(int i=0; i<dims[1]; i++)
         {
-            double val = l_ymin + i * dy + dy/2.0;
+            double val = cellCentered ? (l_ymin + i * dy + dy/2.0) : (l_ymin + i * dy);
             out_ycoords->SetTuple1(i,val);
         }
     }
@@ -1944,28 +2044,34 @@ avtSPHResampleFilter::CreateLocalOutputGrid(const double l_xmin, const double l_
     {
         out_ycoords->SetNumberOfTuples(1);
         out_ycoords->SetNumberOfComponents(1);
-        out_ycoords->SetTuple1(0,0.0);
+        out_ycoords->SetTuple1(0,l_ymin);
     }
     
     out_dset->SetYCoordinates(out_ycoords);
     out_ycoords->Delete();
     
     // create the zcoords
+    vtkDoubleArray *out_zcoords = vtkDoubleArray::New();
+    out_zcoords->SetNumberOfComponents(1);
+    
     if(nDim == 3)
     {
-        vtkDoubleArray *out_zcoords = vtkDoubleArray::New();
         out_zcoords->SetNumberOfTuples(dims[2]);
-        out_zcoords->SetNumberOfComponents(1);
         
         for(int i=0; i<dims[2]; i++)
         {
-            double val = l_zmin + i * dz + dz/2.0;
+            double val = cellCentered ? (l_zmin + i * dz + dz/2.0) : (l_zmin + i * dz);
             out_zcoords->SetTuple1(i,val);
         }
-        
-        out_dset->SetZCoordinates(out_zcoords);
-        out_zcoords->Delete();
     }
+    else
+    {
+        out_zcoords->SetNumberOfTuples(1);
+        out_zcoords->SetTuple1(0, l_zmin);
+    }
+    
+    out_dset->SetZCoordinates(out_zcoords);
+    out_zcoords->Delete();
     
     return out_dset;
 }
@@ -1979,8 +2085,13 @@ avtSPHResampleFilter::CreateLocalOutputGrid(const double l_xmin, const double l_
 // Programmer:  Cody Raskin
 // Creation:    July 1, 2015
 //
+//  Modifications:
+//  Kevin Griffin, Mon Jan 4 17:51:20 PST 2016
+//  Changed return type to vtkRectilinear Grid and added a check for cell
+//  centered data.
+//
 // ****************************************************************************
-vtkDataSet *
+vtkRectilinearGrid *
 avtSPHResampleFilter::CreateOutputGrid()
 {
     vtkRectilinearGrid *out_dset = vtkRectilinearGrid::New();
@@ -1992,7 +2103,6 @@ avtSPHResampleFilter::CreateOutputGrid()
     dims[2] = (nDim==3 ? atts.GetZnum() : 1);
     
     //    printf("x: %d y: %d z: %d\n", dims[0], dims[1], dims[2]);
-    
     out_dset->SetDimensions(dims);
     
     
@@ -2004,7 +2114,7 @@ avtSPHResampleFilter::CreateOutputGrid()
     double dx = (atts.GetMaxX() - xmin) / atts.GetXnum();
     for(int i=0;i<dims[0];i++)
     {
-        double val = xmin + i * dx + dx/2.0;
+        double val = cellCentered ? (xmin + i * dx + dx/2.0) : (xmin + i * dx);
         out_xcoords->SetTuple1(i,val);
     }
     
@@ -2013,15 +2123,16 @@ avtSPHResampleFilter::CreateOutputGrid()
     
     // create the ycoords
     vtkDoubleArray *out_ycoords = vtkDoubleArray::New();
+    out_ycoords->SetNumberOfComponents(1);
+    double ymin = atts.GetMinY();
+    
     if(dims[1] > 1)
     {
         out_ycoords->SetNumberOfTuples(dims[1]);
-        out_ycoords->SetNumberOfComponents(1);
-        double ymin = atts.GetMinY();
         double dy = (atts.GetMaxY() - ymin) / atts.GetYnum();
         for(int i=0;i<dims[1];i++)
         {
-            double val = ymin + i * dy + dy/2.0;
+            double val = cellCentered ? (ymin + i * dy + dy/2.0) : (ymin + i * dy);
             out_ycoords->SetTuple1(i,val);
         }
         
@@ -2029,31 +2140,36 @@ avtSPHResampleFilter::CreateOutputGrid()
     else
     {
         out_ycoords->SetNumberOfTuples(1);
-        out_ycoords->SetNumberOfComponents(1);
-        out_ycoords->SetTuple1(0,0.0);
+        out_ycoords->SetTuple1(0,ymin);
     }
     
     out_dset->SetYCoordinates(out_ycoords);
     out_ycoords->Delete();
     
     // create the zcoords
+    vtkDoubleArray *out_zcoords = vtkDoubleArray::New();
+    out_zcoords->SetNumberOfComponents(1);
+    double zmin = atts.GetMinZ();
+    
     if(nDim == 3)
     {
-        vtkDoubleArray *out_zcoords = vtkDoubleArray::New();
         out_zcoords->SetNumberOfTuples(dims[2]);
-        out_zcoords->SetNumberOfComponents(1);
-        double zmin = atts.GetMinZ();
         double dz   = (atts.GetMaxZ() - zmin) / atts.GetZnum();
         
         for(int i=0;i<dims[2];i++)
         {
-            double val = zmin + i * dz + dz/2.0;
+            double val = cellCentered ? (zmin + i * dz + dz/2.0) : (zmin + i * dz);
             out_zcoords->SetTuple1(i,val);
         }
-        
-        out_dset->SetZCoordinates(out_zcoords);
-        out_zcoords->Delete();
     }
+    else
+    {
+        out_zcoords->SetNumberOfTuples(1);
+        out_zcoords->SetTuple1(0,zmin);
+    }
+    
+    out_dset->SetZCoordinates(out_zcoords);
+    out_zcoords->Delete();
     
     return out_dset;
 }
@@ -2067,6 +2183,10 @@ avtSPHResampleFilter::CreateOutputGrid()
 //  Programmer: harrison37 -- generated by xml2avt
 //  Creation:   Fri Dec 5 13:50:31 PST 2014
 //
+//  Modifications:
+//  Kevin Griffin, Mon Jan 4 17:51:20 PST 2016
+//  Removed the avtResampleSelection code.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -2077,27 +2197,6 @@ avtSPHResampleFilter::ModifyContract(avtContract_p in_contract)
     // after resampling.
     rv->GetDataRequest()->SetDesiredGhostDataType(NO_GHOST_DATA);
     rv->NoStreaming();
-    
-    avtResampleSelection *sel = new avtResampleSelection;
-    int counts[3];
-    counts[0] = atts.GetXnum();
-    counts[1] = atts.GetYnum();
-    counts[2] = atts.GetZnum();
-    sel->SetCounts(counts);
-    
-    double starts[3];
-    starts[0] = atts.GetMinX();
-    starts[1] = atts.GetMinY();
-    starts[2] = atts.GetMinZ();
-    sel->SetStarts(starts);
-    
-    double stops[3];
-    stops[0] = atts.GetMaxX();
-    stops[1] = atts.GetMaxY();
-    stops[2] = atts.GetMaxZ();
-    sel->SetStops(stops);
-    
-    rv->GetDataRequest()->AddDataSelection(sel);
     
     resampleVarName = std::string(rv->GetDataRequest()->GetVariable());
     supportVarName  = atts.GetTensorSupportVariable();
@@ -2112,6 +2211,10 @@ avtSPHResampleFilter::ModifyContract(avtContract_p in_contract)
     {
         weightVarName = "mass";
     }
+    
+//    debug5 << "Resample Variable Name: " << resampleVarName << endl;
+//    debug5 << "Tensor Support Variable Name: " << supportVarName << endl;
+//    debug5 << "Weight Variable Name: " << weightVarName << endl;
     
     debug5 << "Resample Variable Name: " << resampleVarName << endl;
     debug5 << "Tensor Support Variable Name: " << supportVarName << endl;
@@ -2158,6 +2261,11 @@ avtSPHResampleFilter::ModifyContract(avtContract_p in_contract)
 //  Programmer: harrison37 -- generated by xml2avt
 //  Creation:   Fri Dec 5 13:50:31 PST 2014
 //
+//  Modifications:
+//  Kevin Griffin, Mon Jan 4 17:51:20 PST 2016
+//  Added metadata, desired spatial/data extents, and commented out
+//  InvalidateNodes.
+//
 // ****************************************************************************
 
 void
@@ -2165,25 +2273,35 @@ avtSPHResampleFilter::UpdateDataObjectInfo(void)
 {
     avtDataAttributes &inAtts   = GetInput()->GetInfo().GetAttributes();
     avtDataAttributes &outAtts = GetOutput()->GetInfo().GetAttributes();
-    outAtts.AddFilterMetaData("SPH Resample");
+    int spatialDim = inAtts.GetSpatialDimension();
     
     GetOutput()->GetInfo().GetValidity().InvalidateZones();
-    GetOutput()->GetInfo().GetValidity().InvalidateNodes();
-    outAtts.SetTopologicalDimension(inAtts.GetSpatialDimension());
+//    GetOutput()->GetInfo().GetValidity().InvalidateNodes();
+    outAtts.SetTopologicalDimension(spatialDim);
     
-    avtExtents *exts = outAtts.GetDesiredDataExtents();
     double bounds[6];
     bounds[0] = atts.GetMinX();
     bounds[1] = atts.GetMaxX();
     bounds[2] = atts.GetMinY();
     bounds[3] = atts.GetMaxY();
     bounds[4] = atts.GetMinZ();
-    bounds[5] = atts.GetMaxZ();
-    exts->Set(bounds);
+    bounds[5] = spatialDim == 3 ? atts.GetMaxZ() : atts.GetMinZ();
+    outAtts.GetDesiredSpatialExtents()->Set(bounds);
     
     if (!resampleVarName.empty() && outAtts.ValidActiveVariable())
     {
         if (outAtts.GetVariableName() != resampleVarName)
             outAtts.SetActiveVariable(resampleVarName.c_str());
+        
+        double range[2];
+        GetDataExtents(range, resampleVarName.c_str());
+        outAtts.GetDesiredDataExtents()->Set(range);
     }
+    
+    outAtts.RemoveVariable(supportVarName);
+    outAtts.RemoveVariable(weightVarName);
+    
+    char params[200];
+    SNPRINTF(params, 200, "nx=%d ny=%d nz=%d", atts.GetXnum(), atts.GetYnum(), (spatialDim == 3 ? atts.GetZnum() : 0));
+    outAtts.AddFilterMetaData("SPH Resample", params);
 }

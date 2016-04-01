@@ -49,7 +49,11 @@ import encoding
 import status
 import ult
 
+import moab
+import slurm
+
 import qannote
+import qplot
 
 from query import query, python_query
 from windows import Window, WindowManager
