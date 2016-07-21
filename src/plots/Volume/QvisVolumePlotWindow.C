@@ -1598,6 +1598,14 @@ QvisVolumePlotWindow::UpdateHistogram(bool need2D)
 //   Use helper function DoubleToQString for consistency in formatting across
 //   all windows.
 //
+//   Kathleen Biagas, Tue Jun  7 16:07:23 PDT 2016
+//   Only call 'UpdateSamplingGroup' when renderertype has changed. Prevents
+//   spin boxes losing focus as user types.
+//
+//   Kathleen Biagas, Thu Jun  9 09:34:23 PDT 2016
+//   UpdateSamplingGroup needs to be called in more instances: also when
+//   sampling or resampling changes.
+//
 // ****************************************************************************
 
 void
@@ -1616,6 +1624,7 @@ QvisVolumePlotWindow::UpdateWindow(bool doAll)
             return;
     }
 
+    bool updateSamplingGroup = false;
     // Loop through all the attributes and do something for
     // each of them that changed. This function is only responsible
     // for displaying the state values and setting widget sensitivity.
@@ -1635,6 +1644,7 @@ QvisVolumePlotWindow::UpdateWindow(bool doAll)
             legendToggle->blockSignals(false);
             break;
         case VolumeAttributes::ID_resampleFlag:        
+            updateSamplingGroup = true;
             resampleToggle->blockSignals(true);
             resampleToggle->setChecked(volumeAtts->GetResampleFlag());
             resampleToggle->blockSignals(false);
@@ -1760,6 +1770,7 @@ QvisVolumePlotWindow::UpdateWindow(bool doAll)
             samplesPerRay->blockSignals(false);
             break;
         case VolumeAttributes::ID_rendererType:
+            updateSamplingGroup = true;
             rendererTypesComboBox->blockSignals(true);
             if (volumeAtts->GetRendererType() == VolumeAttributes::Splatting)
             {
@@ -1832,6 +1843,7 @@ QvisVolumePlotWindow::UpdateWindow(bool doAll)
             skewLineEdit->setText(DoubleToQString(volumeAtts->GetSkewFactor()));
             break;
         case VolumeAttributes::ID_sampling:
+            updateSamplingGroup = true;
             samplingButtonGroup->blockSignals(true);
             if (volumeAtts->GetSampling() == VolumeAttributes::Rasterization)
                 samplingButtonGroup->button(0)->setChecked(true);
@@ -1889,8 +1901,8 @@ QvisVolumePlotWindow::UpdateWindow(bool doAll)
     opacityMinToggle->setEnabled(notDefaultVar);
     opacityMaxToggle->setEnabled(notDefaultVar);
 
-    //Update the sampling group
-    UpdateSamplingGroup();
+    if (updateSamplingGroup)
+        UpdateSamplingGroup();
 }
 
 // ****************************************************************************

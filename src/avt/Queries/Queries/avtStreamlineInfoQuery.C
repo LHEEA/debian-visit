@@ -99,6 +99,9 @@ avtStreamlineInfoQuery::~avtStreamlineInfoQuery()
 //    Use newer MapNode methods that check for numeric entries and retrieves 
 //    to specific type.
 //
+//    Eric Brugger, Mon Jun  6 13:16:43 PDT 2016
+//    I added dump_steps as an alias for dump_coordinates.
+//
 // ****************************************************************************
 
 void
@@ -215,7 +218,6 @@ avtStreamlineInfoQuery::PostExecute()
     MapNode result_node;
     while (i < sz)
     {
-        sprintf(str, "Streamline %d: Seed %f %f %f Arclength %f\n", slIdx, slData[i], slData[i+1], slData[i+2], slData[i+3]);
         MapNode sl_res_node;
         doubleVector sl_res_seed;
         sl_res_seed.push_back(slData[i]);
@@ -223,21 +225,24 @@ avtStreamlineInfoQuery::PostExecute()
         sl_res_seed.push_back(slData[i+2]);
         sl_res_node["seed"] = sl_res_seed;
         sl_res_node["arclength"] = slData[i+3];
-        i+=4;
-        msg += str;
 
+        sprintf(str, "Streamline %d: Seed %f %f %f Arclength %f\n", slIdx, slData[i], slData[i+1], slData[i+2], slData[i+3]);
+        msg += str;
+        i+=4;
+        
         if (dumpSteps)
         {
             int numSteps =  (int)slData[i++];
             doubleVector sl_steps;
             for (int j = 0; j < numSteps; j++)
             {
-                sprintf(str, " %f %f %f \n", slData[i], slData[i+1], slData[i+2]);// slData[i+3], slData[i+4]);
                 sl_steps.push_back(slData[i]);
                 sl_steps.push_back(slData[i+1]);
                 sl_steps.push_back(slData[i+2]);
-                i+=5;
+                sprintf(str, " %f %f %f\n",
+                        slData[i], slData[i+1], slData[i+2]);
                 msg += str;
+                i+=3;
             }
             sl_res_node["steps"] = sl_steps;
         }
@@ -267,14 +272,13 @@ avtStreamlineInfoQuery::Execute(vtkDataSet *data, const int chunk)
 {
     vtkPolyData *ds = dynamic_cast<vtkPolyData *>(data);
 
-    vtkFloatArray *vtkscalar
-      = dynamic_cast<vtkFloatArray*>(data->GetPointData()->GetArray("colorVar"));
+    // vtkFloatArray *vtkscalar
+    //   = dynamic_cast<vtkFloatArray*>(data->GetPointData()->GetArray("colorVar"));
 
-    vtkFloatArray *vtkparam
-      = dynamic_cast<vtkFloatArray*>(data->GetPointData()->GetArray("params"));
+    // vtkFloatArray *vtkparam
+    //   = dynamic_cast<vtkFloatArray*>(data->GetPointData()->GetArray("params"));
 
-
-    if (!ds || !vtkscalar || !vtkparam)
+    if (!ds) //|| !vtkscalar || !vtkparam)
     {
         EXCEPTION1(NonQueryableInputException,"Streamline Info query only valid on streamline plots");
     }
@@ -282,8 +286,8 @@ avtStreamlineInfoQuery::Execute(vtkDataSet *data, const int chunk)
     vtkPoints *points = ds->GetPoints();
     vtkCellArray *lines = ds->GetLines();
     vtkIdType *segments = lines->GetPointer();
-    float *scalar = vtkscalar->GetPointer(0);
-    float *param = vtkparam->GetPointer(0);
+    // float *scalar = vtkscalar->GetPointer(0);
+    // float *param = vtkparam->GetPointer(0);
 
     vtkIdType *segptr = segments;
     double pt[3], p0[3];
@@ -302,19 +306,20 @@ avtStreamlineInfoQuery::Execute(vtkDataSet *data, const int chunk)
         slData.push_back(p0[1]);
         slData.push_back(p0[2]);
         
-        for (int j = 1; j < nPts; j++)
+        for (int j = 0; j < nPts; j++)
         {
             points->GetPoint(segptr[j], pt);
+
             if (dumpSteps)
             {
                 steps.push_back(pt[0]);
                 steps.push_back(pt[1]);
                 steps.push_back(pt[2]);
                 
-                float p = param[segptr[j]];
-                float s = scalar[segptr[j]];
-                steps.push_back(p);
-                steps.push_back(s);
+                // float p = param[segptr[j]];
+                // float s = scalar[segptr[j]];
+                // steps.push_back(p);
+                // steps.push_back(s);
             }
 
             double x = p0[0]-pt[0];
@@ -330,7 +335,7 @@ avtStreamlineInfoQuery::Execute(vtkDataSet *data, const int chunk)
         slData.push_back(arcLen);
         if (dumpSteps)
         {
-            slData.push_back((float)(nPts-1));
+            slData.push_back((float)(nPts));
             slData.insert(slData.end(), steps.begin(), steps.end());
         }
 
