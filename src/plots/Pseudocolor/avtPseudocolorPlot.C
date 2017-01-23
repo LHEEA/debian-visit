@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,8 +47,12 @@
 #include <avtColorTables.h>
 #include <avtExtents.h>
 #include <avtLookupTable.h>
-#include <avtStaggeringFilter.h>
+#include <avtPolylineCleanupFilter.h>
+#include <avtPolylineAddEndPointsFilter.h>
+#include <avtPolylineToRibbonFilter.h>
+#include <avtPolylineToTubeFilter.h>
 #include <avtPseudocolorFilter.h>
+#include <avtStaggeringFilter.h>
 #include <avtShiftCenteringFilter.h>
 #include <avtVariableLegend.h>
 #include <avtVariablePointGlyphMapper.h>
@@ -116,6 +120,10 @@ avtPseudocolorPlot::avtPseudocolorPlot()
     filter = NULL;
     pcfilter = NULL;
     staggeringFilter = NULL;
+    polylineCleanupFilter = NULL;
+    polylineAddEndPointsFilter = NULL;
+    polylineToRibbonFilter = NULL;
+    polylineToTubeFilter = NULL;
     colorTableIsFullyOpaque = true;
 
     //
@@ -162,6 +170,30 @@ avtPseudocolorPlot::~avtPseudocolorPlot()
     {
         delete staggeringFilter;
         staggeringFilter = NULL;
+    }
+
+    if (polylineCleanupFilter != NULL)
+    {
+        delete polylineCleanupFilter;
+        polylineCleanupFilter = NULL;
+    }
+
+    if (polylineToTubeFilter != NULL)
+    {
+        delete polylineToTubeFilter;
+        polylineToTubeFilter = NULL;
+    }
+
+    if (polylineToRibbonFilter != NULL)
+    {
+        delete polylineToRibbonFilter;
+        polylineToRibbonFilter = NULL;
+    }
+
+    if (polylineAddEndPointsFilter != NULL)
+    {
+        delete polylineAddEndPointsFilter;
+        polylineAddEndPointsFilter = NULL;
     }
 
     if (pcfilter != NULL)
@@ -279,7 +311,7 @@ avtPseudocolorPlot::GetMapper(void)
 //    Added pcfilter->SetPlotAtts.
 //
 //    Cyrus Harrison, Fri Mar  7 11:37:07 PST 2008
-//    Moved recentering code to the ApplyRenderingTransormation so centering
+//    Moved recentering code to the ApplyRenderingTransformation so centering
 //    will not alter query results. (Resolving '8511)
 //
 // ****************************************************************************
@@ -289,31 +321,34 @@ avtPseudocolorPlot::ApplyOperators(avtDataObject_p input)
 {
     avtDataObject_p dob = input;
 
-    if (staggeringFilter != NULL) {
+    // Staggering Filter
+    if (staggeringFilter != NULL)
+    {
       delete staggeringFilter;
       staggeringFilter = NULL;
     }
+
     staggeringFilter = new avtStaggeringFilter();
     staggeringFilter->SetInput(dob);
     dob = staggeringFilter->GetOutput();
 
-    if (input->GetInfo().GetAttributes().GetTopologicalDimension() == 0)
+
+    // Always call the avtPseudocolorFilter
+    if (pcfilter != NULL)
     {
-        if (pcfilter != NULL)
-        {
-            delete pcfilter;
-        }
-        pcfilter = new avtPseudocolorFilter();
-        pcfilter->SetInput(dob);
-        pcfilter->SetPlotAtts(&atts);
-        dob = pcfilter->GetOutput();
+      delete pcfilter;
     }
+
+    pcfilter = new avtPseudocolorFilter();
+    pcfilter->SetInput(dob);
+    pcfilter->SetPlotAtts(&atts);
+    dob = pcfilter->GetOutput();
 
     return dob;
 }
 
 // ****************************************************************************
-//  Method: avtPseudocolorPlot::ApplyRenderingTransormation
+//  Method: avtPseudocolorPlot::ApplyRenderingTransformation
 //
 //  Purpose:
 //      Applies the rendering transformation associated with a pseudo color
@@ -348,12 +383,17 @@ avtPseudocolorPlot::ApplyOperators(avtDataObject_p input)
 //    For ease of code reading and maintenance, I forced the
 //    avtShiftCenteringFilter to take avtCentering type, rather than int.
 //
+//    Eric Brugger, Wed Oct 26 09:36:37 PDT 2016
+//    I modified the plot to support independently setting the point style
+//    for the two end points of lines.
+//
 // ****************************************************************************
 
 avtDataObject_p
 avtPseudocolorPlot::ApplyRenderingTransformation(avtDataObject_p input)
 {
     avtDataObject_p dob = input;
+
     topoDim = dob->GetInfo().GetAttributes().GetTopologicalDimension();
 
     if ((atts.GetCentering() == PseudocolorAttributes::Nodal) ||
@@ -368,17 +408,127 @@ avtPseudocolorPlot::ApplyRenderingTransformation(avtDataObject_p input)
         {
             delete filter;
         }
+
         PseudocolorAttributes::Centering c = atts.GetCentering();
+
         if (c == PseudocolorAttributes::Nodal)
             filter = new avtShiftCenteringFilter(AVT_NODECENT);
         if (c == PseudocolorAttributes::Zonal)
             filter = new avtShiftCenteringFilter(AVT_ZONECENT);
+
         filter->SetInput(dob);
         dob = filter->GetOutput();
     }
+
+    // PolylineCleanup Filter
+    if (polylineCleanupFilter != NULL)
+    {
+      delete polylineCleanupFilter;
+      polylineCleanupFilter = NULL;
+    }
+
+    polylineCleanupFilter = new avtPolylineCleanupFilter();
+    polylineCleanupFilter->SetInput(dob);
+    dob = polylineCleanupFilter->GetOutput();
+
+    // PolylineAddEndPoints Filter
+    if (polylineAddEndPointsFilter != NULL)
+    {
+      delete polylineAddEndPointsFilter;
+      polylineAddEndPointsFilter = NULL;
+    }
+
+    if( atts.GetTailStyle() != PseudocolorAttributes::None ||
+        atts.GetHeadStyle() != PseudocolorAttributes::None)
+    {
+      double bbox[6] = {0.,1.,0.,1.,0.,1.};
+      dob->GetInfo().GetAttributes().GetOriginalSpatialExtents()->CopyTo(bbox);
+
+      polylineAddEndPointsFilter = new avtPolylineAddEndPointsFilter();
+
+      polylineAddEndPointsFilter->tailStyle    = atts.GetTailStyle();
+      polylineAddEndPointsFilter->headStyle    = atts.GetHeadStyle();
+
+      if( atts.GetEndPointRadiusSizeType() == PseudocolorAttributes::Absolute )
+        polylineAddEndPointsFilter->radius = atts.GetEndPointRadiusAbsolute();
+      else
+        polylineAddEndPointsFilter->radius =
+          atts.GetEndPointRadiusBBox() * GetBBoxSize( bbox );
+
+      polylineAddEndPointsFilter->ratio        = atts.GetEndPointRatio();
+
+      polylineAddEndPointsFilter->varyRadius   = atts.GetEndPointRadiusVarEnabled();
+      polylineAddEndPointsFilter->radiusVar    = atts.GetEndPointRadiusVar();
+      polylineAddEndPointsFilter->radiusFactor = atts.GetEndPointRadiusVarRatio();
+
+      polylineAddEndPointsFilter->resolution   = atts.GetEndPointResolution();
+
+      polylineAddEndPointsFilter->SetInput(dob);
+
+      dob = polylineAddEndPointsFilter->GetOutput();
+    }
+
+    // PolylineToTube Filter
+    if (polylineToTubeFilter != NULL)
+    {
+      delete polylineToTubeFilter;
+      polylineToTubeFilter = NULL;
+    }
+
+    if( atts.GetLineType() == PseudocolorAttributes::Tube )
+    {
+      double bbox[6] = {0.,1.,0.,1.,0.,1.};
+      dob->GetInfo().GetAttributes().GetOriginalSpatialExtents()->CopyTo(bbox);
+
+      polylineToTubeFilter = new avtPolylineToTubeFilter();
+
+      if( atts.GetTubeRadiusSizeType() == PseudocolorAttributes::Absolute )
+        polylineToTubeFilter->radius = atts.GetTubeRadiusAbsolute();
+      else
+        polylineToTubeFilter->radius =
+          atts.GetTubeRadiusBBox() * GetBBoxSize( bbox );
+
+      polylineToTubeFilter->varyRadius    = atts.GetTubeRadiusVarEnabled();
+      polylineToTubeFilter->radiusVar     = atts.GetTubeRadiusVar();
+      polylineToTubeFilter->radiusFactor  = atts.GetTubeRadiusVarRatio();
+      polylineToTubeFilter->numberOfSides = atts.GetTubeResolution();
+
+      polylineToTubeFilter->SetInput(dob);
+
+      dob = polylineToTubeFilter->GetOutput();
+    }
+
+    // PolylineToRibbon Filter
+    if (polylineToRibbonFilter != NULL)
+    {
+      delete polylineToRibbonFilter;
+      polylineToRibbonFilter = NULL;
+    }
+
+    if( atts.GetLineType() == PseudocolorAttributes::Ribbon )
+    {
+      double bbox[6] = {0.,1.,0.,1.,0.,1.};
+      dob->GetInfo().GetAttributes().GetOriginalSpatialExtents()->CopyTo(bbox);
+
+      polylineToRibbonFilter = new avtPolylineToRibbonFilter();
+
+      if( atts.GetTubeRadiusSizeType() == PseudocolorAttributes::Absolute )
+        polylineToRibbonFilter->width = atts.GetTubeRadiusAbsolute();
+      else
+        polylineToRibbonFilter->width =
+          atts.GetTubeRadiusBBox() * GetBBoxSize( bbox );
+
+      polylineToRibbonFilter->varyWidth   = atts.GetTubeRadiusVarEnabled();
+      polylineToRibbonFilter->widthVar    = atts.GetTubeRadiusVar();
+      polylineToRibbonFilter->widthFactor = atts.GetTubeRadiusVarRatio();
+
+      polylineToRibbonFilter->SetInput(dob);
+
+      dob = polylineToRibbonFilter->GetOutput();
+    }
+
     return dob;
 }
-
 
 // ****************************************************************************
 //  Method: avtPseudocolorPlot::CustomizeBehavior
@@ -592,6 +742,9 @@ avtPseudocolorPlot::SetAtts(const AttributeGroup *a)
     glyphMapper->SetScale(atts.GetPointSize());
 
     // ARS - FIX ME  - FIX ME  - FIX ME  - FIX ME  - FIX ME
+    // This functionality was possible with the deprecated Streamline
+    // plot but it is currently not possible using the vtkMapper and
+    // avtActor.
     if( atts.GetOpacityType() == PseudocolorAttributes::VariableRange &&
         atts.GetOpacityVariable() != "" &&
         atts.GetOpacityVariable() != "\0")
@@ -614,28 +767,6 @@ avtPseudocolorPlot::SetAtts(const AttributeGroup *a)
     else
     {
 //        glyphMapper->OpacityScalingOff();
-    }
-
-    // ARS - FIX ME  - FIX ME  - FIX ME  - FIX ME  - FIX ME
-    if( //(topoDim == 1 || (topoDim > 1 && atts.GetRenderWireframe())) &&
-        atts.GetLineType() == PseudocolorAttributes::Tube &&
-        atts.GetVaryTubeRadius() == true  &&
-        atts.GetVaryTubeRadiusVariable() != "" &&
-        atts.GetVaryTubeRadiusVariable() != "\0" )
-    {
-        if (atts.GetVaryTubeRadiusVariable() == "default")
-        {
-//            if (varname != NULL)
-//                glyphMapper->ScaleTubesByVar(varname);
-        }
-        else
-        {
-//            glyphMapper->ScaleTubesByVar(atts.GetVaryTubeRadiusVariable());
-        }
-    }
-    else
-    {
-//        glyphMapper->TubeScalingOff();
     }
 
     if( //(topoDim == 0 || (topoDim > 0 && atts.GetRenderPoints())) &&
@@ -683,6 +814,16 @@ avtPseudocolorPlot::SetAtts(const AttributeGroup *a)
     {
         glyphMapper->ColorByScalarOn(std::string(varname));
     }
+
+    glyphMapper->SetDrawSurfaces(atts.GetRenderSurfaces());
+    glyphMapper->SetDrawWireframe(atts.GetRenderWireframe());
+    glyphMapper->SetWireframeColor(atts.GetWireframeColor().Red()/255.,
+                                   atts.GetWireframeColor().Green()/255.,
+                                   atts.GetWireframeColor().Blue()/255.);
+    glyphMapper->SetDrawPoints(atts.GetRenderPoints());
+    glyphMapper->SetPointsColor(atts.GetPointColor().Red()/255.,
+                                atts.GetPointColor().Green()/255.,
+                                atts.GetPointColor().Blue()/255.);
 }
 
 
@@ -732,7 +873,7 @@ avtPseudocolorPlot::GetDataExtents(std::vector<double> &extents)
 //    Jeremy Meredith, Thu Aug 23 14:11:40 PDT 2001
 //    Made it use the color table name "Default" instead of the boolean flag.
 //
-//    Kathleen Bonnell, Thu Aug 30 16:10:15 PDT 2001 
+//    Kathleen Bonnell, Thu Aug 30 16:10:15 PDT 2001
 //    Main functionality now resides in avtLookupTable::SetColorTable.
 //
 //    Kathleen Bonnell, Fri Aug 31 15:21:45 PDT 2001
@@ -987,7 +1128,7 @@ avtPseudocolorPlot::SetLimitsMode(int limitsMode)
             glyphMapper->SetMin(userMin);
             glyphMapper->SetMax(userMax);
         }
-    } 
+    }
     else if (atts.GetMinFlag())
     {
         glyphMapper->SetMin(userMin);
@@ -1126,7 +1267,7 @@ avtPseudocolorPlot::SetLegendRanges()
     double min, max;
 
     //
-    // set and get the range for the legend's color bar labels 
+    // set and get the range for the legend's color bar labels
     //
     bool validRange = false;
     if (atts.GetLimitsMode() == PseudocolorAttributes::OriginalData)
@@ -1204,13 +1345,37 @@ void
 avtPseudocolorPlot::ReleaseData(void)
 {
     avtSurfaceDataPlot::ReleaseData();
-    if (staggeringFilter != NULL) {
+
+    if (staggeringFilter != NULL)
+    {
         staggeringFilter->ReleaseData();
     }
+
+    if (polylineCleanupFilter != NULL)
+    {
+        polylineCleanupFilter->ReleaseData();
+    }
+
+    if (polylineToTubeFilter != NULL)
+    {
+        polylineToTubeFilter->ReleaseData();
+    }
+
+    if (polylineToRibbonFilter != NULL)
+    {
+        polylineToRibbonFilter->ReleaseData();
+    }
+
+    if (polylineAddEndPointsFilter != NULL)
+    {
+        polylineAddEndPointsFilter->ReleaseData();
+    }
+
     if (filter != NULL)
     {
         filter->ReleaseData();
     }
+
     if (pcfilter != NULL)
     {
         pcfilter->ReleaseData();
@@ -1252,157 +1417,14 @@ avtPseudocolorPlot::GetSmoothingLevel()
 //
 // ****************************************************************************
 
-avtContract_p
-avtPseudocolorPlot::EnhanceSpecification(avtContract_p spec)
-{
-    avtContract_p rv = spec;
+// avtContract_p
+// avtPseudocolorPlot::EnhanceSpecification(avtContract_p contract)
+// {
+//     avtContract_p rv = contract;
+//
+//     return rv;
+// }
 
-#ifdef COMMENTOUT
-    if (topoDim == 0)
-    {
-        std::string pointVar = atts.GetPointSizeVar();
-        avtDataRequest_p dataRequest = spec->GetDataRequest();
-
-        //
-        // Find out if we REALLY need to add the secondary variable.
-        //
-        if (atts.GetPointSizeVarEnabled() &&
-            pointVar != "default" &&
-            pointVar != dataRequest->GetVariable() &&
-            !dataRequest->HasSecondaryVariable(pointVar.c_str()))
-        {
-            rv = new avtContract(spec);
-            rv->GetDataRequest()->AddSecondaryVariable(pointVar.c_str());
-            rv->SetCalculateVariableExtents(pointVar, true);
-        }
-    }
-#endif
-    bool needNewContract = true;
-
-    // Add in the opactiy variable
-    if( atts.GetOpacityType() == PseudocolorAttributes::VariableRange &&
-        atts.GetOpacityVariable() != "" &&
-        atts.GetOpacityVariable() != "\0")
-    {
-        std::string opacityVar = atts.GetOpacityVariable();
-        avtDataRequest_p dataRequest = rv->GetDataRequest();
-
-        if( opacityVar != "default" &&
-            opacityVar != dataRequest->GetVariable() &&
-            !dataRequest->HasSecondaryVariable(opacityVar.c_str()) )
-        {
-            if( needNewContract )
-            {
-              rv = new avtContract(spec);
-              needNewContract = false;
-            }
-
-            rv->GetDataRequest()->AddSecondaryVariable( opacityVar.c_str() );
-            rv->SetCalculateVariableExtents(opacityVar, true);
-        }
-
-        // if( needNewContract )
-        // {
-        //   rv = new avtContract(spec);
-        //   needNewContract = false;
-        // }
-
-        // std::string key =
-        //   rv->SetAttribute( &atts,
-        //                  PseudocolorAttributes::ID_opacityVariable,
-        //                  opacityVar );
-    }
-
-    // Add in the tube variable
-    if( (topoDim == 1 || (topoDim > 1 && atts.GetRenderWireframe())) &&
-        atts.GetLineType() == PseudocolorAttributes::Tube &&
-        atts.GetVaryTubeRadius() == true &&
-        atts.GetVaryTubeRadiusVariable() != "" &&
-        atts.GetVaryTubeRadiusVariable() != "\0" )
-    {
-        std::string tubeVar = atts.GetVaryTubeRadiusVariable();
-        avtDataRequest_p dataRequest = rv->GetDataRequest();
-        
-        if( tubeVar != "default" &&
-            tubeVar != dataRequest->GetVariable() &&
-            !dataRequest->HasSecondaryVariable(tubeVar.c_str()) )
-        {
-            if( needNewContract )
-            {
-              rv = new avtContract(spec);
-              needNewContract = false;
-            }
-
-            rv->GetDataRequest()->AddSecondaryVariable( tubeVar.c_str() );
-            rv->SetCalculateVariableExtents(tubeVar, true);
-        }
-
-        if( needNewContract )
-        {
-          rv = new avtContract(spec);
-          needNewContract = false;
-        }
-
-        std::string key =
-          rv->SetAttribute( &atts,
-                            PseudocolorAttributes::ID_varyTubeRadiusVariable,
-                            tubeVar );
-    }
-
-    // Add in the point variable
-    if( (topoDim == 0 || (topoDim > 0 && atts.GetRenderPoints())) &&
-        atts.GetPointType() != PseudocolorAttributes::Point &&
-        atts.GetPointType() != PseudocolorAttributes::Sphere &&
-        atts.GetPointSizeVarEnabled() &&
-        atts.GetPointSizeVar() != "" &&
-        atts.GetPointSizeVar() != "\0" )
-      {
-        std::string pointVar = atts.GetPointSizeVar();
-        avtDataRequest_p dataRequest = rv->GetDataRequest();
-
-        if (pointVar != "default" &&
-            pointVar != dataRequest->GetVariable() &&
-            !dataRequest->HasSecondaryVariable(pointVar.c_str()))
-        {
-            if( needNewContract )
-                rv = new avtContract(spec);
-            rv->GetDataRequest()->AddSecondaryVariable(pointVar.c_str());
-            rv->SetCalculateVariableExtents(pointVar, true);
-            needNewContract = false;
-        }
-
-        // if( needNewContract )
-        // {
-        //   rv = new avtContract(spec);
-        //   needNewContract = false;
-        // }
-
-        // std::string key =
-        //   rv->SetAttribute( &atts,
-        //                  PseudocolorAttributes::ID_pointSizeVarEnabled,
-        //                  pointVar );
-    }
-
-
-    // Note the line type so that upstream operators can obtain the
-    // needed data for displaying ribbons or tubes.
-
-//    if( atts.GetLineType() == PseudocolorAttributes::Line ||
-//        atts.GetLineType() == PseudocolorAttributes::Tube ||
-//        atts.GetLineType() == PseudocolorAttributes::Ribbon )
-    {
-        if( needNewContract )
-        {
-          rv = new avtContract(spec);
-          needNewContract = false;
-        }
-
-        std::string key =
-          rv->SetAttribute( &atts, PseudocolorAttributes::ID_lineType,
-                            PseudocolorAttributes::LineType_ToString(atts.GetLineType()) );
-    }
-    return rv;
-}
 
 // ****************************************************************************
 //  Method: avtPlot::SetCellCountMultiplierForSRThreshold

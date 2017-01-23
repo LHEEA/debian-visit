@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -164,6 +164,7 @@
 
 #include <QApplication>
 #include <QSocketNotifier>
+#include <QStyleFactory>
 #include <QvisColorTableButton.h>
 #include <QvisNoDefaultColorTableButton.h>
 
@@ -2369,6 +2370,12 @@ ViewerSubject::ReadConfigFiles(int argc, char **argv)
 //    Eric Brugger, Fri May 10 14:44:11 PDT 2013
 //    I removed support for mangled mesa.
 //
+//    Kathleen Biagas, Fri Jan 22 14:09:28 PST 2016
+//    Use QStyleFactory for list of possible styles.
+//
+//    Alok Hota, Tue Feb 23 19:10:32 PST 2016
+//    Add -ospray argument.
+//
 // ****************************************************************************
 
 void
@@ -2541,26 +2548,24 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
                      << endl;
                 continue;
             }
-            if (
-#ifdef QT_WS_MACX
-                strcmp(argv[i + 1], "macintosh") == 0 ||
-#endif
-#ifdef QT_WS_WIN
-                strcmp(argv[i + 1], "windowsxp") == 0 ||
-                strcmp(argv[i + 1], "windowsvista") == 0 ||
-#endif
-                strcmp(argv[i + 1], "windows") == 0 ||
-                strcmp(argv[i + 1], "motif") == 0 ||
-                strcmp(argv[i + 1], "cde") == 0 ||
-                strcmp(argv[i + 1], "plastique") == 0 ||
-                strcmp(argv[i + 1], "cleanlooks") == 0
-               )
+            QStringList availableStyles = QStyleFactory::keys();
+            QString style(argv[i+1]);
+            if (availableStyles.contains(style, Qt::CaseInsensitive))
             {
                 clientArguments.push_back(argv[i]);
                 clientArguments.push_back(argv[i+1]);
 
                 GetViewerState()->GetAppearanceAttributes()->SetStyle(argv[i+1]);
             }
+            else
+            {
+                cerr << "Invalid style: " << style.toStdString() << endl;
+                cerr << "Available styles are: ";
+                for (int i = 0; i < availableStyles.size(); ++i)
+                    cerr << availableStyles.at(i).toStdString() << " ";
+                cerr << endl;
+            }
+
             ++i;
         }
         else if (strcmp(argv[i], "-font") == 0)
@@ -2634,6 +2639,10 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
         else if (strcmp(argv[i], "-manta") == 0)
         {
             avtCallback::SetMantaMode(true);
+        }
+        else if (strcmp(argv[i], "-ospray") == 0)
+        {
+            avtCallback::SetOSPRayMode(true);
         }
         else if (strcmp(argv[i], "-fullscreen") == 0)
         {
@@ -3129,63 +3138,6 @@ ViewerSubject::ExportWindow()
 }
 
 // ****************************************************************************
-// Method: QvisHostProfileWindow::ExportHostProfile
-//
-// Purpose:
-//   Export Selected HostProfile to Directory.
-//
-// Programmer:
-// Creation:   September 10, 2013
-//
-// Modifications:
-//
-// ****************************************************************************
-
-void
-ViewerSubject::ExportHostProfile()
-{
-    JSONNode node;
-    node.Parse(GetViewerState()->GetViewerRPC()->GetStringArg1());
-
-    std::string profileName = node["profileName"].GetString();
-    std::string fileName = node["fileName"].GetString();
-    bool saveInUserDir = node["saveInUserDir"].GetBool();
-
-    std::string userdir = GetAndMakeUserVisItHostsDirectory();
-    HostProfileList *hpl = GetViewerState()->GetHostProfileList();
-
-    for (int i = 0; i < hpl->GetNumMachines(); ++i)
-    {
-        MachineProfile &pl = hpl->GetMachines(i);
-        std::string host = pl.GetHostNickname();
-
-        if(host != profileName) continue;
-
-        std::string name = "";
-
-        if(!saveInUserDir)
-            name = fileName;
-        else
-            name = userdir + VISIT_SLASH_STRING + fileName;
-
-        GetViewerMessaging()->Status(
-            TR("Host profile %1 exported to %2").
-               arg(host).
-               arg(name));
-
-        // Tell the user what happened.
-        GetViewerMessaging()->Message(
-            TR("VisIt exported host profile \"%1\" to the file: %2. ").
-               arg(host).
-               arg(name));
-
-        SingleAttributeConfigManager mgr(&pl);
-        mgr.Export(name);
-        break;
-    }
-}
-
-// ****************************************************************************
 // Method: ViewerSubject::Export
 //
 // Purpose:
@@ -3243,10 +3195,6 @@ ViewerSubject::Export()
 
     if(action == "ExportWindows") {
         ExportWindow();
-    }
-
-    if(action == "ExportHostProfile") {
-        ExportHostProfile();
     }
 
     if(action == "GetFileList") {

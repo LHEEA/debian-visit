@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,14 +76,15 @@ public:
 public slots:
     void SimCommands() {printf("command Slot Fired\n");};
     void ClickedHandler();
+    void ToggledHandler(bool);
+    void CurrentIndexChangedHandler(int);
     void TextChangedHandler(const QString &);
     void ValueChangedHandler(int);
     void ValueChangedHandler(const QTime &theTime);
     void ValueChangedHandler(const QDate &theDate);
     void ActivatedHandler(int);
     void StateChangedHandler(int);
-    void CurrentChangedHandler(int, int);
-    void ValueChangedHandler(int, int);
+    void CellChangedHandler(int, int);
     int  SendCMD(QString sig, const  QObject *ui,QString value);
 
 private:

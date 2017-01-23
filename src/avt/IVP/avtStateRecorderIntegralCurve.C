@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -167,7 +167,12 @@ void avtStateRecorderIntegralCurve::RecordStep(const avtIVPField* field,
         
     if( historyMask & SAMPLE_VELOCITY )
     {
-        avtVector v = step.GetV( time );
+        // Do not call as it can give inaccurate results. Use the
+        // field directly.
+        // avtVector v = step.GetV( time );
+
+        avtVector v;
+        (*field)( time, p, v );
         history.push_back( v.x );
         history.push_back( v.y );
         history.push_back( v.z );
@@ -577,9 +582,6 @@ avtStateRecorderIntegralCurve::Serialize(MemStream::Mode mode, MemStream &buff,
 //   Sorting can be done independant of curve direction. Changed curve
 //   step from list to vector.
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Move this method from avtStreamlineWrapper.
-//
 //   David Camp, Fri Jul 29 06:55:39 PDT 2011
 //   Added code to send the ending setting, IC status, domain, ivp.
 //   The pathlines need this information.
@@ -696,9 +698,6 @@ avtStateRecorderIntegralCurve::LessThan(const avtIntegralCurve *ic) const
 //
 //  Modifications:
 //
-//    Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//    Move this method from avtStreamlineWrapper.
-//
 // ****************************************************************************
 
 bool
@@ -724,9 +723,6 @@ avtStateRecorderIntegralCurve::IdSeqCompare(const avtIntegralCurve *icA,
 //  Creation:   September 24, 2009
 //
 //  Modifications:
-//
-//    Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//    Move this method from avtStreamlineWrapper.
 //
 // ****************************************************************************
 

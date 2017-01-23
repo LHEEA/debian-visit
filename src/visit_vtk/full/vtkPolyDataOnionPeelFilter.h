@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -122,9 +122,9 @@ public:
 
   // Description:
   // Turn on/off scaling of source geometry.
-  vtkSetMacro(SeedIdIsForCell,int);
-  vtkBooleanMacro(SeedIdIsForCell,int);
-  vtkGetMacro(SeedIdIsForCell,int);
+  vtkSetMacro(SeedIdIsForCell,bool);
+  vtkGetMacro(SeedIdIsForCell,bool);
+  vtkBooleanMacro(SeedIdIsForCell,bool);
 
   // Description:
   // Set the current LogicalIndex value.
@@ -138,9 +138,9 @@ public:
 
   // Description:
   // Turn on/off scaling of source geometry.
-  vtkSetMacro(ReconstructOriginalCells,int);
-  vtkBooleanMacro(ReconstructOriginalCells,int);
-  vtkGetMacro(ReconstructOriginalCells,int);
+  vtkSetMacro(ReconstructOriginalCells,bool);
+  vtkGetMacro(ReconstructOriginalCells,bool);
+  vtkBooleanMacro(ReconstructOriginalCells,bool);
 
   // Description:
   // Specify which type of adjacency to use when determining neighbor cells.
@@ -190,8 +190,8 @@ protected:
   int RequestedLayer;
   int AdjacencyType;
   int SeedId;
-  int ReconstructOriginalCells;
-  int SeedIdIsForCell;
+  bool ReconstructOriginalCells;
+  bool SeedIdIsForCell;
 
   int logicalIndex[3];
   bool useLogicalIndex;

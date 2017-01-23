@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,9 +78,6 @@ avtDatabase *
 IDXCommonPluginInfo::SetupDatabase(const char *const *list,
                                    int nList, int nBlock)
 {
-    if (nBlock!=1) 
-      return NULL;
-
     // ignore any nBlocks past 1
     int nTimestepGroups = nList / nBlock;
     avtMTMDFileFormat **ffl = new avtMTMDFileFormat*[nTimestepGroups];
@@ -90,6 +87,5 @@ IDXCommonPluginInfo::SetupDatabase(const char *const *list,
     }
     avtMTMDFileFormatInterface *inter 
            = new avtMTMDFileFormatInterface(ffl, nTimestepGroups);
-
     return new avtGenericDatabase(inter);
 }

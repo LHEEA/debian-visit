@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,6 +43,7 @@
 #ifndef DATABASE_PLUGIN_INFO_H
 #define DATABASE_PLUGIN_INFO_H
 #include <plugin_exports.h>
+#include <plugin_entry_point.h>
 #include <stdio.h>
 
 #include <string>

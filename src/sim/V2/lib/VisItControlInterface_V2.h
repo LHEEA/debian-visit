@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1327,9 +1327,21 @@ int VisItSetWriteVariable(int (*cb)(const char *, const char *, int, visit_handl
 int VisItUI_clicked(const char *name, void (*cb)(void*), void *cbdata2);
 int VisItUI_stateChanged(const char *name, void (*cb)(int,void*), void *cbdata2);
 int VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata2);
+int VisItUI_textChanged(const char *name, void (*cb)(char *,void*), void *cbdata2);
+int VisItUI_cellChanged(const char *name, void (*cb)(char *,void*), void *cbdata2);
 
 int VisItUI_setValueI(const char *name, int value, int enabled);
+int VisItUI_setValueD(const char *name, double value, int enabled);
 int VisItUI_setValueS(const char *name, const char *value, int enabled);
+
+int VisItUI_setTableValueI(const char *name,
+                           int row, int col, int value, int enabled);
+int VisItUI_setTableValueD(const char *name,
+                           int row, int col, double value, int enabled);
+int VisItUI_setTableValueV(const char *name,
+                           int row, int col, double x, double y, double z, int enabled);
+int VisItUI_setTableValueS(const char *name,
+                           int row, int col, const char *value, int enabled);
 
 /* Include some experimental plotting functions */
 #include <VisItControlInterface_V2_plotting.h>

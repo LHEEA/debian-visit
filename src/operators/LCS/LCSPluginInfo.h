@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -85,6 +85,7 @@ class LCSGUIPluginInfo : public virtual GUIOperatorPluginInfo, public virtual LC
     virtual QvisPostableWindowObserver *CreatePluginWindow(int type,
         AttributeSubject *attr, const QString &caption, const QString &shortName,
         QvisNotepadArea *notepad);
+    virtual const char **XPMIconData() const;
 };
 
 class LCSViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo, public virtual LCSCommonPluginInfo
@@ -113,6 +114,7 @@ class LCSViewerEnginePluginInfo : public virtual ViewerEngineOperatorPluginInfo,
 class LCSViewerPluginInfo : public virtual ViewerOperatorPluginInfo, public virtual LCSViewerEnginePluginInfo
 {
   public:
+    virtual const char **XPMIconData() const;
 };
 
 class LCSEnginePluginInfo : public virtual EngineOperatorPluginInfo, public virtual LCSViewerEnginePluginInfo

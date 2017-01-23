@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,6 +44,7 @@
 #define AVT_SXRIS_FILE_FORMAT_H
 
 #include <hdf5.h>
+#include <visit-hdf5.h>
 #include <avtMTSDFileFormat.h>
 #include <vector>
 

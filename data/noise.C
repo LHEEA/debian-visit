@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -928,9 +928,9 @@ void CreateTimeSequence(bool do_meteor, bool do_flow)
             // Set the coordinate. Rotate about the x axis.
             if (do_meteor)
             {
-                // Rotate about the x axis and move foward in the z direction.
+                // Rotate about the x axis and move foward in the z direction
                 float theta;
-                float pt1[3], pt2[2], pt3[3];
+                float pt1[3], pt2[3], pt3[3];
                 pt1[0] = GetRandomNumber() * 0.6 * dX + xMin + 0.2 * dX;
                 pt1[1] = GetRandomNumber() * 0.6 * dY + yMin + 0.2 * dY;
                 pt1[2] = GetRandomNumber() * 0.6 * dX + zMin - 0.3 * dX;

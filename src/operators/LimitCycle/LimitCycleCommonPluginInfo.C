@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -131,6 +131,17 @@ LimitCycleCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMetaData *md)
             e2.SetDefinition(defn);
             el->AddExpressions(e2);
         }
+        {
+            Expression e2;
+            sprintf(name, "operators/LimitCycle/%s", mmd->name.c_str());
+            e2.SetName(name);
+            e2.SetType(Expression::CurveMeshVar);
+            e2.SetFromOperator(true);
+            e2.SetOperatorName("LimitCycle");
+            sprintf(defn, "cell_constant(<%s>, 0.)", mmd->name.c_str());
+            e2.SetDefinition(defn);
+            el->AddExpressions(e2);
+        }
     }
     const ExpressionList &oldEL = md->GetExprList();
     for (i = 0 ; i < oldEL.GetNumExpressions() ; i++)
@@ -145,6 +156,19 @@ LimitCycleCommonPluginInfo::GetCreatedExpressions(const avtDatabaseMetaData *md)
                 sprintf(name, "operators/LimitCycle/%s", e.GetName().c_str());
                 e2.SetName(name);
                 e2.SetType(Expression::ScalarMeshVar);
+                e2.SetFromOperator(true);
+                e2.SetOperatorName("LimitCycle");
+                sprintf(defn, "cell_constant(<%s>, 0.)", e.GetName().c_str());
+                e2.SetDefinition(defn);
+                el->AddExpressions(e2);
+            }
+            {
+                if (e.GetFromOperator())
+                    continue; // weird ordering behavior otherwise
+                Expression e2;
+                sprintf(name, "operators/LimitCycle/%s", e.GetName().c_str());
+                e2.SetName(name);
+                e2.SetType(Expression::CurveMeshVar);
                 e2.SetFromOperator(true);
                 e2.SetOperatorName("LimitCycle");
                 sprintf(defn, "cell_constant(<%s>, 0.)", e.GetName().c_str());

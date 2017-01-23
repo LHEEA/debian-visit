@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,6 +55,7 @@
 #include <QSocketNotifier>
 #include <QStatusBar>
 #include <QStyle>
+#include <QStyleFactory>
 #include <QTranslator>
 
 #if defined(Q_WS_MACX) || defined(Q_OS_MAC)
@@ -145,6 +146,7 @@
 #include <QvisRenderingWindow.h>
 #include <QvisSaveMovieWizard.h>
 #include <QvisSaveWindow.h>
+#include <QvisSeedMeWindow.h>
 #include <QvisSelectionsWindow.h>
 #include <QvisSessionFileDatabaseLoader.h>
 #include <QvisSimulationWindow.h>
@@ -231,6 +233,7 @@
 #define WINDOW_MACRO            32
 #define WINDOW_SELECTIONS       33
 #define WINDOW_SETUP_CFG        34
+#define WINDOW_SEEDME           35
 
 #define BEGINSWITHQUOTE(A) (A[0] == '\'' || A[0] == '\"')
 #define ENDSWITHQUOTE(A) (A[strlen(A)-1] == '\'' || A[strlen(A)-1] == '\"')
@@ -452,6 +455,9 @@ GUI_LogQtMessages(QtMsgType type, const QMessageLogContext &context, const QStri
 
     switch(type)
     {
+    case QtInfoMsg:
+        debug1 << "Qt: Info: " << msg.toStdString() << endl;
+        break;
     case QtDebugMsg:
         debug1 << "Qt: Debug: " << msg.toStdString() << endl;
         break;
@@ -880,6 +886,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
     windowNames += tr("Macros");
     windowNames += tr("Selections");
     windowNames += tr("Setup Host Profiles and Configuration");
+    windowNames += tr("SeedMe");
 
     // If the geometry was not passed on the command line then the 
     // savedGUIGeometry flag will still be set to false. If we
@@ -2219,6 +2226,9 @@ QvisGUIApplication::Quit()
 //    Brad Whitlock, Wed Oct  6 12:20:28 PDT 2010
 //    Detect whether the user wants -viewer_geometry.
 //
+//    Kathleen Biagas, Fri Jan 22 14:14:56 PST 2016
+//    Use QStyleFactory to determine list of available styles.
+//
 // ****************************************************************************
 
 void
@@ -2469,23 +2479,19 @@ QvisGUIApplication::ProcessArguments(int &argc, char **argv)
                      << endl;
                 continue;
             }
-            std::string style(argv[i + 1]);
-            if(
-#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
-               style == "macintosh" ||
-#endif
-#if defined(Q_WS_WIN) || defined(Q_OS_WIN)
-               style == "windowsxp" ||
-               style == "windowsvista" ||
-#endif
-               style == "windows" || 
-               style == "motif" || 
-               style == "cde" ||
-               style == "plastique" || 
-               style == "cleanlooks"
-               )
+            QStringList availableStyles = QStyleFactory::keys();
+            QString style(argv[i+1]);
+            if (availableStyles.contains(style, Qt::CaseInsensitive))
             {
                 applicationStyle = argv[i + 1];
+            }
+            else
+            {
+                cerr << "Invalid style: " << style.toStdString() << endl;
+                cerr << "Available styles are: ";
+                for (int i = 0; i < availableStyles.size(); ++i)
+                    cerr << availableStyles.at(i).toStdString() << " ";
+                cerr << endl;
             }
             ++i;
         }
@@ -3366,7 +3372,8 @@ QvisGUIApplication::SetupWindows()
              this, SLOT(showSelectionsWindow2(const QString &)));
      connect(mainWin, SIGNAL(activateSetupHostProfilesAndConfig()),
              this, SLOT(setupHostProfilesAndConfig()));
-}
+     connect(mainWin, SIGNAL(activateSeedMeWindow()),
+             this, SLOT(showSeedMeWindow()));}
 
 // ****************************************************************************
 // Method: QvisGUIApplication::WindowFactory
@@ -3702,6 +3709,15 @@ QvisGUIApplication::WindowFactory(int i)
     case WINDOW_SETUP_CFG:
         {
             win = new QvisSetupHostProfilesAndConfigWindow(windowNames[i]);
+        }
+        break;
+    case WINDOW_SEEDME:
+        {
+            win = new QvisSeedMeWindow(GetViewerState()->GetSeedMeAttributes(),
+                                       windowNames[i], windowNames[i], 
+                                       mainWin->GetNotepad());
+            connect(win, SIGNAL(runCommand(const QString &)),
+                    this, SLOT(Interpret(const QString &)));
         }
         break;
     }
@@ -7299,13 +7315,38 @@ QvisGUIApplication::HandleMetaDataUpdate()
         GetViewerState()->GetDatabaseMetaData()->Print(DebugStream::Stream4());
     }
 
+    QualifiedFilename qf = fileServer->GetOpenFile();
+
+    // Because simulation meta data is pushed rather than pulled, the
+    // open file (active source) may not belong to the simulation. As
+    // such, find the meta data's QualifiedFilename from the
+    // fileserver.
+    if( GetViewerState()->GetDatabaseMetaData()->GetIsSimulation() )
+    {
+        const std::string mdf =
+          GetViewerState()->GetDatabaseMetaData()->GetDatabaseName();   
+
+        const QualifiedFilenameVector &qfv = fileServer->GetAppliedFileList();
+
+        // Find the qualified name based on the meta data database
+        // name which should be unique as it contains a time stamp.
+        for( unsigned int i=0; i<qfv.size(); ++i )
+        {
+            if( qfv[i].PathAndFile() == mdf )
+            {
+                qf = qfv[i];
+                break;
+            }
+        }
+    }
+
     // Poke the metadata into the file server
-    fileServer->SetOpenFileMetaData(GetViewerState()->GetDatabaseMetaData(),
-                                    GetStateForSource(fileServer->GetOpenFile()));
+    fileServer->SetFileMetaData(qf, GetViewerState()->GetDatabaseMetaData(),
+                                GetStateForSource(qf));
 
     // Poke the SIL into the file server
     avtSIL *sil = new avtSIL(*GetViewerState()->GetSILAttributes());
-    fileServer->SetOpenFileSIL(sil);
+    fileServer->SetFileSIL(qf, sil);
     delete sil;
 
     //
@@ -7323,8 +7364,8 @@ QvisGUIApplication::HandleMetaDataUpdate()
     QString fileInfoWinName(windowNames[WINDOW_FILE_INFORMATION]);
     if (otherWindows.count(fileInfoWinName))
     {
-        QvisFileInformationWindow *fileInfoWin = (QvisFileInformationWindow*)
-            otherWindows[fileInfoWinName];
+        QvisFileInformationWindow *fileInfoWin =
+            (QvisFileInformationWindow*) otherWindows[fileInfoWinName];
         fileInfoWin->Update(fileServer);
     }
 
@@ -7332,7 +7373,6 @@ QvisGUIApplication::HandleMetaDataUpdate()
     QString simWinName(windowNames[WINDOW_SIMULATION]);
     if (otherWindows.count(simWinName))
     {
-        const QualifiedFilename &qf = fileServer->GetOpenFile();
         QvisSimulationWindow *simWin =
             (QvisSimulationWindow*)otherWindows[simWinName];
         simWin->SetNewMetaData(qf, GetViewerState()->GetDatabaseMetaData());
@@ -9000,3 +9040,4 @@ QvisGUIApplication::showSelectionsWindow2(const QString &selName)
     selWindow->highlightSelection(selName);
 }
 void QvisGUIApplication::setupHostProfilesAndConfig() { GetInitializedWindowPointer(WINDOW_SETUP_CFG)->show(); }
+void QvisGUIApplication::showSeedMeWindow() { GetInitializedWindowPointer(WINDOW_SEEDME)->show(); }

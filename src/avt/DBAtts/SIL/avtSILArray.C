@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -457,7 +457,7 @@ avtSILArray::GetSetIndex(const std::string &name) const
         {
             if (names[ii] == name)
             {
-                return (iFirstSet + ii);
+                return (iFirstSet + (int)ii);
             }
         }
         return -1;

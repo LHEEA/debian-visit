@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1007,9 +1007,6 @@ ViewerQueryManager::DisableTool(ViewerWindow *oWin, avtToolInterface &ti)
 //    Send updated expressions to the engine before we execute the query in
 //    case the query involves expressions that have not been sent to the engine
 //    yet.
-//
-//    Dave Pugmire, Tue Nov  9 16:08:30 EST 2010
-//    Add dumpSteps for streamline info query.
 //
 //    Kathleen Biagas, Fri Jun 10 13:53:10 PDT 2011
 //    Send the 'suppressQueryOutput' flag to QueryAtts.
@@ -2710,6 +2707,10 @@ ViewerQueryManager::SetDDTPickCallback(void (*cb)(PickAttributes *, void*), void
 //   Brad Whitlock, Wed Sep  3 09:22:59 PDT 2014
 //   Move DDT pick code to external callback function.
 //
+//   Matt Larsen, Tues July 19 08:50:01 PDT 2016
+//   Added extra condition to create a pick actor if either
+//   showPickLetter or showPickHighlight is enabled.
+//
 // ****************************************************************************
 
 void
@@ -2756,8 +2757,10 @@ ViewerQueryManager::Pick(PICK_POINT_INFO *ppi, const int dom, const int el)
             //
             // Add a pick point to the window
             //
-            if (pickAtts->GetShowPickLetter() &&
-                pickAtts->GetPickPoint()[0] != FLT_MAX)
+            bool showPick = pickAtts->GetShowPickLetter() ||
+                            pickAtts->GetShowPickHighlight();
+            if ( showPick &&
+                 pickAtts->GetPickPoint()[0] != FLT_MAX)
             {
                 win->ValidateQuery(pickAtts, NULL);
             } // else no valid position could be determined, data was transformed
@@ -3984,6 +3987,9 @@ GetUniqueVars(const stringVector &vars, const string &activeVar,
 //    Changed windowtype for Statistics queries to be Basic, as the actual
 //    code for the queries does not seem to make use of the 'ActualData' flag.
 //
+//    Kevin Griffin, Thu Aug 11 10:53:13 PDT 2016
+//    Added the GyRadius Query.
+//
 // ****************************************************************************
 
 void
@@ -4025,11 +4031,12 @@ ViewerQueryManager::InitializeQueryList()
     QueryList::WindowType ccls_wt = QueryList::ConnCompSummary;
     QueryList::WindowType shp_wt  = QueryList::ShapeletsDecomp;
     QueryList::WindowType xri  = QueryList::XRayImage;
-    QueryList::WindowType sli  = QueryList::StreamlineInfo;
+    QueryList::WindowType ic  = QueryList::IntegralCurveInfo;
     QueryList::WindowType lsi  = QueryList::LineSamplerInfo;
     QueryList::WindowType pick    = QueryList::Pick;
     QueryList::WindowType line    = QueryList::Lineout;
     QueryList::WindowType compact = QueryList::Compactness;
+    QueryList::WindowType compactv = QueryList::CompactnessVar;
 
     QueryList::QueryMode qo = QueryList::QueryOnly;
     QueryList::QueryMode qt = QueryList::QueryAndTime;
@@ -4102,6 +4109,7 @@ ViewerQueryManager::InitializeQueryList()
     int MinMaxVars = QUERY_SCALAR_VAR | QUERY_TENSOR_VAR | QUERY_VECTOR_VAR |
             QUERY_SYMMETRIC_TENSOR_VAR | QUERY_MATSPECIES_VAR | QUERY_CURVE_VAR;
 
+    GetViewerState()->GetQueryList()->AddQuery("GyRadius", dq, vr, compactv, 1, 0, qt, 1, 1);
     GetViewerState()->GetQueryList()->AddQuery("MinMax", dq, vr, ad, 1, MinMaxVars, qo);
     GetViewerState()->GetQueryList()->AddQuery("Min", dq, vr, ad, 1, MinMaxVars, qt);
     GetViewerState()->GetQueryList()->AddQuery("Max", dq, vr, ad, 1, MinMaxVars, qt);
@@ -4118,7 +4126,7 @@ ViewerQueryManager::InitializeQueryList()
     GetViewerState()->GetQueryList()->AddQuery("Sample Statistics", dq, vr, basic, 1, 0, qo);
     GetViewerState()->GetQueryList()->AddQuery("Population Statistics", dq, vr, basic, 1, 0, qo);
 
-    GetViewerState()->GetQueryList()->AddQuery("Streamline Info", dq, misc_r, sli, 1, 0, qo);
+    GetViewerState()->GetQueryList()->AddQuery("Integral Curve Info", dq, misc_r, ic, 1, 0, qo);
     GetViewerState()->GetQueryList()->AddQuery("Line Sampler Info", dq, misc_r, lsi, 1, 0, qo);
     GetViewerState()->GetQueryList()->SelectAll();
 }

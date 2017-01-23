@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,7 +89,7 @@ Consider the leaveDomains ICs and the balancing at the same time.
 #include <avtIVPM3DC1Field.h>
 #include <avtIVPNek5000Field.h>
 #include <avtIVPNek5000TimeVaryingField.h>
-#ifdef NEKTAR_PLUS_PLUS_FOUND
+#ifdef HAVE_NEKTAR_PP
 #include <avtIVPNektar++Field.h>
 #include <avtIVPNektar++TimeVaryingField.h>
 #endif
@@ -117,8 +117,8 @@ Consider the leaveDomains ICs and the balancing at the same time.
 #endif
 
 #include <vector>
-#include <math.h>
-#include <string.h>
+#include <limits>
+#include <cmath>
 
 #ifndef _WIN32
 #include <dirent.h>
@@ -130,6 +130,8 @@ Consider the leaveDomains ICs and the balancing at the same time.
 #endif
 
 bool PRINT = false;
+
+static const double epsilon = std::numeric_limits<double>::epsilon();
 
 static const char restartFilename[] = "PICS_Restart";
 
@@ -352,7 +354,7 @@ avtPICSFilter::FindCandidateBlocks(avtIntegralCurve *ic,
     
     std::vector<int> doms;
     intervalTree->GetElementsListFromRange(xyz0, xyz1, doms);
-    
+
     bool blockLoaded = false;
     for (size_t i = 0; i < doms.size(); i++)
     {
@@ -383,10 +385,6 @@ avtPICSFilter::FindCandidateBlocks(avtIntegralCurve *ic,
         ic->status.SetExitSpatialBoundary();
     else if (!blockLoaded)
         ic->status.SetAtSpatialBoundary();
-
-    // std::cerr << PAR_Rank() << "  " << __FUNCTION__ << "  " << __LINE__ << "  "
-    //        << ic->id << "  " << ic->status << "  " << blockLoaded
-    //        << std::endl;
 }
 
 // ****************************************************************************
@@ -1078,11 +1076,10 @@ avtPICSFilter::SetTolerances(double reltol, double abstol, bool isFraction)
 void
 avtPICSFilter::SetIntegrationDirection(int dir)
 {
-    // Note the direction is based on the VTK definitions in:
-    // Filters/FlowPaths/vtkStreamer.h 
-    // #define VTK_INTEGRATE_FORWARD  0
-    // #define VTK_INTEGRATE_BACKWARD 1
-    // #define VTK_INTEGRATE_BOTH     2
+    // Note the direction is based on the VTK definitions in vtkStreamer.h 
+    // #define VTK_INTEGRATE_FORWARD         0
+    // #define VTK_INTEGRATE_BACKWARD        1
+    // #define VTK_INTEGRATE_BOTH_DIRECTIONS 2
 
     // The directionless attribute is specific to VisIt.
     // #define VTK_INTEGRATE_FORWARD_DIRECTIONLESS  3
@@ -1345,9 +1342,6 @@ avtPICSFilter::CheckOnDemandViability(void)
 //   Dave Pugmire, Thu Dec  3 13:28:08 EST 2009
 //   New methods for seedpoint generation.
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//   
 //   Dave Pugmire, Tue Jul 13 09:24:57 EDT 2010
 //   Move icAlgo cleanup from Execute() to PostExecute(). The poincare plot
 //   analysis was using IC data after Execute() had been called.
@@ -1414,6 +1408,10 @@ avtPICSFilter::Execute(void)
     }
     else
     {
+        // Clear _ics, which would contain stale pointers to ic's that
+        // no longer seem to exist. This comes up in export.
+        _ics.clear();
+
         GetIntegralCurvesFromInitialSeeds(_ics);
 
         icAlgo->SetAllSeedsSentToAllProcs( GetAllSeedsSentToAllProcs() );
@@ -1583,7 +1581,7 @@ avtPICSFilter::InitializeTimeInformation(int currentTimeSliderIndex)
 
           double intPart, fracPart = modf(period / timeSliceInterval, &intPart);
 
-          if( fracPart > FLT_EPSILON )
+          if( fracPart > epsilon )
           {
             EXCEPTION1(VisItException, "Periodic Pathlines - "
                        "the period must be an integer multiple of the "
@@ -1623,7 +1621,7 @@ avtPICSFilter::InitializeTimeInformation(int currentTimeSliderIndex)
                            "increasing or equal in time.");
             }
 
-            if (period && fabs((intv[1]-intv[0]) - timeSliceInterval) > FLT_EPSILON )
+            if (period && fabs((intv[1]-intv[0]) - timeSliceInterval) > epsilon )
             {
                 EXCEPTION1(VisItException, "Periodic Pathlines - "
                            "Found two adjacent time steps that do not have the "
@@ -1747,7 +1745,9 @@ avtPICSFilter::InitializeIntervalTree()
 
     // Set domain and dataset info.
     if( intervalTree )
+    {
       numDomains = intervalTree->GetNLeaves();
+    }
     else
     {
       EXCEPTION1(ImproperUseException, "No initial interval tree");
@@ -2174,7 +2174,7 @@ avtPICSFilter::GetFieldForDomain(const BlockIDType &domain, vtkDataSet *ds)
       }
       else if( fieldType == PICS_FIELD_NEKTARPP )
       {
-#ifdef NEKTAR_PLUS_PLUS_FOUND
+#ifdef HAVE_NEKTAR_PP
         if (integrationDirection == VTK_INTEGRATE_BACKWARD)
             return new avtIVPNektarPPTimeVaryingField(ds, *locator, 
                                        domainTimeIntervals[curTimeSlice-1][1],
@@ -2214,7 +2214,7 @@ avtPICSFilter::GetFieldForDomain(const BlockIDType &domain, vtkDataSet *ds)
 
       else if( fieldType == PICS_FIELD_NEKTARPP )
       {
-#ifdef NEKTAR_PLUS_PLUS_FOUND
+#ifdef HAVE_NEKTAR_PP
          return new avtIVPNektarPPField(ds, *locator);
 #else
         EXCEPTION1(ImproperUseException, "Requesting Nektar++ interpolation but VisIt has not been built with Nektar++ support.");
@@ -2446,7 +2446,7 @@ avtPICSFilter::OnFace(const avtIntegralCurve *ic,
         vec = -vec;
 
     // Guess at the next step using a very small step size.
-    avtVector nextPt = pt + h * vec * FLT_EPSILON;
+    avtVector nextPt = pt + h * vec * epsilon;
 
     int val = 0;  // To start assume the points stays on the face.
 
@@ -2674,9 +2674,6 @@ avtPICSFilter::DomainToRank(BlockIDType &domain)
 //
 //   Hank Childs, Fri Jun  4 05:13:49 PDT 2010
 //   Remove call for collecting statistics that was a no-op.
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
 //
 //   Dave Pugmire, Mon Dec 15 11:00:23 EST 2014
 //   Return number of steps taken.
@@ -2996,7 +2993,7 @@ avtPICSFilter::PostExecute(void)
 //   Added support for point list sources.
 //
 //   Dave Pugmire, Mon Jun 8 2009, 11:44:01 EDT 2009
-//   Set what scalars to compute on the avtStreamline object.
+//   Set what scalars to compute on the avtIntegralCurve object.
 //
 //   Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
 //   Add ability to restart integration of integral curves.
@@ -3009,9 +3006,6 @@ avtPICSFilter::PostExecute(void)
 //
 //   Dave Pugmire (for Christoph Garth), Wed Jan 20 09:28:59 EST 2010
 //   Add circle source.
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
 //
 //   Hank Childs, Sat Jun  5 16:30:00 PDT 2010
 //   Have derived type set up point list.
@@ -3108,15 +3102,6 @@ avtPICSFilter::AddSeedPoints(std::vector<avtVector> &pts,
 //  Creation:   December 3, 2009
 //
 //  Modifications:
-//
-//   Dave Pugmire, Tue Feb 23 09:42:25 EST 2010
-//   Removed avtStreamlineWrapper:Dir
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sat Jun  5 16:26:12 CDT 2010
-//   Use avtIntegralCurves.
 //
 //   Hank Childs, Fri Oct  8 23:30:27 PDT 2010
 //   Don't do initialization of distance for integral curves.  That happens in
@@ -3495,9 +3480,6 @@ avtPICSFilter::ExamineContract(avtContract_p in_contract)
 //  Creation:   Mon Aug 17 09:23:32 EDT 2009
 //
 //  Modifications:
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
 //
 // ****************************************************************************
 

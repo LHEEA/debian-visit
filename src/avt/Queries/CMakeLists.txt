@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -48,6 +48,8 @@
 #    Hank Childs, Thu May 12 15:37:21 PDT 2011
 #    Add avtAverageValueQuery.
 #
+#    Kevin Griffin, Thu Aug 11 10:53:13 PDT 2016
+#    Add avtGyRadiusQuery.
 #****************************************************************************/
 
 SET(ABSTRACT_SOURCES
@@ -133,7 +135,7 @@ Queries/avtSampleStatisticsQuery.C
 Queries/avtShapeletDecompositionQuery.C
 Queries/avtSkewnessQuery.C
 Queries/avtSphericalCompactnessFactorQuery.C
-Queries/avtStreamlineInfoQuery.C
+Queries/avtIntegralCurveInfoQuery.C
 Queries/avtSummationQuery.C
 Queries/avtTimeQuery.C
 Queries/avtTotalLengthQuery.C
@@ -151,6 +153,7 @@ Queries/avtWeightedVariableSummationQuery.C
 Queries/avtXRayImageQuery.C
 Queries/avtZoneCenterQuery.C
 Queries/MinMaxInfo.C
+Queries/avtGyRadiusQuery.C
 )
 
 IF(VISIT_PYTHON_FILTERS)

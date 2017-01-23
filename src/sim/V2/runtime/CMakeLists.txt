@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -73,6 +73,7 @@ simv2_ExpressionMetaData.C
 simv2_MaterialData.C
 simv2_MaterialMetaData.C
 simv2_MeshMetaData.C
+simv2_MessageMetaData.C
 simv2_NameList.C
 simv2_OptionList.C
 simv2_PointMesh.C
@@ -164,6 +165,9 @@ TARGET_LINK_LIBRARIES(simV2runtime_ser engine_ser ${LIBSIM_RUNTIME_VIEWER_LIBS_S
 IF(NOT APPLE)
     SET_TARGET_PROPERTIES(simV2runtime_ser PROPERTIES INSTALL_RPATH "$ORIGIN")
 ENDIF(NOT APPLE)
+IF(VISIT_ENABLE_XDB)
+    ADD_TARGET_DEFINITIONS(simV2runtime_ser HAVE_XDB)
+ENDIF(VISIT_ENABLE_XDB)
 
 VISIT_INSTALL_TARGETS(simV2runtime_ser)
 
@@ -173,6 +177,9 @@ IF(VISIT_PARALLEL)
     IF(NOT APPLE)
         SET_TARGET_PROPERTIES(simV2runtime_par PROPERTIES INSTALL_RPATH "$ORIGIN")
     ENDIF(NOT APPLE)
+    IF(VISIT_ENABLE_XDB)
+        ADD_TARGET_DEFINITIONS(simV2runtime_par HAVE_XDB)
+    ENDIF(VISIT_ENABLE_XDB)
 
     VISIT_INSTALL_TARGETS(simV2runtime_par)
 ENDIF(VISIT_PARALLEL)

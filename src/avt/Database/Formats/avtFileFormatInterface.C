@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -405,7 +405,7 @@ avtFileFormatInterface::CanCacheVariable(const char *var_name)
 //  Purpose:
 //      This method is for telling formats that do their own domain
 //      decomposition whether or not they can count on other processors to 
-//      help them produce results.  In the case of streamlines that produce
+//      help them produce results.  In the case of integral curves that produce
 //      point selections, the file format reader will *not* be able to count
 //      on the other processors, although it can in all other cases (at the
 //      time of the writing of this comment).

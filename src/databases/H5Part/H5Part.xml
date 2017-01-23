@@ -14,7 +14,7 @@
       ${FASTBIT_LIB}
       ${H5PART_LIB}
       ${HDF5_LIB}
-      ${ZLIB_LIB}
+      ${RT}
     </LIBS>
     <FilePatterns>
       *.h5part

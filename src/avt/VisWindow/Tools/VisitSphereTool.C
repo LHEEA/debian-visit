@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -165,6 +165,33 @@ VisitSphereTool::~VisitSphereTool()
 
     // Delete the text mappers and actors
     DeleteTextActors();
+}
+
+// ****************************************************************************
+// Method: VistSphereTool::SetVisibility
+//
+// Purpose: 
+//   Sets visibility of the tool. Use this if you need to temporarily
+//   take the tool out of the scene during transparent rendering.
+//
+// Programmer: Burlen Loring 
+// Creation:   Mon Sep 28 16:06:19 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+VisitSphereTool::SetVisibility(int val)
+{
+    if (IsEnabled())
+    {
+        sphereActor->SetVisibility(val);
+        originTextActor->SetVisibility(val);
+        radiusTextActor[0]->SetVisibility(val);
+        radiusTextActor[1]->SetVisibility(val);
+        radiusTextActor[2]->SetVisibility(val);
+    }
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,36 +76,36 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
     std::string str;
     char tmpStr[1000];
 
-    const char *sourceType_names = "Point, PointList, Line_, Circle, Plane, "
-        "Sphere, Box, Selection, FieldData";
+    const char *sourceType_names = "SpecifiedPoint, PointList, SpecifiedLine, Circle, SpecifiedPlane, "
+        "SpecifiedSphere, SpecifiedBox, Selection, FieldData";
     switch (atts->GetSourceType())
     {
-      case IntegralCurveAttributes::Point:
-          SNPRINTF(tmpStr, 1000, "%ssourceType = %sPoint  # %s\n", prefix, prefix, sourceType_names);
+      case IntegralCurveAttributes::SpecifiedPoint:
+          SNPRINTF(tmpStr, 1000, "%ssourceType = %sSpecifiedPoint  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
       case IntegralCurveAttributes::PointList:
           SNPRINTF(tmpStr, 1000, "%ssourceType = %sPointList  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
-      case IntegralCurveAttributes::Line_:
-          SNPRINTF(tmpStr, 1000, "%ssourceType = %sLine_  # %s\n", prefix, prefix, sourceType_names);
+      case IntegralCurveAttributes::SpecifiedLine:
+          SNPRINTF(tmpStr, 1000, "%ssourceType = %sSpecifiedLine  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
       case IntegralCurveAttributes::Circle:
           SNPRINTF(tmpStr, 1000, "%ssourceType = %sCircle  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
-      case IntegralCurveAttributes::Plane:
-          SNPRINTF(tmpStr, 1000, "%ssourceType = %sPlane  # %s\n", prefix, prefix, sourceType_names);
+      case IntegralCurveAttributes::SpecifiedPlane:
+          SNPRINTF(tmpStr, 1000, "%ssourceType = %sSpecifiedPlane  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
-      case IntegralCurveAttributes::Sphere:
-          SNPRINTF(tmpStr, 1000, "%ssourceType = %sSphere  # %s\n", prefix, prefix, sourceType_names);
+      case IntegralCurveAttributes::SpecifiedSphere:
+          SNPRINTF(tmpStr, 1000, "%ssourceType = %sSpecifiedSphere  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
-      case IntegralCurveAttributes::Box:
-          SNPRINTF(tmpStr, 1000, "%ssourceType = %sBox  # %s\n", prefix, prefix, sourceType_names);
+      case IntegralCurveAttributes::SpecifiedBox:
+          SNPRINTF(tmpStr, 1000, "%ssourceType = %sSpecifiedBox  # %s\n", prefix, prefix, sourceType_names);
           str += tmpStr;
           break;
       case IntegralCurveAttributes::Selection:
@@ -589,6 +589,31 @@ PyIntegralCurveAttributes_ToString(const IntegralCurveAttributes *atts, const ch
           break;
     }
 
+    const char *cleanupMethod_names = "NoCleanup, Merge, Before, After";
+    switch (atts->GetCleanupMethod())
+    {
+      case IntegralCurveAttributes::NoCleanup:
+          SNPRINTF(tmpStr, 1000, "%scleanupMethod = %sNoCleanup  # %s\n", prefix, prefix, cleanupMethod_names);
+          str += tmpStr;
+          break;
+      case IntegralCurveAttributes::Merge:
+          SNPRINTF(tmpStr, 1000, "%scleanupMethod = %sMerge  # %s\n", prefix, prefix, cleanupMethod_names);
+          str += tmpStr;
+          break;
+      case IntegralCurveAttributes::Before:
+          SNPRINTF(tmpStr, 1000, "%scleanupMethod = %sBefore  # %s\n", prefix, prefix, cleanupMethod_names);
+          str += tmpStr;
+          break;
+      case IntegralCurveAttributes::After:
+          SNPRINTF(tmpStr, 1000, "%scleanupMethod = %sAfter  # %s\n", prefix, prefix, cleanupMethod_names);
+          str += tmpStr;
+          break;
+      default:
+          break;
+    }
+
+    SNPRINTF(tmpStr, 1000, "%scleanupThreshold = %g\n", prefix, atts->GetCleanupThreshold());
+    str += tmpStr;
     if(atts->GetCropBeginFlag())
         SNPRINTF(tmpStr, 1000, "%scropBeginFlag = 1\n", prefix);
     else
@@ -726,8 +751,8 @@ IntegralCurveAttributes_SetSourceType(PyObject *self, PyObject *args)
         fprintf(stderr, "An invalid sourceType value was given. "
                         "Valid values are in the range of [0,8]. "
                         "You can also use the following names: "
-                        "Point, PointList, Line_, Circle, Plane, "
-                        "Sphere, Box, Selection, FieldData"
+                        "SpecifiedPoint, PointList, SpecifiedLine, Circle, SpecifiedPlane, "
+                        "SpecifiedSphere, SpecifiedBox, Selection, FieldData"
                         ".");
         return NULL;
     }
@@ -2226,6 +2251,63 @@ IntegralCurveAttributes_GetDisplayGeometry(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
+IntegralCurveAttributes_SetCleanupMethod(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the cleanupMethod in the object.
+    if(ival >= 0 && ival < 4)
+        obj->data->SetCleanupMethod(IntegralCurveAttributes::CleanupMethod(ival));
+    else
+    {
+        fprintf(stderr, "An invalid cleanupMethod value was given. "
+                        "Valid values are in the range of [0,3]. "
+                        "You can also use the following names: "
+                        "NoCleanup, Merge, Before, After.");
+        return NULL;
+    }
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_GetCleanupMethod(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetCleanupMethod()));
+    return retval;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_SetCleanupThreshold(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+
+    double dval;
+    if(!PyArg_ParseTuple(args, "d", &dval))
+        return NULL;
+
+    // Set the cleanupThreshold in the object.
+    obj->data->SetCleanupThreshold(dval);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+IntegralCurveAttributes_GetCleanupThreshold(PyObject *self, PyObject *args)
+{
+    IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
+    PyObject *retval = PyFloat_FromDouble(obj->data->GetCleanupThreshold());
+    return retval;
+}
+
+/*static*/ PyObject *
 IntegralCurveAttributes_SetCropBeginFlag(PyObject *self, PyObject *args)
 {
     IntegralCurveAttributesObject *obj = (IntegralCurveAttributesObject *)self;
@@ -2913,6 +2995,10 @@ PyMethodDef PyIntegralCurveAttributes_methods[INTEGRALCURVEATTRIBUTES_NMETH] = {
     {"GetPathlinesCMFE", IntegralCurveAttributes_GetPathlinesCMFE, METH_VARARGS},
     {"SetDisplayGeometry", IntegralCurveAttributes_SetDisplayGeometry, METH_VARARGS},
     {"GetDisplayGeometry", IntegralCurveAttributes_GetDisplayGeometry, METH_VARARGS},
+    {"SetCleanupMethod", IntegralCurveAttributes_SetCleanupMethod, METH_VARARGS},
+    {"GetCleanupMethod", IntegralCurveAttributes_GetCleanupMethod, METH_VARARGS},
+    {"SetCleanupThreshold", IntegralCurveAttributes_SetCleanupThreshold, METH_VARARGS},
+    {"GetCleanupThreshold", IntegralCurveAttributes_GetCleanupThreshold, METH_VARARGS},
     {"SetCropBeginFlag", IntegralCurveAttributes_SetCropBeginFlag, METH_VARARGS},
     {"GetCropBeginFlag", IntegralCurveAttributes_GetCropBeginFlag, METH_VARARGS},
     {"SetCropBegin", IntegralCurveAttributes_SetCropBegin, METH_VARARGS},
@@ -2991,20 +3077,20 @@ PyIntegralCurveAttributes_getattr(PyObject *self, char *name)
 {
     if(strcmp(name, "sourceType") == 0)
         return IntegralCurveAttributes_GetSourceType(self, NULL);
-    if(strcmp(name, "Point") == 0)
-        return PyInt_FromLong(long(IntegralCurveAttributes::Point));
+    if(strcmp(name, "SpecifiedPoint") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::SpecifiedPoint));
     if(strcmp(name, "PointList") == 0)
         return PyInt_FromLong(long(IntegralCurveAttributes::PointList));
-    if(strcmp(name, "Line_") == 0)
-        return PyInt_FromLong(long(IntegralCurveAttributes::Line_));
+    if(strcmp(name, "SpecifiedLine") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::SpecifiedLine));
     if(strcmp(name, "Circle") == 0)
         return PyInt_FromLong(long(IntegralCurveAttributes::Circle));
-    if(strcmp(name, "Plane") == 0)
-        return PyInt_FromLong(long(IntegralCurveAttributes::Plane));
-    if(strcmp(name, "Sphere") == 0)
-        return PyInt_FromLong(long(IntegralCurveAttributes::Sphere));
-    if(strcmp(name, "Box") == 0)
-        return PyInt_FromLong(long(IntegralCurveAttributes::Box));
+    if(strcmp(name, "SpecifiedPlane") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::SpecifiedPlane));
+    if(strcmp(name, "SpecifiedSphere") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::SpecifiedSphere));
+    if(strcmp(name, "SpecifiedBox") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::SpecifiedBox));
     if(strcmp(name, "Selection") == 0)
         return PyInt_FromLong(long(IntegralCurveAttributes::Selection));
     if(strcmp(name, "FieldData") == 0)
@@ -3188,6 +3274,19 @@ PyIntegralCurveAttributes_getattr(PyObject *self, char *name)
     if(strcmp(name, "Ribbons") == 0)
         return PyInt_FromLong(long(IntegralCurveAttributes::Ribbons));
 
+    if(strcmp(name, "cleanupMethod") == 0)
+        return IntegralCurveAttributes_GetCleanupMethod(self, NULL);
+    if(strcmp(name, "NoCleanup") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::NoCleanup));
+    if(strcmp(name, "Merge") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::Merge));
+    if(strcmp(name, "Before") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::Before));
+    if(strcmp(name, "After") == 0)
+        return PyInt_FromLong(long(IntegralCurveAttributes::After));
+
+    if(strcmp(name, "cleanupThreshold") == 0)
+        return IntegralCurveAttributes_GetCleanupThreshold(self, NULL);
     if(strcmp(name, "cropBeginFlag") == 0)
         return IntegralCurveAttributes_GetCropBeginFlag(self, NULL);
     if(strcmp(name, "cropBegin") == 0)
@@ -3352,6 +3451,10 @@ PyIntegralCurveAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = IntegralCurveAttributes_SetPathlinesCMFE(self, tuple);
     else if(strcmp(name, "displayGeometry") == 0)
         obj = IntegralCurveAttributes_SetDisplayGeometry(self, tuple);
+    else if(strcmp(name, "cleanupMethod") == 0)
+        obj = IntegralCurveAttributes_SetCleanupMethod(self, tuple);
+    else if(strcmp(name, "cleanupThreshold") == 0)
+        obj = IntegralCurveAttributes_SetCleanupThreshold(self, tuple);
     else if(strcmp(name, "cropBeginFlag") == 0)
         obj = IntegralCurveAttributes_SetCropBeginFlag(self, tuple);
     else if(strcmp(name, "cropBegin") == 0)

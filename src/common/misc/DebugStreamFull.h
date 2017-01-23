@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -99,7 +99,7 @@ class MISC_API DebugStreamFull : public ostream
     bool           isdecorated() const { return decorate; }
     void           open(const char *progname, bool, bool);
     void           close();
-    static void    Initialize(const char *, int, bool=true, bool=false, bool=false, bool=false);
+    static void    Initialize(const char *, int, int, bool=true, bool=false, bool=false, bool=false);
   private:
     class DebugStreamBuf : public streambuf
     {
@@ -137,6 +137,8 @@ class MISC_API DebugStreamFull : public ostream
     bool             enabled;
     // true if output should be decorated with __FILE__ and __LINE__
     bool             decorate;
+    // number of threads (and files)
+    static int              numThreadLogs;
 };
 
 #endif

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,6 +78,9 @@ class     vtkRenderWindow;
 //      Brad Whitlock, Wed Mar 13 16:08:08 PDT 2013
 //      Add RenderRenderWindow.
 //
+//      Burlen Loring, Fri Oct 16 15:42:50 PDT 2015
+//      Fix a couple of compiler warnings
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinRenderingWithoutWindow : public VisWinRendering
@@ -94,8 +97,8 @@ class VISWINDOW_API VisWinRenderingWithoutWindow : public VisWinRendering
     virtual void Lower(void) {;};
     virtual void ActivateWindow(void) {;};
 
-    virtual void SetResizeEvent(void(*callback)(void *), void *) {;};
-    virtual void SetCloseCallback(void(*callback)(void *), void *) {;};
+    virtual void SetResizeEvent(void(*)(void *), void *) {;};
+    virtual void SetCloseCallback(void(*)(void *), void *) {;};
 
     virtual void SetImmediateModeRendering(bool immediateMode);
   protected:

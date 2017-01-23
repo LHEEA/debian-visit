@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1722,7 +1722,11 @@ PluginManager::PluginError() const
     FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), 0,
                   pluginError, MAX_PLUGINERROR, va);
 #elif !defined(VISIT_STATIC)
-    strncpy(pluginError, dlerror(), MAX_PLUGINERROR);
+    const char *pe = dlerror();
+    if(pe == NULL)
+        pluginError[0] = '\0';
+    else
+        strncpy(pluginError, pe, MAX_PLUGINERROR);
 #endif
     return pluginError;
 }

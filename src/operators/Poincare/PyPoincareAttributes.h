@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define POINCAREATTRIBUTES_NMETH 158
+#define POINCAREATTRIBUTES_NMETH 156
 void           PyPoincareAttributes_StartUp(PoincareAttributes *subj, void *data);
 void           PyPoincareAttributes_CloseDown();
 PyMethodDef *  PyPoincareAttributes_GetMethodTable(int *nMethods);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -255,6 +255,29 @@ avtText3DColleague::RemoveFromRenderer()
     {
         mediator.GetCanvas()->RemoveActor(info->textActor);
         info->addedToRenderer = false;
+    }
+}
+
+// ****************************************************************************
+// Method: avtText3DColleague:SetVisibility
+//
+// Purpose: 
+//   Sets visibility of the tool. Use this if you need to temporarily
+//   take the tool out of the scene during transparent rendering.
+//
+// Programmer: Burlen Loring 
+// Creation:   Mon Sep 28 16:06:19 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtText3DColleague::SetVisibility(int val)
+{
+    if (GetActive() && GetVisible())
+    {
+        info->textActor->SetVisibility(val);
     }
 }
 

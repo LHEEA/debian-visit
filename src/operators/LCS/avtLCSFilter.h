@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -214,6 +214,7 @@ protected:
 
     // Additional methods
     std::string   CreateCacheString(void);
+    std::string   CreateCacheStringSource(void);
     avtDataTree_p GetCachedDataSet();
     avtDataTree_p GetCachedResampledDataSet();
     avtDataTree_p GetCachedNativeDataSet(avtDataTree_p);

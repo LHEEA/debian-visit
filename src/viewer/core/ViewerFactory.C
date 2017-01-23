@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -268,6 +268,7 @@ ViewerFactory::SetActionManagerLogic(ViewerActionManager *mgr, ViewerWindow *win
     mgr->SetLogic(ViewerRPC::ExportColorTableRPC,           new ExportColorTableAction(win));
     mgr->SetLogic(ViewerRPC::ExportDBRPC,                   new ExportDBAction(win));
     mgr->SetLogic(ViewerRPC::ExportEntireStateRPC,          new ExportEntireStateAction(win));
+    mgr->SetLogic(ViewerRPC::ExportHostProfileRPC,          new ExportHostProfileAction(win));
     mgr->SetLogic(ViewerRPC::GetProcInfoRPC,                new GetProcInfoAction(win));
     mgr->SetLogic(ViewerRPC::GetQueryParametersRPC,         new GetQueryParametersAction(win));
     mgr->SetLogic(ViewerRPC::GetQueryParametersRPC,         new GetQueryParametersAction(win));

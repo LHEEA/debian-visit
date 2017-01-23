@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -560,7 +560,9 @@ avtImageColleague::GetOptions(AnnotationObject &annot)
 
     annot.SetPosition(actor->GetPosition());
 
-    double pos[] = {width, height, 0};
+    double pos[] = {static_cast<double>(width),
+                    static_cast<double>(height),
+                    0.};
     annot.SetPosition2(pos);
 
     annot.SetIntAttribute1(useOpacityColor ? 1 : 0);

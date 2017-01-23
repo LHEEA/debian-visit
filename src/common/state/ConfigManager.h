@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,12 +108,13 @@ protected:
     char ReadChar(std::istream &in);
     void PutBackChar(char c);
     void FinishTag(std::istream& in);
-    bool ReadField(std::istream &in, DataNode *parentNode, const std::string &tagName,
-                   NodeTypeEnum tagType, int tagLength);
-    DataNode *ReadFieldData(std::istream& in, const std::string &tagName, NodeTypeEnum tagType,
-                            int tagLength);
+    bool ReadField(std::istream &in, DataNode *parentNode,
+                   const std::string &tagName,
+                   NodeTypeEnum tagType, int tagLength, bool noEndTag);
+    DataNode *ReadFieldData(std::istream& in, const std::string &tagName,
+                            NodeTypeEnum tagType, int tagLength, bool noEndTag);
     bool ReadTag(std::istream &in, std::string &tagName, NodeTypeEnum &tagType,
-                   int &tagLength, bool &tagIsReturnTag);
+                 int &tagLength, bool &tagIsEndTag, bool &noEndTag);
     stringVector ReadStringVector(std::istream &in, char termChar);
     void RemoveLeadAndTailQuotes(stringVector &sv);
 

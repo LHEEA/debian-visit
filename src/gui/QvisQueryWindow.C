@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -381,20 +381,28 @@ QvisQueryWindow::CreateStandardQueryWidget()
     sLayout->addWidget(origData, 9, 0);
     QRadioButton *actualData = new QRadioButton(tr("Actual Data"), argPanel);
     dataOpts->addButton(actualData,1);
-    dataOpts->button(0)->setChecked(true);
     sLayout->addWidget(actualData, 10, 0);
 
-    dumpSteps = new QCheckBox(tr("Dump Steps"), argPanel);
-    connect(dumpSteps, SIGNAL(toggled(bool)), this, 
-            SLOT(dumpStepsToggled(bool)));
-    dumpSteps->hide();
-    sLayout->addWidget(dumpSteps, 13, 0, 1, 2);
+    dataOpts->button(0)->setChecked(true);
+
+    // Add the dump check box options to the argument panel.
+    dumpIndex = new QCheckBox(tr("Dump Index"), argPanel);
+    connect(dumpIndex, SIGNAL(toggled(bool)), this, 
+            SLOT(dumpIndexToggled(bool)));
+    dumpIndex->hide();
+    sLayout->addWidget(dumpIndex, 11, 0, 1, 2);
 
     dumpCoordinates = new QCheckBox(tr("Dump Coordinates"), argPanel);
     connect(dumpCoordinates, SIGNAL(toggled(bool)), this, 
             SLOT(dumpCoordinatesToggled(bool)));
     dumpCoordinates->hide();
-    sLayout->addWidget(dumpCoordinates, 13, 0, 1, 2);
+    sLayout->addWidget(dumpCoordinates, 12, 0, 1, 2);
+
+    dumpArcLength = new QCheckBox(tr("Dump Arc Length"), argPanel);
+    connect(dumpArcLength, SIGNAL(toggled(bool)), this, 
+            SLOT(dumpArcLengthToggled(bool)));
+    dumpArcLength->hide();
+    sLayout->addWidget(dumpArcLength, 13, 0, 1, 2);
 
     dumpValues = new QCheckBox(tr("Dump Values"), argPanel);
     connect(dumpValues, SIGNAL(toggled(bool)), this, 
@@ -948,6 +956,9 @@ QvisQueryWindow::UpdateResults(bool)
 //   Cyrus Harrison, Thu Jul 17 09:16:39 PDT 2014
 //   Added GUI case for Compactness queries.
 //
+//   Kevin Griffin, Thu Aug 11 10:53:13 PDT 2016
+//   Added GUI case for CompactnessVar queries.
+//
 // ****************************************************************************
 
 void
@@ -970,8 +981,9 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
     // reset a few defaults
     dataOpts->button(0)->setChecked(true);
     useGlobal->setChecked(0);
-    dumpSteps->setChecked(0);
+    dumpIndex->setChecked(0);
     dumpCoordinates->setChecked(0);
+    dumpArcLength->setChecked(0);
     dumpValues->setChecked(0);
     labels[0]->setEnabled(true);
     textFields[0]->setEnabled(true);
@@ -990,9 +1002,11 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
     {
         bool showWidgets[6] = {false, false, false, false, false, false};
         bool showDataOptions = false;
+        bool showDumpOptions = false;
         bool showGlobal = false;
-        bool showDumpSteps = false;
+        bool showDumpIndex = false;
         bool showDumpCoordinates = false;
+        bool showDumpArcLength = false;
         bool showDumpValues = false;
         QueryList::WindowType winT   = (QueryList::WindowType)winType[index];
         bool showTime = queryMode[index] != QueryList::QueryOnly;
@@ -1118,9 +1132,12 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
             xRayImageQueryWidget->setEnabled(true);
             xRayImageQueryWidget->show();
         }
-        else if (winT == QueryList::StreamlineInfo)
+        else if (winT == QueryList::IntegralCurveInfo)
         {
-            showDumpSteps = true;
+            showDumpIndex = true;
+            showDumpCoordinates = true;
+            showDumpArcLength = true;
+            showDumpValues = true;
         }
         else if (winT == QueryList::LineSamplerInfo)
         {
@@ -1129,6 +1146,13 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
         }
         else if (winT == QueryList::Compactness)
         {
+            labels[0]->setText(tr("Centroid"));
+            textFields[0]->setText("default");
+            showWidgets[0] = true;
+        }
+        else if (winT == QueryList::CompactnessVar)
+        {
+            varsLineEdit->setText("default");
             labels[0]->setText(tr("Centroid"));
             textFields[0]->setText("default");
             showWidgets[0] = true;
@@ -1148,6 +1172,7 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
                 textFields[i]->hide();
             }
         }
+
         if (showVars)
         {
             varsButton->show();
@@ -1158,6 +1183,7 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
             varsButton->hide();
             varsLineEdit->hide();
         }
+
         if (showGlobal)
         {
             useGlobal->show();
@@ -1166,15 +1192,21 @@ QvisQueryWindow::UpdateArgumentPanel(const QString &qname)
         {
             useGlobal->hide();
         }
-        if (showDumpSteps)
-            dumpSteps->show();
+
+        if (showDumpIndex)
+            dumpIndex->show();
         else
-            dumpSteps->hide();
+            dumpIndex->hide();
 
         if (showDumpCoordinates)
             dumpCoordinates->show();
         else
             dumpCoordinates->hide();
+
+        if (showDumpArcLength)
+            dumpArcLength->show();
+        else
+            dumpArcLength->hide();
 
         if (showDumpValues)
             dumpValues->show();
@@ -1412,6 +1444,9 @@ QvisQueryWindow::Apply(bool ignore)
 //   Kathleen Biagas, Thu Jan 12 09:55:40 PST 2012
 //   For Pick, put time options in a MapNode.
 //
+//   Kevin Griffin, Thu Aug 11 10:53:13 PDT 2016
+//   Added CompactnessVar query list.
+//
 // ****************************************************************************
 
 void
@@ -1564,11 +1599,14 @@ QvisQueryWindow::ExecuteStandardQuery()
             if (!xRayImageQueryWidget->GetQueryParameters(queryParams))
                 noErrors = false;
         }
-        else if (winT == QueryList::StreamlineInfo)
+        else if (winT == QueryList::IntegralCurveInfo)
         {
             if(noErrors)
             {
-                queryParams["dump_steps"] = (int)dumpSteps->isChecked();
+                queryParams["dump_index"] = (int)dumpIndex->isChecked();
+                queryParams["dump_coordinates"] = (int)dumpCoordinates->isChecked();
+                queryParams["dump_arclength"] = (int)dumpArcLength->isChecked();
+                queryParams["dump_values"] = (int)dumpValues->isChecked();
             }
         }
         else if (winT == QueryList::LineSamplerInfo)
@@ -1584,7 +1622,8 @@ QvisQueryWindow::ExecuteStandardQuery()
             if (!pickQueryWidget->GetQueryParameters(queryParams))
                 noErrors = false;
         }
-        else if(winT == QueryList::Compactness)
+        else if((winT == QueryList::Compactness) ||
+                (winT == QueryList::CompactnessVar))
         {
             string cen_txt = textFields[0]->text().simplified().toStdString();
             if(cen_txt != "default")
@@ -1958,21 +1997,6 @@ QvisQueryWindow::useGlobalToggled(bool val)
 
 
 // ****************************************************************************
-// Method:  QvisQueryWindow::dumpStepsToggled
-//
-// Programmer:  Dave Pugmire
-// Creation:    November  9, 2010
-//
-// ****************************************************************************
-
-void
-QvisQueryWindow::dumpStepsToggled(bool val)
-{
-    dumpSteps->setChecked(val);
-}
-
-
-// ****************************************************************************
 // Method:  QvisQueryWindow::dumpCoordinatesToggled
 //
 // Programmer:  Dave Pugmire
@@ -1984,6 +2008,36 @@ void
 QvisQueryWindow::dumpCoordinatesToggled(bool val)
 {
     dumpCoordinates->setChecked(val);
+}
+
+
+// ****************************************************************************
+// Method:  QvisQueryWindow::dumpArcLengthToggled
+//
+// Programmer:  Dave Pugmire
+// Creation:    November  9, 2010
+//
+// ****************************************************************************
+
+void
+QvisQueryWindow::dumpArcLengthToggled(bool val)
+{
+    dumpArcLength->setChecked(val);
+}
+
+
+// ****************************************************************************
+// Method:  QvisQueryWindow::dumpIndexToggled
+//
+// Programmer:  Dave Pugmire
+// Creation:    November  9, 2010
+//
+// ****************************************************************************
+
+void
+QvisQueryWindow::dumpIndexToggled(bool val)
+{
+    dumpIndex->setChecked(val);
 }
 
 

@@ -4,21 +4,33 @@ function bv_vtk_initialize
     export ON_VTK="on"
     export FORCE_VTK="no"
     export USE_SYSTEM_VTK="no"
+    add_extra_commandline_args "vtk" "system-vtk" 0 "Using system VTK (exp)"
     add_extra_commandline_args "vtk" "alt-vtk-dir" 1 "Use alternate VTK (exp)"
 }
 
 function bv_vtk_enable
 {
-DO_VTK="yes"
-ON_VTK="on"
-FORCE_VTK="yes"
+    DO_VTK="yes"
+    ON_VTK="on"
+    FORCE_VTK="yes"
 }
 
 function bv_vtk_disable
 {
-DO_VTK="no"
-ON_VTK="off"
-FORCE_VTK="no"
+    DO_VTK="no"
+    ON_VTK="off"
+    FORCE_VTK="no"
+}
+
+function bv_vtk_system_vtk
+{
+    TEST=`which vtk-config`
+    [ $? != 0 ] && error "System vtk-config not found, cannot configure vtk"
+
+    bv_vtk_enable
+    USE_SYSTEM_VTK="yes"
+    SYSTEM_VTK_DIR="$1"
+    info "Using System VTK: $SYSTEM_VTK_DIR"
 }
 
 function bv_vtk_alt_vtk_dir
@@ -31,60 +43,61 @@ function bv_vtk_alt_vtk_dir
 
 function bv_vtk_depends_on
 {
- depends_on="cmake"
+    depends_on="cmake"
 
- if [[ "$DO_PYTHON" == "yes" ]]; then
-      depends_on="${depends_on} python"
- fi
+    if [[ "$DO_PYTHON" == "yes" ]]; then
+        depends_on="${depends_on} python"
+    fi
 
- if [[ "$DO_R" == "yes" ]]; then
-      depends_on="${depends_on} R"
- fi
+    if [[ "$DO_R" == "yes" ]]; then
+        depends_on="${depends_on} R"
+    fi
 
- # Only depend on Qt if we're not doing server-only builds.
- if [[ "$DO_DBIO_ONLY" != "yes" ]]; then
-     if [[ "$DO_ENGINE_ONLY" != "yes" ]]; then
-         if [[ "$DO_SERVER_COMPONENTS_ONLY" != "yes" ]]; then 
-             depends_on="${depends_on} qt"
-         fi
-     fi
- fi
+    # Only depend on Qt if we're not doing server-only builds.
+    if [[ "$DO_DBIO_ONLY" != "yes" ]]; then
+        if [[ "$DO_ENGINE_ONLY" != "yes" ]]; then
+            if [[ "$DO_SERVER_COMPONENTS_ONLY" != "yes" ]]; then 
+                depends_on="${depends_on} qt"
+            fi
+        fi
+    fi
 
- echo ${depends_on}
+    echo ${depends_on}
 }
 
 function bv_vtk_force
 {
-  if [[ "$FORCE_VTK" == "yes" ]]; then
-     return 0;
-  fi
-  return 1;
+    if [[ "$FORCE_VTK" == "yes" ]]; then
+        return 0;
+    fi
+    return 1;
 }
 
 function bv_vtk_info
 {
-export VTK_FILE=${VTK_FILE:-"VTK-6.1.0.tar.gz"}
-export VTK_VERSION=${VTK_VERSION:-"6.1.0"}
-export VTK_SHORT_VERSION=${VTK_SHORT_VERSION:-"6.1"}
-export VTK_COMPATIBILITY_VERSION=${VTK_SHORT_VERSION}
-export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"VTK-6.1.0"}
-export VTK_INSTALL_DIR=${VTK_INSTALL_DIR:-"vtk"}
-export VTK_URL=${VTK_URL:-"http://www.vtk.org/files/release/6.1"}
-export VTK_MD5_CHECKSUM=""
-export VTK_SHA256_CHECKSUM=""
+    export VTK_FILE=${VTK_FILE:-"VTK-6.1.0.tar.gz"}
+    export VTK_VERSION=${VTK_VERSION:-"6.1.0"}
+    export VTK_SHORT_VERSION=${VTK_SHORT_VERSION:-"6.1"}
+    export VTK_COMPATIBILITY_VERSION=${VTK_SHORT_VERSION}
+    export VTK_BUILD_DIR=${VTK_BUILD_DIR:-"VTK-6.1.0"}
+    export VTK_INSTALL_DIR=${VTK_INSTALL_DIR:-"vtk"}
+    export VTK_URL=${VTK_URL:-"http://www.vtk.org/files/release/6.1"}
+    export VTK_MD5_CHECKSUM=""
+    export VTK_SHA256_CHECKSUM=""
 }
 
 function bv_vtk_print
 {
-printf "%s%s\n" "VTK_FILE=" "${VTK_FILE}"
-printf "%s%s\n" "VTK_VERSION=" "${VTK_VERSION}"
-printf "%s%s\n" "VTK_BUILD_DIR=" "${VTK_BUILD_DIR}"
+    printf "%s%s\n" "VTK_FILE=" "${VTK_FILE}"
+    printf "%s%s\n" "VTK_VERSION=" "${VTK_VERSION}"
+    printf "%s%s\n" "VTK_BUILD_DIR=" "${VTK_BUILD_DIR}"
 }
 
 function bv_vtk_print_usage
 {
-printf "\t\t%15s\n" "NOTE: not available for download from web"
-printf "%-15s %s [%s]\n" "--vtk" "Build VTK" "built by default unless --no-thirdparty flag is used"
+    printf "%-15s %s [%s]\n" "--vtk" "Build VTK" "built by default unless --no-thirdparty flag is used"
+    printf "%-15s %s [%s]\n" "--system-vtk" "Use the system installed VTK"
+    printf "%-15s %s [%s]\n" "--alt-vtk-dir" "Use VTK from an alternative directory"
 }
 
 function bv_vtk_host_profile
@@ -96,9 +109,9 @@ function bv_vtk_host_profile
 
     echo "SETUP_APP_VERSION(VTK $VTK_VERSION)" >> $HOSTCONF
     if [[ "$USE_SYSTEM_VTK" == "yes" ]]; then
-            echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR $SYSTEM_VTK_DIR)" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR $SYSTEM_VTK_DIR)" >> $HOSTCONF
     else
-            echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR \${VISITHOME}/${VTK_INSTALL_DIR}/\${VTK_VERSION}/\${VISITARCH})" >> $HOSTCONF
+        echo "VISIT_OPTION_DEFAULT(VISIT_VTK_DIR \${VISITHOME}/${VTK_INSTALL_DIR}/\${VTK_VERSION}/\${VISITARCH})" >> $HOSTCONF
     fi
 }
 
@@ -133,12 +146,12 @@ function bv_vtk_dry_run
 
 function apply_vtk_600_patch
 {
-# fix for 10.9 -- this fix is already in newer versions of VTK
+    # fix for 10.9 -- this fix is already in newer versions of VTK
     info "Patching vtk-6"
     patch -p0 << \EOF
 diff -c CMakeLists.txt.orig CMakeLists.txt
-*** CMakeLists.txt.orig	2014-05-30 15:54:16.000000000 -0700
---- CMakeLists.txt	2014-05-30 15:54:25.000000000 -0700
+*** CMakeLists.txt.orig 2014-05-30 15:54:16.000000000 -0700
+--- CMakeLists.txt      2014-05-30 15:54:25.000000000 -0700
 ***************
 *** 4,13 ****
   
@@ -162,8 +175,8 @@ diff -c CMakeLists.txt.orig CMakeLists.txt
 
 EOF
     if [[ $? != 0 ]] ; then
-      warn "vtk6 patch failed."
-      return 1
+        warn "vtk6 patch failed."
+        return 1
     fi
 
     return 0;
@@ -171,10 +184,10 @@ EOF
 
 function apply_vtk_610_patch
 {
-   patch -p0 << \EOF
+    patch -p0 << \EOF
 diff -c Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx.orig Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx
-*** Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx.orig	2015-01-29 15:59:05.000000000 -0800
---- Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx	2015-01-29 16:00:02.000000000 -0800
+*** Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx.orig    2015-01-29 15:59:05.000000000 -0800
+--- Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx 2015-01-29 16:00:02.000000000 -0800
 ***************
 *** 27,33 ****
   
@@ -195,8 +208,8 @@ diff -c Rendering/OpenGL/vtkXOpenGLRenderWindow.cxx.orig Rendering/OpenGL/vtkXOp
 
 EOF
     if [[ $? != 0 ]] ; then
-      warn "vtk6 patch failed."
-      return 1
+        warn "vtk6 patch failed."
+        return 1
     fi
 
     return 0;
@@ -204,10 +217,10 @@ EOF
 
 function apply_vtk_610_patch_2
 {
-   patch -p0 << \EOF
+    patch -p0 << \EOF
 diff -c Rendering/Core/vtkMapper.cxx.orig Rendering/Core/vtkMapper.cxx
-*** Rendering/Core/vtkMapper.cxx.orig	2015-03-19 18:46:17.000000000 -0700
---- Rendering/Core/vtkMapper.cxx	2015-03-19 18:44:43.000000000 -0700
+*** Rendering/Core/vtkMapper.cxx.orig   2015-03-19 18:46:17.000000000 -0700
+--- Rendering/Core/vtkMapper.cxx        2015-03-19 18:44:43.000000000 -0700
 ***************
 *** 18,23 ****
 --- 18,24 ----
@@ -293,8 +306,8 @@ diff -c Rendering/Core/vtkMapper.cxx.orig Rendering/Core/vtkMapper.cxx
           output[i] = 1.0;
 ***************
 *** 565,571 ****
-      }
-  }
+          }
+        }
   
 - 
   #define ColorTextureMapSize 256
@@ -305,7 +318,7 @@ diff -c Rendering/Core/vtkMapper.cxx.orig Rendering/Core/vtkMapper.cxx
 *** 583,588 ****
 --- 595,604 ----
       this->Colors = 0;
-      }
+          }
   
 +     double minRange = range[0];
 +     double maxRange = range[1];
@@ -408,8 +421,72 @@ diff -c Rendering/Core/vtkMapper.cxx.orig Rendering/Core/vtkMapper.cxx
 
 EOF
     if [[ $? != 0 ]] ; then
-      warn "vtk610_2 patch failed."
-      return 1
+        warn "vtk610_2 patch failed."
+        return 1
+    fi
+
+    return 0;
+}
+
+function apply_vtk_610_patch_3
+{
+    patch -p0 << \EOF
+diff -c CMake/vtkCompilerExtras.cmake.orig CMake/vtkCompilerExtras.cmake
+*** CMake/vtkCompilerExtras.cmake.orig        2014-01-22 07:55:41.000000000 -0800
+--- CMake/vtkCompilerExtras.cmake     2016-11-10 12:58:15.000000000 -0800
+***************
+*** 27,33 ****
+      OUTPUT_VARIABLE _gcc_version_info
+      ERROR_VARIABLE _gcc_version_info)
+
+!   string (REGEX MATCH "[345]\\.[0-9]\\.[0-9]"
+      _gcc_version "${_gcc_version_info}")
+    if(NOT _gcc_version)
+      string (REGEX REPLACE ".*\\(GCC\\).* ([34]\\.[0-9]) .*" "\\1.0"
+--- 27,33 ----
+      OUTPUT_VARIABLE _gcc_version_info
+      ERROR_VARIABLE _gcc_version_info)
+
+!   string (REGEX MATCH "[3456]\\.[0-9]\\.[0-9]"
+      _gcc_version "${_gcc_version_info}")
+    if(NOT _gcc_version)
+      string (REGEX REPLACE ".*\\(GCC\\).* ([34]\\.[0-9]) .*" "\\1.0"
+EOF
+    if [[ $? != 0 ]] ; then
+        warn "vtk610_3 patch failed."
+        return 1
+    fi
+
+    return 0;
+}
+
+function apply_vtk_610_patch_4
+{
+    patch -p0 << \EOF
+diff -c CMake/GenerateExportHeader.cmake.orig CMake/GenerateExportHeader.cmake
+*** CMake/GenerateExportHeader.cmake.orig     2014-01-22 07:55:41.000000000 -0800
+--- CMake/GenerateExportHeader.cmake  2016-11-10 13:06:42.000000000 -0800
+***************
+*** 166,172 ****
+      execute_process(COMMAND ${CMAKE_C_COMPILER} --version
+        OUTPUT_VARIABLE _gcc_version_info
+        ERROR_VARIABLE _gcc_version_info)
+!     string(REGEX MATCH "[345]\\.[0-9]\\.[0-9]"
+        _gcc_version "${_gcc_version_info}")
+      # gcc on mac just reports: "gcc (GCC) 3.3 20030304 ..." without the
+      # patch level, handle this here:
+--- 166,172 ----
+      execute_process(COMMAND ${CMAKE_C_COMPILER} --version
+        OUTPUT_VARIABLE _gcc_version_info
+        ERROR_VARIABLE _gcc_version_info)
+!     string(REGEX MATCH "[3456]\\.[0-9]\\.[0-9]"
+        _gcc_version "${_gcc_version_info}")
+      # gcc on mac just reports: "gcc (GCC) 3.3 20030304 ..." without the
+      # patch level, handle this here:
+EOF
+    if [[ $? != 0 ]] ; then
+        warn "vtk610_4 patch failed."
+        return 1
     fi
 
     return 0;
@@ -422,8 +499,10 @@ function apply_vtk_patch
     if [[ ${VTK_VERSION} == 6.1.0 ]] ; then
         apply_vtk_600_patch
         apply_vtk_610_patch_2
+        apply_vtk_610_patch_3
+        apply_vtk_610_patch_4
         if [[ "$OPSYS" == "Linux" ]] ; then
-	   apply_vtk_610_patch
+            apply_vtk_610_patch
         fi
         if [[ $? != 0 ]] ; then
             return 1
@@ -503,8 +582,14 @@ function build_vtk
             ensure_built_or_ready $VTK_INSTALL_DIR    $VTK_VERSION    $VTK_BUILD_DIR    $VTK_FILE
         fi
     fi
+
+    #
+    # Prepare the build dir using src file.
+    #
     prepare_build_dir $VTK_BUILD_DIR $VTK_FILE
     untarred_vtk=$?
+    # 0, already exists, 1 untarred src, 2 error
+
     if [[ $untarred_vtk == -1 ]] ; then
         warn "Unable to prepare VTK build directory. Giving Up!"
         return 1
@@ -522,14 +607,18 @@ function build_vtk
             return 1
         else
             warn "Patch failed, but continuing.  I believe that this script\n" \
-                 "tried to apply a patch to an existing directory which had " \
-                 "already been patched ... that is, that the patch is " \
+                 "tried to apply a patch to an existing directory that had\n" \
+                 "already been patched ... that is, the patch is\n" \
                  "failing harmlessly on a second application."
         fi
     fi
+
     # move back up to the start dir 
     cd "$START_DIR"
 
+    #
+    # Configure VTK
+    #
     info "Configuring VTK . . ."
 
     # Make a build directory for an out-of-source build.. Change the
@@ -550,7 +639,6 @@ function build_vtk
     #
     # Setup paths and libs for python for the VTK build.
     #
-
     if [[ "$OPSYS" == "Darwin" ]]; then
         if [[ "${VISIT_PYTHON_DIR}/lib" != "/usr/lib" ]]; then
             export DYLD_LIBRARY_PATH="${VISIT_PYTHON_DIR}/lib/:$DYLD_LIBRARY_PATH"
@@ -675,7 +763,7 @@ function build_vtk
             vopts="${vopts} -DPYTHON_EXTRA_LIBS:STRING=${VTK_PY_LIBS}"
             vopts="${vopts} -DPYTHON_INCLUDE_DIR:PATH=${pyinc}"
             vopts="${vopts} -DPYTHON_LIBRARY:FILEPATH=${pylib}"
-#            vopts="${vopts} -DPYTHON_UTIL_LIBRARY:FILEPATH="
+            #            vopts="${vopts} -DPYTHON_UTIL_LIBRARY:FILEPATH="
         else
             warn "Forgetting python filters because we are doing a static build."
         fi
@@ -717,7 +805,7 @@ function build_vtk
     #
     info "Building VTK . . . (~20 minutes)"
     env DYLD_LIBRARY_PATH=`pwd`/bin $MAKE $MAKE_OPT_FLAGS || \
-      error "VTK did not build correctly.  Giving up."
+        error "VTK did not build correctly.  Giving up."
 
     info "Installing VTK . . . "
     $MAKE install || error "VTK did not install correctly."
@@ -777,4 +865,3 @@ function bv_vtk_build
         info "Done building VTK"
     fi
 }
-

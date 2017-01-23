@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,6 +78,9 @@ class QvisDialogLineEdit;
 //   Cyrus Harrison, Mon Nov 24 11:57:42 PST 2008
 //   Support for default system appearance.
 //
+//   Kathleen Biagas, Fri Jan 22 14:11:18 PST 2016
+//   Add styleNames.
+//
 // ****************************************************************************
 
 class GUI_API QvisAppearanceWindow : public QvisPostableWindowObserver
@@ -120,6 +123,7 @@ private:
     QLabel             *orientationLabel;
     QvisDialogLineEdit *fontName;
     QLabel             *fontLabel;
+    QStringList         styleNames;
 };
 
 #endif

@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2000 - 2014, Lawrence Livermore National Security, LLC
+ * Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
  * Produced at the Lawrence Livermore National Laboratory
  * LLNL-CODE-442911
  * All rights reserved.
@@ -189,6 +189,7 @@ private:
     void    SynchScalars(sphData &);
     std::vector<int> GetParticipatingIndices(vtkDataSet **, const int);
     void    GetDimensions(std::vector<int> &, std::vector<double> &, std::vector<double> &, const std::vector<double> &, const double *const);
+    void    ExtendBoundsIfNeeded(double *const);
 };
 
 #endif

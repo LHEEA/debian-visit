@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,18 +46,18 @@ class QLineEdit;
 class QCheckBox;
 class QButtonGroup;
 class QLabel;
+class QSpinBox;
 class QvisOpacitySlider;
 class QvisColorTableWidget;
 class QvisPointControl;
 class QvisLineStyleWidget;
 class QvisLineWidthWidget;
 class QvisVariableButton;
-class QSpinBox;
+class QvisColorButton;
+class QvisCollapsibleLayout;
 
-class Subject;
 class PseudocolorAttributes;
 
-class QvisCollapsibleLayout;
 
 // ****************************************************************************
 // Class: QvisPseudocolorPlotWindow
@@ -114,6 +114,13 @@ class QvisCollapsibleLayout;
 //
 //   Kathleen Bonnell, Mon Jan 17 18:02:39 MST 2011
 //   Change colorTableButton to colorTableWidget to gain invert toggle.
+//
+//   Eric Brugger, Wed Oct 26 09:12:16 PDT 2016
+//   I modified the plot to support independently setting the point style
+//   for the two end points of lines.
+//
+//   Cyrus Harrison, Wed Nov  2 19:09:51 PDT 2016
+//   Remove tubeRadiusVarLabel, the check box used for this includes a label.
 //
 // ****************************************************************************
 
@@ -175,23 +182,30 @@ private slots:
     void lineStyleChanged(int newStyle);
     void lineWidthChanged(int newWidth);
 
-    void tubeDisplayDensityChanged(int val);
     void tubeRadiusSizeTypeChanged(int v);
     void tubeRadiusProcessText();
-    void tubeRadiusVaryChanged(bool val);
-    void tubeRadiusVaryVariableChanged(const QString &var);
-    void tubeRadiusVaryFactorProcessText();
+    void tubeRadiusVarToggled(bool val);
+    void tubeRadiusVarChanged(const QString &var);
+    void tubeRadiusVarRatioProcessText();
+    void tubeResolutionChanged(int val);
 
-    void endPointTypeChanged(int newType);
-    void endPointStyleChanged(int newStyle);
-    void endPointRadiusSizeTypeChanged(int v);
+    void tailStyleChanged(int newStyle);
+    void headStyleChanged(int newStyle);
+  
     void endPointRadiusProcessText();
+    void endPointRadiusSizeTypeChanged(int v);
     void endPointRatioProcessText();
+    void endPointRadiusVarToggled(bool val);
+    void endPointRadiusVarChanged(const QString &var);
+    void endPointRadiusVarRatioProcessText();
+    void endPointResolutionChanged(int val);
 
     void smoothingLevelChanged(int index);
     void renderSurfacesChanged(bool);
     void renderWireframeChanged(bool);
+    void wireframeColorChanged(const QColor &color);
     void renderPointsChanged(bool);
+    void pointColorChanged(const QColor &color);
 
     void legendToggled(bool on);
     void lightingToggled(bool on);
@@ -240,35 +254,43 @@ private:
     QvisLineWidthWidget   *lineWidth;
 
 
-    QLabel             *tubeDisplayDensityLabel;
-    QSpinBox           *tubeDisplayDensity;
     QLabel             *tubeRadiusLabel;
     QLineEdit          *tubeRadius;
     QComboBox          *tubeRadiusSizeType;
 
-    QCheckBox          *tubeRadiusVary;
-    QLabel             *tubeRadiusVaryVariableLabel;
-    QvisVariableButton *tubeRadiusVaryVariable;
-    QLabel             *tubeRadiusVaryFactorLabel;
-    QLineEdit          *tubeRadiusVaryFactorEdit;
-  
-    // QLineEdit *ribbonWidth;
-    // QComboBox *ribbonSizeType;
+    QCheckBox          *tubeRadiusVarEnabled;
+    QvisVariableButton *tubeRadiusVar;
+    QLabel             *tubeRadiusVarRatioLabel;
+    QLineEdit          *tubeRadiusVarRatio;
 
-    QLabel    *endPointTypeLabel;
-    QComboBox *endPointType;
-    QLabel    *endPointStyleLabel;
-    QComboBox *endPointStyle;
+    QLabel             *tubeResolutionLabel;
+    QSpinBox           *tubeResolution;
+
+    QLabel    *tailStyleLabel;
+    QComboBox *tailStyle;
+    QLabel    *headStyleLabel;
+    QComboBox *headStyle;
+
     QLabel    *endPointRadiusLabel;
     QLineEdit *endPointRadius;
     QComboBox *endPointRadiusSizeType;
     QLabel    *endPointRatioLabel;
     QLineEdit *endPointRatio;
 
+    QCheckBox          *endPointRadiusVarEnabled;
+    QvisVariableButton *endPointRadiusVar;
+    QLabel             *endPointRadiusVarRatioLabel;
+    QLineEdit          *endPointRadiusVarRatio;
+
+    QLabel   *endPointResolutionLabel;
+    QSpinBox *endPointResolution;
+
     QLabel                *renderLabel;
     QCheckBox             *renderSurfaces;
     QCheckBox             *renderWireframe;
+    QvisColorButton       *wireframeRenderColor;
     QCheckBox             *renderPoints;
+    QvisColorButton       *pointsRenderColor;
     QButtonGroup          *smoothingLevelButtons;
 
     QCheckBox             *legendToggle;

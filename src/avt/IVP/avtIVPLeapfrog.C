@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,7 +46,6 @@
 
 #include <limits>
 #include <cmath>
-#include <float.h>
 
 #include <avtIVPFlashField.h>
 
@@ -226,7 +225,7 @@ avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
     t = t + h;
     
     if( period && last )
-      t += FLT_EPSILON;
+      t += epsilon;
 
     // Reset the step size on sucessful step.
     h = h_max;

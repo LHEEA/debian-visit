@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,7 +62,6 @@ namespace SiloDBOptions
     const char *const SILO_RDOPT_IGNORE_DEXTS2 = "Ignore Data Extents";
 
     // Write options
-    const char *const SILO_WROPT_SINGLE_FILE = "Single File";
     const char *const SILO_WROPT_DRIVER = "Driver";
     const char *const SILO_WROPT_CKSUMS = "Checksums";
     const char *const SILO_WROPT_COMPRESSION = "DBSetCompression()";

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -143,9 +143,8 @@ enum avtPrecisionType
 enum avtBackendType
 {
     AVT_BACKEND_VTK     = 0,
-    AVT_BACKEND_DAX,   /* 1 */
-    AVT_BACKEND_EAVL,  /* 2 */
-    AVT_BACKEND_PISTON /* 3 */
+    AVT_BACKEND_EAVL,  /* 1 */
+    AVT_BACKEND_VTKM   /* 2 */
 };
 
 enum SetState

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -491,6 +491,8 @@ QvisMainWindow::QvisMainWindow(int orientation, const char *captionString)
     filePopup->addAction(tr("File &information . . ."), 
                          this, SIGNAL(activateFileInformationWindow()),
                          QKeySequence(Qt::CTRL + Qt::Key_I));
+    filePopup->addAction(tr("SeedMe . . ."),
+                         this, SIGNAL(activateSeedMeWindow()));
 
     filePopup->addSeparator();
 

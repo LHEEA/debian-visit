@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -36,6 +36,9 @@
 *
 *****************************************************************************/
 #include "simV2_custom.h"
+// must do this in all translation units to prevent multiple numpy c-api
+// method tables
+#define NO_IMPORT_ARRAY
 #include <simV2_python_config.h>
 #include <VisItControlInterface_V2.h>
 #include <VisIt_VariableData.h>
@@ -145,6 +148,19 @@ int pylibsim_invokeBroadcastIntCallback(int *arg0, int arg1)
                 *arg0 = (int)PyInt_AsLong(ret);
                 retval = VISIT_OKAY;
             }
+            else if(PyLong_Check(ret))
+            {
+                /* Return the value in arg0. */
+                *arg0 = (int)PyLong_AsLong(ret);
+                retval = VISIT_OKAY;
+            }
+            else if (ret == Py_None)
+            {
+                // valid return from sending process
+                // if retval isn't set in this case, then LIBSIM prints
+                // a misleading VISIT_ERROR message to trace files.
+                retval = VISIT_OKAY;
+            }
             Py_DECREF(ret);
         }
     }
@@ -180,7 +196,13 @@ pylibsim_invokeBroadcastStringCallback(char *arg0, int arg1, int arg2)
                 /* Return the value in arg0. */
                 strcpy(arg0, PyString_AsString(ret));
                 retval = VISIT_OKAY;
-
+            }
+            else if(ret == Py_None)
+            {
+                // valid return from sending process
+                // if retval isn't set in this case, then LIBSIM prints
+                // a misleading VISIT_ERROR message to trace files.
+                retval = VISIT_OKAY;
             }
             Py_DECREF(ret);
         }
@@ -288,6 +310,12 @@ int pylibsim_invoke_i_F_pi_i_pv(int *arg0, int arg1, void *cbdata)
                 *arg0 = (int)PyInt_AsLong(ret);
                 retval = VISIT_OKAY;
             }
+            else if(PyLong_Check(ret))
+            {
+                /* Return the value in arg0. */
+                *arg0 = (int)PyLong_AsLong(ret);
+                retval = VISIT_OKAY;
+            }
             Py_DECREF(ret);
         }
     }
@@ -383,6 +411,10 @@ visit_handle pylibsim_invoke_h_F_pv(void *cbdata)
             {
                 h = static_cast<visit_handle>(PyInt_AsLong(ret));
             }
+            else if(PyLong_Check(ret))
+            {
+                h = static_cast<visit_handle>(PyLong_AsLong(ret));
+            }
             Py_DECREF(ret);
         }
     }
@@ -418,6 +450,10 @@ int pylibsim_invoke_i_F_pv(void *cbdata)
             if(PyInt_Check(ret))
             {
                 h = static_cast<int>(PyInt_AsLong(ret));
+            }
+            else if(PyLong_Check(ret))
+            {
+                h = static_cast<int>(PyLong_AsLong(ret));
             }
             Py_DECREF(ret);
         }
@@ -458,6 +494,10 @@ visit_handle pylibsim_invoke_h_F_i_pcc_pv(int arg0, const char *arg1, void *cbda
             {
                 h = static_cast<visit_handle>(PyInt_AsLong(ret));
             }
+            else if(PyLong_Check(ret))
+            {
+                h = static_cast<visit_handle>(PyLong_AsLong(ret));
+            }
             Py_DECREF(ret);
         }
     }
@@ -496,6 +536,10 @@ visit_handle pylibsim_invoke_h_F_pcc_pv(const char *arg0, void *cbdata)
             {
                 h = static_cast<visit_handle>(PyInt_AsLong(ret));
             }
+            else if(PyInt_Check(ret))
+            {
+                h = static_cast<visit_handle>(PyLong_AsLong(ret));
+            }
             Py_DECREF(ret);
         }
     }
@@ -533,6 +577,10 @@ int pylibsim_invoke_i_F_pcc_pv(const char *arg0, void *cbdata)
             if(PyInt_Check(ret))
             {
                 ierr = static_cast<int>(PyInt_AsLong(ret));
+            }
+            else if(PyLong_Check(ret))
+            {
+                ierr = static_cast<int>(PyLong_AsLong(ret));
             }
             Py_DECREF(ret);
         }
@@ -578,6 +626,10 @@ int pylibsim_invoke_i_F_pcc_i_i_h_h_pv(
             {
                 ierr = static_cast<int>(PyInt_AsLong(ret));
             }
+            else if(PyLong_Check(ret))
+            {
+                ierr = static_cast<int>(PyLong_AsLong(ret));
+            }
             Py_DECREF(ret);
         }
     }
@@ -622,6 +674,10 @@ int pylibsim_invoke_i_F_pcc_pcc_i_h_h_pv(
             {
                 ierr = static_cast<int>(PyInt_AsLong(ret));
             }
+            else if(PyLong_Check(ret))
+            {
+                ierr = static_cast<int>(PyLong_AsLong(ret));
+            }
             Py_DECREF(ret);
         }
     }
@@ -645,6 +701,36 @@ void pylibsim_invoke_v_F_i_pv(int arg0, void *cbdata)
         PyObject *tuple = PyTuple_New(1);
 
         PyTuple_SET_ITEM(tuple, 0, PyInt_FromLong((long)arg0));
+
+        Py_INCREF(data); // SET_ITEM steals a ref
+        PyTuple_SET_ITEM(tuple, 1, data);
+
+        PyObject *ret = PyObject_Call(callback, tuple, NULL);
+
+        Py_DECREF(tuple);
+
+        if(ret != NULL)
+        {
+            Py_DECREF(ret);
+        }
+    }
+}
+
+/******************************************************************************
+ * used by: UI_textChanged, UI_cellChanged
+ ******************************************************************************/
+void pylibsim_invoke_v_F_pc_pv(char *arg0, void *cbdata)
+{
+    /* a callback and its data */
+    simV2_CallbackData *cbpair = static_cast<simV2_CallbackData*>(cbdata);
+    simV2_PyObject &callback = cbpair->first;
+    simV2_PyObject &data = cbpair->second;
+
+    if (callback)
+    {
+        PyObject *tuple = PyTuple_New(1);
+
+        PyTuple_SET_ITEM(tuple, 0, PyString_FromString(arg0));
 
         Py_INCREF(data); // SET_ITEM steals a ref
         PyTuple_SET_ITEM(tuple, 1, data);
@@ -1054,19 +1140,6 @@ int getData(
 }
 
 /******************************************************************************/
-void initialize()
-{
-#if defined(SIMV2_USE_NUMPY)
-    static bool initialized = false;
-    if (!initialized)
-    {
-        import_array();
-        initialized = true;
-    }
-#endif
-}
-
-/******************************************************************************/
 void pyarray_destructor(void *object)
 {
 #if defined(SIMV2_NUMPY_DEBUG)
@@ -1106,7 +1179,6 @@ int pylibsim_VisIt_VariableData_setDataAsD(
           int nTuples,
           PyObject *seq)
 {
-    pylibsim::initialize();
     double *data = NULL;
     if (pylibsim::getData<double>(owner, nComps, nTuples, seq, data))
     {
@@ -1124,7 +1196,6 @@ int pylibsim_VisIt_VariableData_setDataAsF(
           int nTuples,
           PyObject *seq)
 {
-    pylibsim::initialize();
     float *data = NULL;
     if (pylibsim::getData<float>(owner, nComps, nTuples, seq, data))
     {
@@ -1142,7 +1213,6 @@ int pylibsim_VisIt_VariableData_setDataAsI(
           int nTuples,
           PyObject *seq)
 {
-    pylibsim::initialize();
     int *data = NULL;
     if (pylibsim::getData<int>(owner, nComps, nTuples, seq, data))
     {
@@ -1160,7 +1230,6 @@ int pylibsim_VisIt_VariableData_setDataAsC(
           int nTuples,
           PyObject *seq)
 {
-    pylibsim::initialize();
     char *data = NULL;
     if (pylibsim::getData<char>(owner, nComps, nTuples, seq, data))
     {

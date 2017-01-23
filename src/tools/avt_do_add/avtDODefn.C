@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -176,12 +176,9 @@ avtDO_REPL_STRING::DerivedCopy(avtDataObject *dob)
 //
 // ****************************************************************************
 
-int
+long long
 avtDO_REPL_STRING::GetNumberOfCells(bool onlyWantPolygonCount) const
 {
    YOU MUST IMPLEMENT THIS.  IF YOU WILL NEVER BE RENDERING YOUR DATA OBJECT
    (BECAUSE YOU WILL ALWAYS BE CONVERTING TO AN avtDataset), THEN JUST RETURN 0.
 }
-
-
-

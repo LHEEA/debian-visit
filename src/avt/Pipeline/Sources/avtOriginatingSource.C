@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -521,18 +521,18 @@ avtOriginatingSource::BalanceLoad(avtContract_p contract)
     avtDataRequest_p rv = NULL;
     if (!UseLoadBalancer())
     {
-        debug5 << "This source should not load balance the data." << endl;
+        debug1 << "This source should not load balance the data." << endl;
         rv = contract->GetDataRequest();
     }
     else if (! contract->ShouldUseLoadBalancing())
     {
-        debug5 << "This pipeline has indicated that no load balancing should "
+        debug1 << "This pipeline has indicated that no load balancing should "
                << "be used." << endl;
         rv = contract->GetDataRequest();
     }
     else if (loadBalanceFunction != NULL)
     {
-        debug5 << "Using load balancer to reduce data." << endl;
+        debug1 << "Using load balancer to reduce data." << endl;
         int t0 = visitTimer->StartTimer();
         rv = loadBalanceFunction(loadBalanceFunctionArgs, contract);
         visitTimer->StopTimer(t0, "Call loadBalanceFunction");

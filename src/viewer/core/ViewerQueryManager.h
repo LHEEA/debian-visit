@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -233,9 +233,6 @@ typedef struct {
 //
 //    Cyrus Harrison, Tue Sep 18 11:01:57 PDT 2007
 //    Added floatFormat 
-//
-//    Dave Pugmire, Tue Nov  9 14:57:53 EST 2010
-//    Added dumpSteps for StreamlineInfo query.
 //
 //    Kathleen Bonnell, Tue Mar  1 10:24:20 PST 2011
 //    Added arg curvePlotType to PointQuery and PickThroughTime methods.

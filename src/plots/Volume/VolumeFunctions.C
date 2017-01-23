@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -924,7 +924,7 @@ Unnormalized_Kernel_Gradient(int dim, double r, double *r12, double h,
     double s = 0;
     double temp = 0;
 
-    s = abs(r/h);
+    s = fabs(r/h);
 // NORMALIZATION IS SET FOR 1-DIMENSION
     if( (s>0.0) && (s<=1.0) )
     {
@@ -1012,6 +1012,9 @@ GetConnectedVertices(vtkDataSet* mesh, int seed, vtkSmartPointer<vtkIdList> conn
 //
 // Modifications:
 //
+//   Burlen Loring, Wed Oct  7 12:04:03 PDT 2015
+//   fix double delete of a vtk dataset.
+//
 // ****************************************************************************
 
 float
@@ -1028,7 +1031,6 @@ VolumeCalculateGradient_SPH(vtkDataSet *ds, vtkDataArray *opac,
     //code taken from avtDelaunayFilter.C, ExecuteData Method
     vtkDelaunay3D *d3 = NULL;
 
-    vtkDataSet *outDS = NULL;
     int dimension = 3;  //For now, support is limited to 3D only
     double p[3], r[3], grad[3];
     double h = 0.0, hmax = 0.0, radius = 0.0;
@@ -1039,9 +1041,8 @@ VolumeCalculateGradient_SPH(vtkDataSet *ds, vtkDataArray *opac,
     d3 = vtkDelaunay3D::New();
     d3->SetInputData(ds);
     d3->Update();
-    outDS = d3->GetOutput();
 
-    d3->Delete();
+    vtkDataSet *outDS = d3->GetOutput();
 
     //Loop over all the points.  Collect the points around them (points around points).
     //  build an SPH kernel around them.
@@ -1114,8 +1115,7 @@ VolumeCalculateGradient_SPH(vtkDataSet *ds, vtkDataArray *opac,
             gmn[n] /= maxmag;
     }
 
-    if(outDS)
-        outDS->Delete();
+    d3->Delete();
 
     return maxmag;
 }

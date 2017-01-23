@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -902,7 +902,7 @@ avtSpheralFileFormat::GetNodeListIndexFromName(const char *name)
     {
         if (strcmp(nodeLists[i].c_str(), name) == 0)
         {
-            return i;
+            return (int)i;
         }
     }
 
@@ -938,7 +938,7 @@ avtSpheralFileFormat::GetFieldIndexFromName(const char *name)
     {
         if (strcmp(fields[i].c_str(), name) == 0)
         {
-            return i;
+            return (int)i;
         }
     }
 

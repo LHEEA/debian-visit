@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -66,6 +66,11 @@ QvisSimulationMessageWindow::CreateWindowContents()
     messages = new QTextEdit(central);
     messages->setReadOnly(true);
     topLayout->addWidget(messages);
+
+    QPushButton *clearButton = new QPushButton(tr("Clear"), central);
+    connect(clearButton, SIGNAL(clicked()), this, SLOT(clear()));
+    clearButton->setEnabled(true);
+    topLayout->addWidget(clearButton, 1, 0);
 }
 
 //

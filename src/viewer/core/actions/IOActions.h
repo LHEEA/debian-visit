@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -212,6 +212,30 @@ class VIEWERCORE_API WriteConfigFileAction : public ViewerActionLogic
 public:
     WriteConfigFileAction(ViewerWindow *win) : ViewerActionLogic(win) {}
     virtual ~WriteConfigFileAction() {}
+
+    virtual void Execute();
+};
+
+// ****************************************************************************
+// Class: ExportHostProfileAction
+//
+// Purpose:
+//   Handles ViewerRPC::ExportHostProfileRPC
+//
+// Notes:      
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Jun  3 16:14:51 PDT 2016
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+class VIEWERCORE_API ExportHostProfileAction : public ViewerActionLogic
+{
+public:
+    ExportHostProfileAction(ViewerWindow *win) : ViewerActionLogic(win) {}
+    virtual ~ExportHostProfileAction() {}
 
     virtual void Execute();
 };

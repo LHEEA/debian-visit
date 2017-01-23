@@ -176,6 +176,35 @@
       parameter   (VISIT_CELL_POINT                  = 7)
       integer      VISIT_CELL_POLYHEDRON
       parameter   (VISIT_CELL_POLYHEDRON             = 8)
+      integer      VISIT_CELL_QUADRATIC_EDGE
+      parameter   (VISIT_CELL_QUADRATIC_EDGE         = 20)
+      integer      VISIT_CELL_QUADRATIC_TRI
+      parameter   (VISIT_CELL_QUADRATIC_TRI          = 21)
+      integer      VISIT_CELL_QUADRATIC_QUAD
+      parameter   (VISIT_CELL_QUADRATIC_QUAD         = 22)
+      integer      VISIT_CELL_QUADRATIC_TET
+      parameter   (VISIT_CELL_QUADRATIC_TET          = 23)
+      integer      VISIT_CELL_QUADRATIC_PYRAMID
+      parameter   (VISIT_CELL_QUADRATIC_PYRAMID      = 24)
+      integer      VISIT_CELL_QUADRATIC_WEDGE
+      parameter   (VISIT_CELL_QUADRATIC_WEDGE        = 25)
+      integer      VISIT_CELL_QUADRATIC_HEX
+      parameter   (VISIT_CELL_QUADRATIC_HEX          = 26)
+      integer      VISIT_CELL_BIQUAD_TRI
+      parameter   (VISIT_CELL_BIQUAD_TRI             = 27)
+      integer      VISIT_CELL_BIQUAD_QUAD
+      parameter   (VISIT_CELL_BIQUAD_QUAD            = 28)
+      integer      VISIT_CELL_TRIQUAD_HEX
+      parameter   (VISIT_CELL_TRIQUAD_HEX            = 29)
+      integer      VISIT_CELL_QUAD_LIN_QUAD
+      parameter   (VISIT_CELL_QUAD_LIN_QUAD          = 30)
+      integer      VISIT_CELL_QUAD_LIN_WEDGE
+      parameter   (VISIT_CELL_QUAD_LIN_WEDGE         = 31)
+      integer      VISIT_CELL_BIQUAD_QUAD_WEDGE
+      parameter   (VISIT_CELL_BIQUAD_QUAD_WEDGE      = 32)
+      integer      VISIT_CELL_BIQUAD_QUAD_HEX
+      parameter   (VISIT_CELL_BIQUAD_QUAD_HEX        = 33)
+
 
 !... Coordinate modes 
       integer      VISIT_COORD_MODE_SEPARATE
@@ -1124,6 +1153,10 @@
       external visitmdsimaddcustomcommand
       integer  visitmdsimaddcustomcommand
 
+! visitmdsimaddmessage(visit_handle h, visit_handle md)
+      external visitmdsimaddmessage
+      integer  visitmdsimaddmessage
+
 
 ! VisIt_SpeciesMetaData functions
 !cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
@@ -1715,6 +1748,8 @@
       external visitvardatafree
       integer  visitvardatafree
 
+!! Contiguous array storage
+
 ! visitvardatasetc(visit_handle obj, int owner, int ncomps, int ntuples, char ptr)
       external visitvardatasetc
       integer  visitvardatasetc
@@ -1722,6 +1757,10 @@
 ! visitvardataseti(visit_handle obj, int owner, int ncomps, int ntuples, int ptr)
       external visitvardataseti
       integer  visitvardataseti
+
+! visitvardatasetl(visit_handle obj, int owner, int ncomps, int ntuples, long ptr)
+      external visitvardatasetl
+      integer  visitvardatasetl
 
 ! visitvardatasetf(visit_handle obj, int owner, int ncomps, int ntuples, float ptr)
       external visitvardatasetf
@@ -1731,9 +1770,34 @@
       external visitvardatasetd
       integer  visitvardatasetd
 
-! visitvardatasetl(visit_handle obj, int owner, int ncomps, int ntuples, long ptr)
-      external visitvardatasetl
-      integer  visitvardatasetl
+!! Non-contiguous / multi-component array storage
+
+! visitvardatasetarrc(visit_handle obj, int idx, int owner, int ntuples,
+!                     int offset, int stride, char ptr)
+      external visitvardatasetarrc
+      integer  visitvardatasetarrc
+
+! visitvardatasetarri(visit_handle obj, int idx, int owner, int ntuples,
+!                     int offset, int stride, int ptr)
+      external visitvardatasetarri
+      integer  visitvardatasetarri
+
+! visitvardatasetarrl(visit_handle obj, int idx, int owner, int ntuples,
+!                     int offset, int stride, long ptr)
+      external visitvardatasetarrl
+      integer  visitvardatasetarrl
+
+! visitvardatasetarrf(visit_handle obj, int idx, int owner, int ntuples,
+!                     int offset, int stride, float ptr)
+      external visitvardatasetarrf
+      integer  visitvardatasetarrf
+
+! visitvardatasetarrd(visit_handle obj, int idx, int owner, int ntuples,
+!                     int offset, int stride, double ptr)
+      external visitvardatasetarrd
+      integer  visitvardatasetarrd
+
+!! Get functions
 
 ! visitvardatagettype(visit_handle obj, int datatype)
       external visitvardatagettype

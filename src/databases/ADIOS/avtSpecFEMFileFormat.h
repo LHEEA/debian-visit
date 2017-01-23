@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,6 +106,7 @@ class avtSpecFEMFileFormat : public avtMTMDFileFormat
     void             AddRegionMesh(int ts, int dom, int region, vtkDataSet *ds,
                                    bool xyzMesh, int ptOffset=0);
     vtkDataSet *     GetHotSpotsMesh(bool xyzMesh);
+    vtkDataSet *     GetVolcanoMesh(bool xyzMesh);
     vtkDataSet *     GetContinents(bool xyzMesh);
     vtkDataSet *     GetPlates(bool xyzMesh);
     vtkDataSet *     LatLonClip(vtkDataSet *ds);

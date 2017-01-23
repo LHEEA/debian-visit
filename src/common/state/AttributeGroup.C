@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -646,6 +646,10 @@ AttributeGroup::EqualTo(const AttributeGroup *atts) const
             break;
           case FieldType_floatArray:
             if (!(EqualVal<float>::EqualArray(addr1,addr2,length)))
+               return false;
+            break;
+          case FieldType_floatVector:
+            if (!(EqualVal<double>::EqualVector(addr1,addr2)))
                return false;
             break;
           case FieldType_double:

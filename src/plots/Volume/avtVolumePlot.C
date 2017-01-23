@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -576,6 +576,12 @@ bool GetLogicalBounds(avtDataObject_p input,int &width,int &height, int &depth)
 //
 //  Modifications:
 //
+//    Burlen Loring, Mon Oct  5 06:42:17 PDT 2015
+//    Catch the exception that can occur when using
+//    an operator that produces a variable that doesn't
+//    exist in the database.
+//
+// ****************************************************************************
 
 bool DataMustBeResampled(avtDataObject_p input)
 {
@@ -584,7 +590,14 @@ bool DataMustBeResampled(avtDataObject_p input)
     //      likely other cases.
 
     int width,height,depth;
-    return GetLogicalBounds(input,width,height,depth);
+    try
+    {
+        return GetLogicalBounds(input,width,height,depth);
+    }
+    catch(...)
+    {
+        return false;
+    }
 }
 
 // ****************************************************************************

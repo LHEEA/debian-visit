@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -162,9 +162,10 @@ XDisplay::Initialize(std::string display,
         debug1 << "Error " << errno << " while getting hostname.\n";
         this->hostname[0] = 0;
     }
-    //updated: enabling new logic
-    if(!this->launch || (this->xserver = xinit(this->display, user_args)) == -1)
-    //if(this->launch && (this->xserver = xinit(this->display, user_args)) == -1)
+    //should this not be if not launch return false, 
+    //else if launch and xinit fails return false?
+    //if(!this->launch || (this->xserver = xinit(this->display, user_args)) == -1)
+    if(this->launch && (this->xserver = xinit(this->display, user_args)) == -1)
     {
       return false;
     }

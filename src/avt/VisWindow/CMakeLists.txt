@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -84,12 +84,14 @@ IF (NOT WIN32)
     IF(MESA_FOUND)
         SET_SOURCE_FILES_PROPERTIES(
             Colleagues/VisWinRendering.C
+            Colleagues/VisWinRenderingWithoutWindow.C
             PROPERTIES
             COMPILE_FLAGS "-I${MESA_INCLUDE_DIR} -I${OPENGL_INCLUDE_DIR} -I${GLEW_INCLUDE_DIR}"
         )
     ELSE(MESA_FOUND)
         SET_SOURCE_FILES_PROPERTIES(
             Colleagues/VisWinRendering.C
+            Colleagues/VisWinRenderingWithoutWindow.C
             PROPERTIES
             COMPILE_FLAGS "-I${OPENGL_INCLUDE_DIR} -I${GLEW_INCLUDE_DIR}"
         )
@@ -98,12 +100,14 @@ ELSE (NOT WIN32)
     IF(MESA_FOUND)
         SET_SOURCE_FILES_PROPERTIES(
             Colleagues/VisWinRendering.C
+            Colleagues/VisWinRenderingWithoutWindow.C
             PROPERTIES
             COMPILE_FLAGS "-I${MESA_INCLUDE_DIR} -I${GLEW_INCLUDE_DIR}"
         )
     ELSE()
         SET_SOURCE_FILES_PROPERTIES(
             Colleagues/VisWinRendering.C
+            Colleagues/VisWinRenderingWithoutWindow.C
             PROPERTIES
             COMPILE_FLAGS "-I${GLEW_INCLUDE_DIR}"
         )
@@ -195,6 +199,7 @@ ${VISIT_SOURCE_DIR}/avt/Plotter/vtk
 ${VISIT_SOURCE_DIR}/avt/View
 ${VISIT_SOURCE_DIR}/visit_vtk/full
 ${VISIT_SOURCE_DIR}/visit_vtk/lightweight
+${OPENGL_INCLUDE_DIR}
 ${VTK_INCLUDE_DIRS}
 )
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -212,7 +212,7 @@ avtPODICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve*> &ics)
         debug1 << "Proc " << PAR_Rank()
                << "  active ICs " << activeICs.size()
                << "  inactive ICs " << inactiveICs.size()
-               << "  terminated ICs " << terminatedICs.size() << endl;
+               << "  terminated ICs " << terminatedICs.size() << std::endl;
 
         std::ostringstream os;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,6 +79,10 @@ public:
 
     void GetUserExpressions(ExpressionList &newList);
     void GetDatabaseExpressions(ExpressionList &newList,
+                                const std::string &host,
+                                const std::string &db,
+                                int state);
+    void GetOperatorCreatedExpressions(ExpressionList &newList,
                                 const std::string &host,
                                 const std::string &db,
                                 int state);

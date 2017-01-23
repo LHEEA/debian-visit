@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -275,13 +275,16 @@ vtkVolumeFromCSGVolume::InitTraversal()
 //  Creation:   July 23, 2012
 //
 //  Modifications:
-//    
+//
+//    Burlen Loring, Sun Sep  6 14:58:03 PDT 2015
+//    Changed the return type of GetNumberOfCells to vtkIdType
+//
 // ****************************************************************************
 
-int
+vtkIdType
 vtkVolumeFromCSGVolume::GetNumberOfCells() const
 {
-    int nCells = 0;
+    vtkIdType nCells = 0;
     for (int i = 0; i < nshapes; i++)
         nCells += shapeCnt[i];
     return nCells;

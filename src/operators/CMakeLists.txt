@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -54,9 +54,6 @@
 #   Hank Childs, Mon Oct 31 09:38:27 PDT 2011
 #   Add ToroidalPoloidalProjection on behalf of Hari Krishnan.
 #
-#   Cyrus Harrison, Fri Apr  6 10:03:51 PDT 2012
-#   Renamed Ftle to FTLE.
-#
 #   Cyrus Harrison, Tue Sep 25 12:08:29 PDT 2012
 #   Added CartographicProjection (from Jean Favre)
 #
@@ -80,6 +77,7 @@ ENDIF(NOT WIN32)
 
 SET(REQUIRED_OPERATOR_PLUGINS
 AMRStitchCell
+AxisAlignedSlice4D
 BoundaryOp
 Box
 Clip

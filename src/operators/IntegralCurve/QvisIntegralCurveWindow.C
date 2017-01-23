@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,18 +51,11 @@
 #include <QComboBox>
 #include <QGroupBox>
 #include <QRadioButton>
-#include <QvisColorTableButton.h>
-#include <QvisColorButton.h>
-#include <QvisLineWidthWidget.h>
-#include <QvisLineStyleWidget.h>
 #include <QvisVariableButton.h>
-#include <QvisPointControl.h>
 #include <QPushButton>
 #include <QFileDialog>
 #include <QListWidget>
 
-#include <QvisLineWidthWidget.h>
-#include <QvisVariableButton.h>
 #include <SelectionList.h>
 #include <SelectionProperties.h>
 
@@ -70,9 +63,6 @@
 #include <PlotList.h>
 #include <PlotInfoAttributes.h>
 
-#include <stdio.h>
-#include <string>
-#include <vector>
 
 static void
 TurnOn(QWidget *w0, QWidget *w1=NULL);
@@ -143,7 +133,7 @@ QvisIntegralCurveWindow::~QvisIntegralCurveWindow()
 //   Added useWholeBox.
 //
 //   Dave Pugmire, Thu Nov 15 12:09:08 EST 2007
-//   Add streamline direction option.
+//   Add integral curve direction option.
 //
 //   Brad Whitlock, Wed Apr 23 11:46:59 PDT 2008
 //   Added tr()'s
@@ -158,7 +148,7 @@ QvisIntegralCurveWindow::~QvisIntegralCurveWindow()
 //   Add accurate distance calculate option.
 //
 //   Dave Pugmire, Wed Aug 13 12:56:11 EST 2008
-//   Changed label text for streamline algorithms.
+//   Changed label text for integral curve algorithms.
 //
 //   Dave Pugmire, Tue Aug 19 17:18:03 EST 2008
 //   Removed the accurate distance calculation option.
@@ -188,7 +178,7 @@ QvisIntegralCurveWindow::~QvisIntegralCurveWindow()
 //   Add color by variable.
 //
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
-//   Add custom renderer and lots of appearance options to the streamlines plots.
+//   Add custom renderer and lots of appearance options to the integral curves plots.
 //
 //   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
 //   Change layout of window for 2.0 interface changes.
@@ -269,6 +259,9 @@ QvisIntegralCurveWindow::CreateWindowContents()
 // Creation:   Tue Dec 29 14:37:53 EST 2009
 //
 // Modifications:
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
 //
 // ****************************************************************************
 
@@ -306,16 +299,15 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
 
     // Create the source geometry subgroup
     QGroupBox *geometryGroup = new QGroupBox(sourceGroup);
-    sourceLayout->addWidget(geometryGroup, 1, 0, 4, 3);
+    sourceLayout->addWidget(geometryGroup, 1, 0, 1, 3);
 
     QGridLayout *geometryLayout = new QGridLayout(geometryGroup);
     geometryLayout->setMargin(5);
     geometryLayout->setSpacing(10);
     geometryLayout->setRowStretch(5,10);
 
-    int gRow = 0;
-
     // Create the widgets that specify a point source.
+    int gRow = 0;
     pointSource = new QLineEdit(sourceGroup);
     connect(pointSource, SIGNAL(returnPressed()),
             this, SLOT(pointSourceProcessText()));
@@ -323,60 +315,57 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     pointSourceLabel->setBuddy(pointSource);
     geometryLayout->addWidget(pointSourceLabel, gRow, 0);
     geometryLayout->addWidget(pointSource, gRow, 1);
-    ++gRow;
 
     //Point list.
+    gRow = 0;
     pointList = new QListWidget(sourceGroup);
-    geometryLayout->addWidget(pointList, gRow, 0);
+    geometryLayout->addWidget(pointList, gRow, 1, 4, 1);
     connect(pointList, SIGNAL(itemDoubleClicked(QListWidgetItem*)), this, SLOT(pointListDoubleClicked(QListWidgetItem*)));
     connect(pointList, SIGNAL(itemClicked(QListWidgetItem*)), this, SLOT(pointListClicked(QListWidgetItem*)));
     connect(pointList, SIGNAL(currentTextChanged(const QString&)), this, SLOT(textChanged(QString)));
 
-    pointListReadPoints = new QPushButton(tr("Read Text File"), sourceGroup);
-    geometryLayout->addWidget(pointListReadPoints, gRow, 1);
-    connect(pointListReadPoints, SIGNAL(clicked()), this, SLOT(readPoints()));
-
-    gRow++;
-
     pointListAddPoint = new QPushButton(tr("Add Point"), sourceGroup);
     pointListDelPoint = new QPushButton(tr("Delete Point"), sourceGroup);
     pointListDelAllPoints = new QPushButton(tr("Delete All Points"), sourceGroup);
+    pointListReadPoints = new QPushButton(tr("Read Text File"), sourceGroup);
+
     connect(pointListAddPoint, SIGNAL(clicked()), this, SLOT(addPoint()));
     connect(pointListDelPoint, SIGNAL(clicked()), this, SLOT(deletePoint()));
     connect(pointListDelAllPoints, SIGNAL(clicked()), this, SLOT(deletePoints()));
-    geometryLayout->addWidget(pointListAddPoint, gRow, 0);
-    geometryLayout->addWidget(pointListDelPoint, gRow, 1);
-    geometryLayout->addWidget(pointListDelAllPoints, gRow, 2);
-    gRow++;
+    connect(pointListReadPoints, SIGNAL(clicked()), this, SLOT(readPoints()));
+
+    geometryLayout->addWidget(pointListAddPoint, gRow++, 0);
+    geometryLayout->addWidget(pointListDelPoint, gRow++, 0);
+    geometryLayout->addWidget(pointListDelAllPoints, gRow++, 0);
+    geometryLayout->addWidget(pointListReadPoints, gRow++, 0);
 
     // Create the widgets that specify a line source.
+    gRow = 0;
     lineStart = new QLineEdit(sourceGroup);
     connect(lineStart, SIGNAL(returnPressed()),
             this, SLOT(lineStartProcessText()));
     lineStartLabel = new QLabel(tr("Start"), sourceGroup);
     lineStartLabel->setBuddy(lineStart);
     geometryLayout->addWidget(lineStartLabel, gRow, 0);
-    geometryLayout->addWidget(lineStart, gRow, 1);
-    ++gRow;
+    geometryLayout->addWidget(lineStart, gRow++, 1);
+
     lineEnd = new QLineEdit(sourceGroup);
     connect(lineEnd, SIGNAL(returnPressed()),
             this, SLOT(lineEndProcessText()));
     lineEndLabel = new QLabel(tr("End"), sourceGroup);
     lineEndLabel->setBuddy(lineEnd);
     geometryLayout->addWidget(lineEndLabel, gRow, 0);
-    geometryLayout->addWidget(lineEnd, gRow, 1);
-    ++gRow;
-
+    geometryLayout->addWidget(lineEnd, gRow++, 1);
 
     // Create the widgets that specify a plane source.
+    gRow = 0;
     planeOrigin = new QLineEdit(sourceGroup);
     connect(planeOrigin, SIGNAL(returnPressed()),
             this, SLOT(planeOriginProcessText()));
     planeOriginLabel = new QLabel(tr("Origin"), sourceGroup);
     planeOriginLabel->setBuddy(planeOrigin);
     geometryLayout->addWidget(planeOriginLabel,gRow,0);
-    geometryLayout->addWidget(planeOrigin, gRow,1);
-    ++gRow;
+    geometryLayout->addWidget(planeOrigin, gRow++,1);
 
     planeNormal = new QLineEdit(sourceGroup);
     connect(planeNormal, SIGNAL(returnPressed()),
@@ -384,8 +373,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     planeNormalLabel = new QLabel(tr("Normal"), sourceGroup);
     planeNormalLabel->setBuddy(planeNormal);
     geometryLayout->addWidget(planeNormalLabel,gRow,0);
-    geometryLayout->addWidget(planeNormal, gRow,1);
-    ++gRow;
+    geometryLayout->addWidget(planeNormal, gRow++,1);
 
     planeUpAxis = new QLineEdit(sourceGroup);
     connect(planeUpAxis, SIGNAL(returnPressed()),
@@ -393,8 +381,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     planeUpAxisLabel = new QLabel(tr("Up axis"), sourceGroup);
     planeUpAxisLabel->setBuddy(planeUpAxis);
     geometryLayout->addWidget(planeUpAxisLabel,gRow,0);
-    geometryLayout->addWidget(planeUpAxis, gRow,1);
-    ++gRow;
+    geometryLayout->addWidget(planeUpAxis, gRow++,1);
 
     // Create the widgets that specify a sphere source.
     sphereOrigin = new QLineEdit(sourceGroup);
@@ -403,23 +390,21 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     sphereOriginLabel = new QLabel(tr("Origin"), sourceGroup);
     sphereOriginLabel->setBuddy(sphereOrigin);
     geometryLayout->addWidget(sphereOriginLabel,gRow,0);
-    geometryLayout->addWidget(sphereOrigin, gRow,1);
-    ++gRow;
+    geometryLayout->addWidget(sphereOrigin, gRow++,1);
 
     radius = new QLineEdit(sourceGroup);
     connect(radius, SIGNAL(returnPressed()), this, SLOT(radiusProcessText()));
     radiusLabel = new QLabel(tr("Radius"), sourceGroup);
     radiusLabel->setBuddy(radius);
     geometryLayout->addWidget(radiusLabel,gRow,0);
-    geometryLayout->addWidget(radius, gRow,1);
-    ++gRow;
+    geometryLayout->addWidget(radius, gRow++,1);
 
     // Create the widgets that specify a box source
+    gRow = 0;
     useWholeBox = new QCheckBox(tr("Whole data set"), sourceGroup);
     connect(useWholeBox, SIGNAL(toggled(bool)),
             this, SLOT(useWholeBoxChanged(bool)));
-    geometryLayout->addWidget(useWholeBox, gRow, 0);
-    ++gRow;
+    geometryLayout->addWidget(useWholeBox, gRow++, 0);
 
     boxExtents[0] = new QLineEdit(sourceGroup);
     connect(boxExtents[0], SIGNAL(returnPressed()),
@@ -427,8 +412,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     boxExtentsLabel[0] = new QLabel(tr("X Extents"), sourceGroup);
     boxExtentsLabel[0]->setBuddy(boxExtents[0]);
     geometryLayout->addWidget(boxExtentsLabel[0], gRow, 0);
-    geometryLayout->addWidget(boxExtents[0], gRow, 1);
-    ++gRow;
+    geometryLayout->addWidget(boxExtents[0], gRow++, 1);
 
     boxExtents[1] = new QLineEdit(sourceGroup);
     connect(boxExtents[1], SIGNAL(returnPressed()),
@@ -436,8 +420,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     boxExtentsLabel[1] = new QLabel(tr("Y Extents"), sourceGroup);
     boxExtentsLabel[1]->setBuddy(boxExtents[1]);
     geometryLayout->addWidget(boxExtentsLabel[1], gRow, 0);
-    geometryLayout->addWidget(boxExtents[1], gRow, 1);
-    ++gRow;
+    geometryLayout->addWidget(boxExtents[1], gRow++, 1);
 
     boxExtents[2] = new QLineEdit(sourceGroup);
     connect(boxExtents[2], SIGNAL(returnPressed()),
@@ -445,9 +428,10 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     boxExtentsLabel[2] = new QLabel(tr("Z Extents"), sourceGroup);
     boxExtentsLabel[2]->setBuddy(boxExtents[2]);
     geometryLayout->addWidget(boxExtentsLabel[2], gRow, 0);
-    geometryLayout->addWidget(boxExtents[2], gRow, 1);
-    gRow++;
+    geometryLayout->addWidget(boxExtents[2], gRow++, 1);
 
+    // FieldData Point list.
+    gRow = 0;
     selectionsLabel = new QLabel(tr("Selection"), sourceGroup);
     selections = new QComboBox(sourceGroup);
 
@@ -455,29 +439,26 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
             this, SLOT(selectionsChanged(int)));
 
     geometryLayout->addWidget(selectionsLabel, gRow, 0);
-    geometryLayout->addWidget(selections, gRow, 1);
-    gRow++;
+    geometryLayout->addWidget(selections, gRow++, 1);
 
-
-    //Point list.
+    // FieldData Point list.
+    gRow = 0;
     fieldData = new QListWidget(sourceGroup);
-    geometryLayout->addWidget(fieldData, gRow, 0);
+    geometryLayout->addWidget(fieldData, gRow, 0, 4, 1);
 
     fieldDataCopyPoints = new QPushButton(tr("Copy to point list"), sourceGroup);
     connect(fieldDataCopyPoints, SIGNAL(clicked()), this, SLOT(copyPoints()));
-    geometryLayout->addWidget(fieldDataCopyPoints, gRow, 1);
-    gRow++;
-
-
+    geometryLayout->addWidget(fieldDataCopyPoints, gRow++, 1);
+    
     //Sampling options.
     samplingGroup = new QGroupBox(sourceGroup);
     samplingGroup->setTitle(tr("Sampling"));
-    sourceLayout->addWidget(samplingGroup, gRow, 0, 1, 5);
+    sourceLayout->addWidget(samplingGroup, 2, 0, 1, 6);
+
     QGridLayout *samplingLayout = new QGridLayout(samplingGroup);
     samplingLayout->setMargin(5);
     samplingLayout->setSpacing(10);
     samplingLayout->setRowStretch(5,10);
-    gRow++;
     
     int sRow = 0;
     samplingTypeLabel = new QLabel(tr("Sampling type:"), samplingGroup);
@@ -509,6 +490,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     numberOfRandomSamplesLabel = new QLabel(tr("Number of random samples"), samplingGroup);
     samplingLayout->addWidget(numberOfRandomSamplesLabel, sRow, 0, 1, 2);
     numberOfRandomSamples = new QSpinBox(samplingGroup);
+    numberOfRandomSamples->setKeyboardTracking(false);
     numberOfRandomSamples->setMinimum(1);
     numberOfRandomSamples->setMaximum(100000000);
     connect(numberOfRandomSamples, SIGNAL(valueChanged(int)), this, SLOT(numberOfRandomSamplesChanged(int)));
@@ -517,6 +499,7 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     randomSeedLabel = new QLabel(tr("Random number seed"), samplingGroup);
     samplingLayout->addWidget(randomSeedLabel, sRow, 3, 1, 2);
     randomSeed = new QSpinBox(samplingGroup);
+    randomSeed->setKeyboardTracking(false);
     randomSeed->setMinimum(0);
     randomSeed->setMaximum(100000000);
     connect(randomSeed, SIGNAL(valueChanged(int)), this, SLOT(randomSeedChanged(int)));
@@ -531,12 +514,15 @@ QvisIntegralCurveWindow::CreateIntegrationTab(QWidget *pageIntegration)
     sampleDensity[0] = new QSpinBox(samplingGroup);
     sampleDensity[1] = new QSpinBox(samplingGroup);
     sampleDensity[2] = new QSpinBox(samplingGroup);
+    sampleDensity[0]->setKeyboardTracking(false);
     sampleDensity[0]->setMinimum(1);
     sampleDensity[0]->setMaximum(10000000);
     sampleDensity[0]->setValue(atts->GetSampleDensity0());
+    sampleDensity[1]->setKeyboardTracking(false);
     sampleDensity[1]->setMinimum(1);
     sampleDensity[1]->setMaximum(10000000);
     sampleDensity[1]->setValue(atts->GetSampleDensity1());
+    sampleDensity[2]->setKeyboardTracking(false);
     sampleDensity[2]->setMinimum(1);
     sampleDensity[2]->setMaximum(10000000);
     sampleDensity[2]->setValue(atts->GetSampleDensity2());
@@ -796,8 +782,8 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
     dataLayout->addWidget(dataValueComboBox, 0, 1);
 
     dataVariable = new QvisVariableButton(false, true, true,
-                                         QvisVariableButton::Scalars,
-                                         dataGroup);
+                                          QvisVariableButton::Scalars,
+                                          dataGroup);
     dataLayout->addWidget(dataVariable, 0, 2);
     connect(dataVariable, SIGNAL(activated(const QString &)),
             this, SLOT(dataVariableChanged(const QString&)));
@@ -822,10 +808,37 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
     connect(correlationDistanceMinDistEdit, SIGNAL(returnPressed()),
             this, SLOT(processCorrelationDistanceMinDistEditText()));
 
+    // Create the cleanup group
+    QGroupBox *cleanupGrp = new QGroupBox(pageAppearance);
+    cleanupGrp->setTitle(tr("Cleanup the integral curve"));
+    mainLayout->addWidget(cleanupGrp, 3, 0);
+
+    QGridLayout *cleanupLayout = new QGridLayout(cleanupGrp);
+    cleanupLayout->setMargin(5);
+    cleanupLayout->setSpacing(10);
+
+    // Create the cleanup value.
+    cleanupLayout->addWidget(new QLabel(tr("Point cleanup"), cleanupGrp), 0, 0);
+
+    cleanupMethodComboBox = new QComboBox(cleanupGrp);
+    cleanupMethodComboBox->addItem(tr("Keep all points"));
+    cleanupMethodComboBox->addItem(tr("Merge points"));
+    cleanupMethodComboBox->addItem(tr("Delete points before"));
+    cleanupMethodComboBox->addItem(tr("Delete points after "));
+    connect(cleanupMethodComboBox, SIGNAL(activated(int)), this, SLOT(cleanupMethodChanged(int)));
+    cleanupLayout->addWidget(cleanupMethodComboBox, 0, 1);
+
+    cleanupThresholdLabel = new QLabel(tr("Velocity threshold"), cleanupGrp);
+    cleanupLayout->addWidget(cleanupThresholdLabel, 0, 2);
+
+    cleanupThreshold = new QLineEdit(cleanupGrp);
+    connect(cleanupThreshold, SIGNAL(returnPressed()), this, SLOT(cleanupThresholdProcessText()));
+    cleanupLayout->addWidget(cleanupThreshold, 0, 3);
+    
     // Create the crop group
     QGroupBox *cropGrp = new QGroupBox(pageAppearance);
     cropGrp->setTitle(tr("Crop the integral curve (for animations)"));
-    mainLayout->addWidget(cropGrp, 3, 0);
+    mainLayout->addWidget(cropGrp, 4, 0);
 
     QGridLayout *cropLayout = new QGridLayout(cropGrp);
     cropLayout->setMargin(5);
@@ -862,7 +875,7 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
     // Streamlines/Pathline Group.
     QGroupBox *icGrp = new QGroupBox(pageAppearance);
     icGrp->setTitle(tr("Streamlines vs Pathlines"));
-    mainLayout->addWidget(icGrp, 4, 0);
+    mainLayout->addWidget(icGrp, 5, 0);
 
     QGridLayout *icGrpLayout = new QGridLayout(icGrp);
     icGrpLayout->setSpacing(10);
@@ -880,7 +893,7 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
 
     // Pathline Options
     QGroupBox *pathlineOptionsGrp = new QGroupBox(icGrp);
-    pathlineOptionsGrp->setTitle(tr("Pathlines Options"));
+    pathlineOptionsGrp->setTitle(tr("Pathline Options"));
     icGrpLayout->addWidget(pathlineOptionsGrp, 3, 0);
 
     QGridLayout *pathlineOptionsGrpLayout = new QGridLayout(pathlineOptionsGrp);
@@ -947,6 +960,10 @@ QvisIntegralCurveWindow::CreateAppearanceTab(QWidget *pageAppearance)
 //   Hank Childs, Sun Dec  5 05:31:57 PST 2010
 //   Add additional warning controls.
 //
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
+//
 // ****************************************************************************
 
 void
@@ -978,6 +995,7 @@ QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
     
     maxSLCountLabel = new QLabel(tr("Communication threshold"), algoGrp);
     maxSLCount = new QSpinBox(algoGrp);
+    maxSLCount->setKeyboardTracking(false);
     maxSLCount->setMinimum(1);
     maxSLCount->setMaximum(100000);
     connect(maxSLCount, SIGNAL(valueChanged(int)), 
@@ -987,6 +1005,7 @@ QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 
     maxDomainCacheLabel = new QLabel(tr("Domain cache size"), algoGrp);
     maxDomainCache = new QSpinBox(algoGrp);
+    maxDomainCache->setKeyboardTracking(false);
     maxDomainCache->setMinimum(1);
     maxDomainCache->setMaximum(100000);
     connect(maxDomainCache, SIGNAL(valueChanged(int)),
@@ -996,6 +1015,7 @@ QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 
     workGroupSizeLabel = new QLabel(tr("Work group size"), algoGrp);
     workGroupSize = new QSpinBox(algoGrp);
+    workGroupSize->setKeyboardTracking(false);
     workGroupSize->setMinimum(2);
     workGroupSize->setMaximum(1000000);
     connect(workGroupSize, SIGNAL(valueChanged(int)),
@@ -1090,7 +1110,7 @@ QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 //   Added support for useWholeBox.
 //
 //   Dave Pugmire, Thu Nov 15 12:09:08 EST 2007
-//   Add streamline direction option.
+//   Add integral curve direction option.
 //
 //   Brad Whitlock, Wed Aug  6 10:39:12 PDT 2008
 //   Qt 4.
@@ -1108,7 +1128,7 @@ QvisIntegralCurveWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 //   Added workGroupSize for the masterSlave algorithm.
 //
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
-//   Add custom renderer and lots of appearance options to the streamlines plots.
+//   Add custom renderer and lots of appearance options to the integral curves plots.
 //
 //   Hank Childs, Wed Sep 29 19:12:39 PDT 2010
 //   Rename None to FullyOpaque.
@@ -1190,9 +1210,7 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
             {
               char tmp[256];
               sprintf(tmp, "%lf %lf %lf", points[i], points[i+1], points[i+2]);
-              
-              // std::cerr << tmp << std::endl;
-              
+                     
               QString str = tmp;
               QListWidgetItem *item = new QListWidgetItem(str, fieldData);
 //            item->setFlags(item->flags() | Qt::ItemIsEditable);
@@ -1413,6 +1431,26 @@ QvisIntegralCurveWindow::UpdateWindow(bool doAll)
                 TurnOff(correlationDistanceMinDistEdit);
                 TurnOff(correlationDistanceMinDistType);
             }
+            break;
+
+        case IntegralCurveAttributes::ID_cleanupMethod:
+            cleanupMethodComboBox->blockSignals(true);
+            cleanupMethodComboBox->setCurrentIndex(int(atts->GetCleanupMethod()));
+            cleanupMethodComboBox->blockSignals(false);
+
+            cleanupThresholdLabel->setEnabled(atts->GetCleanupMethod() !=
+                                              IntegralCurveAttributes::NoCleanup);
+            cleanupThreshold->setEnabled(atts->GetCleanupMethod() !=
+                                              IntegralCurveAttributes::NoCleanup);
+            if( atts->GetCleanupMethod() == IntegralCurveAttributes::Merge )
+              cleanupThresholdLabel->setText(tr("Spatial threshold"));
+            else
+              cleanupThresholdLabel->setText(tr("Velocity threshold"));
+
+            break;
+
+        case IntegralCurveAttributes::ID_cleanupThreshold:
+            cleanupThreshold->setText(DoubleToQString(atts->GetCleanupThreshold()));
             break;
 
         case IntegralCurveAttributes::ID_cropBeginFlag:
@@ -1800,7 +1838,7 @@ QvisIntegralCurveWindow::UpdateSourceAttributes()
 
     bool showSampling = false, enableFill = false;
     
-    if (atts->GetSourceType() == IntegralCurveAttributes::Point)
+    if (atts->GetSourceType() == IntegralCurveAttributes::SpecifiedPoint)
         TurnOn(pointSource, pointSourceLabel);
     else if (atts->GetSourceType() == IntegralCurveAttributes::PointList)
     {
@@ -1810,7 +1848,7 @@ QvisIntegralCurveWindow::UpdateSourceAttributes()
         TurnOn(pointListAddPoint);
         TurnOn(pointListReadPoints);
     }
-    else if (atts->GetSourceType() == IntegralCurveAttributes::Line_)
+    else if (atts->GetSourceType() == IntegralCurveAttributes::SpecifiedLine)
     {
         TurnOn(lineStart, lineStartLabel);
         TurnOn(lineEnd, lineEndLabel);
@@ -1829,7 +1867,7 @@ QvisIntegralCurveWindow::UpdateSourceAttributes()
             sampleDensity[0]->setMinimum(1);
         }
     }
-    else if (atts->GetSourceType() == IntegralCurveAttributes::Plane)
+    else if (atts->GetSourceType() == IntegralCurveAttributes::SpecifiedPlane)
     {
         TurnOn(planeOrigin, planeOriginLabel);
         TurnOn(planeNormal, planeNormalLabel);
@@ -1888,7 +1926,7 @@ QvisIntegralCurveWindow::UpdateSourceAttributes()
             }
         }
     }
-    else if (atts->GetSourceType() == IntegralCurveAttributes::Sphere)
+    else if (atts->GetSourceType() == IntegralCurveAttributes::SpecifiedSphere)
     {
         TurnOn(sphereOrigin, sphereOriginLabel);
         TurnOn(radius, radiusLabel);
@@ -1915,7 +1953,7 @@ QvisIntegralCurveWindow::UpdateSourceAttributes()
             }
         }
      }
-    else if (atts->GetSourceType() == IntegralCurveAttributes::Box)
+    else if (atts->GetSourceType() == IntegralCurveAttributes::SpecifiedBox)
     {
         TurnOn(useWholeBox);
         for (int i = 0; i < 3; i++)
@@ -2190,7 +2228,7 @@ QvisIntegralCurveWindow::UpdateAlgorithmAttributes()
 //   Added workGroupSize for the masterSlave algorithm.
 //
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
-//   Add custom renderer and lots of appearance options to the streamlines plots.
+//   Add custom renderer and lots of appearance options to the integral curves plots.
 //
 //   Hank Childs, Wed Sep 29 20:44:18 PDT 2010
 //   Add support for the max time step.
@@ -2206,6 +2244,9 @@ QvisIntegralCurveWindow::UpdateAlgorithmAttributes()
 //
 //   Dave Pugmire, Thu Mar 15 11:23:18 EDT 2012
 //   Add named selections as a seed source.
+//
+//   Kathleen Biagas, Thu Jun  9 11:15:04 PDT 2016
+//   Ensure values from spin boxes are retrieved.
 //
 // ****************************************************************************
 
@@ -2294,6 +2335,20 @@ QvisIntegralCurveWindow::GetCurrentValues(int which_widget)
             atts->SetTermDistance(atts->GetTermDistance());
         }
     }
+    // Do velocity threshold
+    if(which_widget == IntegralCurveAttributes::ID_cleanupThreshold || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(cleanupThreshold, val))
+            atts->SetCleanupThreshold(val);
+        else
+        {
+            ResettingError(tr("velocity threshold"),
+                DoubleToQString(atts->GetCleanupThreshold()));
+            atts->SetCleanupThreshold(atts->GetCleanupThreshold());
+        }
+    }
+
     // Do crop begin
     if(which_widget == IntegralCurveAttributes::ID_cropBegin || doAll)
     {
@@ -2696,10 +2751,34 @@ QvisIntegralCurveWindow::GetCurrentValues(int which_widget)
             atts->SetCorrelationDistanceMinDistBBox(atts->GetCorrelationDistanceMinDistBBox());
         }
     }
-    if (which_widget == IntegralCurveAttributes::ID_selection || doAll)
+
+
+    if (which_widget == IntegralCurveAttributes::ID_sampleDensity0 || doAll)
     {
-        int val = selections->currentIndex(); (void) val; /// TODO: is this necessary?
+        if (sampleDensity[0]->value() != atts->GetSampleDensity0())
+            atts->SetSampleDensity0(sampleDensity[0]->value());
     }
+    if (which_widget == IntegralCurveAttributes::ID_sampleDensity1 || doAll)
+    {
+        if (sampleDensity[1]->value() != atts->GetSampleDensity1())
+            atts->SetSampleDensity1(sampleDensity[1]->value());
+    }
+    if (which_widget == IntegralCurveAttributes::ID_sampleDensity2 || doAll)
+    {
+        if (sampleDensity[2]->value() != atts->GetSampleDensity2())
+            atts->SetSampleDensity2(sampleDensity[2]->value());
+    }
+    if (which_widget == IntegralCurveAttributes::ID_numberOfRandomSamples || doAll)
+    {
+        if (numberOfRandomSamples->value() != atts->GetNumberOfRandomSamples())
+            atts->SetNumberOfRandomSamples(numberOfRandomSamples->value());
+    }
+    if (which_widget == IntegralCurveAttributes::ID_randomSeed || doAll)
+    {
+        if (randomSeed->value() != atts->GetRandomSeed())
+            atts->SetRandomSeed(randomSeed->value());
+    }
+
 }
 
 void
@@ -2951,6 +3030,20 @@ void
 QvisIntegralCurveWindow::workGroupSizeChanged(int val)
 {
     atts->SetWorkGroupSize(val);
+    Apply();
+}
+
+void
+QvisIntegralCurveWindow::cleanupMethodChanged(int val)
+{
+    atts->SetCleanupMethod((IntegralCurveAttributes::CleanupMethod)val);
+    Apply();
+}
+
+void
+QvisIntegralCurveWindow::cleanupThresholdProcessText()
+{
+    GetCurrentValues(IntegralCurveAttributes::ID_cleanupThreshold);
     Apply();
 }
 

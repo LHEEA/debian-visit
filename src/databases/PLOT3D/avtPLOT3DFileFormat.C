@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -163,7 +163,7 @@ avtPLOT3DFileFormat::avtPLOT3DFileFormat(const char *fname,
             if (!qFileName.empty())
             {
                 xFileName = fname;
-                int pos = xFileName.rfind(VISIT_SLASH_STRING);
+                string::size_type pos = xFileName.rfind(VISIT_SLASH_STRING);
                 string solnFile = xFileName.substr(0, pos+1);
                 qFileName = solnFile + qFileName;
                 haveSolutionFile = true;
@@ -256,7 +256,7 @@ avtPLOT3DFileFormat::avtPLOT3DFileFormat(const char *fname,
                 if (qFileName.empty() || guessedQFile)
                 {
                     string xFN(fname);
-                    int pos = xFN.rfind(VISIT_SLASH_STRING);
+                    string::size_type pos = xFN.rfind(VISIT_SLASH_STRING);
                     string solnFile = xFN.substr(0, pos+1);
                     qFileName = solnFile + qFN;
                     reader->SetQFileName(qFileName.c_str());
@@ -902,7 +902,7 @@ avtPLOT3DFileFormat::ReadVisItMetaFile()
     {
         fileFound = true;
         string base =  visitMetaFile.substr(0, visitMetaFile.length()-5);
-        int pos = visitMetaFile.rfind(VISIT_SLASH_STRING);
+        string::size_type pos = visitMetaFile.rfind(VISIT_SLASH_STRING);
         string path = visitMetaFile.substr(0, pos);
 
         while (getInfoLine(infoLine,lineSize,vp3dFp))

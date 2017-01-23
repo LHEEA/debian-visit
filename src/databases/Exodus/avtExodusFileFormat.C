@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -569,16 +569,22 @@ static int SizeOfNCType(int type)
     switch (type)
     {
         case NC_BYTE:
+#ifdef NC_NETCDF4
         case NC_UBYTE:
+#endif
         case NC_CHAR:
             return sizeof(char);
         case NC_SHORT:
+#ifdef NC_NETCDF4
         case NC_USHORT:
+#endif
             return sizeof(short);
         case NC_INT:
+#ifdef NC_NETCDF4
         case NC_UINT:
+#endif
             return sizeof(int);
-#ifdef HAVE_VTK_SIZEOF___INT64
+#if defined(NC_NETCDF4) && defined(HAVE_VTK_SIZEOF___INT64)
         case NC_INT64:
         case NC_UINT64:
             return sizeof(__int64);
@@ -596,6 +602,11 @@ static int SizeOfNCType(int type)
 // known to be different.
 //
 // Programmer: Mark C. Miller, Fri Dec 19 11:05:11 PST 2014
+//
+// Modifications:
+//
+//    Mark C. Miller, Sun Oct 30 16:28:22 PDT 2016
+//    Fix ordering issues for HEX-27
 // ****************************************************************************
 
 #define SWAP_NODES(A,B) {vtkIdType tmp=verts[A]; verts[A]=verts[B]; verts[B]=tmp;}
@@ -640,12 +651,16 @@ InsertExodusCellInVTKUnstructuredGrid(vtkUnstructuredGrid *ugrid, int vtk_cellty
             // face nodes
             SWAP_NODES(21,24);
             SWAP_NODES(22,25);
-            SWAP_NODES(23,20);
-            SWAP_NODES(24,21);
-            SWAP_NODES(25,22);
-            SWAP_NODES(26,23);
-            // volume node
-            SWAP_NODES(20,26);
+
+            // Remaining order changes can't be handled by swaps
+            {   vtkIdType tmp20 = verts[20];
+                vtkIdType tmp23 = verts[23];
+                vtkIdType tmp26 = verts[26];
+                verts[20] = tmp23;
+                verts[23] = tmp26;
+                verts[26] = tmp20;
+            }
+
             contains_nonlinear_elems = true;
             break;
         }
@@ -911,7 +926,7 @@ GetData(int exncfid, int ts, const char *visit_varname, int numBlocks, avtVarTyp
         // double vals_elem_var1eb1(time_step, num_el_in_blk1) ;
         // double vals_elem_var2eb1(time_step, num_el_in_blk1) ;
         buf = 0;
-        type = 0;
+        type = NC_NAT;
         for (int pass = 0; pass < 2; pass++)
         {
             int ndims, dimids[NC_MAX_VAR_DIMS];
@@ -949,7 +964,7 @@ GetData(int exncfid, int ts, const char *visit_varname, int numBlocks, avtVarTyp
                     num_elem += (int) dlen;
                     if (pass == 1)
                     {
-                        size_t starts[2] = {ts, 0};
+                        size_t starts[2] = {static_cast<size_t>(ts), 0};
                         size_t counts[2] = {1, dlen};
                         ncerr = nc_get_vara(exncfid, elem_varid, starts, counts, p);
                         CheckNCError2(ncerr, nc_get_vara, __LINE__, __FILE__)      
@@ -1001,7 +1016,9 @@ MakeVTKDataArrayByTakingOwnershipOfNCVarData(nc_type type,
     switch (type)
     {
         case NC_BYTE:
+#ifdef NC_NETCDF4
         case NC_UBYTE:
+#endif
         {
             if (num_comps > 1)
             {
@@ -1040,7 +1057,9 @@ MakeVTKDataArrayByTakingOwnershipOfNCVarData(nc_type type,
             arr->SetArray((short*)buf, num_comps * num_vals, SAVE_ARRAY, VTK_DA_FREE);
             return arr;
         }
+#ifdef NC_NETCDF4
         case NC_USHORT:
+#endif
         {
             if (num_comps > 1)
             {
@@ -1066,7 +1085,9 @@ MakeVTKDataArrayByTakingOwnershipOfNCVarData(nc_type type,
             arr->SetArray((int*)buf, num_comps * num_vals, SAVE_ARRAY, VTK_DA_FREE);
             return arr;
         }
+#ifdef NC_NETCDF4
         case NC_UINT:
+#endif
         {
             if (num_comps > 1)
             {
@@ -1079,7 +1100,7 @@ MakeVTKDataArrayByTakingOwnershipOfNCVarData(nc_type type,
             arr->SetArray((unsigned int*)buf, num_comps * num_vals, SAVE_ARRAY, VTK_DA_FREE);
             return arr;
         }
-#ifdef HAVE_VTK_SIZEOF___INT64
+#if defined(NC_NETCDF4) && defined(HAVE_VTK_SIZEOF___INT64)
         case NC_INT64:
         {
             if (num_comps > 1)
@@ -1402,7 +1423,7 @@ GetElementBlockNamesAndIds(int ncExIIId, int numBlocks,
     switch (vtype)
     {
         case NC_INT:   READ_BLOCK_IDS(ncExIIId, eb_blockid_varid, numBlocks, blockId, int); break;
-#ifdef HAVE_VTK_SIZEOF___INT64
+#if defined(NC_NETCDF4) && defined(HAVE_VTK_SIZEOF___INT64)
         case NC_INT64: READ_BLOCK_IDS(ncExIIId, eb_blockid_varid, numBlocks, blockId, __int64); break;
 #endif
     }
@@ -2797,6 +2818,7 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
                 delete [] conn_buf;
                 break;
             }
+#if defined(NC_NETCDF4) && defined(HAVE_VTK_SIZEOF___INT64)
             case NC_INT64:
             {
                 long long *conn_buf = new long long[connect_varlen];
@@ -2820,6 +2842,7 @@ avtExodusFileFormat::GetMesh(int ts, const char *mesh)
                 delete [] conn_buf;
                 break;
             }
+#endif
             default:
             {
                 EXCEPTION2(UnexpectedValueException, "NC_INT || NC_INT64", connect_vartype);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,7 @@
 #include <avtDatabaseMetaData.h>
 
 #include <DBOptionsAttributes.h>
+#include <DebugStream.h>
 #include <Expression.h>
 
 #include <InvalidFilesException.h>
@@ -72,6 +73,12 @@
 #include "mfem.hpp"
 
 #include <JSONRoot.h>
+
+#ifdef _WIN32
+#include <string.h>
+#define strncasecmp _strnicmp
+#endif
+
 using     std::string;
 using     std::ostringstream;
 using     std::vector;
@@ -158,6 +165,8 @@ avtMFEMFileFormat::FreeUpResources(void)
 //   Cyrus Harrison, Wed Sep 24 10:47:00 PDT 2014
 //   Move abs path logic into JSONRoot.
 //
+//   Mark C. Miller, Tue Sep 20 18:12:29 PDT 2016
+//   Add expressions
 // ****************************************************************************
 void
 avtMFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
@@ -173,7 +182,7 @@ avtMFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 
     // enumerate datasets)
 
-    for(size_t i=0;i<dset_names.size();i++)
+    for(int i=0;i<(int)dset_names.size();i++)
     {
         JSONRootDataSet &dset =  root_md.DataSet(dset_names[i]);
         int nblocks      = dset.NumberOfDomains();
@@ -266,6 +275,39 @@ avtMFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                 }
             }
         }
+    }
+
+    vector<string>expr_names;
+    root_md.Expressions(expr_names);
+    for(size_t i = 0; i < expr_names.size(); i++)
+    {
+        JSONRootExpr &jexpr = root_md.Expression(expr_names[i]);
+        
+        Expression::ExprType vartype = Expression::Unknown;
+        if      (!strncasecmp(jexpr.Type().c_str(), "scalar", 6))
+            vartype = Expression::ScalarMeshVar;
+        else if (!strncasecmp(jexpr.Type().c_str(), "vector", 6))
+            vartype = Expression::VectorMeshVar;
+        else if (!strncasecmp(jexpr.Type().c_str(), "tensor", 6))
+            vartype = Expression::TensorMeshVar;
+        else if (!strncasecmp(jexpr.Type().c_str(), "array", 5))
+            vartype = Expression::ArrayMeshVar;
+        else if (!strncasecmp(jexpr.Type().c_str(), "material", 8))
+            vartype = Expression::Material;
+        else if (!strncasecmp(jexpr.Type().c_str(), "species", 7))
+            vartype = Expression::Species;
+        else
+        {
+            debug5 << "Warning: unknown expression type \"" << jexpr.Type() << "\" for expression "
+                   << "\"" << expr_names[i] << "\"...skipping it." << endl;
+            continue;
+        }
+
+        Expression expr;
+        expr.SetName(expr_names[i]);
+        expr.SetDefinition(jexpr.Defn());
+        expr.SetType(vartype);
+        md->AddExpression(&expr);
     }
 }
 
@@ -435,6 +477,10 @@ avtMFEMFileFormat::GetVectorVar(int domain, const char *varname)
 //   Change MFEM Mesh constructor call to resolve coordinate system issue
 //   (See: http://visitbugs.ornl.gov/issues/2578)
 //
+//   Cyrus Harrison, Mon Aug 22 20:00:57 PDT 2016
+//   Additional change to MFEM Mesh constructor call to resolve 
+//   coordinate system issue
+//
 // ****************************************************************************
 Mesh *
 avtMFEMFileFormat::FetchMesh(const std::string &mesh_name,int domain)
@@ -464,7 +510,7 @@ avtMFEMFileFormat::FetchMesh(const std::string &mesh_name,int domain)
         EXCEPTION1(InvalidFilesException, msg.str());
     }
    
-    mesh = new Mesh(imesh, 1, 1, false);
+    mesh = new Mesh(imesh, 1, 0, false);
     imesh.close();
    
     return mesh;
@@ -576,6 +622,8 @@ avtMFEMFileFormat::GetRefinedMesh(const std::string &mesh_name, int domain, int 
 
         pt_idx += refined_geo->RefPts.GetNPoints();
    }
+   
+   delete mesh;
        
    return res_ds;
 }

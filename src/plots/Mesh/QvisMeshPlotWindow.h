@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,7 +40,7 @@
 #define QVIS_MESH_PLOT_WINDOW_H
 #include <QvisPostableWindowObserver.h>
 
-class QLineEdit;
+class MeshAttributes;
 class QCheckBox;
 class QButtonGroup;
 class QLabel;
@@ -48,8 +48,6 @@ class QvisLineStyleWidget;
 class QvisLineWidthWidget;
 class QvisColorButton;
 class QvisPointControl;
-class Subject;
-class MeshAttributes;
 class QvisOpacitySlider;
 
 // ****************************************************************************

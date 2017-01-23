@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,8 +45,8 @@
 
 /** header file for plugin development */
 #include <avtPluginFilter.h>
-/** header file for parallel integral curve system via the streamline filter */
-#include <avtStreamlineFilter.h>
+/** header file for parallel integral curve system via the avtPICSfilter */
+#include <avtPICSFilter.h>
 
 /** included attributes for Poincare */
 #include <PoincareAttributes.h>
@@ -55,6 +55,7 @@
 
 #include <vector>
 
+class avtPoincareIC;
 
 // ****************************************************************************
 //  Class: avtPoincareFilter
@@ -106,8 +107,6 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
     void SetWindingPairConfidence( double val ) { windingPairConfidence = val; }
     void SetRationalSurfaceFactor( double val ) { rationalSurfaceFactor = val; }
-
-    void SetAdjustPlane( int val ) { adjust_plane = val; }
 
     void SetOverlaps( unsigned int val ) { overlaps = val; }
 
@@ -198,7 +197,6 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
     virtual void drawRationalCurve( avtDataTree *dt,
                                     std::vector< std::vector < std::vector < avtVector > > > &nodes,
-                                    unsigned int nnodes,
                                     unsigned int islands,
                                     unsigned int skip,
                                     unsigned int color,
@@ -216,12 +214,10 @@ class avtPoincareFilter : public virtual avtPluginFilter,
   
     virtual void drawSurface( avtDataTree *dt,
                               std::vector< std::vector < std::vector < avtVector > > > &nodes,
-                              unsigned int nnodes,
                               unsigned int islands,
                               unsigned int skip,
                               unsigned int color,
-                              double color_value,
-                              bool modulo = false);
+                              double color_value);
   
     virtual void drawPeriodicity( avtDataTree *dt,
                                   std::vector < avtVector > &nodes,
@@ -235,6 +231,7 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
     // Poincare filter methods.
     bool ClassifyFieldlines(std::vector<avtIntegralCurve *> &ic);
+    void SetupPlaneOrdering( avtPoincareIC *poincare_ic );
     void CreatePoincareOutput(avtDataTree *dt,
                               std::vector<avtIntegralCurve *> &ic);
 
@@ -263,7 +260,7 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     bool     doTime;
     double   maxTime;
 
-    // Various starting locations for streamlines.
+    // Various starting locations for integral curves.
     std::vector< avtVector > points;
     int       numSamplePoints;
     int       sampleDensity[3];
@@ -287,7 +284,6 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     double rationalSurfaceFactor;
 
     std::vector< double > planes;
-    int adjust_plane;
 
     unsigned int overlaps;
     bool is_curvemesh;

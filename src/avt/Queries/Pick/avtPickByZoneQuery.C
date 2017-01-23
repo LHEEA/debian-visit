@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,6 +44,7 @@
 
 #include <vtkCell.h>
 #include <vtkCellData.h>
+
 #include <vtkDataSet.h>
 #include <vtkFieldData.h>
 #include <vtkIntArray.h>
@@ -56,7 +57,6 @@
 #include <avtVector.h>
 
 #include <BadCellException.h>
-
 
 
 // ****************************************************************************
@@ -136,6 +136,14 @@ avtPickByZoneQuery::~avtPickByZoneQuery()
 //    Use the center found by the DB when available.  Fixes a PickByZone bug
 //    where the returned 'point' didn't match the zone center.
 //
+//    Matt Larsen, Fri Jul 8 08:15:00 PDT 2016
+//    Added call to base class ExtractZonePickHighlights to support 
+//    zone highlights
+//
+//    Matt Larsen, Mon Sep 19 10:39:02 PDT 2016
+//    Fixed pick highlight issue with incorrect zone being hightlighted 
+//    in some cases.
+//
 // ****************************************************************************
 
 void
@@ -161,9 +169,9 @@ avtPickByZoneQuery::Execute(vtkDataSet *ds, const int dom)
         pickAtts.SetError(true);
         return; 
     }
-
     int userZoneId = pickAtts.GetElementNumber();
     int zoneid = userZoneId;
+    int origPick = zoneid;
     int maxEls = ds->GetNumberOfCells();
     if (pickAtts.GetMatSelected() &&  !pickAtts.GetElementIsGlobal())
     {
@@ -311,6 +319,8 @@ avtPickByZoneQuery::Execute(vtkDataSet *ds, const int dom)
     {
         pickAtts.SetPickPoint(center);
     }
+    
+    this->ExtractZonePickHighlights(origPick, ds, dom);
 }
 
 

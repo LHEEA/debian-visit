@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,7 +55,7 @@ class vtkDataArray;
 //
 //  Purpose:
 //    A wrapper class to allow the use of vtkDataSets as IVP fields for 
-//    streamline integration. Uses vtkInterpolatedVelocityField on top of 
+//    integral curve integration. Uses vtkInterpolatedVelocityField on top of 
 //    the supplied vtkDataSet. 
 //
 //  Programmer:  Christoph Garth

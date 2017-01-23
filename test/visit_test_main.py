@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2012, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2016, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -47,21 +47,27 @@ notes:   Ported/refactored from 'Testing.py'
 #
 # ----------------------------------------------------------------------------
 
-import string
-import sys
-import time
-import os
+import atexit
 import glob
-import subprocess
-import thread
+import gzip
 import json
-import shutil
+import os
 import platform
+import shutil
+import string
+import subprocess
+import sys
+import tempfile
+import thread
+import time
 
 import HtmlDiff
 import HtmlPython
 
 from stat import *
+
+import xml.etree.ElementTree as ElTree
+from xml.etree.ElementTree import ParseError
 
 # check for pil
 pil_available = True
@@ -84,6 +90,9 @@ sys.path.append(os.path.abspath(os.path.split(__visit_script_file__)[0]))
 
 from visit_test_common import *
 from visit_test_ctest import *
+
+# list of files to clean up at exit
+filesToRemoveUponExit = []
 
 # ----------------------------------------------------------------------------
 # ----------------------------------------------------------------------------
@@ -322,6 +331,16 @@ def TestScriptPath():
     script_category = TestEnv.params["category"]
     script_dir      = tests_path(script_category,script_file)
     return script_dir
+
+def RemoveFile(f):
+    """
+    Remove a file, failing silently if it did not exist to begin with
+    """
+    try:
+        os.unlink(f)
+    except:
+        pass
+   
 
 # ----------------------------------------------------------------------------
 # Function: GenFileNames
@@ -683,6 +702,15 @@ def HTMLAssertTestResult(case_name,status,assert_check,result,details):
 #
 #   Burlen Loring, Tue May 27 11:44:04 PDT 2014
 #   Report threshold error
+#
+#   Burlen Loring, Fri Oct  2 09:13:04 PDT 2015
+#   report image error, cpu and walltime. for every test
+#
+#   Burlen Loring, Wed Oct 21 15:41:57 PDT 2015
+#   * fix double reporting of image error
+#   * added an option to display the current, baseline and diff in
+#     a popup window during the test
+#
 # ----------------------------------------------------------------------------
 def LogImageTestResult(case_name,
                        diffState,modeSpecific,
@@ -692,6 +720,8 @@ def LogImageTestResult(case_name,
     Log the result of an image based test.
     """
     # write data to the log file if there is one
+    if TestEnv.params["ctest"]:
+        Log(ctestReportDiff(thrErr))
     details = ""
     if diffState == 'None':
         status = "passed"
@@ -704,8 +734,9 @@ def LogImageTestResult(case_name,
         details = "#pix=%06d, #nonbg=%06d, #diff=%06d, ~%%diffs=%.3f, avgdiff=%3.3f, threrr=%3.3f" \
                     % (tPixs, pPixs, dPixs, dpix, davg, thrErr)
         if TestEnv.params["ctest"]:
-            Log(ctestReportDiff(thrErr))
             Log(ctestReportDiffImages(cur,diff,base))
+        if TestEnv.params["display_failed"]:
+            os.system("montage -background '#555555' -geometry +16+16 -label 'current\\n%%f' %s -label 'baseline\\n%%f' %s -label 'diff\\n%%f' %s del.png && display del.png"%(cur, base, diff))
     elif diffState == 'Skipped':
         status = "skipped"
     else:
@@ -714,6 +745,10 @@ def LogImageTestResult(case_name,
     msg = "    Test case '%s' %s" % (case_name,status.upper())
     if details !="":
         msg += ": " + details
+    if TestEnv.params["ctest"]:
+        testTime = ctestGetElapsedTime()
+        Log(ctestReportWallTime(testTime))
+        Log(ctestReportCPUTime(testTime))
     Log(msg)
     JSONImageTestResult(case_name, status,
                         diffState,modeSpecific,
@@ -744,6 +779,84 @@ def JSONImageTestResult(case_name, status,
              'avg_pixels':    davg}
     res["sections"][-1]["cases"].append(t_res)
     json_results_save(res)
+
+# ----------------------------------------------------------------------------
+# Function: Save_Validate_Perturb_Restore_Session
+#
+# Purpose: Rigorously test session files by checking xml compliance 
+# (which requires xmllint) and also saving the session and then perturbing
+# thestate and restoring the saved session
+#
+# Programmer: Mark C. Miller, Tue Sep  6 18:53:39 PDT 2016
+#
+# Modifications
+#
+# Mark C. Miller, Wed Sep  7 17:38:39 PDT 2016
+# Added logic to have xmllint save its output and then have VisIt attempt
+# to read the file xmllint produces. This tests VisIt's ability to read
+# foreign-generated XML content which may vary a bit from how VisIt writes it.
+#
+# Mark C. Miller, Wed Sep 14 13:25:12 PDT 2016
+# Added logic to fallback to python's xml tools if xmllint is not available.
+# ----------------------------------------------------------------------------
+def Save_Validate_Perturb_Restore_Session(cur):
+    retval = 0
+    trans = string.maketrans("():; #","______")
+    sfile = "%s.session"%string.translate(string.rstrip(cur,".png"),trans)
+    ofile = "%s.xmlized.session"%string.translate(string.rstrip(cur,".png"),trans)
+    RemoveFile(sfile)
+    SaveSession(sfile)
+
+    # Coarse check for xml validity using xmllint tool and for VisIt's ability to
+    # re-read xml from some producer other than VisIt
+    try:
+        xmlvalid = subprocess.call(["xmllint", "--output", ofile, "--postvalid", "--dtdvalid", \
+            abs_path(test_root_path(),"visit.dtd"), sfile])
+    except:
+        try:
+            # Fallback to python's xml 
+            xmltree = ElTree.parse(sfile)
+            if xmltree:
+                xmltree.write(ofile, "US-ASCII")
+                xmlvalid = 0
+        except:
+            xmlvalid = 1
+
+    if xmlvalid != 0:
+        retval = 1
+    else:
+        try:
+            xmlvalid = RestoreSession(ofile, 0)
+            if xmlvalid != 1L:
+                retval = 1
+        except:
+            retval = 1
+
+    # Delete all plots and all windows but 1
+    for i in range(16,1,-1):
+        try:
+            SetActiveWindow(i)
+            DeleteAllPlots()
+            DeleteWindow()
+        except:
+            pass
+    SetActiveWindow(1)
+    DeleteAllPlots()
+
+    # Close all databases
+    gatts = GetGlobalAttributes()
+    for db in gatts.sources:
+        CloseDatabase(db)
+
+    # Restore a crummy session file that changes a lot of stuff wildly
+    # so that when we restore the real session, we have a higher likelihood
+    # of encountering overlooked session issus
+    RestoreSession(abs_path(test_root_path(),"crummy.session"),0)
+
+    # Now restore the original session
+    RestoreSession(sfile,0)
+
+    return retval
 
 # ----------------------------------------------------------------------------
 # Function: Test
@@ -802,6 +915,9 @@ def JSONImageTestResult(case_name, status,
 #
 #   Kathleen Biagas, Wed Jan 15 09:39:13 MST 2014
 #   Saved alternate SaveWindowAttributes for use in GetBackgroundImage
+#
+#   Mark C. Miller, Tue Sep  6 18:51:23 PDT 2016
+#   Added Save_Validate_... to rigorously test sessionfiles
 # ----------------------------------------------------------------------------
 def Test(case_name, altSWA=0, alreadySaved=0):
     CheckInteractive(case_name)
@@ -812,6 +928,9 @@ def Test(case_name, altSWA=0, alreadySaved=0):
     global savedAltSWA
 
     (cur, diff, base, altbase, modeSpecific) = GenFileNames(case_name, ".png")
+
+    if TestEnv.params["sessionfiles"]:
+        sessState = Save_Validate_Perturb_Restore_Session(cur)
 
     # save the window in visit
     if alreadySaved == 0:
@@ -871,6 +990,11 @@ def Test(case_name, altSWA=0, alreadySaved=0):
         'Unknown' :      3,
         'Skipped' :      0
     }
+
+    # Capture session file xml validity failure as Unacceptable if all else was ok
+    if TestEnv.params["sessionfiles"] and sessState != 0 and diffVals[diffState] < 2:
+            diffState = 'Unacceptable'
+
     TestEnv.results["maxds"] = max(TestEnv.results["maxds"], diffVals[diffState])
 
 # ----------------------------------------------------------------------------
@@ -1906,8 +2030,52 @@ def TurnOffAllAnnotations(givenAtts=0):
     SetAnnotationAttributes(a)
 
 # ----------------------------------------------------------------------------
+# Function: CleanUpFilesToRemoveUponExit 
+# Remove any files we created temporarily
+# ----------------------------------------------------------------------------
+def CleanUpFilesToRemoveUponExit():
+    for f in filesToRemoveUponExit:
+        RemoveFile(f)
+
+# ----------------------------------------------------------------------------
+# Function: DecompressDatabase
+# Do this using python itself instead of relying upon having a gzip OS tool
+# available and be judicious about memory usage.
+# ----------------------------------------------------------------------------
+def DecompressDatabase(abs_dbname, zip_ext):
+
+    if os.path.isdir(os.environ['TMPDIR']):
+         tmpdir = os.environ['TMPDIR']
+    elif os.path.isdir(os.environ['TMP']):
+         tmpdir = os.environ['TMP']
+    elif os.path.isdir("/tmp"):
+        tmpdir = "/tmp"
+    else:
+        tmpdir = os.path.dirname(abs_dbname)
+
+    try:
+        f = gzip.GzipFile(abs_dbname+zip_ext,"r")
+        (gd, gname) = tempfile.mkstemp(suffix=os.path.basename(abs_dbname),
+                          dir=tmpdir,text="wb")
+        os.close(gd)
+        g = open(gname,"wb")
+        buf = f.read(100000)
+        while len(buf):
+            g.write(buf)
+            buf = f.read(100000)
+        g.close()
+        filesToRemoveUponExit.append(gname)
+    except:
+        RemoveFile(gname)
+        gname = ""
+    return gname
+
+# ----------------------------------------------------------------------------
 # Function: FindAndOpenDatabase
 #
+# Modifications:
+#   Mark C. Miller, Thu Mar 24 14:29:45 PDT 2016
+#   Added support for gzip'd compressed variants of the file.
 # ----------------------------------------------------------------------------
 def FindAndOpenDatabase(dbname, extraPaths=()):
     """
@@ -1923,6 +2091,9 @@ def FindAndOpenDatabase(dbname, extraPaths=()):
     for p in externalDbPaths + extraPaths:
         abs_dbname = "%s/%s"%(p,dbname)
         if os.path.isfile(abs_dbname):
+            return OpenDatabase(abs_dbname), abs_dbname
+        elif os.path.isfile(abs_dbname+".gz"):
+            abs_dbname = DecompressDatabase(abs_dbname, ".gz")
             return OpenDatabase(abs_dbname), abs_dbname
     Log("Unable to OpenDatabase \"%s\" at any of the specified paths.\n" % dbname)
     return 0, ""
@@ -1950,6 +2121,9 @@ def TestSimulation(sim, sim2):
 def TestParallelSimulation(sim, sim2, np):
     return Simulation(SimVisItDir(), SimProgram(sim), SimFile(sim2), np)
 
+def TestBatchSimulation(sim):
+    return Simulation(SimVisItDir(), SimProgram(sim), SimFile("batch"), batch=True)
+
 # ----------------------------------------------------------------------------
 #  Class: Simulation
 #
@@ -1970,9 +2144,12 @@ def TestParallelSimulation(sim, sim2, np):
 #    Changed the parallel job launching logic to use srun on surface instead
 #    of edge.
 #
+#    Burlen Loring, Fri Oct  2 12:31:12 PDT 2015
+#    Added gdb support for serial
+#
 # ----------------------------------------------------------------------------
 class Simulation(object):
-    def __init__(self, vdir, s, sim2, np=1):
+    def __init__(self, vdir, s, sim2, np=1, batch=False):
         self.simulation = s
         self.host = "localhost"
         self.sim2 = sim2
@@ -1982,6 +2159,8 @@ class Simulation(object):
         self.extraargs = []
         self.np = np
         self.valgrind = False
+        self.gdb = False
+        self.batch = batch
 
     def enablevalgrind(self):
         self.valgrind = True
@@ -1994,7 +2173,10 @@ class Simulation(object):
         CloseComputeEngine()
         # Start up the simulation.
         tfile = self.sim2 + ".trace"
-        args = [self.simulation, "-dir", self.visitdir, "-trace", tfile, "-sim2", self.sim2]
+        if self.batch:
+            args = [self.simulation, "-dir", self.visitdir, "-trace", tfile]
+        else:
+            args = [self.simulation, "-dir", self.visitdir, "-trace", tfile, "-sim2", self.sim2]
         for a in self.extraargs:
             args = args + [a]
         if self.np > 1:
@@ -2028,6 +2210,9 @@ class Simulation(object):
                 logfile = GenFileNames("valgrind", ".txt")[0]
                 args = ["env", "GLIBCXX_FORCE_NEW=1", "valgrind", "--tool=memcheck", "--leak-check=full", "--log-file="+logfile] + args
 
+            if self.gdb:
+                args = ["xterm", "-geometry", "150x50", "-e", "gdb", "--args"] + args
+
         s="Running: "
         for a in args:
             s = s + a + " "
@@ -2044,7 +2229,7 @@ class Simulation(object):
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE,
                                       close_fds=False)
-           
+
         return self.p != None
 
     def addargument(self, arg):
@@ -2054,6 +2239,8 @@ class Simulation(object):
         self.extraargs = self.extraargs + [arg]
 
     def wait(self):
+        if self.batch:
+            return True
         for i in xrange(120): # Wait up to 2 minutes.
             try:
                 s = os.stat(self.sim2)
@@ -2082,6 +2269,7 @@ class Simulation(object):
         Disconnect from the simulation.
         """
         self.connected = False
+        DeleteAllPlots()
         CloseDatabase(self.sim2)
         CloseComputeEngine(self.host, self.sim2)
         return 1
@@ -2090,11 +2278,18 @@ class Simulation(object):
         """
         Tell the simulation to terminate."
         """
+        havesim = False
+        if self.batch:
+            havesim = True
+        elif self.connected:
+            havesim = True
         # 'being nice' hangs on windows
-        if not sys.platform.startswith("win") and self.connected:
+        if not sys.platform.startswith("win") and havesim:
             # Be nice about it.
             self.p.stdin.write("quit\n")
-            self.p.communicate()
+            (o,e) = self.p.communicate()
+            sys.stderr.write('sim stdout = %s\n'%(o))
+            sys.stderr.write('sim stderr = %s\n'%(e))
             self.p.wait()
         else:
             # Force the sim to terminate.
@@ -2117,7 +2312,7 @@ class Simulation(object):
         ret = 0
         if self.connected:
             ret = SendSimulationCommand(self.host, self.sim2, cmd)
-   
+
     def metadata(self):
         md = None
         if self.connected:
@@ -2148,7 +2343,7 @@ def TestSimStartAndConnect(testname, sim):
         else:
             txt = txt + "Simulation \"%s\" did not start." % exe
     else:
-        txt = "Simulation executable \"%s\" does not exist.\n" % exe    
+        txt = "Simulation executable \"%s\" does not exist.\n" % exe
     TestText(testname, txt)
     return started,connected
 
@@ -2211,12 +2406,27 @@ class SimulationMemoryRecorder(object):
         self.WriteFile()
 
     def WriteFile(self):
-        f = open(self.filename, "wt")            
+        f = open(self.filename, "wt")
         for k in self.samples.keys():
             f.write("#pid_%s\n" % str(k))
             for i in range(len(self.samples[k])):
                 f.write("%g %g\n" % (self.times[i], self.samples[k][i]))
         f.close()
+
+def TestExpressions(name, meshQuality=True, operatorCreated=False, prefix=""):
+    exprList = Expressions()
+    estr = prefix + "Expressions:\n"
+    index = 1
+    for expr in exprList:
+        add = True
+        if not meshQuality and "mesh_quality/" in expr[0]:
+           add = False
+        if not operatorCreated and "operators/" in expr[0]:
+           add = False
+        if add:
+            estr = estr + "expression %d: %s = %s\n" % (index, expr[0], expr[1])
+            index = index + 1
+    TestText(name, estr)
 
 #############################################################################
 #   Argument/Environment Processing
@@ -2358,6 +2568,8 @@ def InitTestEnv():
     """
     Sets up VisIt to execute a test script.
     """
+    atexit.register(CleanUpFilesToRemoveUponExit)
+
     # default file
     params_file="params.json"
     for arg in sys.argv:

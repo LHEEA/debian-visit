@@ -92,7 +92,7 @@ case $1 in
         ;;
     # Jeremy Meredith, Oak Ridge National Laboratory
     "js9")
-        emaddr=jsmeredith@ornl.gov
+        emaddr=jsmeredith@gmail.com
         ;;
     # Hank Childs, Lawrence Berkeley National Laboratory
     "hrchilds")
@@ -213,6 +213,10 @@ case $1 in
     # Jim Eliot
     "jimeliot")
         emaddr=jim.eliot@awe.co.uk
+        ;;
+    # Iulian Grindeanu
+    "iulian")
+        emaddr=iulian@mcs.anl.gov
         ;;
     *)
         emaddr=visit-core-support@elist.ornl.gov

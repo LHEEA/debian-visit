@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -208,7 +208,7 @@ avtCommDSOnDemandICAlgorithm::RunAlgorithm()
     debug1<<"avtCommDSOnDemandICAlgorithm::RunAlgorithm()\n";
     int timer = visitTimer->StartTimer();
 
-    //Sort the streamlines and load the first domain.
+    //Sort the integral curves and load the first domain.
     SortIntegralCurves(activeICs);
     SortIntegralCurves(oobICs);
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,8 +39,6 @@
 #include "QvisLCSWindow.h"
 
 #include <LCSAttributes.h>
-#include <ViewerProxy.h>
-#include <DataNode.h>
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -50,23 +48,11 @@
 #include <QLineEdit>
 #include <QSlider>
 #include <QSpinBox>
-#include <QPushButton>
 #include <QTabWidget>
-#include <QToolTip>
 #include <QButtonGroup>
 #include <QRadioButton>
-#include <QvisColorTableButton.h>
-#include <QvisColorButton.h>
-#include <QvisLineWidthWidget.h>
-#include <QvisVariableButton.h>
-#include <QListWidget>
-#include <QFileDialog>
 #include <SelectionProperties.h>
 
-#include <stdio.h>
-
-#include <string>
-#include <vector>
 
 static void
 TurnOn(QWidget *w0, QWidget *w1=NULL);
@@ -572,6 +558,9 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
 // Creation:   Tue Dec 29 14:37:53 EST 2009
 //
 // Modifications:
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
 //
 // ****************************************************************************
 
@@ -621,6 +610,7 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
     seedLimitLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
     seedGroupLayout->addWidget( seedLimitLabel, 3, 0);
     seedLimit = new QSpinBox(seedGroup);
+    seedLimit->setKeyboardTracking(false);
     seedLimit->setMinimum(1);
     seedLimit->setMaximum(100);
     connect(seedLimit, SIGNAL(valueChanged(int)),
@@ -648,7 +638,7 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
 
     // Pathline Options
     QGroupBox *pathlineOptionsGrp = new QGroupBox(icGrp);
-    pathlineOptionsGrp->setTitle(tr("Pathlines Options"));
+    pathlineOptionsGrp->setTitle(tr("Pathline Options"));
     icGrpLayout->addWidget(pathlineOptionsGrp, 3, 0);
 
     QGridLayout *pathlineOptionsGrpLayout = new QGridLayout(pathlineOptionsGrp);
@@ -716,6 +706,10 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
 //   Hank Childs, Sun Dec  5 05:31:57 PST 2010
 //   Add additional warning controls.
 //
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
+//
 // ****************************************************************************
 
 void
@@ -747,6 +741,7 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
     
     maxSLCountLabel = new QLabel(tr("Communication threshold"), algoGrp);
     maxSLCount = new QSpinBox(algoGrp);
+    maxSLCount->setKeyboardTracking(false);
     maxSLCount->setMinimum(1);
     maxSLCount->setMaximum(100000);
     connect(maxSLCount, SIGNAL(valueChanged(int)), 
@@ -756,6 +751,7 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 
     maxDomainCacheLabel = new QLabel(tr("Domain cache size"), algoGrp);
     maxDomainCache = new QSpinBox(algoGrp);
+    maxDomainCache->setKeyboardTracking(false);
     maxDomainCache->setMinimum(1);
     maxDomainCache->setMaximum(100000);
     connect(maxDomainCache, SIGNAL(valueChanged(int)),
@@ -765,6 +761,7 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 
     workGroupSizeLabel = new QLabel(tr("Work group size"), algoGrp);
     workGroupSize = new QSpinBox(algoGrp);
+    workGroupSize->setKeyboardTracking(false);
     workGroupSize->setMinimum(2);
     workGroupSize->setMaximum(1000000);
     connect(workGroupSize, SIGNAL(valueChanged(int)),
@@ -1157,9 +1154,9 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             terminationTypeButtonGroup->button(atts->GetTerminationType())->setChecked(true);
             terminationTypeButtonGroup->blockSignals(false);
 
-            maxTime->setEnabled(atts->GetTerminationType()==0);
-            maxDistance->setEnabled(atts->GetTerminationType()==1);
-            maxSize->setEnabled(atts->GetTerminationType()==2);
+            maxTime->setEnabled(atts->GetTerminationType() == LCSAttributes::Time);
+            maxDistance->setEnabled(atts->GetTerminationType() == LCSAttributes::Distance);
+            maxSize->setEnabled(atts->GetTerminationType() == LCSAttributes::Size);
             break;
         case LCSAttributes::ID_termSize:
             maxSize->setText(DoubleToQString(atts->GetTermSize()));
@@ -1566,6 +1563,8 @@ QvisLCSWindow::UpdateAlgorithmAttributes()
 // Creation:   Mon Oct 21 14:19:00 PST 2002
 //
 // Modifications:
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Ensure values are retrieved from spin boxes.
 //
 // ****************************************************************************
 
@@ -1898,6 +1897,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
                 DoubleToQString(atts->GetCriticalPointThreshold()));
             atts->SetCriticalPointThreshold(atts->GetCriticalPointThreshold());
         }
+    }
+    // maxDomainCache
+    if (which_widget == LCSAttributes::ID_maxDomainCacheSize || doAll)
+    {
+        if (maxDomainCache->value() != atts->GetMaxDomainCacheSize())
+            atts->SetMaxDomainCacheSize(maxDomainCache->value());
     }
 }
 

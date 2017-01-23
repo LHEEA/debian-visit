@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,7 +53,7 @@ class vtkObject;
 //
 //  Purpose:
 //      A derived type of avtStateRecorderIntegralCurve.  This class 
-//      decides how to terminate a streamline.
+//      decides how to terminate a Poncare integral curve.
 //
 //  Programmer: Hank Childs
 //  Creation:   October 4, 2010
@@ -262,7 +262,7 @@ public:
 
   // If a surface it's overlap is found geometrically
   // If an island (primary or secondary) toroidalPeriod / toroidalResonance
-  float nnodes;
+  double nnodes;
 
   unsigned int maxPunctures;
   unsigned int numPunctures;

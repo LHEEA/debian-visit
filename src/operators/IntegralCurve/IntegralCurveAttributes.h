@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,13 +62,13 @@ class IntegralCurveAttributes : public AttributeSubject
 public:
     enum SourceType
     {
-        Point,
+        SpecifiedPoint,
         PointList,
-        Line_,
+        SpecifiedLine,
         Circle,
-        Plane,
-        Sphere,
-        Box,
+        SpecifiedPlane,
+        SpecifiedSphere,
+        SpecifiedBox,
         Selection,
         FieldData
     };
@@ -85,6 +85,13 @@ public:
         CorrelationDistance,
         Difference,
         Variable
+    };
+    enum CleanupMethod
+    {
+        NoCleanup,
+        Merge,
+        Before,
+        After
     };
     enum CropValue
     {
@@ -229,6 +236,8 @@ public:
     void SetPathlinesPeriod(double pathlinesPeriod_);
     void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
     void SetDisplayGeometry(DisplayGeometry displayGeometry_);
+    void SetCleanupMethod(CleanupMethod cleanupMethod_);
+    void SetCleanupThreshold(double cleanupThreshold_);
     void SetCropBeginFlag(bool cropBeginFlag_);
     void SetCropBegin(double cropBegin_);
     void SetCropEndFlag(bool cropEndFlag_);
@@ -312,6 +321,8 @@ public:
     double             GetPathlinesPeriod() const;
     PathlinesCMFE      GetPathlinesCMFE() const;
     DisplayGeometry    GetDisplayGeometry() const;
+    CleanupMethod      GetCleanupMethod() const;
+    double             GetCleanupThreshold() const;
     bool               GetCropBeginFlag() const;
     double             GetCropBegin() const;
     bool               GetCropEndFlag() const;
@@ -352,6 +363,11 @@ public:
     static bool DataValue_FromString(const std::string &, DataValue &);
 protected:
     static std::string DataValue_ToString(int);
+public:
+    static std::string CleanupMethod_ToString(CleanupMethod);
+    static bool CleanupMethod_FromString(const std::string &, CleanupMethod &);
+protected:
+    static std::string CleanupMethod_ToString(int);
 public:
     static std::string CropValue_ToString(CropValue);
     static bool CropValue_FromString(const std::string &, CropValue &);
@@ -402,6 +418,7 @@ public:
 
     // User-defined methods
     bool ChangesRequireRecalculation(const IntegralCurveAttributes &) const;
+    virtual void ProcessOldVersions(DataNode *node, const char *configVersion);
 
     // IDs that can be used to identify fields in case statements
     enum {
@@ -450,6 +467,8 @@ public:
         ID_pathlinesPeriod,
         ID_pathlinesCMFE,
         ID_displayGeometry,
+        ID_cleanupMethod,
+        ID_cleanupThreshold,
         ID_cropBeginFlag,
         ID_cropBegin,
         ID_cropEndFlag,
@@ -523,6 +542,8 @@ private:
     double       pathlinesPeriod;
     int          pathlinesCMFE;
     int          displayGeometry;
+    int          cleanupMethod;
+    double       cleanupThreshold;
     bool         cropBeginFlag;
     double       cropBegin;
     bool         cropEndFlag;
@@ -552,6 +573,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define INTEGRALCURVEATTRIBUTES_TMFS "iDDDDDDdDDbd*d*iiiisiibdbddbddiddidDiiiiibbddiibdbdidddbbiibbbbbbddddis"
+#define INTEGRALCURVEATTRIBUTES_TMFS "iDDDDDDdDDbd*d*iiiisiibdbddbddiddidDiiiiibbddiiidbdbdidddbbiibbbbbbddddis"
 
 #endif

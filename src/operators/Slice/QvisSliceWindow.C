@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,7 +37,6 @@
 *****************************************************************************/
 
 #include <math.h>
-#include <stdio.h> // for sscanf
 
 #include <QButtonGroup>
 #include <QCheckBox>
@@ -46,15 +45,12 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
-#include <QListWidget>
-#include <QPushButton>
 #include <QRadioButton>
 #include <QSlider>
 
 #include <QvisSliceWindow.h>
 #include <FileServerList.h>
 #include <SliceAttributes.h>
-#include <ViewerProxy.h>
 
 // ****************************************************************************
 // Method: QvisSliceWindow::QvisSliceWindow

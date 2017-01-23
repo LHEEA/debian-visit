@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,8 @@
 #include <DebugStream.h>
 #include <VisItStreamUtil.h>
 
+#include <vtkStreamer.h>
+
 // ****************************************************************************
 //  Method: avtSerialICAlgorithm::avtSerialICAlgorithm
 //
@@ -56,9 +58,6 @@
 //  Creation:   January 27, 2009
 //
 //  Modifications:
-//
-//    Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//    Remove reference to avtStreamlineFilter, add reference to avtPICSFilter.
 //
 // ****************************************************************************
 
@@ -152,7 +151,7 @@ avtSerialICAlgorithm::RestoreInitialize(std::vector<avtIntegralCurve *> &ics, in
 //  Method: avtSerialICAlgorithm::AddIntegralCurves
 //
 //  Purpose:
-//      Add streamlines
+//      Add integral curves
 //
 //  Programmer: Dave Pugmire
 //  Creation:   December 3, 2009
@@ -161,12 +160,6 @@ avtSerialICAlgorithm::RestoreInitialize(std::vector<avtIntegralCurve *> &ics, in
 //
 //   Hank Childs, Thu Jun  3 10:22:16 PDT 2010
 //   Use new name "GetCurrentLocation".
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename method to AddIntegralCurves.
 //
 // ****************************************************************************
 
@@ -195,8 +188,24 @@ avtSerialICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve *> &ics)
             i0 = (rank)*(nSeedsPerProc) + oneExtraUntil;
             i1 = (rank+1)*(nSeedsPerProc) + oneExtraUntil;
         }
+
+        // When integrating in both directions make sure the forward
+        // and backwards seed are on the same rank. If the number of
+        // seeds for this rank is odd then adjust the seed count.
+        if (picsFilter->GetIntegrationDirection() ==
+            VTK_INTEGRATE_BOTH_DIRECTIONS &&
+            (i1-i0) % 2)
+        {
+          // Odd rank so give up a seed to make the seed count even.
+          if( rank % 2 == 1 )
+            i0 += 1;
+          
+          // Even rank so add a seed to make the seed count even.
+          else if( rank % 2 == 0 )
+            i1 += 1;
+        }
     
-        //Delete the seeds I don't need.
+        // Delete the seeds not needed.
         for (int i = 0; i < i0; i++)
             delete ics[i];
         for (int i = i1; i < nSeeds; i++)
@@ -217,8 +226,8 @@ avtSerialICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve *> &ics)
     {
       if( i0 < i1 )
       {
-        debug1 << "Proc " << PAR_Rank() << " has seeds: "
-               << i0 << " to " << (i1-1) << " of " << nSeeds << " seeds"
+        debug1 << "Proc " << PAR_Rank() << " has " << (i1-i0) << " seeds: "
+               << i0 << " to " << (i1-1) << " of " << nSeeds << " total seeds"
                << std::endl;
       }
       else
@@ -262,7 +271,7 @@ avtSerialICAlgorithm::ActivateICs()
 //  Method: avtSerialICAlgorithm::RunAlgorithm
 //
 //  Purpose:
-//      Execute the serial streamline algorithm.
+//      Execute the serial integral curve algorithm.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   January 27, 2009
@@ -284,13 +293,6 @@ avtSerialICAlgorithm::ActivateICs()
 //
 //   Dave Pugmire, Thu Dec  3 13:28:08 EST 2009
 //   Move some initialization into RunAlgorithm.
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename several methods that reflect the new emphasis in particle 
-//   advection, as opposed to streamlines.
 //
 //   Hank Childs, Sat Nov 27 16:52:12 PST 2010
 //   Add progress reporting.

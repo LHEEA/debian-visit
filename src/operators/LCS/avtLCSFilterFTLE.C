@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,11 +46,11 @@
 // For now use the avtLCSIC as the state does not need to be recorded
 // for the FSLE. That is because currently the integration is being
 // done step by step rather than in chunks. However, the code is set up
-// to use avtStreamlineIC. Which if the integration is done in chucks
+// to use avtIntegralCurveIC. Which if the integration is done in chucks
 // will probably be more efficient.
 
-//#include <avtStreamlineIC.h>
-#define avtStreamlineIC avtLCSIC
+//#include <avtIntegralCurveIC.h>
+#define avtIntegralCurveIC avtLCSIC
 
 #include <avtExtents.h>
 #include <avtMatrix.h>
@@ -75,7 +75,6 @@
 //#include <vtkImageGaussianSmooth.h>
 
 #ifdef PARALLEL
-#include <mpi.h>
 #include <avtParallel.h>
 #include <vtkDataSetReader.h>
 #include <vtkDataSetWriter.h>
@@ -524,9 +523,9 @@ avtLCSFilter::SingleBlockSingleCalc( vtkDataSet *in_ds,
           }
         }
 
-        delete dx;
-        delete dy;
-        delete dz;
+        delete[] dx;
+        delete[] dy;
+        delete[] dz;
       }
 
       //now have the jacobian - 3 arrays with 3 workingArrays.
@@ -992,7 +991,7 @@ avtLCSFilter::RectilinearGridSingleCalc(std::vector<avtIntegralCurve*> &ics)
                     dz = (remapPoints[k+5][i] - remapPoints[k+4][i]) * delta;
                   else
                     dz = 0;
-                  
+
                   jacobian[i]->SetTuple3(j, dx, dy, dz);
                 }
               }

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -54,6 +54,8 @@ def visit_test(fn):
     def run_fn(*args):
         if "visit" in sys.modules.keys():
             return fn(*args)
+        else:
+            print "[VisIt module not found, skipping test that requires VisIt]"
         return None
     return run_fn
 
@@ -66,6 +68,8 @@ def pyside_test(fn):
     def run_fn(*args):
         if "PySide.QtCore" in sys.modules.keys():
             return fn(*args)
+        else:
+            print "[PySide not found, skipping test that requires PySide]"
         return None
     return run_fn
 

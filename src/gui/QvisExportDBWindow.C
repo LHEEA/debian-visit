@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,7 +51,6 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
-#include <QSlider>
 #include <QSpinBox>
 #include <QWidget>
 
@@ -377,6 +376,7 @@ QvisExportDBWindow::CreateWindowContents()
     groupSizeLabel = new QLabel(tr("Write group size"), ioGroup);
     ioLayout->addWidget(groupSizeLabel, 1, 0);
     groupSize = new QSpinBox(ioGroup);
+    groupSize->setKeyboardTracking(false);
     groupSize->setMinimum(1);
     connect(groupSize, SIGNAL(valueChanged(int)),
             this, SLOT(groupSizeChanged(int)));
@@ -672,6 +672,13 @@ QvisExportDBWindow::GetCurrentValues(int which_widget)
 
         exportDBAtts->SetVariables(vars);
     }
+
+    if(which_widget == ExportDBAttributes::ID_groupSize || doAll)
+    {
+        if (groupSize->value() != exportDBAtts->GetGroupSize())
+            exportDBAtts->SetGroupSize(groupSize->value());
+    }
+
 }
 
 // ****************************************************************************

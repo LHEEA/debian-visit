@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1171,7 +1171,7 @@ avtSamplePointExtractor::ExtractHex(vtkHexahedron *hex, vtkDataSet *ds,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -1189,7 +1189,7 @@ avtSamplePointExtractor::ExtractHex(vtkHexahedron *hex, vtkDataSet *ds,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)
@@ -1261,7 +1261,7 @@ avtSamplePointExtractor::ExtractHex20(vtkQuadraticHexahedron *hex20,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -1279,7 +1279,7 @@ avtSamplePointExtractor::ExtractHex20(vtkQuadraticHexahedron *hex20,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)
@@ -1364,7 +1364,7 @@ avtSamplePointExtractor::ExtractWedge(vtkWedge *wedge, vtkDataSet *ds,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -1382,7 +1382,7 @@ avtSamplePointExtractor::ExtractWedge(vtkWedge *wedge, vtkDataSet *ds,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)
@@ -1467,7 +1467,7 @@ avtSamplePointExtractor::ExtractTet(vtkTetra *tet, vtkDataSet *ds,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -1485,7 +1485,7 @@ avtSamplePointExtractor::ExtractTet(vtkTetra *tet, vtkDataSet *ds,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)
@@ -1570,7 +1570,7 @@ avtSamplePointExtractor::ExtractPyramid(vtkPyramid *pyr, vtkDataSet *ds,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -1588,7 +1588,7 @@ avtSamplePointExtractor::ExtractPyramid(vtkPyramid *pyr, vtkDataSet *ds,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)
@@ -1670,7 +1670,7 @@ avtSamplePointExtractor::ExtractVoxel(vtkVoxel *voxel, vtkDataSet *ds,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -1693,7 +1693,7 @@ avtSamplePointExtractor::ExtractVoxel(vtkVoxel *voxel, vtkDataSet *ds,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)
@@ -1859,7 +1859,7 @@ avtSamplePointExtractor::ExtractTriangle(vtkTriangle *tri, vtkDataSet *ds,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -1878,7 +1878,7 @@ avtSamplePointExtractor::ExtractTriangle(vtkTriangle *tri, vtkDataSet *ds,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)
@@ -1966,7 +1966,7 @@ avtSamplePointExtractor::ExtractQuad(vtkQuad *quad, vtkDataSet *ds,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -1984,7 +1984,7 @@ avtSamplePointExtractor::ExtractQuad(vtkQuad *quad, vtkDataSet *ds,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)
@@ -2077,7 +2077,7 @@ avtSamplePointExtractor::ExtractPixel(vtkPixel *pixel, vtkDataSet *ds,
     //
     // Retrieve all of the zonal variables.
     //
-    int ncd = li.cellArrays.size();
+    int ncd = (int)li.cellArrays.size();
     for (v = 0 ; v < ncd ; v++)
     {
         if (li.cellDataIndex[v] < 0)
@@ -2095,7 +2095,7 @@ avtSamplePointExtractor::ExtractPixel(vtkPixel *pixel, vtkDataSet *ds,
     //
     // Retrieve all of the nodal variables.
     //
-    int npd = li.pointArrays.size();
+    int npd = (int)li.pointArrays.size();
     for (v = 0 ; v < npd ; v++)
     {
         if (li.pointDataIndex[v] < 0)

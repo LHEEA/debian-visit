@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -499,6 +499,28 @@ VisWinAnnotations::AddAnnotationObject(int annotType, const std::string &annotNa
     }
 
     return annot != 0;
+}
+
+// ****************************************************************************
+// Method: VisWinAnnotations::SetVisibility
+//
+// Purpose:
+//   Set the actor visibility so that VTK doesn't render it. this is
+//   done so that actors with non-distributed geometry get rendered
+//   at the right time during order compositing
+//
+// Programmer: Burlen Loring,
+// Creation:   Mon Sep 28 16:04:23 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+VisWinAnnotations::SetVisibility(int val)
+{
+    for(size_t i = 0; i < annotations.size(); ++i)
+        annotations[i]->SetVisibility(val);
 }
 
 // ****************************************************************************

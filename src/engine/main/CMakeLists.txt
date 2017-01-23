@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -63,9 +63,14 @@
 #    Eric Brugger, Tue Sep 30 15:03:30 PDT 2014
 #    Add the EAVL library to the list of link libraries.
 #
+#    Burlen Loring, Thu Sep  3 22:35:11 PDT 2015
+#    I added the ProgrammableCompositer, a helper class
+#    used by the NetworkManager.
+#
 #****************************************************************************/
 
 SET(LIBENGINE_SOURCES
+ProgrammableCompositer.C
 DataNetwork.C
 ClonedDataNetwork.C
 CumulativeQueryNamedSelectionExtension.C

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -345,7 +345,7 @@ avtPolygonToTrianglesTesselator::AddContourVertex(double x,
 // ****************************************************************************
 void avtPolygonToTrianglesTesselator::EndContour()
 {
-    int nverts = verts.size() / 3;
+    int nverts = (int)verts.size() / 3;
     tessAddContour(tessObj,3,
                    &verts[0],
                    3*sizeof(double),

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -146,13 +146,17 @@ EngineRPCExecutor<QuitRPC>::Execute(QuitRPC *rpc)
 // Creation:   Fri Mar 12 11:36:11 PDT 2004
 //
 // Modifications:
-//   
+//
+//   Burlen Loring, Fri Oct 16 13:35:24 PDT 2015
+//   Fix a warning
+//
 // ****************************************************************************
 
 template<>
 void
 EngineRPCExecutor<KeepAliveRPC>::Execute(KeepAliveRPC *rpc)
 {
+    (void) rpc;
     //
     // Now send back some data on the command and data sockets.
     //

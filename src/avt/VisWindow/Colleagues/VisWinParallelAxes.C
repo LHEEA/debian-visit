@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -489,7 +489,7 @@ VisWinParallelAxes::SetViewport(double vl_, double vb_, double vr_, double vt_)
 void
 VisWinParallelAxes::UpdatePlotList(vector<avtActor_p> &list)
 {
-    int nActors = list.size();
+    int nActors = (int)list.size();
 
     //
     // Find the highest-valued axis index for any plot

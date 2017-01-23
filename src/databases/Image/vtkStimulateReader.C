@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -143,7 +143,7 @@ bool vtkStimulateReader::GetFilenames(const char *one_file, char *spr_name,
 {
   if (one_file == NULL)
     return false;
-  int len = strlen(one_file);
+  size_t len = strlen(one_file);
   if (len < 4)
     return false;
 

@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -41,6 +41,7 @@ package llnl.visit.plots;
 import llnl.visit.AttributeSubject;
 import llnl.visit.CommunicationBuffer;
 import llnl.visit.Plugin;
+import llnl.visit.ColorAttribute;
 
 // ****************************************************************************
 // Class: PseudocolorAttributes
@@ -59,7 +60,7 @@ import llnl.visit.Plugin;
 
 public class PseudocolorAttributes extends AttributeSubject implements Plugin
 {
-    private static int PseudocolorAttributes_numAdditionalAtts = 44;
+    private static int PseudocolorAttributes_numAdditionalAtts = 50;
 
     // Enum values
     public final static int SCALING_LINEAR = 0;
@@ -92,13 +93,9 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
     public final static int LINETYPE_TUBE = 1;
     public final static int LINETYPE_RIBBON = 2;
 
-    public final static int ENDPOINTTYPE_NONE = 0;
-    public final static int ENDPOINTTYPE_TAILS = 1;
-    public final static int ENDPOINTTYPE_HEADS = 2;
-    public final static int ENDPOINTTYPE_BOTH = 3;
-
-    public final static int ENDPOINTSTYLE_SPHERES = 0;
-    public final static int ENDPOINTSTYLE_CONES = 1;
+    public final static int ENDPOINTSTYLE_NONE = 0;
+    public final static int ENDPOINTSTYLE_SPHERES = 1;
+    public final static int ENDPOINTSTYLE_CONES = 2;
 
     public final static int SIZETYPE_ABSOLUTE = 0;
     public final static int SIZETYPE_FRACTIONOFBBOX = 1;
@@ -130,28 +127,34 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         pointSizeVarEnabled = false;
         pointSizeVar = new String("default");
         pointSizePixels = 2;
-        lineType = LINETYPE_LINE;
         lineStyle = 0;
+        lineType = LINETYPE_LINE;
         lineWidth = 0;
-        tubeDisplayDensity = 10;
+        tubeResolution = 10;
         tubeRadiusSizeType = SIZETYPE_FRACTIONOFBBOX;
         tubeRadiusAbsolute = 0.125;
         tubeRadiusBBox = 0.005;
-        varyTubeRadius = false;
-        varyTubeRadiusVariable = new String("");
-        varyTubeRadiusFactor = 10;
-        endPointType = ENDPOINTTYPE_NONE;
-        endPointStyle = ENDPOINTSTYLE_SPHERES;
+        tubeRadiusVarEnabled = false;
+        tubeRadiusVar = new String("");
+        tubeRadiusVarRatio = 10;
+        tailStyle = ENDPOINTSTYLE_NONE;
+        headStyle = ENDPOINTSTYLE_NONE;
         endPointRadiusSizeType = SIZETYPE_FRACTIONOFBBOX;
-        endPointRadiusAbsolute = 1;
-        endPointRadiusBBox = 0.005;
-        endPointRatio = 2;
+        endPointRadiusAbsolute = 0.125;
+        endPointRadiusBBox = 0.05;
+        endPointResolution = 10;
+        endPointRatio = 5;
+        endPointRadiusVarEnabled = false;
+        endPointRadiusVar = new String("");
+        endPointRadiusVarRatio = 10;
         renderSurfaces = 1;
         renderWireframe = 0;
         renderPoints = 0;
         smoothingLevel = 0;
         legendFlag = true;
         lightingFlag = true;
+        wireframeColor = new ColorAttribute(0, 0, 0, 0);
+        pointColor = new ColorAttribute(0, 0, 0, 0);
     }
 
     public PseudocolorAttributes(int nMoreFields)
@@ -180,28 +183,34 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         pointSizeVarEnabled = false;
         pointSizeVar = new String("default");
         pointSizePixels = 2;
-        lineType = LINETYPE_LINE;
         lineStyle = 0;
+        lineType = LINETYPE_LINE;
         lineWidth = 0;
-        tubeDisplayDensity = 10;
+        tubeResolution = 10;
         tubeRadiusSizeType = SIZETYPE_FRACTIONOFBBOX;
         tubeRadiusAbsolute = 0.125;
         tubeRadiusBBox = 0.005;
-        varyTubeRadius = false;
-        varyTubeRadiusVariable = new String("");
-        varyTubeRadiusFactor = 10;
-        endPointType = ENDPOINTTYPE_NONE;
-        endPointStyle = ENDPOINTSTYLE_SPHERES;
+        tubeRadiusVarEnabled = false;
+        tubeRadiusVar = new String("");
+        tubeRadiusVarRatio = 10;
+        tailStyle = ENDPOINTSTYLE_NONE;
+        headStyle = ENDPOINTSTYLE_NONE;
         endPointRadiusSizeType = SIZETYPE_FRACTIONOFBBOX;
-        endPointRadiusAbsolute = 1;
-        endPointRadiusBBox = 0.005;
-        endPointRatio = 2;
+        endPointRadiusAbsolute = 0.125;
+        endPointRadiusBBox = 0.05;
+        endPointResolution = 10;
+        endPointRatio = 5;
+        endPointRadiusVarEnabled = false;
+        endPointRadiusVar = new String("");
+        endPointRadiusVarRatio = 10;
         renderSurfaces = 1;
         renderWireframe = 0;
         renderPoints = 0;
         smoothingLevel = 0;
         legendFlag = true;
         lightingFlag = true;
+        wireframeColor = new ColorAttribute(0, 0, 0, 0);
+        pointColor = new ColorAttribute(0, 0, 0, 0);
     }
 
     public PseudocolorAttributes(PseudocolorAttributes obj)
@@ -230,28 +239,34 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         pointSizeVarEnabled = obj.pointSizeVarEnabled;
         pointSizeVar = new String(obj.pointSizeVar);
         pointSizePixels = obj.pointSizePixels;
-        lineType = obj.lineType;
         lineStyle = obj.lineStyle;
+        lineType = obj.lineType;
         lineWidth = obj.lineWidth;
-        tubeDisplayDensity = obj.tubeDisplayDensity;
+        tubeResolution = obj.tubeResolution;
         tubeRadiusSizeType = obj.tubeRadiusSizeType;
         tubeRadiusAbsolute = obj.tubeRadiusAbsolute;
         tubeRadiusBBox = obj.tubeRadiusBBox;
-        varyTubeRadius = obj.varyTubeRadius;
-        varyTubeRadiusVariable = new String(obj.varyTubeRadiusVariable);
-        varyTubeRadiusFactor = obj.varyTubeRadiusFactor;
-        endPointType = obj.endPointType;
-        endPointStyle = obj.endPointStyle;
+        tubeRadiusVarEnabled = obj.tubeRadiusVarEnabled;
+        tubeRadiusVar = new String(obj.tubeRadiusVar);
+        tubeRadiusVarRatio = obj.tubeRadiusVarRatio;
+        tailStyle = obj.tailStyle;
+        headStyle = obj.headStyle;
         endPointRadiusSizeType = obj.endPointRadiusSizeType;
         endPointRadiusAbsolute = obj.endPointRadiusAbsolute;
         endPointRadiusBBox = obj.endPointRadiusBBox;
+        endPointResolution = obj.endPointResolution;
         endPointRatio = obj.endPointRatio;
+        endPointRadiusVarEnabled = obj.endPointRadiusVarEnabled;
+        endPointRadiusVar = new String(obj.endPointRadiusVar);
+        endPointRadiusVarRatio = obj.endPointRadiusVarRatio;
         renderSurfaces = obj.renderSurfaces;
         renderWireframe = obj.renderWireframe;
         renderPoints = obj.renderPoints;
         smoothingLevel = obj.smoothingLevel;
         legendFlag = obj.legendFlag;
         lightingFlag = obj.lightingFlag;
+        wireframeColor = new ColorAttribute(obj.wireframeColor);
+        pointColor = new ColorAttribute(obj.pointColor);
 
         SelectAll();
     }
@@ -291,28 +306,34 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
                 (pointSizeVarEnabled == obj.pointSizeVarEnabled) &&
                 (pointSizeVar.equals(obj.pointSizeVar)) &&
                 (pointSizePixels == obj.pointSizePixels) &&
-                (lineType == obj.lineType) &&
                 (lineStyle == obj.lineStyle) &&
+                (lineType == obj.lineType) &&
                 (lineWidth == obj.lineWidth) &&
-                (tubeDisplayDensity == obj.tubeDisplayDensity) &&
+                (tubeResolution == obj.tubeResolution) &&
                 (tubeRadiusSizeType == obj.tubeRadiusSizeType) &&
                 (tubeRadiusAbsolute == obj.tubeRadiusAbsolute) &&
                 (tubeRadiusBBox == obj.tubeRadiusBBox) &&
-                (varyTubeRadius == obj.varyTubeRadius) &&
-                (varyTubeRadiusVariable.equals(obj.varyTubeRadiusVariable)) &&
-                (varyTubeRadiusFactor == obj.varyTubeRadiusFactor) &&
-                (endPointType == obj.endPointType) &&
-                (endPointStyle == obj.endPointStyle) &&
+                (tubeRadiusVarEnabled == obj.tubeRadiusVarEnabled) &&
+                (tubeRadiusVar.equals(obj.tubeRadiusVar)) &&
+                (tubeRadiusVarRatio == obj.tubeRadiusVarRatio) &&
+                (tailStyle == obj.tailStyle) &&
+                (headStyle == obj.headStyle) &&
                 (endPointRadiusSizeType == obj.endPointRadiusSizeType) &&
                 (endPointRadiusAbsolute == obj.endPointRadiusAbsolute) &&
                 (endPointRadiusBBox == obj.endPointRadiusBBox) &&
+                (endPointResolution == obj.endPointResolution) &&
                 (endPointRatio == obj.endPointRatio) &&
+                (endPointRadiusVarEnabled == obj.endPointRadiusVarEnabled) &&
+                (endPointRadiusVar.equals(obj.endPointRadiusVar)) &&
+                (endPointRadiusVarRatio == obj.endPointRadiusVarRatio) &&
                 (renderSurfaces == obj.renderSurfaces) &&
                 (renderWireframe == obj.renderWireframe) &&
                 (renderPoints == obj.renderPoints) &&
                 (smoothingLevel == obj.smoothingLevel) &&
                 (legendFlag == obj.legendFlag) &&
-                (lightingFlag == obj.lightingFlag));
+                (lightingFlag == obj.lightingFlag) &&
+                (wireframeColor == obj.wireframeColor) &&
+                (pointColor == obj.pointColor));
     }
 
     public String GetName() { return "Pseudocolor"; }
@@ -451,15 +472,15 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         Select(21);
     }
 
-    public void SetLineType(int lineType_)
-    {
-        lineType = lineType_;
-        Select(22);
-    }
-
     public void SetLineStyle(int lineStyle_)
     {
         lineStyle = lineStyle_;
+        Select(22);
+    }
+
+    public void SetLineType(int lineType_)
+    {
+        lineType = lineType_;
         Select(23);
     }
 
@@ -469,9 +490,9 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         Select(24);
     }
 
-    public void SetTubeDisplayDensity(int tubeDisplayDensity_)
+    public void SetTubeResolution(int tubeResolution_)
     {
-        tubeDisplayDensity = tubeDisplayDensity_;
+        tubeResolution = tubeResolution_;
         Select(25);
     }
 
@@ -493,33 +514,33 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         Select(28);
     }
 
-    public void SetVaryTubeRadius(boolean varyTubeRadius_)
+    public void SetTubeRadiusVarEnabled(boolean tubeRadiusVarEnabled_)
     {
-        varyTubeRadius = varyTubeRadius_;
+        tubeRadiusVarEnabled = tubeRadiusVarEnabled_;
         Select(29);
     }
 
-    public void SetVaryTubeRadiusVariable(String varyTubeRadiusVariable_)
+    public void SetTubeRadiusVar(String tubeRadiusVar_)
     {
-        varyTubeRadiusVariable = varyTubeRadiusVariable_;
+        tubeRadiusVar = tubeRadiusVar_;
         Select(30);
     }
 
-    public void SetVaryTubeRadiusFactor(double varyTubeRadiusFactor_)
+    public void SetTubeRadiusVarRatio(double tubeRadiusVarRatio_)
     {
-        varyTubeRadiusFactor = varyTubeRadiusFactor_;
+        tubeRadiusVarRatio = tubeRadiusVarRatio_;
         Select(31);
     }
 
-    public void SetEndPointType(int endPointType_)
+    public void SetTailStyle(int tailStyle_)
     {
-        endPointType = endPointType_;
+        tailStyle = tailStyle_;
         Select(32);
     }
 
-    public void SetEndPointStyle(int endPointStyle_)
+    public void SetHeadStyle(int headStyle_)
     {
-        endPointStyle = endPointStyle_;
+        headStyle = headStyle_;
         Select(33);
     }
 
@@ -541,93 +562,135 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         Select(36);
     }
 
+    public void SetEndPointResolution(int endPointResolution_)
+    {
+        endPointResolution = endPointResolution_;
+        Select(37);
+    }
+
     public void SetEndPointRatio(double endPointRatio_)
     {
         endPointRatio = endPointRatio_;
-        Select(37);
+        Select(38);
+    }
+
+    public void SetEndPointRadiusVarEnabled(boolean endPointRadiusVarEnabled_)
+    {
+        endPointRadiusVarEnabled = endPointRadiusVarEnabled_;
+        Select(39);
+    }
+
+    public void SetEndPointRadiusVar(String endPointRadiusVar_)
+    {
+        endPointRadiusVar = endPointRadiusVar_;
+        Select(40);
+    }
+
+    public void SetEndPointRadiusVarRatio(double endPointRadiusVarRatio_)
+    {
+        endPointRadiusVarRatio = endPointRadiusVarRatio_;
+        Select(41);
     }
 
     public void SetRenderSurfaces(int renderSurfaces_)
     {
         renderSurfaces = renderSurfaces_;
-        Select(38);
+        Select(42);
     }
 
     public void SetRenderWireframe(int renderWireframe_)
     {
         renderWireframe = renderWireframe_;
-        Select(39);
+        Select(43);
     }
 
     public void SetRenderPoints(int renderPoints_)
     {
         renderPoints = renderPoints_;
-        Select(40);
+        Select(44);
     }
 
     public void SetSmoothingLevel(int smoothingLevel_)
     {
         smoothingLevel = smoothingLevel_;
-        Select(41);
+        Select(45);
     }
 
     public void SetLegendFlag(boolean legendFlag_)
     {
         legendFlag = legendFlag_;
-        Select(42);
+        Select(46);
     }
 
     public void SetLightingFlag(boolean lightingFlag_)
     {
         lightingFlag = lightingFlag_;
-        Select(43);
+        Select(47);
+    }
+
+    public void SetWireframeColor(ColorAttribute wireframeColor_)
+    {
+        wireframeColor = wireframeColor_;
+        Select(48);
+    }
+
+    public void SetPointColor(ColorAttribute pointColor_)
+    {
+        pointColor = pointColor_;
+        Select(49);
     }
 
     // Property getting methods
-    public int     GetScaling() { return scaling; }
-    public double  GetSkewFactor() { return skewFactor; }
-    public int     GetLimitsMode() { return limitsMode; }
-    public boolean GetMinFlag() { return minFlag; }
-    public double  GetMin() { return min; }
-    public boolean GetMaxFlag() { return maxFlag; }
-    public double  GetMax() { return max; }
-    public int     GetCentering() { return centering; }
-    public String  GetColorTableName() { return colorTableName; }
-    public boolean GetInvertColorTable() { return invertColorTable; }
-    public int     GetOpacityType() { return opacityType; }
-    public String  GetOpacityVariable() { return opacityVariable; }
-    public double  GetOpacity() { return opacity; }
-    public double  GetOpacityVarMin() { return opacityVarMin; }
-    public double  GetOpacityVarMax() { return opacityVarMax; }
-    public boolean GetOpacityVarMinFlag() { return opacityVarMinFlag; }
-    public boolean GetOpacityVarMaxFlag() { return opacityVarMaxFlag; }
-    public double  GetPointSize() { return pointSize; }
-    public int     GetPointType() { return pointType; }
-    public boolean GetPointSizeVarEnabled() { return pointSizeVarEnabled; }
-    public String  GetPointSizeVar() { return pointSizeVar; }
-    public int     GetPointSizePixels() { return pointSizePixels; }
-    public int     GetLineType() { return lineType; }
-    public int     GetLineStyle() { return lineStyle; }
-    public int     GetLineWidth() { return lineWidth; }
-    public int     GetTubeDisplayDensity() { return tubeDisplayDensity; }
-    public int     GetTubeRadiusSizeType() { return tubeRadiusSizeType; }
-    public double  GetTubeRadiusAbsolute() { return tubeRadiusAbsolute; }
-    public double  GetTubeRadiusBBox() { return tubeRadiusBBox; }
-    public boolean GetVaryTubeRadius() { return varyTubeRadius; }
-    public String  GetVaryTubeRadiusVariable() { return varyTubeRadiusVariable; }
-    public double  GetVaryTubeRadiusFactor() { return varyTubeRadiusFactor; }
-    public int     GetEndPointType() { return endPointType; }
-    public int     GetEndPointStyle() { return endPointStyle; }
-    public int     GetEndPointRadiusSizeType() { return endPointRadiusSizeType; }
-    public double  GetEndPointRadiusAbsolute() { return endPointRadiusAbsolute; }
-    public double  GetEndPointRadiusBBox() { return endPointRadiusBBox; }
-    public double  GetEndPointRatio() { return endPointRatio; }
-    public int     GetRenderSurfaces() { return renderSurfaces; }
-    public int     GetRenderWireframe() { return renderWireframe; }
-    public int     GetRenderPoints() { return renderPoints; }
-    public int     GetSmoothingLevel() { return smoothingLevel; }
-    public boolean GetLegendFlag() { return legendFlag; }
-    public boolean GetLightingFlag() { return lightingFlag; }
+    public int            GetScaling() { return scaling; }
+    public double         GetSkewFactor() { return skewFactor; }
+    public int            GetLimitsMode() { return limitsMode; }
+    public boolean        GetMinFlag() { return minFlag; }
+    public double         GetMin() { return min; }
+    public boolean        GetMaxFlag() { return maxFlag; }
+    public double         GetMax() { return max; }
+    public int            GetCentering() { return centering; }
+    public String         GetColorTableName() { return colorTableName; }
+    public boolean        GetInvertColorTable() { return invertColorTable; }
+    public int            GetOpacityType() { return opacityType; }
+    public String         GetOpacityVariable() { return opacityVariable; }
+    public double         GetOpacity() { return opacity; }
+    public double         GetOpacityVarMin() { return opacityVarMin; }
+    public double         GetOpacityVarMax() { return opacityVarMax; }
+    public boolean        GetOpacityVarMinFlag() { return opacityVarMinFlag; }
+    public boolean        GetOpacityVarMaxFlag() { return opacityVarMaxFlag; }
+    public double         GetPointSize() { return pointSize; }
+    public int            GetPointType() { return pointType; }
+    public boolean        GetPointSizeVarEnabled() { return pointSizeVarEnabled; }
+    public String         GetPointSizeVar() { return pointSizeVar; }
+    public int            GetPointSizePixels() { return pointSizePixels; }
+    public int            GetLineStyle() { return lineStyle; }
+    public int            GetLineType() { return lineType; }
+    public int            GetLineWidth() { return lineWidth; }
+    public int            GetTubeResolution() { return tubeResolution; }
+    public int            GetTubeRadiusSizeType() { return tubeRadiusSizeType; }
+    public double         GetTubeRadiusAbsolute() { return tubeRadiusAbsolute; }
+    public double         GetTubeRadiusBBox() { return tubeRadiusBBox; }
+    public boolean        GetTubeRadiusVarEnabled() { return tubeRadiusVarEnabled; }
+    public String         GetTubeRadiusVar() { return tubeRadiusVar; }
+    public double         GetTubeRadiusVarRatio() { return tubeRadiusVarRatio; }
+    public int            GetTailStyle() { return tailStyle; }
+    public int            GetHeadStyle() { return headStyle; }
+    public int            GetEndPointRadiusSizeType() { return endPointRadiusSizeType; }
+    public double         GetEndPointRadiusAbsolute() { return endPointRadiusAbsolute; }
+    public double         GetEndPointRadiusBBox() { return endPointRadiusBBox; }
+    public int            GetEndPointResolution() { return endPointResolution; }
+    public double         GetEndPointRatio() { return endPointRatio; }
+    public boolean        GetEndPointRadiusVarEnabled() { return endPointRadiusVarEnabled; }
+    public String         GetEndPointRadiusVar() { return endPointRadiusVar; }
+    public double         GetEndPointRadiusVarRatio() { return endPointRadiusVarRatio; }
+    public int            GetRenderSurfaces() { return renderSurfaces; }
+    public int            GetRenderWireframe() { return renderWireframe; }
+    public int            GetRenderPoints() { return renderPoints; }
+    public int            GetSmoothingLevel() { return smoothingLevel; }
+    public boolean        GetLegendFlag() { return legendFlag; }
+    public boolean        GetLightingFlag() { return lightingFlag; }
+    public ColorAttribute GetWireframeColor() { return wireframeColor; }
+    public ColorAttribute GetPointColor() { return pointColor; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -677,13 +740,13 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(21, buf))
             buf.WriteInt(pointSizePixels);
         if(WriteSelect(22, buf))
-            buf.WriteInt(lineType);
-        if(WriteSelect(23, buf))
             buf.WriteInt(lineStyle);
+        if(WriteSelect(23, buf))
+            buf.WriteInt(lineType);
         if(WriteSelect(24, buf))
             buf.WriteInt(lineWidth);
         if(WriteSelect(25, buf))
-            buf.WriteInt(tubeDisplayDensity);
+            buf.WriteInt(tubeResolution);
         if(WriteSelect(26, buf))
             buf.WriteInt(tubeRadiusSizeType);
         if(WriteSelect(27, buf))
@@ -691,15 +754,15 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(28, buf))
             buf.WriteDouble(tubeRadiusBBox);
         if(WriteSelect(29, buf))
-            buf.WriteBool(varyTubeRadius);
+            buf.WriteBool(tubeRadiusVarEnabled);
         if(WriteSelect(30, buf))
-            buf.WriteString(varyTubeRadiusVariable);
+            buf.WriteString(tubeRadiusVar);
         if(WriteSelect(31, buf))
-            buf.WriteDouble(varyTubeRadiusFactor);
+            buf.WriteDouble(tubeRadiusVarRatio);
         if(WriteSelect(32, buf))
-            buf.WriteInt(endPointType);
+            buf.WriteInt(tailStyle);
         if(WriteSelect(33, buf))
-            buf.WriteInt(endPointStyle);
+            buf.WriteInt(headStyle);
         if(WriteSelect(34, buf))
             buf.WriteInt(endPointRadiusSizeType);
         if(WriteSelect(35, buf))
@@ -707,19 +770,31 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(36, buf))
             buf.WriteDouble(endPointRadiusBBox);
         if(WriteSelect(37, buf))
-            buf.WriteDouble(endPointRatio);
+            buf.WriteInt(endPointResolution);
         if(WriteSelect(38, buf))
-            buf.WriteInt(renderSurfaces);
+            buf.WriteDouble(endPointRatio);
         if(WriteSelect(39, buf))
-            buf.WriteInt(renderWireframe);
+            buf.WriteBool(endPointRadiusVarEnabled);
         if(WriteSelect(40, buf))
-            buf.WriteInt(renderPoints);
+            buf.WriteString(endPointRadiusVar);
         if(WriteSelect(41, buf))
-            buf.WriteInt(smoothingLevel);
+            buf.WriteDouble(endPointRadiusVarRatio);
         if(WriteSelect(42, buf))
-            buf.WriteBool(legendFlag);
+            buf.WriteInt(renderSurfaces);
         if(WriteSelect(43, buf))
+            buf.WriteInt(renderWireframe);
+        if(WriteSelect(44, buf))
+            buf.WriteInt(renderPoints);
+        if(WriteSelect(45, buf))
+            buf.WriteInt(smoothingLevel);
+        if(WriteSelect(46, buf))
+            buf.WriteBool(legendFlag);
+        if(WriteSelect(47, buf))
             buf.WriteBool(lightingFlag);
+        if(WriteSelect(48, buf))
+            wireframeColor.Write(buf);
+        if(WriteSelect(49, buf))
+            pointColor.Write(buf);
     }
 
     public void ReadAtts(int index, CommunicationBuffer buf)
@@ -793,16 +868,16 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
             SetPointSizePixels(buf.ReadInt());
             break;
         case 22:
-            SetLineType(buf.ReadInt());
+            SetLineStyle(buf.ReadInt());
             break;
         case 23:
-            SetLineStyle(buf.ReadInt());
+            SetLineType(buf.ReadInt());
             break;
         case 24:
             SetLineWidth(buf.ReadInt());
             break;
         case 25:
-            SetTubeDisplayDensity(buf.ReadInt());
+            SetTubeResolution(buf.ReadInt());
             break;
         case 26:
             SetTubeRadiusSizeType(buf.ReadInt());
@@ -814,19 +889,19 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
             SetTubeRadiusBBox(buf.ReadDouble());
             break;
         case 29:
-            SetVaryTubeRadius(buf.ReadBool());
+            SetTubeRadiusVarEnabled(buf.ReadBool());
             break;
         case 30:
-            SetVaryTubeRadiusVariable(buf.ReadString());
+            SetTubeRadiusVar(buf.ReadString());
             break;
         case 31:
-            SetVaryTubeRadiusFactor(buf.ReadDouble());
+            SetTubeRadiusVarRatio(buf.ReadDouble());
             break;
         case 32:
-            SetEndPointType(buf.ReadInt());
+            SetTailStyle(buf.ReadInt());
             break;
         case 33:
-            SetEndPointStyle(buf.ReadInt());
+            SetHeadStyle(buf.ReadInt());
             break;
         case 34:
             SetEndPointRadiusSizeType(buf.ReadInt());
@@ -838,25 +913,45 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
             SetEndPointRadiusBBox(buf.ReadDouble());
             break;
         case 37:
-            SetEndPointRatio(buf.ReadDouble());
+            SetEndPointResolution(buf.ReadInt());
             break;
         case 38:
-            SetRenderSurfaces(buf.ReadInt());
+            SetEndPointRatio(buf.ReadDouble());
             break;
         case 39:
-            SetRenderWireframe(buf.ReadInt());
+            SetEndPointRadiusVarEnabled(buf.ReadBool());
             break;
         case 40:
-            SetRenderPoints(buf.ReadInt());
+            SetEndPointRadiusVar(buf.ReadString());
             break;
         case 41:
-            SetSmoothingLevel(buf.ReadInt());
+            SetEndPointRadiusVarRatio(buf.ReadDouble());
             break;
         case 42:
-            SetLegendFlag(buf.ReadBool());
+            SetRenderSurfaces(buf.ReadInt());
             break;
         case 43:
+            SetRenderWireframe(buf.ReadInt());
+            break;
+        case 44:
+            SetRenderPoints(buf.ReadInt());
+            break;
+        case 45:
+            SetSmoothingLevel(buf.ReadInt());
+            break;
+        case 46:
+            SetLegendFlag(buf.ReadBool());
+            break;
+        case 47:
             SetLightingFlag(buf.ReadBool());
+            break;
+        case 48:
+            wireframeColor.Read(buf);
+            Select(48);
+            break;
+        case 49:
+            pointColor.Read(buf);
+            Select(49);
             break;
         }
     }
@@ -933,6 +1028,7 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         str = str + boolToString("pointSizeVarEnabled", pointSizeVarEnabled, indent) + "\n";
         str = str + stringToString("pointSizeVar", pointSizeVar, indent) + "\n";
         str = str + intToString("pointSizePixels", pointSizePixels, indent) + "\n";
+        str = str + intToString("lineStyle", lineStyle, indent) + "\n";
         str = str + indent + "lineType = ";
         if(lineType == LINETYPE_LINE)
             str = str + "LINETYPE_LINE";
@@ -941,9 +1037,8 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         if(lineType == LINETYPE_RIBBON)
             str = str + "LINETYPE_RIBBON";
         str = str + "\n";
-        str = str + intToString("lineStyle", lineStyle, indent) + "\n";
         str = str + intToString("lineWidth", lineWidth, indent) + "\n";
-        str = str + intToString("tubeDisplayDensity", tubeDisplayDensity, indent) + "\n";
+        str = str + intToString("tubeResolution", tubeResolution, indent) + "\n";
         str = str + indent + "tubeRadiusSizeType = ";
         if(tubeRadiusSizeType == SIZETYPE_ABSOLUTE)
             str = str + "SIZETYPE_ABSOLUTE";
@@ -952,23 +1047,23 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         str = str + "\n";
         str = str + doubleToString("tubeRadiusAbsolute", tubeRadiusAbsolute, indent) + "\n";
         str = str + doubleToString("tubeRadiusBBox", tubeRadiusBBox, indent) + "\n";
-        str = str + boolToString("varyTubeRadius", varyTubeRadius, indent) + "\n";
-        str = str + stringToString("varyTubeRadiusVariable", varyTubeRadiusVariable, indent) + "\n";
-        str = str + doubleToString("varyTubeRadiusFactor", varyTubeRadiusFactor, indent) + "\n";
-        str = str + indent + "endPointType = ";
-        if(endPointType == ENDPOINTTYPE_NONE)
-            str = str + "ENDPOINTTYPE_NONE";
-        if(endPointType == ENDPOINTTYPE_TAILS)
-            str = str + "ENDPOINTTYPE_TAILS";
-        if(endPointType == ENDPOINTTYPE_HEADS)
-            str = str + "ENDPOINTTYPE_HEADS";
-        if(endPointType == ENDPOINTTYPE_BOTH)
-            str = str + "ENDPOINTTYPE_BOTH";
-        str = str + "\n";
-        str = str + indent + "endPointStyle = ";
-        if(endPointStyle == ENDPOINTSTYLE_SPHERES)
+        str = str + boolToString("tubeRadiusVarEnabled", tubeRadiusVarEnabled, indent) + "\n";
+        str = str + stringToString("tubeRadiusVar", tubeRadiusVar, indent) + "\n";
+        str = str + doubleToString("tubeRadiusVarRatio", tubeRadiusVarRatio, indent) + "\n";
+        str = str + indent + "tailStyle = ";
+        if(tailStyle == ENDPOINTSTYLE_NONE)
+            str = str + "ENDPOINTSTYLE_NONE";
+        if(tailStyle == ENDPOINTSTYLE_SPHERES)
             str = str + "ENDPOINTSTYLE_SPHERES";
-        if(endPointStyle == ENDPOINTSTYLE_CONES)
+        if(tailStyle == ENDPOINTSTYLE_CONES)
+            str = str + "ENDPOINTSTYLE_CONES";
+        str = str + "\n";
+        str = str + indent + "headStyle = ";
+        if(headStyle == ENDPOINTSTYLE_NONE)
+            str = str + "ENDPOINTSTYLE_NONE";
+        if(headStyle == ENDPOINTSTYLE_SPHERES)
+            str = str + "ENDPOINTSTYLE_SPHERES";
+        if(headStyle == ENDPOINTSTYLE_CONES)
             str = str + "ENDPOINTSTYLE_CONES";
         str = str + "\n";
         str = str + indent + "endPointRadiusSizeType = ";
@@ -979,61 +1074,73 @@ public class PseudocolorAttributes extends AttributeSubject implements Plugin
         str = str + "\n";
         str = str + doubleToString("endPointRadiusAbsolute", endPointRadiusAbsolute, indent) + "\n";
         str = str + doubleToString("endPointRadiusBBox", endPointRadiusBBox, indent) + "\n";
+        str = str + intToString("endPointResolution", endPointResolution, indent) + "\n";
         str = str + doubleToString("endPointRatio", endPointRatio, indent) + "\n";
+        str = str + boolToString("endPointRadiusVarEnabled", endPointRadiusVarEnabled, indent) + "\n";
+        str = str + stringToString("endPointRadiusVar", endPointRadiusVar, indent) + "\n";
+        str = str + doubleToString("endPointRadiusVarRatio", endPointRadiusVarRatio, indent) + "\n";
         str = str + intToString("renderSurfaces", renderSurfaces, indent) + "\n";
         str = str + intToString("renderWireframe", renderWireframe, indent) + "\n";
         str = str + intToString("renderPoints", renderPoints, indent) + "\n";
         str = str + intToString("smoothingLevel", smoothingLevel, indent) + "\n";
         str = str + boolToString("legendFlag", legendFlag, indent) + "\n";
         str = str + boolToString("lightingFlag", lightingFlag, indent) + "\n";
+        str = str + indent + "wireframeColor = {" + wireframeColor.Red() + ", " + wireframeColor.Green() + ", " + wireframeColor.Blue() + ", " + wireframeColor.Alpha() + "}\n";
+        str = str + indent + "pointColor = {" + pointColor.Red() + ", " + pointColor.Green() + ", " + pointColor.Blue() + ", " + pointColor.Alpha() + "}\n";
         return str;
     }
 
 
     // Attributes
-    private int     scaling;
-    private double  skewFactor;
-    private int     limitsMode;
-    private boolean minFlag;
-    private double  min;
-    private boolean maxFlag;
-    private double  max;
-    private int     centering;
-    private String  colorTableName;
-    private boolean invertColorTable;
-    private int     opacityType;
-    private String  opacityVariable;
-    private double  opacity;
-    private double  opacityVarMin;
-    private double  opacityVarMax;
-    private boolean opacityVarMinFlag;
-    private boolean opacityVarMaxFlag;
-    private double  pointSize;
-    private int     pointType;
-    private boolean pointSizeVarEnabled;
-    private String  pointSizeVar;
-    private int     pointSizePixels;
-    private int     lineType;
-    private int     lineStyle;
-    private int     lineWidth;
-    private int     tubeDisplayDensity;
-    private int     tubeRadiusSizeType;
-    private double  tubeRadiusAbsolute;
-    private double  tubeRadiusBBox;
-    private boolean varyTubeRadius;
-    private String  varyTubeRadiusVariable;
-    private double  varyTubeRadiusFactor;
-    private int     endPointType;
-    private int     endPointStyle;
-    private int     endPointRadiusSizeType;
-    private double  endPointRadiusAbsolute;
-    private double  endPointRadiusBBox;
-    private double  endPointRatio;
-    private int     renderSurfaces;
-    private int     renderWireframe;
-    private int     renderPoints;
-    private int     smoothingLevel;
-    private boolean legendFlag;
-    private boolean lightingFlag;
+    private int            scaling;
+    private double         skewFactor;
+    private int            limitsMode;
+    private boolean        minFlag;
+    private double         min;
+    private boolean        maxFlag;
+    private double         max;
+    private int            centering;
+    private String         colorTableName;
+    private boolean        invertColorTable;
+    private int            opacityType;
+    private String         opacityVariable;
+    private double         opacity;
+    private double         opacityVarMin;
+    private double         opacityVarMax;
+    private boolean        opacityVarMinFlag;
+    private boolean        opacityVarMaxFlag;
+    private double         pointSize;
+    private int            pointType;
+    private boolean        pointSizeVarEnabled;
+    private String         pointSizeVar;
+    private int            pointSizePixels;
+    private int            lineStyle;
+    private int            lineType;
+    private int            lineWidth;
+    private int            tubeResolution;
+    private int            tubeRadiusSizeType;
+    private double         tubeRadiusAbsolute;
+    private double         tubeRadiusBBox;
+    private boolean        tubeRadiusVarEnabled;
+    private String         tubeRadiusVar;
+    private double         tubeRadiusVarRatio;
+    private int            tailStyle;
+    private int            headStyle;
+    private int            endPointRadiusSizeType;
+    private double         endPointRadiusAbsolute;
+    private double         endPointRadiusBBox;
+    private int            endPointResolution;
+    private double         endPointRatio;
+    private boolean        endPointRadiusVarEnabled;
+    private String         endPointRadiusVar;
+    private double         endPointRadiusVarRatio;
+    private int            renderSurfaces;
+    private int            renderWireframe;
+    private int            renderPoints;
+    private int            smoothingLevel;
+    private boolean        legendFlag;
+    private boolean        lightingFlag;
+    private ColorAttribute wireframeColor;
+    private ColorAttribute pointColor;
 }
 

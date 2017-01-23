@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -229,7 +229,7 @@ class PIPELINE_API avtFilter
     enum CacheItemDependence
     {
         DATA_DEPENDENCE = 1,          // Example: scalar tree for contouring
-        SPATIAL_DEPENDENCE = 2,       // Example: lookup structure for streamlines
+        SPATIAL_DEPENDENCE = 2,       // Example: lookup structure for integral curves
         CONNECTIVITY_DEPENDENCE = 4   // Example: facelist (point positions not important)
     };
 

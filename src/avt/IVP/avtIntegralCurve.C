@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -82,11 +82,8 @@ using namespace std;
 //   Hank Childs, Thu Jun  3 10:58:32 PDT 2010
 //   Remove _t0 and _p0, which are no longer used.
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Incorporate avtStreamlineWrapper into avtStreamline.
-//
 //   Hank Childs, Sat Jun  5 16:29:56 CDT 2010
-//   Separate out portions related to Streamline and Poincare into 
+//   Separate out portions related to Integral Curve and Poincare into 
 //   avtStateRecorderIntegralCurve.
 //
 //   Hank Childs, Tue Oct  5 18:41:35 PDT 2010
@@ -133,11 +130,8 @@ avtIntegralCurve::avtIntegralCurve( const avtIVPSolver* model,
 //   Dave Pugmire, Tue Aug 18 08:47:40 EDT 2009
 //   Don't record intersection points, just count them.
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Incorporate avtStreamlineWrapper into avtStreamline.
-//
 //   Hank Childs, Sat Jun  5 16:29:56 CDT 2010
-//   Separate out portions related to Streamline and Poincare into 
+//   Separate out portions related to Integral Curve and Poincare into 
 //   avtStateRecorderIntegralCurve.
 //
 //   Hank Childs, Tue Oct  5 18:41:35 PDT 2010
@@ -454,9 +448,10 @@ avtIntegralCurve::Advance(avtIVPField *field)
                         
                 // Determine the stepsize such that the push distance
                 // in either coordinate direction is at least 1e-6
-                // times the bounding box extent in one directions. 
+                // times the bounding box extent in one directions.
                 // That should get the point into the next domain even
-                // if the dataset geometry is given as float data.
+                // if the dataset geometry is given as single
+                // precision data.
                 double ext[6];
                 field->GetExtents(ext);
 
@@ -577,11 +572,8 @@ avtIntegralCurve::Advance(avtIVPField *field)
 //    Hank Childs, Thu Jun  3 10:58:32 PDT 2010
 //    Remove _t0 and _p0, which are no longer used.
 //
-//    Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//    Use avtStreamlines, not avtStreamlineWrappers.
-//
 //    Hank Childs, Sat Jun  5 16:29:56 CDT 2010
-//    Separate out portions related to Streamline and Poincare into 
+//    Separate out portions related to Integral Curve and Poincare into 
 //    avtStateRecorderIntegralCurve.
 //
 //    Hank Childs, Tue Jun  8 09:30:45 CDT 2010

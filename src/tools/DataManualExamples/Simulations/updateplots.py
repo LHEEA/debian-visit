@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -57,6 +57,10 @@ from simV2 import *
 # Modifications:
 #  Cyrus Harrison, Tue Aug  7 09:50:58 PDT 2012
 #  Change a few instances of 'sim' to 'self'.
+#
+#  Kathleen Biagas, Mon Oct 17 14:31:42 PDT 2016
+#  Added call to 'VisItFinalize' at completion of MainLoop to prevent crash
+#  on exit when running in parallel.
 #
 #*****************************************************************************
 
@@ -164,6 +168,7 @@ class Simulation:
                 self.DoPrompt()
             else:
                 print "Error: ", visitstate
+        VisItFinalize()
 
     def ConnectCallbacks(self):
         VisItSetCommandCallback(self.ControlCommandCallback, 0)

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,14 +45,11 @@
 // Forward declarations
 class PoincareAttributes;
 
-class QTabWidget;
 class QLabel;
 class QCheckBox;
 class QLineEdit;
 class QSpinBox;
-class QVBox;
 class QButtonGroup;
-class QRadioButton;
 class QComboBox;
 class QGroupBox;
 class QPushButton;
@@ -180,7 +177,6 @@ class QvisPoincareWindow : public QvisOperatorWindow
     void showPointsChanged(bool val);
     void numberPlanesChanged(int val);
     void singlePlaneProcessText();
-    void adjustPlaneChanged(int val);
     void overlapsChanged(int val);
 
     // Advanced
@@ -251,6 +247,7 @@ class QvisPoincareWindow : public QvisOperatorWindow
     QLineEdit *puncturePeriodTolerance;
     QLabel    *puncturePeriodToleranceLabel;
     QLineEdit *maxSteps;
+    QLabel    *maxStepsLabel;
     QCheckBox *limitMaxTime;
     QLineEdit *maxTime;
 
@@ -308,8 +305,6 @@ class QvisPoincareWindow : public QvisOperatorWindow
     QSpinBox     *numberPlanes;
     QLabel       *singlePlaneLabel;
     QLineEdit    *singlePlane;
-    QLabel       *adjustPlaneLabel;
-    QSpinBox     *adjustPlane;
     QWidget      *overlaps;
     QLabel       *overlapsLabel;
     QButtonGroup *overlapsButtonGroup;

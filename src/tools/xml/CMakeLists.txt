@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -85,9 +85,10 @@ ADD_EXECUTABLE(xml2cmake       ${PROGRAM10_SOURCES})
 ADD_EXECUTABLE(xml2sim         ${XML2SIM_SOURCES})
 
 SET(RELEVANT_QT_LIBS 
-${QT_QTXML_LIBRARY}
-${QT_QTCORE_LIBRARY}
+    ${QT_QTXML_LIBRARY}
+    ${QT_QTCORE_LIBRARY}
 )
+
 IF(VISIT_STATIC)
     SET(RELEVANT_QT_LIBS
         ${RELEVANT_QT_LIBS}

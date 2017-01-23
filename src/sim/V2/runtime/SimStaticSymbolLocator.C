@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,7 @@
 #include <vector>
 
 #include <DebugStream.h>
+#include <plugin_entry_point.h>
 
 class GeneralDatabasePluginInfo;
 class EngineDatabasePluginInfo;
@@ -50,18 +51,18 @@ class EngineOperatorPluginInfo;
 
 #define DECLARE_DATABASE(X) \
    extern const char *X##VisItPluginVersion; \
-   extern "C" GeneralDatabasePluginInfo *X##_GetGeneralInfo(void); \
-   extern "C" EngineDatabasePluginInfo *X##_GetEngineInfo(void);
+   extern "C" GeneralDatabasePluginInfo *VISIT_PLUGIN_ENTRY_FUNC(X,General)(VISIT_PLUGIN_ENTRY_ARGS); \
+   extern "C" EngineDatabasePluginInfo *VISIT_PLUGIN_ENTRY_FUNC(X,Engine)(VISIT_PLUGIN_ENTRY_ARGS);
 
 #define DECLARE_OPERATOR(X) \
    extern const char *X##VisItPluginVersion; \
-   extern "C" GeneralOperatorPluginInfo *X##_GetGeneralInfo(void); \
-   extern "C" EngineOperatorPluginInfo *X##_GetEngineInfo(void);
+   extern "C" GeneralOperatorPluginInfo *VISIT_PLUGIN_ENTRY_FUNC(X,General)(VISIT_PLUGIN_ENTRY_ARGS); \
+   extern "C" EngineOperatorPluginInfo *VISIT_PLUGIN_ENTRY_FUNC(X,Engine)(VISIT_PLUGIN_ENTRY_ARGS);
 
 #define DECLARE_PLOT(X) \
    extern const char *X##VisItPluginVersion; \
-   extern "C" GeneralPlotPluginInfo *X##_GetGeneralInfo(void); \
-   extern "C" EnginePlotPluginInfo *X##_GetEngineInfo(void);
+   extern "C" GeneralPlotPluginInfo *VISIT_PLUGIN_ENTRY_FUNC(X,General)(VISIT_PLUGIN_ENTRY_ARGS); \
+   extern "C" EnginePlotPluginInfo *VISIT_PLUGIN_ENTRY_FUNC(X,Engine)(VISIT_PLUGIN_ENTRY_ARGS);
 
 // Declare the plots.
 #define PLUGIN_VERB DECLARE_PLOT
@@ -75,6 +76,10 @@ class EngineOperatorPluginInfo;
 
 // Declare the databases.
 #define PLUGIN_VERB DECLARE_DATABASE
+#ifdef HAVE_XDB
+PLUGIN_VERB(FieldViewXDB)
+#endif
+PLUGIN_VERB(VTK)
 PLUGIN_VERB(SimV2)
 #undef PLUGIN_VERB
 
@@ -82,10 +87,10 @@ PLUGIN_VERB(SimV2)
 #define CHECK_PLUGIN(X) \
    if (sym == #X"VisItPluginVersion") \
        retval = (void *) &X##VisItPluginVersion; \
-   else if (sym == #X"_GetGeneralInfo") \
-       retval = (void *) &X##_GetGeneralInfo; \
-   else if (sym == #X"_GetEngineInfo") \
-       retval = (void *) &X##_GetEngineInfo; \
+   else if (sym == VISIT_PLUGIN_ENTRY_FUNC_STR(X,General)) \
+       retval = (void *) &VISIT_PLUGIN_ENTRY_FUNC(X,General); \
+   else if (sym == VISIT_PLUGIN_ENTRY_FUNC_STR(X,Engine)) \
+       retval = (void *) &VISIT_PLUGIN_ENTRY_FUNC(X,Engine); \
 
 
 // Split apart to make it compile faster
@@ -110,6 +115,10 @@ static void *
 database_dlsym(const std::string &sym)
 {
     void *retval = NULL;
+#ifdef HAVE_XDB
+    PLUGIN_VERB(FieldViewXDB)
+#endif
+    PLUGIN_VERB(VTK)
     PLUGIN_VERB(SimV2)
     return retval;
 }
@@ -184,6 +193,10 @@ StaticGetSupportedLibs(std::vector<std::pair<std::string, std::string> > &libs,
     {
         // Add the databases
 #define PLUGIN_VERB ADD_DATABASE_PLUGIN
+#ifdef HAVE_XDB
+PLUGIN_VERB(FieldViewXDB)
+#endif
+PLUGIN_VERB(VTK)
 PLUGIN_VERB(SimV2)
 #undef PLUGIN_VERB
     }

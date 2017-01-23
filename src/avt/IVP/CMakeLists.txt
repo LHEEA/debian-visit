@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -39,9 +39,6 @@
 #   Hank Childs, Sat Jun  5 16:26:46 CDT 2010
 #   Add avtStateRecorderIntegralCurve.
 #
-#   Hank Childs, Sun Jun  6 12:01:50 PDT 2010
-#   Delete avtStreamline.C and add its replacement, avtIntegralCurve.C.
-#
 #****************************************************************************/
 SET(AVTIVP_SOURCES
 avtCellLocator.C
@@ -71,7 +68,7 @@ avtIVPVTKTimeVaryingField.C
 avtLCSIC.C
 avtPoincareIC.C
 avtStateRecorderIntegralCurve.C
-avtStreamlineIC.C
+avtIntegralCurveIC.C
 MemStream.C
 avtCommDSOnDemandICAlgorithm.C
 avtICAlgorithm.C
@@ -82,8 +79,6 @@ avtPICSFilter.C
 avtPODICAlgorithm.C
 avtPOSBalanceICAlgorithm.C
 avtSerialICAlgorithm.C
-avtStreamlineFilter.C
-avtStreamlinePolyDataFilter.C
 )
 
 IF( NEKTAR++_FOUND )
@@ -91,7 +86,6 @@ IF( NEKTAR++_FOUND )
         avtIVPNektar++Field.C
         avtIVPNektar++TimeVaryingField.C )
 
-    ADD_DEFINITIONS("-DNEKTAR_PLUS_PLUS_FOUND")
     ADD_DEFINITIONS("-DNEKTAR_MEMORY_POOL_ENABLED")
     ADD_DEFINITIONS("-DNEKTAR_USING_LAPACK")
     ADD_DEFINITIONS("-DNEKTAR_USING_BLAS")

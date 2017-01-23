@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -229,6 +229,38 @@ VisitBoxTool::~VisitBoxTool()
     // Delete the text mappers and actors
     DeleteTextActors();
     DeleteOutline();
+}
+
+// ****************************************************************************
+// Method: VistBoxTool::SetVisibility
+//
+// Purpose: 
+//   Sets visibility of the tool. Use this if you need to temporarily
+//   take the tool out of the scene during transparent rendering.
+//
+// Programmer: Burlen Loring 
+// Creation:   Mon Sep 28 16:06:19 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+VisitBoxTool::SetVisibility(int val)
+{
+    if (IsEnabled())
+    {
+        boxActor->SetVisibility(val);
+
+        for (int i = 0; i < 3; ++i)
+            outlineActor[i]->SetVisibility(val);
+    
+        for (int i = 0; i < 4; ++i)
+            outlineTextActor[i]->SetVisibility(val);
+    
+        for (int i = 0; i < NUM_TEXT_ACTORS; ++i)
+            labelTextActor[i]->SetVisibility(val);
+    }
 }
 
 // ****************************************************************************

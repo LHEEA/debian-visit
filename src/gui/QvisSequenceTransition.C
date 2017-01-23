@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -137,6 +137,7 @@ QvisSequenceTransition::QvisSequenceTransition(const QPixmap &pix,
     innerLayout->addLayout(frameLayout);
     frameLayout->setSpacing(5);
     nFrames = new QSpinBox(this);
+    nFrames->setKeyboardTracking(false);
     nFrames->setMinimum(1);
     nFrames->setValue(10);
     frameLayout->addWidget(

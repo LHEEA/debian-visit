@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -144,14 +144,14 @@ vtkPLOT3DReader::vtkPLOT3DReader()
 
   this->XYZFileName = NULL;
   this->QFileName = NULL;
-  this->BinaryFile = 1;
-  this->HasByteCount = 0;
+  this->BinaryFile = true;
+  this->HasByteCount = false;
   this->FileSize = 0;
-  this->MultiGrid = 0;
+  this->MultiGrid = false;
   this->ByteOrder = FILE_BIG_ENDIAN;
-  this->IBlanking = 0;
-  this->TwoDimensionalGeometry = 0;
-  this->DoublePrecision = 0;
+  this->IBlanking = false;
+  this->TwoDimensionalGeometry = false;
+  this->DoublePrecision = false;
 
   this->R = 1.0;
   this->Gamma = 1.4;

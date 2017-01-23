@@ -52,7 +52,7 @@
 #5  bv_<module>_depends_on [not implemented yet], also may be removed in favor of xml structure
 #6. bv_<module>_build builds the module
 
-export VISIT_VERSION=${VISIT_VERSION:-"2.10.3"}
+export VISIT_VERSION=${VISIT_VERSION:-"2.12.0"}
 
 ####
 # Trunk:
@@ -65,8 +65,8 @@ export VISIT_VERSION=${VISIT_VERSION:-"2.10.3"}
 # RC Branch:
 ###
 #export TRUNK_BUILD="no"
-#export SVN_SOURCE_PATH="branches/2.10RC/src"
-#export SVN_THIRDPARTY_PATH="branches/2.10RC/third_party"
+#export SVN_SOURCE_PATH="branches/2.12RC/src"
+#export SVN_THIRDPARTY_PATH="branches/2.12RC/third_party"
 
 
 ###
@@ -410,6 +410,7 @@ do
             grouplibs_name[${#grouplibs_name[*]}]="${xmlp_grouplibs_name[$bv_i]}"
             grouplibs_deps[${#grouplibs_deps[*]}]="${xmlp_grouplibs_deps[$bv_i]}"
             grouplibs_comment[${#grouplibs_comment[*]}]="${xmlp_grouplibs_comment[$bv_i]}"
+            grouplibs_enabled[${#grouplibs_enabled[*]}]="${xmlp_grouplibs_enabled[$bv_i]}"
         fi
     done
 done
@@ -566,6 +567,7 @@ function bv_write_unified_file
     echo "    grouplibs_name[\${#grouplibs_name[*]}]=\"\${xmlp_grouplibs_name[\$bv_i]}\"" >> $OUTPUT_bv_FILE
     echo "    grouplibs_deps[\${#grouplibs_deps[*]}]=\"\${xmlp_grouplibs_deps[\$bv_i]}\"" >> $OUTPUT_bv_FILE
     echo "    grouplibs_comment[\${#grouplibs_comment[*]}]=\"\${xmlp_grouplibs_comment[\$bv_i]}\"" >> $OUTPUT_bv_FILE
+    echo "    grouplibs_enabled[\${#grouplibs_enabled[*]}]=\"\${xmlp_grouplibs_enabled[\$bv_i]}\"" >> $OUTPUT_bv_FILE
     echo "  fi" >> $OUTPUT_bv_FILE
     echo "  done" >> $OUTPUT_bv_FILE
     echo "done" >> $OUTPUT_bv_FILE

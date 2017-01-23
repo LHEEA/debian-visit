@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,9 +51,9 @@
 //
 
 static const char *SourceType_strings[] = {
-"Point", "PointList", "Line_", 
-"Circle", "Plane", "Sphere", 
-"Box", "Selection", "FieldData"
+"SpecifiedPoint", "PointList", "SpecifiedLine", 
+"Circle", "SpecifiedPlane", "SpecifiedSphere", 
+"SpecifiedBox", "Selection", "FieldData"
 };
 
 std::string
@@ -74,7 +74,7 @@ IntegralCurveAttributes::SourceType_ToString(int t)
 bool
 IntegralCurveAttributes::SourceType_FromString(const std::string &s, IntegralCurveAttributes::SourceType &val)
 {
-    val = IntegralCurveAttributes::Point;
+    val = IntegralCurveAttributes::SpecifiedPoint;
     for(int i = 0; i < 9; ++i)
     {
         if(s == SourceType_strings[i])
@@ -120,6 +120,44 @@ IntegralCurveAttributes::DataValue_FromString(const std::string &s, IntegralCurv
         if(s == DataValue_strings[i])
         {
             val = (DataValue)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for IntegralCurveAttributes::CleanupMethod
+//
+
+static const char *CleanupMethod_strings[] = {
+"NoCleanup", "Merge", "Before", 
+"After"};
+
+std::string
+IntegralCurveAttributes::CleanupMethod_ToString(IntegralCurveAttributes::CleanupMethod t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 4) index = 0;
+    return CleanupMethod_strings[index];
+}
+
+std::string
+IntegralCurveAttributes::CleanupMethod_ToString(int t)
+{
+    int index = (t < 0 || t >= 4) ? 0 : t;
+    return CleanupMethod_strings[index];
+}
+
+bool
+IntegralCurveAttributes::CleanupMethod_FromString(const std::string &s, IntegralCurveAttributes::CleanupMethod &val)
+{
+    val = IntegralCurveAttributes::NoCleanup;
+    for(int i = 0; i < 4; ++i)
+    {
+        if(s == CleanupMethod_strings[i])
+        {
+            val = (CleanupMethod)i;
             return true;
         }
     }
@@ -448,7 +486,7 @@ IntegralCurveAttributes::SizeType_FromString(const std::string &s, IntegralCurve
 
 void IntegralCurveAttributes::Init()
 {
-    sourceType = Point;
+    sourceType = SpecifiedPoint;
     pointSource[0] = 0;
     pointSource[1] = 0;
     pointSource[2] = 0;
@@ -520,6 +558,8 @@ void IntegralCurveAttributes::Init()
     pathlinesPeriod = 0;
     pathlinesCMFE = POS_CMFE;
     displayGeometry = Lines;
+    cleanupMethod = NoCleanup;
+    cleanupThreshold = 1e-08;
     cropBeginFlag = false;
     cropBegin = 0;
     cropEndFlag = false;
@@ -636,6 +676,8 @@ void IntegralCurveAttributes::Copy(const IntegralCurveAttributes &obj)
     pathlinesPeriod = obj.pathlinesPeriod;
     pathlinesCMFE = obj.pathlinesCMFE;
     displayGeometry = obj.displayGeometry;
+    cleanupMethod = obj.cleanupMethod;
+    cleanupThreshold = obj.cleanupThreshold;
     cropBeginFlag = obj.cropBeginFlag;
     cropBegin = obj.cropBegin;
     cropEndFlag = obj.cropEndFlag;
@@ -907,6 +949,8 @@ IntegralCurveAttributes::operator == (const IntegralCurveAttributes &obj) const
             (pathlinesPeriod == obj.pathlinesPeriod) &&
             (pathlinesCMFE == obj.pathlinesCMFE) &&
             (displayGeometry == obj.displayGeometry) &&
+            (cleanupMethod == obj.cleanupMethod) &&
+            (cleanupThreshold == obj.cleanupThreshold) &&
             (cropBeginFlag == obj.cropBeginFlag) &&
             (cropBegin == obj.cropBegin) &&
             (cropEndFlag == obj.cropEndFlag) &&
@@ -976,7 +1020,7 @@ IntegralCurveAttributes::TypeName() const
 }
 
 // ****************************************************************************
-// Method: StreamlineAttributes::CopyAttributes
+// Method: IntegralCurveAttributes::CopyAttributes
 //
 // Purpose: 
 //   CopyAttributes method for the IntegralCurveAttributes class.
@@ -1010,7 +1054,7 @@ IntegralCurveAttributes::CopyAttributes(const AttributeGroup *atts)
     }
     else if(atts->TypeName() == "PointAttributes")
     {
-        if(sourceType == Point)
+        if(sourceType == SpecifiedPoint)
         {
             const PointAttributes *p = (PointAttributes *)atts;
             SetPointSource(p->GetPoint());
@@ -1019,7 +1063,7 @@ IntegralCurveAttributes::CopyAttributes(const AttributeGroup *atts)
     } 
     else if(atts->TypeName() == "Line")
     {
-        if(sourceType == Line_)
+        if(sourceType == SpecifiedLine)
         {
             const Line *line = (const Line *)atts;
             SetLineStart(line->GetPoint1());
@@ -1029,7 +1073,7 @@ IntegralCurveAttributes::CopyAttributes(const AttributeGroup *atts)
     }
     else if(atts->TypeName() == "PlaneAttributes")
     {
-        if(sourceType == Plane || sourceType == Circle)
+        if(sourceType == SpecifiedPlane || sourceType == Circle)
         {
             const PlaneAttributes *plane = (const PlaneAttributes *)atts;
             SetPlaneOrigin(plane->GetOrigin());
@@ -1042,7 +1086,7 @@ IntegralCurveAttributes::CopyAttributes(const AttributeGroup *atts)
     }
     else if(atts->TypeName() == "SphereAttributes")
     {
-        if(sourceType == Sphere)
+        if(sourceType == SpecifiedSphere)
         {
             const SphereAttributes *sphere = (const SphereAttributes *)atts;
             SetSphereOrigin(sphere->GetOrigin());
@@ -1052,7 +1096,7 @@ IntegralCurveAttributes::CopyAttributes(const AttributeGroup *atts)
     }   
     else if(atts->TypeName() == "BoxExtents")
     {
-        if(sourceType == Box)
+        if(sourceType == SpecifiedBox)
         {
             const BoxExtents *box = (const BoxExtents *)atts;
             SetBoxExtents(box->GetExtents());
@@ -1232,6 +1276,8 @@ IntegralCurveAttributes::SelectAll()
     Select(ID_pathlinesPeriod,                    (void *)&pathlinesPeriod);
     Select(ID_pathlinesCMFE,                      (void *)&pathlinesCMFE);
     Select(ID_displayGeometry,                    (void *)&displayGeometry);
+    Select(ID_cleanupMethod,                      (void *)&cleanupMethod);
+    Select(ID_cleanupThreshold,                   (void *)&cleanupThreshold);
     Select(ID_cropBeginFlag,                      (void *)&cropBeginFlag);
     Select(ID_cropBegin,                          (void *)&cropBegin);
     Select(ID_cropEndFlag,                        (void *)&cropEndFlag);
@@ -1556,6 +1602,18 @@ IntegralCurveAttributes::CreateNode(DataNode *parentNode, bool completeSave, boo
     {
         addToParent = true;
         node->AddNode(new DataNode("displayGeometry", DisplayGeometry_ToString(displayGeometry)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_cleanupMethod, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("cleanupMethod", CleanupMethod_ToString(cleanupMethod)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_cleanupThreshold, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("cleanupThreshold", cleanupThreshold));
     }
 
     if(completeSave || !FieldsEqual(ID_cropBeginFlag, &defaultObject))
@@ -1954,6 +2012,24 @@ IntegralCurveAttributes::SetFromNode(DataNode *parentNode)
                 SetDisplayGeometry(value);
         }
     }
+    if((node = searchNode->GetNode("cleanupMethod")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 4)
+                SetCleanupMethod(CleanupMethod(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            CleanupMethod value;
+            if(CleanupMethod_FromString(node->AsString(), value))
+                SetCleanupMethod(value);
+        }
+    }
+    if((node = searchNode->GetNode("cleanupThreshold")) != 0)
+        SetCleanupThreshold(node->AsDouble());
     if((node = searchNode->GetNode("cropBeginFlag")) != 0)
         SetCropBeginFlag(node->AsBool());
     if((node = searchNode->GetNode("cropBegin")) != 0)
@@ -2366,6 +2442,20 @@ IntegralCurveAttributes::SetDisplayGeometry(IntegralCurveAttributes::DisplayGeom
 {
     displayGeometry = displayGeometry_;
     Select(ID_displayGeometry, (void *)&displayGeometry);
+}
+
+void
+IntegralCurveAttributes::SetCleanupMethod(IntegralCurveAttributes::CleanupMethod cleanupMethod_)
+{
+    cleanupMethod = cleanupMethod_;
+    Select(ID_cleanupMethod, (void *)&cleanupMethod);
+}
+
+void
+IntegralCurveAttributes::SetCleanupThreshold(double cleanupThreshold_)
+{
+    cleanupThreshold = cleanupThreshold_;
+    Select(ID_cleanupThreshold, (void *)&cleanupThreshold);
 }
 
 void
@@ -2882,6 +2972,18 @@ IntegralCurveAttributes::GetDisplayGeometry() const
     return DisplayGeometry(displayGeometry);
 }
 
+IntegralCurveAttributes::CleanupMethod
+IntegralCurveAttributes::GetCleanupMethod() const
+{
+    return CleanupMethod(cleanupMethod);
+}
+
+double
+IntegralCurveAttributes::GetCleanupThreshold() const
+{
+    return cleanupThreshold;
+}
+
 bool
 IntegralCurveAttributes::GetCropBeginFlag() const
 {
@@ -3183,6 +3285,8 @@ IntegralCurveAttributes::GetFieldName(int index) const
     case ID_pathlinesPeriod:                    return "pathlinesPeriod";
     case ID_pathlinesCMFE:                      return "pathlinesCMFE";
     case ID_displayGeometry:                    return "displayGeometry";
+    case ID_cleanupMethod:                      return "cleanupMethod";
+    case ID_cleanupThreshold:                   return "cleanupThreshold";
     case ID_cropBeginFlag:                      return "cropBeginFlag";
     case ID_cropBegin:                          return "cropBegin";
     case ID_cropEndFlag:                        return "cropEndFlag";
@@ -3276,6 +3380,8 @@ IntegralCurveAttributes::GetFieldType(int index) const
     case ID_pathlinesPeriod:                    return FieldType_double;
     case ID_pathlinesCMFE:                      return FieldType_enum;
     case ID_displayGeometry:                    return FieldType_enum;
+    case ID_cleanupMethod:                      return FieldType_enum;
+    case ID_cleanupThreshold:                   return FieldType_double;
     case ID_cropBeginFlag:                      return FieldType_bool;
     case ID_cropBegin:                          return FieldType_double;
     case ID_cropEndFlag:                        return FieldType_bool;
@@ -3369,6 +3475,8 @@ IntegralCurveAttributes::GetFieldTypeName(int index) const
     case ID_pathlinesPeriod:                    return "double";
     case ID_pathlinesCMFE:                      return "enum";
     case ID_displayGeometry:                    return "enum";
+    case ID_cleanupMethod:                      return "enum";
+    case ID_cleanupThreshold:                   return "double";
     case ID_cropBeginFlag:                      return "bool";
     case ID_cropBegin:                          return "double";
     case ID_cropEndFlag:                        return "bool";
@@ -3689,6 +3797,16 @@ IntegralCurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) cons
         retval = (displayGeometry == obj.displayGeometry);
         }
         break;
+    case ID_cleanupMethod:
+        {  // new scope
+        retval = (cleanupMethod == obj.cleanupMethod);
+        }
+        break;
+    case ID_cleanupThreshold:
+        {  // new scope
+        retval = (cleanupThreshold == obj.cleanupThreshold);
+        }
+        break;
     case ID_cropBeginFlag:
         {  // new scope
         retval = (cropBeginFlag == obj.cropBeginFlag);
@@ -3829,11 +3947,11 @@ IntegralCurveAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) cons
 //  Programmer: Brad Whitlock
 //  Creation:   Fri Oct 4 15:22:57 PST 2002
 //
-//  Notes:  Most attributes cause the streamline to change.
+//  Notes:  Most attributes cause the integral curve to change.
 //
 //  Modifications:
 //    Brad Whitlock, Wed Dec 22 12:52:45 PDT 2004
-//    I made the coloring method matter when comparing streamline attributes
+//    I made the coloring method matter when comparing integral curve attributes
 //    and I added support for ribbons.
 //
 //    Hank Childs, Sat Mar  3 09:00:12 PST 2007
@@ -3921,12 +4039,13 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
     }
 
     //Check by source type.
-    if ((sourceType == Point) && POINT_DIFFERS(pointSource, obj.pointSource))
+    if ((sourceType == SpecifiedPoint) &&
+        POINT_DIFFERS(pointSource, obj.pointSource))
     {
         return true;
     }
 
-    if (sourceType == Line_)
+    if (sourceType == SpecifiedLine)
     {
         if (POINT_DIFFERS(lineStart, obj.lineStart) ||
             POINT_DIFFERS(lineEnd, obj.lineEnd) ||
@@ -3939,7 +4058,7 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         }
     }
 
-    if (sourceType == Plane)
+    if (sourceType == SpecifiedPlane)
     {
         if (POINT_DIFFERS(planeOrigin, obj.planeOrigin) ||
             POINT_DIFFERS(planeNormal, obj.planeNormal) ||
@@ -3975,7 +4094,7 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         }
     }
 
-    if (sourceType == Sphere)
+    if (sourceType == SpecifiedSphere)
     {
         if (POINT_DIFFERS(sphereOrigin, obj.sphereOrigin) ||
             radius != obj.radius ||
@@ -3991,7 +4110,7 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
         }
     }
 
-    if (sourceType == Box)
+    if (sourceType == SpecifiedBox)
     {
         if (POINT_DIFFERS(boxExtents, obj.boxExtents) ||
             POINT_DIFFERS(boxExtents+3, obj.boxExtents+3) ||
@@ -4030,5 +4149,71 @@ IntegralCurveAttributes::ChangesRequireRecalculation(const IntegralCurveAttribut
     }
 
     return false;
+}
+
+// ****************************************************************************
+// Method: IntegralCurveAttributes::ProcessOldVersions
+//
+// Purpose:
+//   Updates the config settings in the data node to the current IndexSelect
+//   opertor version.
+//
+// Arguments:
+//   parentNode    : The data node that stores the IndexSelect attributes.
+//   configVersion : The version of the config file from which the node
+//                   was read.
+//
+// Programmer: Allen Sanderson
+// Creation:   8 March 2016
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+IntegralCurveAttributes::ProcessOldVersions(DataNode *parentNode,
+    const char *configVersion)
+{
+    if(parentNode == 0)
+        return;
+
+    if (VersionLessThan(configVersion, "2.11.0"))
+    {
+        DataNode *searchNode = parentNode->GetNode("IntegralCurveAttributes");
+        if(searchNode == 0)
+            return;
+
+        DataNode *sourceNode = searchNode->GetNode("sourceType");
+        if(sourceNode == 0)
+            return;
+
+        std::string mode = sourceNode->AsString();
+        
+        if (mode == "Point")
+        {
+          searchNode->RemoveNode(sourceNode, true);
+          searchNode->AddNode(new DataNode("sourceType", SourceType_ToString(IntegralCurveAttributes::SpecifiedPoint)));
+        }
+        else if (mode == "Line_")
+        {
+          searchNode->RemoveNode(sourceNode, true);
+          searchNode->AddNode(new DataNode("sourceType", SourceType_ToString(IntegralCurveAttributes::SpecifiedLine)));
+        }
+        else if (mode == "Plane")
+        {
+          searchNode->RemoveNode(sourceNode, true);
+          searchNode->AddNode(new DataNode("sourceType", SourceType_ToString(IntegralCurveAttributes::SpecifiedPlane)));
+        }
+        else if (mode == "Box")
+        {
+          searchNode->RemoveNode(sourceNode, true);
+          searchNode->AddNode(new DataNode("sourceType", SourceType_ToString(IntegralCurveAttributes::SpecifiedBox)));
+        }
+        else if (mode == "Sphere")
+        {
+          searchNode->RemoveNode(sourceNode, true);
+          searchNode->AddNode(new DataNode("sourceType", SourceType_ToString(IntegralCurveAttributes::SpecifiedSphere)));
+        }
+    }
 }
 

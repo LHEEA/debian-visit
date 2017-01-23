@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -8077,45 +8077,6 @@ ViewerPlotList::UpdateExpressionList(bool considerPlots, bool update)
     GetViewerStateManager()->GetVariableMethods()->GetAllExpressions(newList, host, db, t);    
 
     //
-    // Update the expression list with the set of variables
-    // created by the operators in the active plots.
-    //
-
-    // First, remove the old ones since we're about to regenerate them.
-    for (int i=newList.GetNumExpressions()-1 ; i>=0; --i)
-    {
-        if (newList[i].GetFromOperator())
-        {
-            newList.RemoveExpressions(i);
-        }
-    }
-
-    // Then add everything created by any active plots' operators.
-    for (int i=0 ; i < nPlots ; i++)
-    {
-        if (!plots[i].active)
-            continue;
-
-        ViewerPlot *plot = plots[i].plot;
-        for (int j = 0 ; j < plot->GetNOperators() ; j++)
-        {
-            ViewerOperator *oper = plot->GetOperator(j);
-            const avtDatabaseMetaData *md = plot->GetMetaData();
-            ExpressionList *exprs = oper->GetCreatedVariables(md);
-            if (exprs != NULL)
-            {
-                for (int k = 0 ; k < exprs->GetNumExpressions() ; k++)
-                {
-                    Expression exp = exprs->GetExpressions(k);
-                    exp.SetFromOperator(true);
-                    newList.AddExpressions(exp);
-                }
-                delete exprs;
-            }
-        }
-    }
-
-    //
     // If the new expression list is different from the expression list
     // that we already have, save the new expression list and send it to
     // the client.
@@ -9658,13 +9619,18 @@ ViewerPlotList::GetEngineKey() const
 //  Programmer:  Mark C. Miller 
 //  Creation:    May 11, 2004
 //
+// Modifications:
+//
+//    Burlen Loring, Sun Sep  6 14:58:03 PDT 2015
+//    Changed the return type of GetNumberOfCells to long long
+//
 // ****************************************************************************
-int
+
+long long
 ViewerPlotList::GetNumberOfCells(bool polysOnly) const
 {
-    int i;
-    int sum = 0;
-    for (i = 0; i < nPlots; i++)
+    long long sum = 0;
+    for (int i = 0; i < nPlots; i++)
     {
         if (plots[i].realized)
         {

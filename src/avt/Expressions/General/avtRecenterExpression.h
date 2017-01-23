@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -71,6 +71,9 @@
 //    Add singleton support, now that the base avtExpressionFilter class'
 //    Recenter method also supports singletons.
 //
+//    Cyrus Harrison, Wed Apr 17 13:46:14 PDT 2013
+//    Added modify contract, so we can request ghosts.
+//
 // ****************************************************************************
 
 class EXPRESSION_API avtRecenterExpression : public avtSingleInputExpressionFilter
@@ -94,6 +97,7 @@ class EXPRESSION_API avtRecenterExpression : public avtSingleInputExpressionFilt
     virtual bool              IsPointVariable(void);
     virtual int               GetVariableDimension(void);
     virtual bool              CanHandleSingletonConstants(void) {return true;}
+    virtual avtContract_p     ModifyContract(avtContract_p);
 
     RecenterType              recenterMode;
 };

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -250,7 +250,7 @@ avtM3DFileFormat::PopulateDatabaseMetaData( avtDatabaseMetaData *md, int timeSta
         if (doPlanes)
         {
             //Add for each 3D plane.
-            for ( size_t m = 0; m < m_meshesPlane3D.size(); m++ )
+            for ( int m = 0; m < (int)m_meshesPlane3D.size(); m++ )
             {
                 sprintf( str, "%s/%s", m_meshesPlane3D[m].c_str(), varname.c_str() );
                 string meshvarname = str;
@@ -262,7 +262,7 @@ avtM3DFileFormat::PopulateDatabaseMetaData( avtDatabaseMetaData *md, int timeSta
             }
             
             //Add for each 2D plane.
-            for ( size_t m = 0; m < m_meshesPlane2D.size(); m++ )
+            for ( int m = 0; m < (int)m_meshesPlane2D.size(); m++ )
             {
                 sprintf( str, "%s/%s", m_meshesPlane2D[m].c_str(), varname.c_str() );
                 string meshvarname = str;
@@ -299,7 +299,7 @@ avtM3DFileFormat::PopulateDatabaseMetaData( avtDatabaseMetaData *md, int timeSta
         if (doPlanes)
         {
             //Add for each 3D plane.
-            for ( size_t m = 0; m < m_meshesPlane3D.size(); m++ )
+            for ( int m = 0; m < (int)m_meshesPlane3D.size(); m++ )
             {
                 sprintf( str, "%s/%s", m_meshesPlane3D[m].c_str(), varname.c_str() );
                 string meshvarname = str;
@@ -312,7 +312,7 @@ avtM3DFileFormat::PopulateDatabaseMetaData( avtDatabaseMetaData *md, int timeSta
             }
             
             //Add for each 2D plane.
-            for ( size_t m = 0; m < m_meshesPlane2D.size(); m++ )
+            for ( int m = 0; m < (int) m_meshesPlane2D.size(); m++ )
             {
                 sprintf( str, "%s/%s", m_meshesPlane2D[m].c_str(), varname.c_str() );
                 string meshvarname = str;
@@ -351,7 +351,7 @@ avtM3DFileFormat::PopulateDatabaseMetaData( avtDatabaseMetaData *md, int timeSta
         if (doPlanes)
         {
             //Add for each 3D plane.
-            for ( size_t m = 0; m < m_meshesPlane3D.size(); m++ )
+            for ( int m = 0; m < (int)m_meshesPlane3D.size(); m++ )
             {
                 sprintf( str, "%s/%s", m_meshesPlane3D[m].c_str(), varname.c_str() );
                 string meshvarname = str;
@@ -364,7 +364,7 @@ avtM3DFileFormat::PopulateDatabaseMetaData( avtDatabaseMetaData *md, int timeSta
             }
             
             //Add for each 2D plane.
-            for ( size_t m = 0; m < m_meshesPlane2D.size(); m++ )
+            for ( int m = 0; m < (int)m_meshesPlane2D.size(); m++ )
             {
                 sprintf( str, "%s/%s", m_meshesPlane2D[m].c_str(), varname.c_str() );
                 string meshvarname = str;
@@ -459,7 +459,7 @@ avtM3DFileFormat::GetMesh( int timestate, int domain, const char *nm )
     }
 
     // Try the 3D planes.
-    for ( size_t m = 0; m < m_meshesPlane3D.size(); m++ )
+    for ( int m = 0; m <(int) m_meshesPlane3D.size(); m++ )
     {
         if ( meshname != m_meshesPlane3D[m] )
             continue;
@@ -515,7 +515,7 @@ avtM3DFileFormat::GetMesh( int timestate, int domain, const char *nm )
     }
 
     // Try the 2D planes.
-    for ( size_t m = 0; m < m_meshesPlane2D.size(); m++ )
+    for ( int m = 0; m < (int)m_meshesPlane2D.size(); m++ )
     {
         if ( meshname != m_meshesPlane2D[m] )
             continue;
@@ -747,7 +747,7 @@ hid_t
 avtM3DFileFormat::NormalizeH5Type( hid_t type )
 {
     H5T_class_t tclass = H5Tget_class( type );
-    int size = H5Tget_size( type );
+    size_t size = H5Tget_size( type );
 
     switch ( tclass )
     {
@@ -1190,3 +1190,22 @@ avtM3DFileFormat::CalcPlaneAngularSpacing()
 
     delete [] vals;
 }
+
+// ****************************************************************************
+//  Method: avtM3DFileFormat::GetTimes()
+//
+//  Purpose:
+//      Return the simulation time for each timestep.
+//
+//  Arguments:
+//
+//  Programmer: David Camp
+//  Creation:   Thu Jan 28 09:13:21 PST 2016
+//
+// ****************************************************************************
+void
+avtM3DFileFormat::GetTimes(vector<double> &outTimes)
+{
+    outTimes = m_timeSteps;
+}
+

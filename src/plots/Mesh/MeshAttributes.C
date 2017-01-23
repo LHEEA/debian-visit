@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1449,6 +1449,9 @@ MeshAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 //    Kathleen Bonnell, Tue Nov  2 10:32:21 PST 2004 
 //    Removed point type and point size from test, changed pointSizeVar test
 //    so that only true if changes require adding new secondary varaible. 
+//
+//    Kathleen Biagas, Thu Apr 23 13:14:51 PDT 2015
+//    Removed never-used oulineOnly and errorTolerance atts.
 //
 // ****************************************************************************
 

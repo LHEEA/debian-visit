@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -85,7 +85,7 @@ QvisSimulationCommandWindow::CreateWindowContents()
     hLayout->setMargin(0);
     activateCustomGUI = new QPushButton(tr("Activate Custom UI . . ."), h);
     connect(activateCustomGUI, SIGNAL(clicked()),
-            this, SIGNAL(showCommandWindow()));
+            this, SIGNAL(showCustomUIWindow()));
     hLayout->addStretch(10);
     hLayout->addWidget(activateCustomGUI);
     hLayout->addStretch(10);
@@ -115,8 +115,9 @@ QvisSimulationCommandWindow::CreateWindowContents()
     EnsureButtonExists(5, added);
 
     // Create time controls.
-    timeGroup = new QGroupBox(tr("Enable time ranging"), central);
+    timeGroup = new QGroupBox(tr("Enable time cycle ranging"), central);
     timeGroup->setCheckable(true);
+    timeGroup->setChecked(false);
     connect(timeGroup, SIGNAL(toggled(bool)),
             this, SLOT(handleTimeRanging(bool)));
     topLayout->addWidget(timeGroup);
@@ -125,23 +126,29 @@ QvisSimulationCommandWindow::CreateWindowContents()
     startCycle = new QLineEdit(timeGroup);
     startLabel = new QLabel(timeGroup);
     startLabel->setText(tr("Start"));
+    startCycle->setText(tr("0"));
     timeLayout->addWidget(startLabel,0,0);
     timeLayout->addWidget(startCycle,0,1);
-    connect(startCycle,SIGNAL(returnPressed()),this,SLOT(handleStart()));
+    connect(startCycle,SIGNAL(textChanged(const QString &)),
+            this,SLOT(handleStart(const QString&)));
 
     stepCycle = new QLineEdit(timeGroup);
     stepLabel = new QLabel(timeGroup);
     stepLabel->setText(tr("Step"));
+    stepCycle->setText(tr("1"));
     timeLayout->addWidget(stepLabel,0,2);
     timeLayout->addWidget(stepCycle,0,3);
-    connect(stepCycle,SIGNAL(returnPressed()),this,SLOT(handleStep()));
+    connect(stepCycle,SIGNAL(textChanged(const QString &)),
+            this,SLOT(handleStep(const QString&)));
     
     stopCycle = new QLineEdit(timeGroup);
     stopLabel = new QLabel(timeGroup);
     stopLabel->setText(tr("Stop"));
+    stopCycle->setText(tr("0"));
     timeLayout->addWidget(stopLabel,0,4);
     timeLayout->addWidget(stopCycle,0,5);
-    connect(stopCycle,SIGNAL(returnPressed()),this,SLOT(handleStop()));
+    connect(stopCycle,SIGNAL(textChanged(const QString &)),
+            this,SLOT(handleStop(const QString&)));
 }
 
 int
@@ -160,14 +167,14 @@ QvisSimulationCommandWindow::setButtonCommand(int index, const QString &cmd)
 }
 
 bool
-QvisSimulationCommandWindow::setButtonEnabled(int index, bool enabled)
+QvisSimulationCommandWindow::setButtonEnabled(int index, bool enabled, bool clearText)
 {
     bool added = false;
     if(EnsureButtonExists(index, added))
     {
         QAbstractButton *b = commandGroup->buttons().at(index);
         b->setEnabled(enabled);
-        if(!enabled)
+        if(!enabled && clearText)
             b->setText("");
     }
     return added;
@@ -219,6 +226,30 @@ QvisSimulationCommandWindow::setTimeValues(bool timeRanging,
     stepCycle->setText(step);
 }
 
+void
+QvisSimulationCommandWindow::setTimeRanging(bool timeRanging)
+{
+    timeGroup->setChecked(timeRanging);
+}
+
+void
+QvisSimulationCommandWindow::setTimeStart(const QString &start)
+{
+    startCycle->setText(start);
+}
+
+void
+QvisSimulationCommandWindow::setTimeStep(const QString &step)
+{
+    stepCycle->setText(step);
+}
+
+void
+QvisSimulationCommandWindow::setTimeStop(const QString &stop)
+{
+    stopCycle->setText(stop);
+}
+
 //
 // Qt slots
 //
@@ -232,16 +263,13 @@ QvisSimulationCommandWindow::handleCommandButton(int btn)
 void
 QvisSimulationCommandWindow::handleTimeRanging(bool b)
 {
-    if(b)
-    {
-        QString value(startCycle->text().trimmed());
-        if(!value.isEmpty())
-            emit timeRangingToggled(value);
-    }
+    QString value(tr("%1").arg(b));
+    if(!value.isEmpty())
+        emit timeRangingToggled(value);
 }
 
 void
-QvisSimulationCommandWindow::handleStart()
+QvisSimulationCommandWindow::handleStart(const QString &text)
 {
     QString value(startCycle->text().trimmed());
     if(!value.isEmpty())
@@ -249,7 +277,7 @@ QvisSimulationCommandWindow::handleStart()
 }
 
 void
-QvisSimulationCommandWindow::handleStop()
+QvisSimulationCommandWindow::handleStop(const QString &text)
 {
     QString value(stopCycle->text().trimmed());
     if(!value.isEmpty())
@@ -257,7 +285,7 @@ QvisSimulationCommandWindow::handleStop()
 }
 
 void
-QvisSimulationCommandWindow::handleStep()
+QvisSimulationCommandWindow::handleStep(const QString &text)
 {
     QString value(stepCycle->text().trimmed());
     if(!value.isEmpty())

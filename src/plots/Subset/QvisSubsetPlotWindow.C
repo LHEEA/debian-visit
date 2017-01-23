@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,18 +40,11 @@
 
 #include <QButtonGroup>
 #include <QCheckBox>
-#include <QComboBox>
 #include <QGroupBox>
-#include <QItemDelegate>
 #include <QLabel>
 #include <QLayout>
 #include <QListWidget>
-#include <QPainter>
-#include <QPixmap>
-#include <QPixmapCache>
-#include <QPushButton>
 #include <QRadioButton>
-#include <QSlider>
 
 #include <QvisColorButton.h>
 #include <QvisColorSwatchListWidget.h>

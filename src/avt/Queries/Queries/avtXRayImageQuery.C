@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,6 +44,8 @@
 #include <vtkPointData.h>
 #include <vtkPNGWriter.h>
 #include <vtkTIFFWriter.h>
+#include <vtkDataArray.h>
+#include <vtkCellData.h>
 
 #include <avtDatasetExaminer.h>
 #include <avtOriginatingSource.h>
@@ -854,12 +856,21 @@ avtXRayImageQuery::GetSecondaryVars(std::vector<std::string> &outVars)
 //    Eric Brugger, Thu Jun  4 16:11:47 PDT 2015
 //    I added an option to enable outputting the ray bounds to a vtk file.
 //
+//    Kevin Griffin, Tue Sep 27 16:52:14 PDT 2016
+//    Ensured that all ranks throw an Exception if any rank throws one
+//    for incorrectly centered data and/or missing variables.
+//
 // ****************************************************************************
 
 void
 avtXRayImageQuery::Execute(avtDataTree_p tree)
 {
     avtDataset_p input = GetTypedInput();
+    
+    int nsets = 0;
+    vtkDataSet **dataSets = tree->GetAllLeaves(nsets);
+    
+    CheckData(dataSets, nsets);
 
     //
     // If the number of pixels is less than or equal to zero then print
@@ -920,8 +931,7 @@ avtXRayImageQuery::Execute(avtDataTree_p tree)
     //
     // Cause our artificial pipeline to execute.
     //
-    avtContract_p contract =
-        input->GetOriginatingSource()->GetGeneralContract();
+    avtContract_p contract = input->GetOriginatingSource()->GetGeneralContract();
     filt->GetOutput()->Update(contract);
 
     //
@@ -1124,6 +1134,108 @@ avtXRayImageQuery::Execute(avtDataTree_p tree)
     visitTimer->StopTimer(t1, "avtXRayImageQuery::ExecutePipeline");
 
     delete filt;
+}
+
+// ****************************************************************************
+//  Method: avtXRayImageQuery::CheckData
+//
+//  Purpose:    Perform error checks on the input datasets.
+//
+//  Arguments:
+//    dataSets: The input datasets
+//    nsets:    The number of datasets
+//
+//  Programmer: Kevin Griffin
+//  Creation:   Septemeber 19, 2016
+//
+//  Modifications:
+//    Kevin Griffin, Tue Sep 27 16:52:14 PDT 2016
+//    Ensured that all nodes throw an exception when at least one node does.
+//
+// ****************************************************************************
+void
+avtXRayImageQuery::CheckData(vtkDataSet **dataSets,  const int nsets)
+{
+    int foundError = 0;     // 0=false, 1=true
+    bool isArgException = false;
+    bool isAbs = false;
+    char msg[256];
+    
+    for (int i = 0; i < nsets; i++)
+    {
+        vtkDataArray *abs  = dataSets[i]->GetCellData()->GetArray(absVarName.c_str());
+        vtkDataArray *emis = dataSets[i]->GetCellData()->GetArray(emisVarName.c_str());
+        
+        if (abs == NULL)
+        {
+            if (dataSets[i]->GetPointData()->GetArray(absVarName.c_str()) != NULL)
+            {
+                SNPRINTF(msg,256, "Variable %s is node-centered, but "
+                         "it must be zone-centered for this query.",
+                         absVarName.c_str());
+                
+                foundError = 1;
+                isAbs = true;
+                break;
+            }
+            else
+            {
+                foundError = 1;
+                isArgException = true;
+                isAbs = true;
+                break;
+            }
+        }
+        if (emis == NULL)
+        {
+            if (dataSets[i]->GetPointData()->GetArray(emisVarName.c_str())
+                != NULL)
+            {
+                SNPRINTF(msg,256, "Variable %s is node-centered, but "
+                         "it must be zone-centered for this query.",
+                         emisVarName.c_str());
+                
+                foundError = 1;
+                break;
+            }
+            else
+            {
+                foundError = 1;
+                isArgException = true;
+                break;
+            }
+            
+        }
+    }
+    
+    // Check if an exception has been raised on any rank
+    int maxError = UnifyMaximumValue(foundError);
+    if(maxError > 0)
+    {
+        if(foundError == 1)
+        {
+            if(isArgException)
+            {
+                EXCEPTION1(QueryArgumentException, isAbs ? absVarName.c_str() : emisVarName.c_str());
+            }
+            else
+            {
+                EXCEPTION1(ImproperUseException, msg);
+            }
+        }
+        else
+        {
+            EXCEPTION1(VisItException, "Exception encountered on another node");
+        }
+    }
+    
+    // Check if no data is available on all ranks
+    int maxNsets = UnifyMaximumValue(nsets);
+    if(maxNsets <= 0)
+    {
+        SNPRINTF(msg, 256, "Variables %s and %s resulted in no data being selected.", absVarName.c_str(), emisVarName.c_str());
+        EXCEPTION1(VisItException, msg);
+    }
 }
 
 // ****************************************************************************

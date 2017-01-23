@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,23 +46,13 @@
 #include <SimpleObserver.h>
 
 class QButtonGroup;
-class QCheckBox;
 class QComboBox;
-class QGroupBox;
 class QListWidget;
 class QLabel;
 class QLineEdit;
-class QListWidget;
-class QTreeWidget;
 class QPushButton;
-class QRadioButton;
-class QScrollArea;
-class QSpinBox;
-class QTextEdit;
-class QVBoxLayout;
 class QListWidgetItem;
 
-class QvisDialogLineEdit;
 class QvisVariableButton;
 class QvisCustomSourceVariableButton;
 

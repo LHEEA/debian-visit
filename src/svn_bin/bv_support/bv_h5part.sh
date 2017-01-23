@@ -1,58 +1,58 @@
 function bv_h5part_initialize
 {
-export DO_H5PART="no"
-export ON_H5PART="off"
+    export DO_H5PART="no"
+    export ON_H5PART="off"
 }
 
 function bv_h5part_enable
 {
-DO_H5PART="yes"
-ON_H5PART="on"
-DO_HDF5="yes"
-ON_HDF5="on"
-DO_SZIP="yes" 
-ON_SZIP="on"
+    DO_H5PART="yes"
+    ON_H5PART="on"
+    DO_HDF5="yes"
+    ON_HDF5="on"
+    DO_SZIP="yes" 
+    ON_SZIP="on"
 }
 
 function bv_h5part_disable
 {
-DO_H5PART="no"
-ON_H5PART="off"
+    DO_H5PART="no"
+    ON_H5PART="off"
 }
 
 function bv_h5part_depends_on
 {
-echo "szip hdf5"
+    echo "szip hdf5"
 }
 
 function bv_h5part_info
 {
-export H5PART_VERSION=${H5PART_VERSION:-"1.6.6"}
-export H5PART_FILE=${H5PART_FILE:-"H5Part-${H5PART_VERSION}.tar.gz"}
-export H5PART_COMPATIBILITY_VERSION=${H5PART_COMPATIBILITY_VERSION:-"1.6"}
-export H5PART_URL=${H5PART_URL:-"https://codeforge.lbl.gov/frs/download.php/387"}
-export H5PART_BUILD_DIR=${H5PART_BUILD_DIR:-"H5Part-${H5PART_VERSION}"}
-export H5PART_MD5_CHECKSUM="327c63d198e38a12565b74cffdf1f9d7"
-export H5PART_SHA256_CHECKSUM="10347e7535d1afbb08d51be5feb0ae008f73caf889df08e3f7dde717a99c7571"
+    export H5PART_VERSION=${H5PART_VERSION:-"1.6.6"}
+    export H5PART_FILE=${H5PART_FILE:-"H5Part-${H5PART_VERSION}.tar.gz"}
+    export H5PART_COMPATIBILITY_VERSION=${H5PART_COMPATIBILITY_VERSION:-"1.6"}
+    export H5PART_URL=${H5PART_URL:-"https://codeforge.lbl.gov/frs/download.php/387"}
+    export H5PART_BUILD_DIR=${H5PART_BUILD_DIR:-"H5Part-${H5PART_VERSION}"}
+    export H5PART_MD5_CHECKSUM="327c63d198e38a12565b74cffdf1f9d7"
+    export H5PART_SHA256_CHECKSUM="10347e7535d1afbb08d51be5feb0ae008f73caf889df08e3f7dde717a99c7571"
 }
 
 function bv_h5part_print
 {
-  printf "%s%s\n" "H5PART_FILE=" "${H5PART_FILE}"
-  printf "%s%s\n" "H5PART_VERSION=" "${H5PART_VERSION}"
-  printf "%s%s\n" "H5PART_COMPATIBILITY_VERSION=" "${H5PART_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "H5PART_BUILD_DIR=" "${H5PART_BUILD_DIR}"
+    printf "%s%s\n" "H5PART_FILE=" "${H5PART_FILE}"
+    printf "%s%s\n" "H5PART_VERSION=" "${H5PART_VERSION}"
+    printf "%s%s\n" "H5PART_COMPATIBILITY_VERSION=" "${H5PART_COMPATIBILITY_VERSION}"
+    printf "%s%s\n" "H5PART_BUILD_DIR=" "${H5PART_BUILD_DIR}"
 }
 
 function bv_h5part_print_usage
 {
-printf "%-15s %s [%s]\n" "--h5part" "Build H5Part" "$DO_H5PART"
+    printf "%-15s %s [%s]\n" "--h5part" "Build H5Part" "$DO_H5PART"
 }
 
 function bv_h5part_graphical
 {
-local graphical_out="H5Part   $H5PART_VERSION($H5PART_FILE)    $ON_H5PART"
-echo $graphical_out
+    local graphical_out="H5Part   $H5PART_VERSION($H5PART_FILE)    $ON_H5PART"
+    echo $graphical_out
 }
 
 function bv_h5part_host_profile
@@ -62,12 +62,13 @@ function bv_h5part_host_profile
         echo "##" >> $HOSTCONF
         echo "## H5Part" >> $HOSTCONF
         echo "##" >> $HOSTCONF
+        echo "SETUP_APP_VERSION(H5PART $H5PART_VERSION)" >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_H5PART_DIR \${VISITHOME}/h5part/$H5PART_VERSION/\${VISITARCH})" \
-        >> $HOSTCONF
+            "VISIT_OPTION_DEFAULT(VISIT_H5PART_DIR \${VISITHOME}/h5part/\${H5PART_VERSION}/\${VISITARCH})" \
+            >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
-        >> $HOSTCONF
+            "VISIT_OPTION_DEFAULT(VISIT_H5PART_LIBDEP HDF5_LIBRARY_DIR hdf5 \${VISIT_HDF5_LIBDEP} TYPE STRING)" \
+            >> $HOSTCONF
 
     fi
 
@@ -75,7 +76,7 @@ function bv_h5part_host_profile
 
 function bv_h5part_ensure
 {
-   if [[ "$DO_H5PART" == "yes" ]] ; then
+    if [[ "$DO_H5PART" == "yes" ]] ; then
         ensure_built_or_ready "h5part" $H5PART_VERSION $H5PART_BUILD_DIR $H5PART_FILE $H5PART_URL
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
@@ -87,9 +88,43 @@ function bv_h5part_ensure
 
 function bv_h5part_dry_run
 {
-  if [[ "$DO_H5PART" == "yes" ]] ; then
-    echo "Dry run option not set for h5part."
-  fi
+    if [[ "$DO_H5PART" == "yes" ]] ; then
+        echo "Dry run option not set for h5part."
+    fi
+}
+
+function apply_h5part_1_6_6_patch
+{
+    info "Patching H5Part"
+    patch -p0 << \EOF
+ diff -rcN H5Part-1.6.6/src/H5Part-orig.c  H5Part-1.6.6/src/H5Part.c
+*** H5Part-1.6.6/src/H5Part-orig.c	2016-12-14 14:04:41.000000000 -0700
+--- H5Part-1.6.6/src/H5Part.c	2016-12-14 14:00:57.000000000 -0700
+***************
+*** 166,171 ****
+--- 166,173 ----
+  	f->xfer_prop = f->dcreate_prop = f->fcreate_prop = H5P_DEFAULT;
+  
+  	f->access_prop = H5Pcreate (H5P_FILE_ACCESS);
++         H5Pset_fclose_degree(f->access_prop, H5F_CLOSE_SEMI);
++ 	
+  	if (f->access_prop < 0) {
+  		HANDLE_H5P_CREATE_ERR;
+  		goto error_cleanup;
+
+EOF
+}
+
+function apply_h5part_patch
+{
+    if [[ ${H5PART_VERSION} == 1.6.6 ]] ; then
+        apply_h5part_1_6_6_patch
+        if [[ $? != 0 ]] ; then
+            return 1
+        fi
+    fi
+
+    return 0
 }
 
 # ***************************************************************************
@@ -118,32 +153,51 @@ function build_h5part
     prepare_build_dir $H5PART_BUILD_DIR $H5PART_FILE
     untarred_h5part=$?
     if [[ $untarred_h5part == -1 ]] ; then
-       warn "Unable to prepare H5Part Build Directory. Giving Up"
-       return 1
+        warn "Unable to prepare H5Part Build Directory. Giving Up"
+        return 1
     fi
 
+    #
+    # Apply patches
+    #
+    apply_h5part_patch
+    if [[ $? != 0 ]] ; then
+        if [[ $untarred_h5part == 1 ]] ; then
+            warn "Giving up on H5part build because the patch failed."
+            return 1
+        else
+            warn "Patch failed, but continuing.  I believe that this script\n" \
+                 "tried to apply a patch to an existing directory that had\n" \
+                 "already been patched ... that is, the patch is\n" \
+                 "failing harmlessly on a second application."
+        fi
+    fi
+
+    #
+    # Apply configure
     #
     info "Configuring H5Part . . ."
     cd $H5PART_BUILD_DIR || error "Can't cd to h5part build dir."
     if [[ "$DO_HDF5" == "yes" ]] ; then
-       export HDF5ROOT="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH"
-       export SZIPROOT="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH"
-       WITHHDF5ARG="--with-hdf5=$HDF5ROOT"
-       HDF5DYLIB="-L$HDF5ROOT/lib -L$SZIPROOT/lib -lhdf5 -lsz -lz"
+        export HDF5ROOT="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH"
+        export SZIPROOT="$VISITDIR/szip/$SZIP_VERSION/$VISITARCH"
+        WITHHDF5ARG="--with-hdf5=$HDF5ROOT"
+        HDF5DYLIB="-L$HDF5ROOT/lib -L$SZIPROOT/lib -lhdf5 -lsz -lz"
     else
-       WITHHDF5ARG="--with-hdf5"
-       HDF5DYLIB=""
+        WITHHDF5ARG="--with-hdf5"
+        HDF5DYLIB=""
     fi
+
     if [[ "$OPSYS" == "Darwin" ]]; then
-       export DYLD_LIBRARY_PATH="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/lib":\
-"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":\
-$DYLD_LIBRARY_PATH
-       SOARG="--enable-shared"
+        export DYLD_LIBRARY_PATH="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/lib":\
+               "$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":\
+               $DYLD_LIBRARY_PATH
+        SOARG="--enable-shared"
     else
-       export LD_LIBRARY_PATH="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/lib":\
-"$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":\
-$LD_LIBRARY_PATH
-       SOARG=""
+        export LD_LIBRARY_PATH="$VISITDIR/hdf5/$HDF5_VERSION/$VISITARCH/lib":\
+               "$VISITDIR/szip/$SZIP_VERSION/$VISITARCH/lib":\
+               $LD_LIBRARY_PATH
+        SOARG=""
     fi
     if [[ "$FC_COMPILER" == "no" ]] ; then
         FORTRANARGS=""
@@ -159,8 +213,8 @@ $LD_LIBRARY_PATH
        $FORTRANARGS \
        --prefix=\"$VISITDIR/h5part/$H5PART_VERSION/$VISITARCH\""
     if [[ $? != 0 ]] ; then
-       warn "H5Part configure failed.  Giving up"
-       return 1
+        warn "H5Part configure failed.  Giving up"
+        return 1
     fi
 
     #
@@ -170,15 +224,15 @@ $LD_LIBRARY_PATH
 
     $MAKE $MAKE_OPT_FLAGS
     if [[ $? != 0 ]] ; then
-       warn "H5Part build failed.  Giving up"
-       return 1
+        warn "H5Part build failed.  Giving up"
+        return 1
     fi
     info "Installing H5Part . . ."
 
     $MAKE install
     if [[ $? != 0 ]] ; then
-       warn "H5Part build (make install) failed.  Giving up"
-       return 1
+        warn "H5Part build (make install) failed.  Giving up"
+        return 1
     fi
 
     if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
@@ -190,8 +244,8 @@ $LD_LIBRARY_PATH
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
-       chmod -R ug+w,a+rX "$VISITDIR/h5part"
-       chgrp -R ${GROUP} "$VISITDIR/h5part"
+        chmod -R ug+w,a+rX "$VISITDIR/h5part"
+        chgrp -R ${GROUP} "$VISITDIR/h5part"
     fi
     cd "$START_DIR"
     info "Done with H5Part"
@@ -217,20 +271,19 @@ function bv_h5part_is_installed
 
 function bv_h5part_build
 {
-cd "$START_DIR"
-if [[ "$DO_H5PART" == "yes" ]] ; then
-    check_if_installed "h5part" $H5PART_VERSION
-    if [[ $? == 0 ]] ; then
-        info "Skipping H5Part build.  H5Part is already installed."
-    else
-        info "Building H5Part (~1 minutes)"
-        build_h5part
-        if [[ $? != 0 ]] ; then
-            error "Unable to build or install H5Part.  Bailing out."
+    cd "$START_DIR"
+    if [[ "$DO_H5PART" == "yes" ]] ; then
+        check_if_installed "h5part" $H5PART_VERSION
+        if [[ $? == 0 ]] ; then
+            info "Skipping H5Part build.  H5Part is already installed."
+        else
+            info "Building H5Part (~1 minutes)"
+            build_h5part
+            if [[ $? != 0 ]] ; then
+                error "Unable to build or install H5Part.  Bailing out."
+            fi
+            info "Done building H5Part"
         fi
-        info "Done building H5Part"
     fi
-fi
 
 }
-

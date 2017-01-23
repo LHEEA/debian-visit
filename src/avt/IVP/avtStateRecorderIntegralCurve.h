@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -67,7 +67,7 @@
 //
 //    Hank Childs, Fri Oct  8 23:30:27 PDT 2010
 //    Refactor into an abstract type.  Remove all data members specific to
-//    streamlines or Poincare.
+//    integral curves or Poincare.
 //
 //    Dave Pugmire, Fri Nov  5 15:36:31 EDT 2010
 //    Make historyMask public.

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,27 +39,14 @@
 #include "QvisRemoveCellsWindow.h"
 
 #include <RemoveCellsAttributes.h>
-#include <ViewerProxy.h>
 
-#include <QCheckBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
-#include <QSpinBox>
-#include <QWidget>
-#include <QButtonGroup>
 #include <QListWidget>
-#include <QRadioButton>
-#include <QvisColorTableButton.h>
-#include <QvisOpacitySlider.h>
-#include <QvisColorButton.h>
-#include <QvisLineStyleWidget.h>
-#include <QvisLineWidthWidget.h>
-#include <stdio.h>
-#include <string>
+#include <QPushButton>
 #include <vector>
 
-using std::string;
 using std::vector;
 
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -213,7 +213,8 @@ ViewerPasswordWindow::authenticate(const char *username, const char* password, c
         else if (strstr(buffer, "assword") ||
                  strstr(buffer, "ASSWORD") ||
                  strstr(buffer, "asscode") ||
-                 strstr(buffer, "ASSCODE"))
+                 strstr(buffer, "ASSCODE") ||
+                 strstr(buffer, "Token_Response:"))
         {
             // Password needed. Prompt for it and write it to the FD.
             VisItPasswordWindow::ReturnCode ret = VisItPasswordWindow::PW_Accepted;

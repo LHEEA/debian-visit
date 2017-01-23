@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -174,7 +174,7 @@ avtMemoryUsageQuery::GetResultMessage()
     
     std::string float_format = queryAtts.GetFloatFormat();
     
-    int nproc = memSizeVals.size();
+    int nproc = (int)memSizeVals.size();
     if (  nproc == 1 )
     {
         std::string format = "Engine Memory Usage = " 

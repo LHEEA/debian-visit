@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,6 +49,7 @@
 #include <string>
 #include <vector>
 #include <visitstream.h>
+#include <visit_gzstream.h>
 
 class vtkPoints;
 class vtkPolyData;
@@ -107,10 +108,11 @@ class avtTecplotWriter : public virtual avtDatabaseWriter
     bool           ReallyHasMaterials();
 
     std::string              stem;
-    ofstream                 file;
+    visit_ofstream           file;
     std::vector<std::string> variableList;
     std::vector<std::string> materialList;
     bool                     variablesWritten;
+    int                      gzipLevel;
 };
 
 

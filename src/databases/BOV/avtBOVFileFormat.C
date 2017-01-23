@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -144,7 +144,7 @@ avtBOVFileFormat::avtBOVFileFormat(const char *fname)
     // Determine what path we should prepend to every file name.
     //
     int last_slash = -1;
-    int len = strlen(fname);
+    int len = (int)strlen(fname);
     for (int i = len-1 ; i >= 0 ; i--)
         if (fname[i] == '/' || fname[i] == '\\')
         {
@@ -2406,11 +2406,11 @@ FormatLine(char *line)
     bool inWord = false;
     bool inQuotes = false;
     int buffOffset = 0;
-    int nchar = strlen(line);
+    size_t nchar = strlen(line);
     bool hasColon = (strstr(line, ":") != NULL);
     bool foundColon = false;
-    int i;
-    for (i = 0 ; i < nchar ; i++)
+
+    for (size_t i = 0 ; i < nchar ; i++)
     {
         if (line[i] == '\"')
             inQuotes = (inQuotes ? false : true);
@@ -2454,7 +2454,7 @@ FormatLine(char *line)
     // Make sure we have a trailing '\0'
     buff[buffOffset++] = '\0';
  
-    for (i = 0 ; i < buffOffset ; i++)
+    for (int i = 0 ; i < buffOffset ; i++)
         line[i] = buff[i];
 
     return nwords;

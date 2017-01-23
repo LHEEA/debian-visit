@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -121,6 +121,9 @@ class     ColorAttribute;
 //    Jeremy Meredith, Wed May 19 14:15:58 EDT 2010
 //    Account for 3D axis scaling (3D equivalent of full-frame mode).
 //
+//    Burlen Loring, Thu Oct  8 12:53:58 PDT 2015
+//    Fix a compiler warning
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinColleague
@@ -177,7 +180,7 @@ class VISWINDOW_API VisWinColleague
     virtual void              FullFrameOn(const double, const int)       {;};
     virtual void              FullFrameOff(void)       {;};
 
-    virtual void              Set3DAxisScalingFactors(bool,const double s[3]){}
+    virtual void              Set3DAxisScalingFactors(bool,const double [3]){}
 
     virtual void              SetFrameAndState(int, int, int, int,
                                                int, int, int) {;};

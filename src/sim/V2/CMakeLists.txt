@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -65,6 +65,7 @@ ${CMAKE_CURRENT_SOURCE_DIR}/lib/VisIt_ExpressionMetaData.c
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/VisIt_MaterialData.c
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/VisIt_MaterialMetaData.c
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/VisIt_MeshMetaData.c
+${CMAKE_CURRENT_SOURCE_DIR}/lib/VisIt_MessageMetaData.c
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/VisIt_NameList.c
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/VisIt_OptionList.c
 ${CMAKE_CURRENT_SOURCE_DIR}/lib/VisIt_PointMesh.c

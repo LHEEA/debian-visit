@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,7 +107,8 @@ class PlotInfoAttributes;
     VIEWER_REGISTER_OBJECT(SelectionProperties,      SelectionProperties, false)\
     VIEWER_REGISTER_OBJECT(SelectionList,            SelectionList, false)\
     VIEWER_REGISTER_OBJECT(ViewerClientAttributes,   ViewerClientAttributes, false)\
-    VIEWER_REGISTER_OBJECT(ViewerClientInformation,  ViewerClientInformation, false)
+    VIEWER_REGISTER_OBJECT(ViewerClientInformation,  ViewerClientInformation, false) \
+    VIEWER_REGISTER_OBJECT(SeedMeAttributes,         SeedMeAttributes, true)
 
 //
 // Do forward class declarations

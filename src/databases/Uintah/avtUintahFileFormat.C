@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -953,7 +953,7 @@ int avtUintahFileFormat::GetGlobalDomainNumber(int level, int local_patch) {
 void
 avtUintahFileFormat::CalculateDomainNesting(int timestate, const std::string &meshname)
 {
-#warning "FIX ME - IS THIS CODE VALID ??????"
+//#warning "FIX ME - IS THIS CODE VALID ??????"
 
 #ifdef MDSERVER
 

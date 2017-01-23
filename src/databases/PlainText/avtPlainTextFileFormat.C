@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,6 +58,8 @@
 #include <DBOptionsAttributes.h>
 #include <Expression.h>
 #include <StringHelpers.h>
+
+#include "visit_gzstream.h"
 
 #include <InvalidVariableException.h>
 #include <InvalidFilesException.h>
@@ -489,8 +491,8 @@ avtPlainTextFileFormat::ReadFile()
     if (fileRead)
         return;
 
-    ifstream in(filename.c_str());
-    if (!in)
+    visit_ifstream in(filename.c_str());
+    if (!in())
         EXCEPTION1(InvalidFilesException, filename.c_str());
 
     // skip the first lines if asked
@@ -499,7 +501,7 @@ avtPlainTextFileFormat::ReadFile()
     memset(buff, 0, sizeof(char) * linelen);
     for (int l=0; l<skipLines; l++)
     {
-        in.getline(buff, linelen);
+        in().getline(buff, linelen);
         if (!StringHelpers::IsPureASCII(buff, linelen))
             EXCEPTION2(InvalidFilesException, filename.c_str(), "Not ASCII.");
     }
@@ -509,7 +511,7 @@ avtPlainTextFileFormat::ReadFile()
     ncolumns = 0;
     nrows = 0;
     bool firstRow = true;
-    in.getline(buff, linelen);
+    in().getline(buff, linelen);
     if (!StringHelpers::IsPureASCII(buff, linelen))
         EXCEPTION2(InvalidFilesException, filename.c_str(), "Not ASCII.");
 
@@ -518,9 +520,9 @@ avtPlainTextFileFormat::ReadFile()
         if (*p == ',')
             comma = true;
 
-    while (!!in)
+    while (in())
     {
-        int len = strlen(buff);
+        int len = (int)strlen(buff);
         char *start = buff;
         vector<float> row;
 
@@ -585,7 +587,7 @@ avtPlainTextFileFormat::ReadFile()
             }
         }
 
-        int rowlen = (firstRowIsHeader && firstRow) ? variableNames.size() : row.size();
+        int rowlen = (firstRowIsHeader && firstRow) ?(int) variableNames.size() : (int)row.size();
         if (firstRow)
         {
             ncolumns = rowlen;
@@ -600,7 +602,7 @@ avtPlainTextFileFormat::ReadFile()
             nrows++;
         }
         firstRow = false;
-        in.getline(buff, linelen);
+        in().getline(buff, linelen);
 
         if (nrows < 5)
         {
@@ -642,7 +644,7 @@ avtPlainTextFileFormat::ReadFile()
     {
         // If we didn't get enough variable names, fill it out with
         // generic values; and if it's too much, trim it
-        for (int i=variableNames.size(); i<ncolumns; i++)
+        for (int i=(int)variableNames.size(); i<ncolumns; i++)
         {
             char str[20];
             sprintf(str, "var%02d", i);
@@ -652,6 +654,6 @@ avtPlainTextFileFormat::ReadFile()
             variableNames.resize(ncolumns);
     }
 
-    in.close();
+    //in().close();
     fileRead = true;
 }

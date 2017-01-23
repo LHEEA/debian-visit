@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -298,7 +298,7 @@ avtLineScanTransformQuery::ExecuteLineScan(vtkPolyData *pd)
 
     // After this loop completes, a set of line endpoints and ids will fill 
     // the hash tables.
-    for (size_t i = 0 ; i < (size_t)npts ; i++)
+    for (int i = 0 ; i < npts ; i++)
     {
         // glue segments into one long line
         if (usedPoint[i])

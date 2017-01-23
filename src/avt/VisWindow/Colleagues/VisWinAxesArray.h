@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -72,6 +72,9 @@ class VisWindowColleagueProxy;
 //    Eric Brugger, Tue Jan 20 11:33:46 PST 2009
 //    I removed SetGridVisibility since it doesn't make sense.
 //
+//    Burlen Loring, Wed Oct  7 16:33:07 PDT 2015
+//    Fix a compiler warning
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinAxesArray : public VisWinColleague
@@ -131,6 +134,7 @@ class VISWINDOW_API VisWinAxesArray : public VisWinColleague
         AxisInfo(vtkVisItAxisActor2D *a, int lp, int lad, int p, int up)
             : axis(a), lastPow(lp), lastAxisDigits(lad), pow(p)
         {
+            (void)up;
             xpos = 0;
             units[0] = '\0';
             title[0] = '\0';

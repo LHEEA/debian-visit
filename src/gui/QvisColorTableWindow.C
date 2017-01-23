@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -184,6 +184,10 @@ QvisColorTableWindow::~QvisColorTableWindow()
 //   Added a groupToggle. Change discrete/active buttons to color table
 //   buttons.
 //
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
+//
 // ****************************************************************************
 
 void
@@ -271,6 +275,7 @@ QvisColorTableWindow::CreateWindowContents()
     QGridLayout *colorInfoLayout = new QGridLayout();
     innerColorLayout->addLayout(colorInfoLayout);
     colorNumColors = new QSpinBox(colorWidgetGroup);
+    colorNumColors->setKeyboardTracking(false);
     colorNumColors->setRange(2,200);
     colorNumColors->setSingleStep(1);
     connect(colorNumColors, SIGNAL(valueChanged(int)),
@@ -388,6 +393,7 @@ QvisColorTableWindow::CreateWindowContents()
 
         n.sprintf("discreteLineEdits[%d]", j);
         componentSpinBoxes[j] = new QSpinBox(colorWidgetGroup);
+        componentSpinBoxes[j]->setKeyboardTracking(false);
         componentSpinBoxes[j]->setRange(0,255);
         componentSpinBoxes[j]->setSingleStep(1);
 

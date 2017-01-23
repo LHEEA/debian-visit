@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -470,7 +470,7 @@ avtMultiResolutionPartitionStrategy::AddBox(int *extents)
     if (box_size < minimumSize)
         return;
 
-    int s = tmpBox.size();
+    size_t s = tmpBox.size();
     tmpBox.resize(s+6);
     tmpBox[s]   = extents[0];
     tmpBox[s+1] = extents[1]-1;

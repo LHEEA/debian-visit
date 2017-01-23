@@ -7,6 +7,7 @@
             <lib name="mesa"/>
             <lib name="vtk"/> <!-- <lib name="vtk" reqdeps="cmake vtk" optdeps="mesa"/> -->
             <lib name="qt"/>
+            <lib name="qwt"/>
         </required>
 
         <!-- optional libraries -->
@@ -17,6 +18,7 @@
             <lib name="boxlib"/>
             <lib name="ccmio"/>
             <lib name="cfitsio"/>
+            <lib name="conduit"/>
             <lib name="cgns"/>
             <lib name="eavl"/>
             <lib name="visus"/>
@@ -26,40 +28,44 @@
             <lib name="hdf4"/>
             <lib name="hdf5"/>
             <lib name="icet"/>
-            <lib name="itaps"/>
+            <lib name="manta"/>
+<!--        <lib name="mdsplus"/>    Removed for now by Allen Sanderson-->
             <lib name="mfem"/>
             <lib name="mili"/>
-<!--        <lib name="mdsplus"/>    Removed for now by Allen Sanderson-->
-            <lib name="manta"/>
+            <lib name="moab"/>
             <lib name="mpich"/>
             <lib name="mxml"/>
             <lib name="nektarpp"/>
             <lib name="netcdf"/>
+            <lib name="openssl"/>
             <lib name="pyside"/>
             <lib name="uintah"/>
             <lib name="silo"/>
             <lib name="szip"/>
             <lib name="tcmalloc"/>
+            <lib name="vtkm"/>
             <lib name="xdmf"/>
             <lib name="zlib"/>
         </optional>
 
         <!-- thirdparty flag -->
-        <group name="required" comment="All required libraries">
+        <group name="required" comment="All required libraries" enabled="yes">
             <lib name="cmake"/> <!-- cmake is here -->
             <lib name="python"/>
             <lib name="mesa"/>
             <lib name="vtk"/> <!-- <lib name="vtk" reqdeps="cmake vtk" optdeps="mesa"/> -->
             <lib name="qt"/>
+            <lib name="qwt"/>
         </group>
 
-        <group name="optional" comment="All optional libraries">
+        <group name="optional" comment="All optional libraries" enabled="no">
             <lib name="adios"/>
             <lib name="advio"/>
             <lib name="boost"/>
             <lib name="boxlib"/>
             <lib name="ccmio"/>
             <lib name="cfitsio"/>
+            <lib name="conduit"/>
             <lib name="cgns"/>
             <lib name="gdal"/>
             <lib name="fastbit"/>
@@ -69,6 +75,7 @@
             <lib name="mxml"/>
             <lib name="netcdf"/>
             <lib name="nektarpp"/>
+            <lib name="openssl"/>
             <lib name="pyside"/>
             <lib name="silo"/>
             <lib name="szip"/>
@@ -78,21 +85,23 @@
             <lib name="zlib"/>
         </group>
 
-        <group name="no-thirdparty" comment="Do not build required 3rd party libraries">
+        <group name="no-thirdparty" comment="Do not build required 3rd party libraries" enabled="no">
             <lib name="no-cmake"/>
             <lib name="no-python"/>
             <lib name="no-pyside"/>
             <lib name="no-qt" />
+            <lib name="no-qwt" />
             <lib name="no-vtk"/>
         </group>
 
         <!-- all io libraries -->
-        <group name="all-io" comment="Build all available I/O libraries">
+        <group name="all-io" comment="Build all available I/O libraries" enabled="no">
             <lib name="adios"/>
 <!--        <lib name="advio"/>    Removed by Allen Sanderson-->
             <lib name="boxlib"/>
             <lib name="ccmio"/>
             <lib name="cfitsio"/>
+            <lib name="conduit"/>
             <lib name="cgns"/>
             <lib name="fastbit"/>
             <lib name="gdal"/>
@@ -109,12 +118,13 @@
         </group>
 
         <!-- dbio-only-->
-        <group name="dbio-only" comment="Disables EVERYTHING but I/O.">
+        <group name="dbio-only" comment="Disables EVERYTHING but I/O." enabled="no">
             <lib name="adios"/>
             <lib name="advio"/>
             <lib name="boxlib"/>
             <lib name="ccmio"/>
             <lib name="cfitsio"/>
+            <lib name="conduit"/>
             <lib name="cgns"/>
             <lib name="fastbit"/>
             <lib name="gdal"/>
@@ -130,13 +140,14 @@
             <lib name="xdmf"/>
             <lib name="no-mesa"/>
             <lib name="no-qt"/>
+            <lib name="no-qwt"/>
             <lib name="no-python"/>
         </group>
 
         <!--
             #all the optional non io libraries
         -->
-        <group name="nonio" comment="Build non I/O libraries">
+        <group name="nonio" comment="Build non I/O libraries" enabled="no">
             <lib name="icet"/>
             <lib name="mesa"/>
         </group>
@@ -144,9 +155,8 @@
         <!--
         # Releasibility of these libs is not yet understood
         -->
-        <group name="advanced" comment="Must be manually downloaded">
+        <group name="advanced" comment="Must be manually downloaded" enabled="no">
             <lib name="hdf4"/>
-            <lib name="itaps"/>
 <!--        <lib name="mdsplus"/>    Removed for now by Allen Sanderson-->
             <lib name="mili"/>
             <lib name="tcmalloc"/>
@@ -166,6 +176,7 @@
             <lib name="R"/>
             <lib name="vtk"/>
             <lib name="qt"/>
+            <lib name="qwt"/>
         </required>
 
         <!-- optional libraries -->
@@ -184,18 +195,20 @@
         </optional>
 
         <!-- thirdparty flag -->
-        <group name="required" comment="All required libraries">
+        <group name="required" comment="All required libraries" enabled="yes">
             <lib name="cmake"/>
             <lib name="python"/>
             <lib name="mesa"/>
             <lib name="R"/>
             <lib name="vtk"/>
             <lib name="qt"/>
+            <lib name="qwt"/>
         </group>
 
-        <group name="optional" comment="All optional libraries">
+        <group name="optional" comment="All optional libraries" enabled="no">
             <lib name="boost"/>
             <lib name="hdf5"/>
+            <lib name="openssl"/>
             <lib name="netcdf"/>
             <lib name="mpich"/>
             <lib name="szip"/>
@@ -206,15 +219,16 @@
         </group>
 
 
-        <group name="no-thirdparty" comment="Do not build required 3rd party libraries">
+        <group name="no-thirdparty" comment="Do not build required 3rd party libraries" enabled="no">
             <lib name="no-cmake"/>
             <lib name="no-python"/>
             <lib name="no-qt" />
+            <lib name="no-qwt" />
             <lib name="no-vtk"/>
         </group>
 
         <!-- nodbio flag -->
-        <group name="dbio-only" comment="Disables EVERYTHING but I/O.">
+        <group name="dbio-only" comment="Disables EVERYTHING but I/O." enabled="no">
             <lib name="hdf5"/>
             <lib name="netcdf"/>
             <lib name="szip"/>
@@ -222,17 +236,18 @@
             <lib name="no-mesa"/>
             <lib name="no-python"/>
             <lib name="no-qt"/>
+            <lib name="no-qwt"/>
         </group>
 
         <!-- all io libraries -->
-        <group name="all-io" comment="Build all available I/O libraries">
+        <group name="all-io" comment="Build all available I/O libraries" enabled="no">
             <lib name="hdf5"/>
             <lib name="netcdf"/>
             <lib name="szip"/>
             <lib name="uintah"/>
         </group>
         <!-- #all the optional non io libraries -->
-        <group name="nonio" comment="Build non I/O libraries">
+        <group name="nonio" comment="Build non I/O libraries" enabled="no">
             <lib name="icet"/>
             <lib name="mesa"/>
         </group>
@@ -240,7 +255,7 @@
         <!-- you have to mangle both vtk and visit, otherwise the
              build_visit will fail -->
         <!--
-        <group name="mangled" comment="Use mangled VTK to build VisIt">
+        <group name="mangled" comment="Use mangled VTK to build VisIt" enabled="no">
             <custom-flag lib="vtk" flag="mangled"/>
             <custom-flag lib="visit" flag="mangled"/>
         </group>

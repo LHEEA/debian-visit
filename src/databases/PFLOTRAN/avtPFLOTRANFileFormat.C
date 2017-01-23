@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -749,8 +749,12 @@ avtPFLOTRANFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData * md,
             else
             {
                 hid_t slabSpace = H5Scopy(dsSpace);
-                hsize_t start[] = {domainGlobalStart[0],domainGlobalStart[1],domainGlobalStart[2]};
-                hsize_t count[] = {domainGlobalCount[0]-1,domainGlobalCount[1]-1,domainGlobalCount[2]-1};
+                hsize_t start[] = {static_cast<hsize_t>(domainGlobalStart[0]),
+                                   static_cast<hsize_t>(domainGlobalStart[1]),
+                                   static_cast<hsize_t>(domainGlobalStart[2])};
+                hsize_t count[] = {static_cast<hsize_t>(domainGlobalCount[0]-1),
+                                   static_cast<hsize_t>(domainGlobalCount[1]-1),
+                                   static_cast<hsize_t>(domainGlobalCount[2]-1)};
                 if (oldFileNeedingCoordFixup)
                 {
                     for (int dim=0; dim<3; dim++)
@@ -798,7 +802,7 @@ avtPFLOTRANFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData * md,
             for (size_t i=0;i<nvals;i++)
                 matls[matlist[i]] = true;
 
-            int nmats = matls.size();
+            int nmats = (int)matls.size();
             char **names = new char*[nmats];
             int i = 0;
             for (map<int,bool>::iterator iter = matls.begin(); iter != matls.end();++iter)
@@ -974,8 +978,8 @@ avtPFLOTRANFileFormat::GetMesh(int, int domain, const char *)
 
             hid_t arraySpace = H5Dget_space(dimID[dim]);
             hid_t slabSpace = H5Scopy(arraySpace);
-            hsize_t start[] = {domainGlobalStart[dim]};
-            hsize_t count[] = {domainGlobalCount[dim]};
+            hsize_t start[] = {static_cast<hsize_t>(domainGlobalStart[dim])};
+            hsize_t count[] = {static_cast<hsize_t>(domainGlobalCount[dim])};
             H5Sselect_hyperslab(slabSpace, H5S_SELECT_SET, start,NULL,count,NULL);
 
             hid_t memSpace = H5Screate_simple(1,count,NULL);
@@ -1160,8 +1164,12 @@ avtPFLOTRANFileFormat::GetVar(int timestate, int, const char *varname)
         }
 
         hid_t slabSpace = H5Scopy(dsSpace);
-        hsize_t start[] = {domainGlobalStart[0],domainGlobalStart[1],domainGlobalStart[2]};
-        hsize_t count[] = {domainGlobalCount[0]-1,domainGlobalCount[1]-1,domainGlobalCount[2]-1};
+        hsize_t start[] = {static_cast<hsize_t>(domainGlobalStart[0]),
+                           static_cast<hsize_t>(domainGlobalStart[1]),
+                           static_cast<hsize_t>(domainGlobalStart[2])};
+        hsize_t count[] = {static_cast<hsize_t>(domainGlobalCount[0]-1),
+                           static_cast<hsize_t>(domainGlobalCount[1]-1),
+                           static_cast<hsize_t>(domainGlobalCount[2]-1)};
         if (oldFileNeedingCoordFixup)
         {
             for (int dim=0; dim<3; dim++)
@@ -1360,8 +1368,12 @@ avtPFLOTRANFileFormat::GetVectorVar(int timestate, int domain,
             }
 
             hid_t slabSpace = H5Scopy(dsSpace);
-            hsize_t start[] = {domainGlobalStart[0],domainGlobalStart[1],domainGlobalStart[2]};
-            hsize_t count[] = {domainGlobalCount[0]-1,domainGlobalCount[1]-1,domainGlobalCount[2]-1};
+            hsize_t start[] = {static_cast<hsize_t>(domainGlobalStart[0]),
+                               static_cast<hsize_t>(domainGlobalStart[1]),
+                               static_cast<hsize_t>(domainGlobalStart[2])};
+            hsize_t count[] = {static_cast<hsize_t>(domainGlobalCount[0]-1),
+                               static_cast<hsize_t>(domainGlobalCount[1]-1),
+                               static_cast<hsize_t>(domainGlobalCount[2]-1)};
             if (oldFileNeedingCoordFixup)
             {
                 for (int dim=0; dim<3; dim++)
@@ -1511,8 +1523,12 @@ void      *avtPFLOTRANFileFormat::GetAuxiliaryData(const char *var, int timestep
         else
         {
             hid_t slabSpace = H5Scopy(dsSpace);
-            hsize_t start[] = {domainGlobalStart[0],domainGlobalStart[1],domainGlobalStart[2]};
-            hsize_t count[] = {domainGlobalCount[0]-1,domainGlobalCount[1]-1,domainGlobalCount[2]-1};
+            hsize_t start[] = {static_cast<hsize_t>(domainGlobalStart[0]),
+                               static_cast<hsize_t>(domainGlobalStart[1]),
+                               static_cast<hsize_t>(domainGlobalStart[2])};
+            hsize_t count[] = {static_cast<hsize_t>(domainGlobalCount[0]-1),
+                               static_cast<hsize_t>(domainGlobalCount[1]-1),
+                               static_cast<hsize_t>(domainGlobalCount[2]-1)};
             if (oldFileNeedingCoordFixup)
             {
                 for (int dim=0; dim<3; dim++)
@@ -1556,7 +1572,7 @@ void      *avtPFLOTRANFileFormat::GetAuxiliaryData(const char *var, int timestep
         for (size_t i=0;i<nvals;i++)
             matls[matlist[i]] = true;
 
-        int nmats = matls.size();
+        int nmats = (int)matls.size();
         int *matnos = new int[nmats];
         char **names = new char*[nmats];
         int i = 0;
@@ -1615,7 +1631,7 @@ void      *avtPFLOTRANFileFormat::GetAuxiliaryData(const char *var, int timestep
 void
 avtPFLOTRANFileFormat::GetTimes(std::vector<double> &t)
 {
-    int nt = times.size();
-    for(int i=0;i<nt;i++)
+    size_t nt = times.size();
+    for(size_t i=0;i<nt;i++)
         t.push_back(times[i].first);
 }

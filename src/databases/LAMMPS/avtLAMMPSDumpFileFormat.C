@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -708,7 +708,7 @@ avtLAMMPSDumpFileFormat::ReadAllMetaData()
 bool
 avtLAMMPSDumpFileFormat::FileExtensionIdentify(const std::string &filename)
 {
-    int pos = filename.length()-1;
+    int pos = (int)filename.length()-1;
     while (pos>=0 && filename[pos]!='/' && filename[pos]!='\\')
         pos--;
 

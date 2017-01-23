@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -850,6 +850,8 @@ avtADIOSSchemaFileFormat::NumberOfVertices(ADIOS_CELL_TYPE &ct)
         return 4;
     else if (ct == ADIOS_CELL_PYR)
         return 5;
+    else
+      return 0;
 }
 
 //****************************************************************************
@@ -884,4 +886,6 @@ avtADIOSSchemaFileFormat::GetCellType(ADIOS_CELL_TYPE &ct)
         return VTK_TETRA;
     else if (ct == ADIOS_CELL_PYR)
         return VTK_PYRAMID;
+    else
+      return 0;
 }

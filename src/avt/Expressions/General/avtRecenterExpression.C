@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -116,7 +116,7 @@ avtRecenterExpression::ProcessArguments(ArgsExpr *args,
 {
     // Get the argument list and number of arguments.
     std::vector<ArgExpr*> *arguments = args->GetArgs();
-    int nargs = arguments->size();
+    size_t nargs = arguments->size();
 
     // Check for a call with no arguments.
     if (nargs == 0)
@@ -326,3 +326,25 @@ avtRecenterExpression::GetVariableDimension(void)
     int ncomp = atts.GetVariableDimension(varname);
     return ncomp;
 }
+
+// ****************************************************************************
+//  Method: avtRecenterExpression::ModifyContract
+//
+//  Purpose:
+//      Request ghost zones.
+//
+//  Programmer: Cyrus Harrison
+//  Creation:   Wed Apr 17 13:45:02 PDT 2013
+//
+// ****************************************************************************
+
+avtContract_p
+avtRecenterExpression::ModifyContract(avtContract_p in_spec)
+{
+    avtContract_p spec2 =
+                   avtSingleInputExpressionFilter::ModifyContract(in_spec);
+    spec2->GetDataRequest()->SetDesiredGhostDataType(GHOST_ZONE_DATA);
+    return spec2;
+}
+
+

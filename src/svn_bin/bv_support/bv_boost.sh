@@ -1,21 +1,21 @@
 function bv_boost_initialize
 {
-export DO_BOOST="no"
-export ON_BOOST="off"
-export USE_SYSTEM_BOOST="no"
-add_extra_commandline_args "boost" "alt-boost-dir" 1 "Use alternative directory for boost"
+    export DO_BOOST="no"
+    export ON_BOOST="off"
+    export USE_SYSTEM_BOOST="no"
+    add_extra_commandline_args "boost" "alt-boost-dir" 1 "Use alternative directory for boost"
 }
 
 function bv_boost_enable
 {
-DO_BOOST="yes"
-ON_BOOST="on"
+    DO_BOOST="yes"
+    ON_BOOST="on"
 }
 
 function bv_boost_disable
 {
-DO_BOOST="no"
-ON_BOOST="off"
+    DO_BOOST="no"
+    ON_BOOST="off"
 }
 
 function bv_boost_alt_boost_dir
@@ -37,36 +37,37 @@ function bv_boost_depends_on
 function bv_boost_initialize_vars
 {
     if [[ "$USE_SYSTEM_BOOST" == "no" ]]; then
-        BOOST_INSTALL_DIR="${VISITDIR}/boost/$BOOST_VERSION/${VISITARCH}"
+        BOOST_INSTALL_DIR="${VISITDIR}/boost/${BOOST_VERSION}/${VISITARCH}"
     fi
 }
 
 function bv_boost_info
 {
-export BOOST_VERSION=${BOOST_VERSION:-"1_57_0"}
-export BOOST_FILE=${BOOST_FILE:-"boost_${BOOST_VERSION}.tar.gz"}
-export BOOST_COMPATIBILITY_VERSION=${BOOST_COMPATIBILITY_VERSION:-"1_57"}
-export BOOST_BUILD_DIR=${BOOST_BUILD_DIR:-"boost_${BOOST_VERSION}"}
-export BOOST_URL=${BOOST_URL:-"http://sourceforge.net/projects/boost/files/boost/1.57.0"}
+    export BOOST_VERSION=${BOOST_VERSION:-"1_60_0"}
+    export BOOST_FILE=${BOOST_FILE:-"boost_${BOOST_VERSION}.tar.gz"}
+    export BOOST_COMPATIBILITY_VERSION=${BOOST_COMPATIBILITY_VERSION:-"1_60"}
+    export BOOST_BUILD_DIR=${BOOST_BUILD_DIR:-"boost_${BOOST_VERSION}"}
+    export BOOST_URL=${BOOST_URL:-"http://sourceforge.net/projects/boost/files/boost/1.60.0"}
 }
 
 function bv_boost_print
 {
-  printf "%s%s\n" "BOOST_FILE=" "${BOOST_FILE}"
-  printf "%s%s\n" "BOOST_VERSION=" "${BOOST_VERSION}"
-  printf "%s%s\n" "BOOST_COMPATIBILITY_VERSION=" "${BOOST_COMPATIBILITY_VERSION}"
-  printf "%s%s\n" "BOOST_BUILD_DIR=" "${BOOST_BUILD_DIR}"
+    printf "%s%s\n" "BOOST_FILE=" "${BOOST_FILE}"
+    printf "%s%s\n" "BOOST_VERSION=" "${BOOST_VERSION}"
+    printf "%s%s\n" "BOOST_COMPATIBILITY_VERSION=" "${BOOST_COMPATIBILITY_VERSION}"
+    printf "%s%s\n" "BOOST_BUILD_DIR=" "${BOOST_BUILD_DIR}"
 }
 
 function bv_boost_print_usage
 {
-printf "%-15s %s [%s]\n" "--boost" "Build BOOST" "${DO_BOOST}"
+    printf "%-15s %s [%s]\n" "--boost" "Build BOOST" "${DO_BOOST}"
+    printf "%-15s %s [%s]\n" "--alt-boost-dir" "Use Boost from an alternative directory"
 }
 
 function bv_boost_graphical
 {
-local graphical_out="BOOST     $BOOST_VERSION($BOOST_FILE)      $ON_BOOST"
-echo $graphical_out
+    local graphical_out="BOOST     $BOOST_VERSION($BOOST_FILE)      $ON_BOOST"
+    echo $graphical_out
 }
 
 function bv_boost_host_profile
@@ -80,12 +81,12 @@ function bv_boost_host_profile
         echo "SETUP_APP_VERSION(BOOST $BOOST_VERSION)" >> $HOSTCONF
         if [[ "$USE_SYSTEM_BOOST" == "yes" ]]; then
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_BOOST_DIR $BOOST_INSTALL_DIR)" \
-            >> $HOSTCONF 
+                "VISIT_OPTION_DEFAULT(VISIT_BOOST_DIR $BOOST_INSTALL_DIR)" \
+                >> $HOSTCONF 
         else
             echo \
-            "VISIT_OPTION_DEFAULT(VISIT_BOOST_DIR \${VISITHOME}/boost/$BOOST_VERSION/\${VISITARCH})" \
-            >> $HOSTCONF 
+                "VISIT_OPTION_DEFAULT(VISIT_BOOST_DIR \${VISITHOME}/boost/\${BOOST_VERSION}/\${VISITARCH})" \
+                >> $HOSTCONF 
         fi
     fi
 }
@@ -104,9 +105,9 @@ function bv_boost_ensure
 
 function bv_boost_dry_run
 {
-  if [[ "$DO_BOOST" == "yes" ]] ; then
-    echo "Dry run option not set for boost."
-  fi
+    if [[ "$DO_BOOST" == "yes" ]] ; then
+        echo "Dry run option not set for boost."
+    fi
 }
 
 function apply_boost_patch
@@ -125,38 +126,61 @@ function build_boost
     #
     prepare_build_dir $BOOST_BUILD_DIR $BOOST_FILE
     untarred_boost=$?
+    # 0, already exists, 1 untarred src, 2 error
+
     if [[ $untarred_boost == -1 ]] ; then
-       warn "Unable to prepare BOOST Build Directory. Giving Up"
-       return 1
+        warn "Unable to prepare BOOST Build Directory. Giving Up"
+        return 1
     fi
 
     #
+    # Apply patches
+    #
     cd $BOOST_BUILD_DIR || error "Can't cd to BOOST build dir."
     apply_boost_patch
-    if [[ $? != 0 ]]; then
-        warn "Patch failed, but continuing."
+    if [[ $? != 0 ]] ; then
+        if [[ $untarred_boost == 1 ]] ; then
+            warn "Giving up on Boost build because the patch failed."
+            return 1
+        else
+            warn "Patch failed, but continuing.  I believe that this script\n" \
+                 "tried to apply a patch to an existing directory that had\n" \
+                 "already been patched ... that is, the patch is\n" \
+                 "failing harmlessly on a second application."
+        fi
     fi
 
+    # Get a list of libraries to build. This list of libraries is used
+    # for the OS X name fix up.
+
+    # This list must include dependent libraries also. For instance,
+    # the serialization library requires the wserialization
+    # library. So it too must be listed. However, it can not be in the
+    # build_libs list otherwise boost barfs.
     libs=""
-    build_libs=""
-
-    if [[ "$DO_NEKTAR_PLUS_PLUS" == "yes" ]] ; then
-	libs="$libs \
-              chrono iostreams thread date_time filesystem \
-              system program_options regex timer"
-
-        build_libs="chrono,iostreams,thread,date_time,filesystem,system,program_options,regex,timer"
-    fi
 
     if [[ "$DO_DAMARIS" == "yes" ]] ; then
         libs="$libs \
               date_time system filesystem"
-        if [[ "$build_libs" != ""  ]] ; then
-          build_libs="$build_libs,date_time,system,filesystem"
-        else
-          build_libs="date_time,system,filesystem"
-        fi
     fi
+
+    if [[ "$DO_NEKTAR_PLUS_PLUS" == "yes" ]] ; then
+        libs="$libs \
+              chrono iostreams thread date_time filesystem \
+              system program_options regex timer"
+    fi
+    
+#    if [[ "$DO_UINTAH" == "yes" ]] ; then
+#        libs="$libs \
+#              chrono filesystem wserialization serialization system thread signals date_time program_options"
+#    fi
+
+    # Remove all of the duplicate libs.
+    libs=`echo $libs | tr ' ' '\n' | sort -u | tr '\n' ' ' | sed s'/.$//'`
+
+    # Note: the library name 'wserialization' can not be in the list
+    # of build libraries but must be part of the name fixup for OS X.
+    build_libs=`echo $libs | sed s'/ wserialization//' | tr ' ' ','`
 
     if [[ "$build_libs" != ""  ]] ; then
 
@@ -164,30 +188,30 @@ function build_boost
 
         info "Configuring BOOST . . . $build_libs"
 
-#        if [[ "$DO_STATIC_BUILD" == "yes" ]]; then
-#            cf_build_type="--disable-shared --enable-static"
-#        else
-#            cf_build_type="--enable-shared --disable-static"
-#        fi
+        #        if [[ "$DO_STATIC_BUILD" == "yes" ]]; then
+        #            cf_build_type="--disable-shared --enable-static"
+        #        else
+        #            cf_build_type="--enable-shared --disable-static"
+        #        fi
 
-#        if [[ "$DO_THREAD_BUILD" == "yes" ]]; then
-#            cf_build_thread="--enable-threadsafe --with-pthread"
-#        else
-#            cf_build_thread=""
-#        fi
+        #        if [[ "$DO_THREAD_BUILD" == "yes" ]]; then
+        #            cf_build_thread="--enable-threadsafe --with-pthread"
+        #        else
+        #            cf_build_thread=""
+        #        fi
 
         # In order to ensure $FORTRANARGS is expanded to build the arguments to
         # configure, we wrap the invokation in 'sh -c "..."' syntax
         info "Invoking command to configure BOOST"
-#        info  "./bootstrap.sh $build_libs \
-#            --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
+        #        info  "./bootstrap.sh $build_libs \
+        #            --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
 
         sh -c "./bootstrap.sh $build_libs \
             --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
 
         if [[ $? != 0 ]] ; then
-           warn "BOOST configure failed.  Giving up"
-           return 1
+            warn "BOOST configure failed.  Giving up"
+            return 1
         fi
 
         #
@@ -197,8 +221,8 @@ function build_boost
 
         sh -c "./b2"
         if [[ $? != 0 ]] ; then
-           warn "BOOST build failed.  Giving up"
-           return 1
+            warn "BOOST build failed.  Giving up"
+            return 1
         fi
 
         #
@@ -209,8 +233,8 @@ function build_boost
               --prefix=\"$VISITDIR/boost/$BOOST_VERSION/$VISITARCH\" "
 
         if [[ $? != 0 ]] ; then
-           warn "BOOST install failed.  Giving up"
-           return 1
+            warn "BOOST install failed.  Giving up"
+            return 1
         fi
 
         if [[ "$DO_STATIC_BUILD" == "no" && "$OPSYS" == "Darwin" ]]; then
@@ -219,54 +243,55 @@ function build_boost
             # version information.
             #
             info "Creating dynamic libraries for BOOST . . ."
-            INSTALLNAMEPATH="$VISITDIR/boost/${BOOST_VERSION}/$VISITARCH/lib"
+            INSTALLNAMEPATH="${BOOST_INSTALL_DIR}/lib"
 
-	    for lib in $libs;
-	    do
-                install_name_tool \
-		    -id $INSTALLNAMEPATH/libboost_${lib}.${SO_EXT} \
-                    $INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
+            for lib in $libs;
+            do
+                fulllibname=$INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
 
-		# The filesystem, thread, and chrono libraries depend
-		# on the system library so fix up those paths as well
-		if [[ $lib == "filesystem" || $lib == "thread" || $lib == "chrono" ]] ; then
-		    install_name_tool -change \
-			libboost_system.${SO_EXT} $INSTALLNAMEPATH/libboost_system.${SO_EXT} \
-			$INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
-		fi
+                install_name_tool -id $fulllibname $fulllibname
 
-		# The timer library depends on the system and chrono
-		# library so fix up those paths as well
-		if [[ $lib == "timer" ]] ; then
-		    install_name_tool -change \
-			libboost_system.${SO_EXT} $INSTALLNAMEPATH/libboost_system.${SO_EXT} \
-			$INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
-		    install_name_tool -change \
-			libboost_chrono.${SO_EXT} $INSTALLNAMEPATH/libboost_chrono.${SO_EXT} \
-			$INSTALLNAMEPATH/libboost_${lib}.${SO_EXT}
-		fi
+                # Find all the dependent libraries (more or less)
+                deplibs=`otool -L $fulllibname | sed "s/(.*)//g"`
+
+                for deplib in $deplibs;
+                do
+                    # Only get the libraries related to boost and not itself.
+                    if [[ `echo $deplib | grep -c libboost_` == 1 && \
+                                `echo $deplib | grep -c libboost_${lib}` == 0 ]] ; then
+
+                        # Get the library name sans the directory path
+                        deplibname=`echo $deplib | sed "s/.*\///"`
+                        
+                        # Set the library path
+                        install_name_tool -change $deplib \
+                                          ${INSTALLNAMEPATH}/$deplibname \
+                                          $fulllibname
+
+                    fi
+                done            
             done
         fi
 
     else
         info "Installing BOOST . . . headers only"
 
-	mkdir "$VISITDIR/boost"
-	mkdir "$VISITDIR/boost/$BOOST_VERSION"
-	mkdir "$VISITDIR/boost/$BOOST_VERSION/$VISITARCH"
-	mkdir "$VISITDIR/boost/$BOOST_VERSION/$VISITARCH/include"
+        mkdir "$VISITDIR/boost"
+        mkdir "$VISITDIR/boost/$BOOST_VERSION"
+        mkdir "$VISITDIR/boost/$BOOST_VERSION/$VISITARCH"
+        mkdir "$VISITDIR/boost/$BOOST_VERSION/$VISITARCH/include"
 
-	cp -r boost $VISITDIR/boost/$BOOST_VERSION/$VISITARCH/include
+        cp -r boost $VISITDIR/boost/$BOOST_VERSION/$VISITARCH/include
 
         if [[ $? != 0 ]] ; then
-           warn "BOOST install failed.  Giving up"
-           return 1
+            warn "BOOST install failed.  Giving up"
+            return 1
         fi
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
-       chmod -R ug+w,a+rX "$VISITDIR/boost"
-       chgrp -R ${GROUP} "$VISITDIR/boost"
+        chmod -R ug+w,a+rX "$VISITDIR/boost"
+        chgrp -R ${GROUP} "$VISITDIR/boost"
     fi
     cd "$START_DIR"
     info "Done with BOOST"
@@ -283,7 +308,6 @@ function bv_boost_is_enabled
 
 function bv_boost_is_installed
 {
-
     if [[ "$USE_SYSTEM_BOOST" == "yes" ]]; then
         return 1
     fi
@@ -297,21 +321,21 @@ function bv_boost_is_installed
 
 function bv_boost_build
 {
-cd "$START_DIR"
+    cd "$START_DIR"
 
-if [[ "$DO_BOOST" == "yes" && "$USE_SYSTEM_BOOST" == "no" ]] ; then
-    check_if_installed "boost" $BOOST_VERSION
-    if [[ $? == 0 ]] ; then
-        info "Skipping BOOST build.  BOOST is already installed."
-    else
-        info "Building BOOST (~15 minutes)"
-        build_boost
-        if [[ $? != 0 ]] ; then
-            error "Unable to build or install BOOST.  Bailing out."
+    if [[ "$DO_BOOST" == "yes" && "$USE_SYSTEM_BOOST" == "no" ]] ; then
+        check_if_installed "boost" $BOOST_VERSION
+        if [[ $? == 0 ]] ; then
+            info "Skipping BOOST build.  BOOST is already installed."
+        else
+            info "Building BOOST (~15 minutes)"
+            build_boost
+            if [[ $? != 0 ]] ; then
+                error "Unable to build or install BOOST.  Bailing out."
+            fi
+            info "Done building BOOST"
         fi
-        info "Done building BOOST"
     fi
-fi
 }
 
 

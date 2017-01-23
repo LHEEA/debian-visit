@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -260,8 +260,7 @@ private:
     void BroadcastData(int windowId, int clientId);
     void Export();
     void ExportWindow();
-    void ExportHostProfile();
-    static void RenderEventCallback(int windowId, bool inMotion, void* data);
+     static void RenderEventCallback(int windowId, bool inMotion, void* data);
     static vtkRenderWindowInteractor* CreateGlobalInteractor();
 
     SharedDaemon             *shared_viewer_daemon;

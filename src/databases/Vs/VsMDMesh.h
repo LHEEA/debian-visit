@@ -35,7 +35,7 @@ public:
   bool isRectilinearMesh() const;
   bool isUnstructuredMesh() const;
   bool isStructuredMesh() const;
-  int getNumSpatialDims() const;
+  size_t getNumSpatialDims() const;
   std::string getFullName() const;
 
 private:

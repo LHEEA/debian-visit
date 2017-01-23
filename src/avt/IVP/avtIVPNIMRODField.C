@@ -1,6 +1,6 @@
  /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -87,7 +87,7 @@ avtIVPNIMRODField::avtIVPNIMRODField( vtkDataSet* dataset,
   }
 
   // Dummy variable to the template class
-//  float fltVar = 0;
+//  double fltVar = 0;
 
   // The mesh elements.
 //  grid_fourier_series =
@@ -110,8 +110,8 @@ avtIVPNIMRODField::avtIVPNIMRODField( vtkDataSet* dataset,
 avtIVPNIMRODField::avtIVPNIMRODField( unsigned int nRad,
                                       unsigned int nTheta,
                                       unsigned int nPhi,
-                                      float *gfs,
-                                      float *dfs ) 
+                                      double *gfs,
+                                      double *dfs ) 
   : avtIVPVTKField(NULL, NULL),
     grid_fourier_series( gfs ), data_fourier_series( dfs ),
     Nrad( nRad ), Ntheta( nTheta ), Nphi( nPhi ),
@@ -167,7 +167,7 @@ type* avtIVPNIMRODField::SetDataPointer( vtkDataSet *ds,
 
   // Because the triangluar mesh is defined by using non unique points
   // and the data is cell centered data VisIt moves it out to the
-  // nodes for STREAMLINES thus there are 3 times the number of
+  // nodes for INTEGRAL CURVES thus there are 3 times the number of
   // original values.
   if( ds->GetPointData()->GetArray(varname) )
   {
@@ -478,7 +478,7 @@ void avtIVPNIMRODField::fourier_weights( unsigned int N, const double t,
 void avtIVPNIMRODField::interpolate( double rad, double theta, double phi,
                                      vec3* P, mat3* DRV ) const
 {
-    float *vecs = data_fourier_series;
+    double *vecs = data_fourier_series;
 
     // rad, theta, phi come in parametrized on a unit space cube.
 

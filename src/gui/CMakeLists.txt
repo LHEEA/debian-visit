@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -185,6 +185,7 @@ QvisSaveWindow.C
 QvisScreenPositionEdit.C
 QvisScreenPositioner.C
 QvisScribbleOpacityBar.C
+QvisSeedMeWindow.C
 QvisSelectionsDialog.C
 QvisSelectionsWindow.C
 QvisSetupHostProfilesAndConfigWindow.C
@@ -312,6 +313,7 @@ QvisSaveWindow.h
 QvisScreenPositionEdit.h
 QvisScreenPositioner.h
 QvisScribbleOpacityBar.h
+QvisSeedMeWindow.h
 QvisSelectionsDialog.h
 QvisSelectionsWindow.h
 QvisSessionFileDatabaseLoader.h
@@ -390,10 +392,11 @@ ${QT_QTOPENGL_INCLUDE_DIR}
 ${QT_QTNETWORK_INCLUDE_DIR} 
 ${QT_QTXML_INCLUDE_DIR} 
 ${QT_QTUITOOLS_INCLUDE_DIR}
+${QWT_INCLUDE_DIR}
 )
 
 LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY}
-  ${QT_SHAREDLIB_DIR} ${QT_LIBRARY_DIR}
+  ${QT_SHAREDLIB_DIR} ${QT_LIBRARY_DIR} ${QWT_LIBRARY_DIR}
 )
 
 SET(GUI_QT_LIBS
@@ -402,7 +405,7 @@ ${QT_QTOPENGL_LIBRARY}
 ${QT_QTGUI_LIBRARY} 
 ${QT_QTNETWORK_LIBRARY} 
 ${QT_QTXML_LIBRARY} 
-${QT_QTCORE_LIBRARY} 
+${QT_QTCORE_LIBRARY}
 )
 IF(VISIT_STATIC)
     SET(GUI_QT_LIBS
@@ -421,6 +424,7 @@ ADD_LIBRARY(gui ${GUILIB_SOURCES})
 
 IF (WIN32)
     SET_TARGET_PROPERTIES(gui PROPERTIES OUTPUT_NAME guilib)
+    SET_TARGET_PROPERTIES(gui PROPERTIES COMPILE_DEFINITIONS QWT_DLL)
 ENDIF (WIN32)
 TARGET_LINK_LIBRARIES(gui 
 viewerrpc
@@ -431,6 +435,7 @@ mdserverproxy
 avtdbatts
 winutil
 ${GUI_QT_LIBS}
+${QWT_LIBRARY}
 )
 
 IF(APPLE)

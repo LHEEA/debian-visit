@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,26 +51,13 @@
 #include <QComboBox>
 #include <QGroupBox>
 #include <QRadioButton>
-#include <QvisColorTableButton.h>
-#include <QvisColorButton.h>
-#include <QvisLineWidthWidget.h>
-#include <QvisLineStyleWidget.h>
 #include <QvisVariableButton.h>
-#include <QvisPointControl.h>
-#include <QPushButton>
-#include <QFileDialog>
 #include <QListWidget>
-
-#include <QvisLineWidthWidget.h>
-#include <QvisVariableButton.h>
 
 #include <Plot.h>
 #include <PlotList.h>
 #include <PlotInfoAttributes.h>
 
-#include <stdio.h>
-#include <string>
-#include <vector>
 
 static void
 TurnOn(QWidget *w0, QWidget *w1=NULL);
@@ -140,7 +127,7 @@ QvisLimitCycleWindow::~QvisLimitCycleWindow()
 //   Added useWholeBox.
 //
 //   Dave Pugmire, Thu Nov 15 12:09:08 EST 2007
-//   Add streamline direction option.
+//   Add integral curve direction option.
 //
 //   Brad Whitlock, Wed Apr 23 11:46:59 PDT 2008
 //   Added tr()'s
@@ -155,7 +142,7 @@ QvisLimitCycleWindow::~QvisLimitCycleWindow()
 //   Add accurate distance calculate option.
 //
 //   Dave Pugmire, Wed Aug 13 12:56:11 EST 2008
-//   Changed label text for streamline algorithms.
+//   Changed label text for integral curve algorithms.
 //
 //   Dave Pugmire, Tue Aug 19 17:18:03 EST 2008
 //   Removed the accurate distance calculation option.
@@ -185,7 +172,7 @@ QvisLimitCycleWindow::~QvisLimitCycleWindow()
 //   Add color by variable.
 //
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
-//   Add custom renderer and lots of appearance options to the streamlines plots.
+//   Add custom renderer and lots of appearance options to the integral curves plots.
 //
 //   Allen Sanderson, Sun Mar  7 12:49:56 PST 2010
 //   Change layout of window for 2.0 interface changes.
@@ -266,6 +253,9 @@ QvisLimitCycleWindow::CreateWindowContents()
 // Creation:   Tue Dec 29 14:37:53 EST 2009
 //
 // Modifications:
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
 //
 // ****************************************************************************
 
@@ -393,6 +383,7 @@ QvisLimitCycleWindow::CreateIntegrationTab(QWidget *pageIntegration)
     numberOfRandomSamplesLabel = new QLabel(tr("Number of random samples"), samplingGroup);
     samplingLayout->addWidget(numberOfRandomSamplesLabel, sRow, 0, 1, 2);
     numberOfRandomSamples = new QSpinBox(samplingGroup);
+    numberOfRandomSamples->setKeyboardTracking(false);
     numberOfRandomSamples->setMinimum(1);
     numberOfRandomSamples->setMaximum(100000000);
     connect(numberOfRandomSamples, SIGNAL(valueChanged(int)), this, SLOT(numberOfRandomSamplesChanged(int)));
@@ -401,6 +392,7 @@ QvisLimitCycleWindow::CreateIntegrationTab(QWidget *pageIntegration)
     randomSeedLabel = new QLabel(tr("Random number seed"), samplingGroup);
     samplingLayout->addWidget(randomSeedLabel, sRow, 3, 1, 2);
     randomSeed = new QSpinBox(samplingGroup);
+    randomSeed->setKeyboardTracking(false);
     randomSeed->setMinimum(0);
     randomSeed->setMaximum(100000000);
     connect(randomSeed, SIGNAL(valueChanged(int)), this, SLOT(randomSeedChanged(int)));
@@ -413,9 +405,11 @@ QvisLimitCycleWindow::CreateIntegrationTab(QWidget *pageIntegration)
     sampleDensityLabel[1] = new QLabel(tr("Sample density 1"), samplingGroup);
     sampleDensity[0] = new QSpinBox(samplingGroup);
     sampleDensity[1] = new QSpinBox(samplingGroup);
+    sampleDensity[0]->setKeyboardTracking(false);
     sampleDensity[0]->setMinimum(1);
     sampleDensity[0]->setMaximum(10000000);
     sampleDensity[0]->setValue(atts->GetSampleDensity0());
+    sampleDensity[1]->setKeyboardTracking(false);
     sampleDensity[1]->setMinimum(1);
     sampleDensity[1]->setMaximum(10000000);
     sampleDensity[1]->setValue(atts->GetSampleDensity1());
@@ -848,6 +842,7 @@ QvisLimitCycleWindow::CreateAdvancedTab(QWidget *pageAdvanced)
     
     maxSLCountLabel = new QLabel(tr("Communication threshold"), algoGrp);
     maxSLCount = new QSpinBox(algoGrp);
+    maxSLCount->setKeyboardTracking(false);
     maxSLCount->setMinimum(1);
     maxSLCount->setMaximum(100000);
     connect(maxSLCount, SIGNAL(valueChanged(int)), 
@@ -857,6 +852,7 @@ QvisLimitCycleWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 
     maxDomainCacheLabel = new QLabel(tr("Domain cache size"), algoGrp);
     maxDomainCache = new QSpinBox(algoGrp);
+    maxDomainCache->setKeyboardTracking(false);
     maxDomainCache->setMinimum(1);
     maxDomainCache->setMaximum(100000);
     connect(maxDomainCache, SIGNAL(valueChanged(int)),
@@ -866,6 +862,7 @@ QvisLimitCycleWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 
     workGroupSizeLabel = new QLabel(tr("Work group size"), algoGrp);
     workGroupSize = new QSpinBox(algoGrp);
+    workGroupSize->setKeyboardTracking(false);
     workGroupSize->setMinimum(2);
     workGroupSize->setMaximum(1000000);
     connect(workGroupSize, SIGNAL(valueChanged(int)),
@@ -946,7 +943,7 @@ QvisLimitCycleWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 //   Added support for useWholeBox.
 //
 //   Dave Pugmire, Thu Nov 15 12:09:08 EST 2007
-//   Add streamline direction option.
+//   Add integral curve direction option.
 //
 //   Brad Whitlock, Wed Aug  6 10:39:12 PDT 2008
 //   Qt 4.
@@ -964,7 +961,7 @@ QvisLimitCycleWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 //   Added workGroupSize for the masterSlave algorithm.
 //
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
-//   Add custom renderer and lots of appearance options to the streamlines plots.
+//   Add custom renderer and lots of appearance options to the integral curves plots.
 //
 //   Hank Childs, Wed Sep 29 19:12:39 PDT 2010
 //   Rename None to FullyOpaque.
@@ -1469,7 +1466,7 @@ QvisLimitCycleWindow::UpdateSourceAttributes()
 
     bool showSampling = false, enableFill = false;
     
-    if (atts->GetSourceType() == LimitCycleAttributes::Line_)
+    if (atts->GetSourceType() == LimitCycleAttributes::SpecifiedLine)
     {
         TurnOn(lineStart, lineStartLabel);
         TurnOn(lineEnd, lineEndLabel);
@@ -1488,7 +1485,7 @@ QvisLimitCycleWindow::UpdateSourceAttributes()
             sampleDensity[0]->setMinimum(1);
         }
     }
-    else if (atts->GetSourceType() == LimitCycleAttributes::Plane)
+    else if (atts->GetSourceType() == LimitCycleAttributes::SpecifiedPlane)
     {
         TurnOn(planeOrigin, planeOriginLabel);
         TurnOn(planeNormal, planeNormalLabel);
@@ -1731,7 +1728,7 @@ QvisLimitCycleWindow::UpdateAlgorithmAttributes()
 //   Added workGroupSize for the masterSlave algorithm.
 //
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
-//   Add custom renderer and lots of appearance options to the streamlines plots.
+//   Add custom renderer and lots of appearance options to the integral curves plots.
 //
 //   Hank Childs, Wed Sep 29 20:44:18 PDT 2010
 //   Add support for the max time step.
@@ -1747,6 +1744,9 @@ QvisLimitCycleWindow::UpdateAlgorithmAttributes()
 //
 //   Dave Pugmire, Thu Mar 15 11:23:18 EDT 2012
 //   Add named selections as a seed source.
+//
+//   Kathleen Biagas, Thu Jun  9 11:44:32 PDT 2016
+//   Ensure values from spin boxes are retrieved.
 //
 // ****************************************************************************
 
@@ -2056,6 +2056,41 @@ QvisLimitCycleWindow::GetCurrentValues(int which_widget)
         int val = workGroupSize->value();
         if (val >= 2)
             atts->SetWorkGroupSize(val);
+    }
+
+    // maxDomainCache
+    if (which_widget == LimitCycleAttributes::ID_maxDomainCacheSize || doAll)
+    {
+        if (maxDomainCache->value() != atts->GetMaxDomainCacheSize())
+            atts->SetMaxDomainCacheSize(maxDomainCache->value());
+    }
+
+    // numberOfRandomSamples
+    if (which_widget == LimitCycleAttributes::ID_numberOfRandomSamples || doAll)
+    {
+        if (numberOfRandomSamples->value() != atts->GetNumberOfRandomSamples())
+            atts->SetNumberOfRandomSamples(maxDomainCache->value());
+    }
+
+    // randomSeed
+    if (which_widget == LimitCycleAttributes::ID_randomSeed || doAll)
+    {
+        if (randomSeed->value() != atts->GetRandomSeed())
+            atts->SetRandomSeed(randomSeed->value());
+    }
+
+    // sampleDensity0
+    if (which_widget == LimitCycleAttributes::ID_sampleDensity0 || doAll)
+    {
+        if (sampleDensity[0]->value() != atts->GetSampleDensity0())
+            atts->SetSampleDensity0(sampleDensity[0]->value());
+    }
+
+    // sampleDensity1
+    if (which_widget == LimitCycleAttributes::ID_sampleDensity1 || doAll)
+    {
+        if (sampleDensity[1]->value() != atts->GetSampleDensity1())
+            atts->SetSampleDensity1(sampleDensity[1]->value());
     }
     
     // criticalPointThreshold

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -75,16 +75,21 @@ public:
 
     int  numCommandButtons() const;
     bool setButtonCommand(int index, const QString &cmd);
-    bool setButtonEnabled(int index, bool);
+    bool setButtonEnabled(int index, bool enabled, bool clearText);
     void setCustomButtonEnabled(bool);
     void setTimeValues(bool timeRanging, 
                        const QString &start, 
                        const QString &stop,
                        const QString &step);
 
+    void setTimeRanging(bool timeRanging);
+    void setTimeStart(const QString &start);
+    void setTimeStep(const QString &step);
+    void setTimeStop(const QString &stop);
+
 signals:
     void executeButtonCommand(const QString &cmd);
-    void showCommandWindow();
+    void showCustomUIWindow();
     void timeRangingToggled(const QString &);
     void executeStart(const QString &);
     void executeStop(const QString &);
@@ -94,9 +99,9 @@ public slots:
     void unpost();
 private slots:
     void handleTimeRanging(bool);
-    void handleStart();
-    void handleStop();
-    void handleStep();
+    void handleStart(const QString&);
+    void handleStop(const QString&);
+    void handleStep(const QString&);
     void handleCommandButton(int);
 protected:
     virtual void CreateWindowContents();

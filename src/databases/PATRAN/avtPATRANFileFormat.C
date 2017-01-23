@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -718,7 +718,7 @@ avtPATRANFileFormat::ReadFile(const char *name, int nLines)
                 // Don't process the material numbers in the mdserver.
                 else
                 {
-                    int partno = componentNames.size();
+                    int partno = (int)componentNames.size();
                     int nfull_lines = IV / 10;
                     int nparts_this_line;
                     if(card-2 < nfull_lines)
@@ -1037,7 +1037,7 @@ avtPATRANFileFormat::GetAuxiliaryData(const char *var, const char *type,
 
         int *matnos = new int[componentNames.size()];
         char **names = new char *[componentNames.size()];
-        for(size_t i = 0; i < componentNames.size(); ++i)
+        for(int i = 0; i < (int)componentNames.size(); ++i)
         {
             matnos[i] = i + 1;
             names[i] = (char *)componentNames[i].c_str();

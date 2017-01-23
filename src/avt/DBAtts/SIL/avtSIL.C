@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1349,7 +1349,7 @@ avtSIL::Print(ostream &out,
           case SUBSET:
           {
             out << "Set" << setTable[3*i+2] << " " << (useInfo ? perSetInfo[i].c_str() : "") << endl;
-            avtSILSet_p s = GetSILSet(i);
+            avtSILSet_p s = GetSILSet((int)i);
             s->Print(out);
             break;
           }

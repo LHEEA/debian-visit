@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -60,6 +60,12 @@
 //  Programmer: Jeremy Meredith
 //  Creation:   August 30, 2004
 //
+//  Modifications:
+//
+//      Burlen Loring, Wed Sep  9 12:54:39 PDT 2015
+//      Add flag to broadcast the result, consistent with the other avt
+//      compositring classes
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtTiledImageCompositor : public avtImageCompositer
@@ -76,8 +82,12 @@ class AVTFILTERS_API avtTiledImageCompositor : public avtImageCompositer
 
       void                    Execute();
 
+      void                    SetAllProcessorsNeedResult(bool v)
+                              { bcastResult = v; }
+
    private:
       int                     chunkSize;
+      bool                    bcastResult;
 };
 
 inline const char* avtTiledImageCompositor::GetType()

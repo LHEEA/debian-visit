@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -124,6 +124,7 @@
 #include <string>
 #include <vector>
 
+
 using std::map;
 using std::set;
 using std::string;
@@ -178,6 +179,8 @@ static vtkDataArray *CreateDataArray(int silotype, void *data, int numvals);
 static int FindFirstNonEmptyBlock(char const *mbobj_name, int nblocks,
     avtSiloMBObjectCacheEntry const *mb_ent,
     int repr_block_idx, int empty_cnt, int const *empty_list);
+
+static int db_get_index(DBnamescheme const *ns, int natnum);
 
 // ****************************************************************************
 //  Class: avtSiloFileFormat
@@ -320,6 +323,7 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     ioInfoValid = false;
     addBlockDecompositionAsVar = false;
     haveAddedBlockDecompositionAsVar = false;
+    ignoreMissingBlocks = false;
     topDir = "/";
     siloDriver = DB_UNKNOWN;
     dbfiles = new DBfile*[MAX_FILES];
@@ -1557,6 +1561,14 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
                 hasDisjointElements = true;
             }
 
+            if (DBInqVarExists(dbfile, "_visit_allow_empty_blocks"))
+            {
+                int mbFlag;
+                DBReadVar(dbfile, "_visit_allow_empty_blocks", &mbFlag);
+                if (mbFlag == 1)
+                    ignoreMissingBlocks = true;
+            }
+
             bool hadVisitDefvars = false;
             if (DBInqVarExists(dbfile, "_visit_defvars") &&
                 DBInqVarType(dbfile, "_visit_defvars") == DB_VARIABLE)
@@ -1699,6 +1711,16 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
 //    
 //    Mark C. Miller, Wed Jun 15 09:22:14 PDT 2016
 //    Added logic to support adding of block decomposition as a variable.
+//
+//    Kathleen Biagas, Thu Nov 17 16:18:32 PST 2016
+//    Change use of std::vector::reserve to adding the size to the
+//    constructor.  Prevents segv for attempting to access a slot in the
+//    vector that hasn't been allocated yet.
+//
+//    Mark C. Miller, Sat Dec 24 00:35:41 PST 2016
+//    Fix real and potential issues with layer namescheme by ensuring
+//    layer ids as given internally to VisIt are 0...numLayers-1 and that
+//    groupNames are specified explicitly.
 // ****************************************************************************
 
 void
@@ -1780,7 +1802,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                                                   correctFile,
                                                   realvar);
                         DBucdmesh *um = DBGetUcdmesh(correctFile, realvar.c_str());
-                        if (um == NULL)
+                        if (um == NULL && !ignoreMissingBlocks)
                         {
                             debug1 << "Invalidating mesh \"" << multimesh_names[i] 
                                    << "\" since its first non-empty block (" << mb_meshname
@@ -1948,6 +1970,44 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     HandleMrgtreeNodelistVars(dbfile, name_w_dir, mm->mrgtree_name, md);
                 }
 
+                //
+                // Handle possible layer namescheme for this mesh
+                //
+                map<int, int> layer_to_nlayer_map;
+                vector<int> block_to_nlayer_map; 
+                vector<string> layer_names; 
+                int nlayer_id = 0;
+                string candidate_layer_namescheme = string(name_w_dir) + "_layer_namescheme";
+                if (DBInqVarExists(dbfile, candidate_layer_namescheme.c_str()))
+                {
+                    char *layer_ns_str = (char*) DBGetVar(dbfile, candidate_layer_namescheme.c_str());
+                    DBnamescheme *layer_ns = DBMakeNamescheme(layer_ns_str);
+                    if (layer_ns)
+                    {
+                        // Normalize layer ids to range 0...numLayers-1 
+                        for (int b = 0; b < (mm?mm->nblocks:0); b++)
+                        {
+                            int layer_id = db_get_index(layer_ns, b);
+                            if (layer_to_nlayer_map.find(layer_id) == 
+                                layer_to_nlayer_map.end())
+                            {
+                                char layer_name[64];
+                                SNPRINTF(layer_name, sizeof(layer_name), "layer_%d", layer_id);
+                                layer_names.push_back(layer_name);
+                                layer_to_nlayer_map[layer_id] = nlayer_id;
+                                nlayer_id++;
+                            }
+                        }
+                        for (int b = 0; b < (mm?mm->nblocks:0); b++)
+                        {
+                            int layer_id = db_get_index(layer_ns, b);
+                            block_to_nlayer_map.push_back(layer_to_nlayer_map[layer_id]);
+                        }
+                        DBFreeNamescheme(layer_ns);
+                    }
+                    free(layer_ns_str);
+                }
+
                 if (mt == AVT_UNSTRUCTURED_MESH)
                     mmd->disjointElements = hasDisjointElements || mm->disjoint_mode != 0; 
 
@@ -1967,6 +2027,16 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     haveAmrGroupInfo = true;
                     md->AddGroupInformation(num_amr_groups, mm?mm->nblocks:0, amr_group_ids);
                     debug1 << "Using AMR levels as Group Information"<<endl;
+                }
+                else if (nlayer_id>1 && !is_all_empty)
+                {
+                    mmd->numGroups = nlayer_id;
+                    mmd->groupTitle = "layers";
+                    mmd->groupPieceName = "layer";
+                    mmd->groupNames = layer_names;
+                    md->Add(mmd);
+                    md->AddGroupInformation(nlayer_id, mm?mm->nblocks:0, block_to_nlayer_map);
+                    debug1 << "Using Layers as Group Information"<<endl;
                 }
                 else
                 {
@@ -5046,6 +5116,7 @@ avtSiloFileFormat::GetConnectivityAndGroupInformation(DBfile *dbfile,
 #endif
        GetConnectivityAndGroupInformationFromFile(dbfile, ndomains, nneighbors,
                           extents, lneighbors, neighbors, numGroups, groupIds);
+
 #ifdef PARALLEL
     }
 
@@ -5404,7 +5475,6 @@ avtSiloFileFormat::FindStandardConnectivity(DBfile *dbfile, int &ndomains,
     {
         useLocalDomainBoundries = true;
     }
-
 
     DBReadVar(dbfile, "NumDomains", &ndomains);
     if (needConnectivityInfo)
@@ -6959,7 +7029,7 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
         DBucdmesh  *um = DBGetUcdmesh(domain_file, directory_mesh.c_str());
         DBSetDataReadMask2(oldMask);
 
-        if (um == NULL)
+        if (um == NULL && !ignoreMissingBlocks)
         {
             char msg[256];
             SNPRINTF(msg, sizeof(msg), "DBGetUcdmesh() failed for \"%s\" for domain %d to "
@@ -7063,7 +7133,7 @@ avtSiloFileFormat::GetMrgTreeNodelistsVar(int domain, string listsname)
     unsigned long long oldMask = DBSetDataReadMask2(0x0);
     DBucdmesh  *um = DBGetUcdmesh(domain_file, domain_mesh.c_str());
     DBSetDataReadMask2(oldMask);
-    if (!um)
+    if (!um && !ignoreMissingBlocks)
     {
         debug3 << "Unable to get mesh \"" << meshName << "\" for domain " << domain << endl;
         return nlvar;
@@ -7832,7 +7902,7 @@ avtSiloFileFormat::GetUcdVectorVar(DBfile *dbfile, const char *vname,
     // Get the Silo construct.
     //
     DBucdvar  *uv = DBGetUcdvar(dbfile, varname);
-    if (uv == NULL)
+    if (uv == NULL && !ignoreMissingBlocks)
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
@@ -8937,7 +9007,7 @@ avtSiloFileFormat::GetUcdVar(DBfile *dbfile, const char *vname,
     // Get the Silo construct.
     //
     DBucdvar  *uv = DBGetUcdvar(dbfile, varname);
-    if (uv == NULL)
+    if (uv == NULL && !ignoreMissingBlocks)
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
@@ -9689,7 +9759,7 @@ avtSiloFileFormat::GetUnstructuredMesh(DBfile *dbfile, const char *mn,
     // Get the Silo construct.
     //
     DBucdmesh  *um = DBGetUcdmesh(dbfile, meshname);
-    if (um == NULL)
+    if (um == NULL && !ignoreMissingBlocks)
     {
         EXCEPTION1(InvalidVariableException, meshname);
     }
@@ -10428,7 +10498,8 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
                 j++;
                 continue;
             }
-            unsigned int ocdata[2] = {domain, i};
+            unsigned int ocdata[2] = {static_cast<unsigned int>(domain),
+                                      static_cast<unsigned int>(i)};
             oca->InsertNextTupleValue(ocdata);
             cellReMap->push_back(i);
         }
@@ -11112,7 +11183,8 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
         else
             fcnt = phzl->nodecnt[gz];
 
-        unsigned int ocdata[2] = {domain, gz+gzOffset};
+        unsigned int ocdata[2] = {static_cast<unsigned int>(domain), 
+                                  static_cast<unsigned int>(gz+gzOffset)};
 
         if (((nsdims == 3) && (fcnt == 3 || // Must be tri
                                fcnt == 4 || // Maybe tet or quad
@@ -13241,7 +13313,8 @@ avtSiloFileFormat::DetermineMultiMeshForSubVariable(DBfile *dbfile,
     int meshnum = 0;
     string mb_varname = obj->GenerateName(meshnum);
     int nblocks = obj->NumberOfBlocks();
-    while ( mb_varname  == "EMPTY")
+    
+    while (GetMeshname(dbfile, mb_varname.c_str(), subMesh) != 0)
     {
         meshnum++;
         if (meshnum >= nblocks)
@@ -13250,8 +13323,6 @@ avtSiloFileFormat::DetermineMultiMeshForSubVariable(DBfile *dbfile,
         }
         mb_varname = obj->GenerateName(meshnum);
     }
-
-    GetMeshname(dbfile, mb_varname.c_str(), subMesh);
 
     //
     // The code involving subMeshTmp is to maintain backward compability
@@ -13351,48 +13422,6 @@ avtSiloFileFormat::DetermineMultiMeshForSubVariable(DBfile *dbfile,
     EXCEPTION1(SiloException, str);
 }
 
-
-// ****************************************************************************
-//  Method: avtSiloFileFormat::GetMeshtype
-//
-//  Purpose:
-//      Gets the mesh type for a variable, even if it is in a different file.
-//
-//  Arguments:
-//      dbfile    The dbfile that mesh came from.
-//      mesh      A mesh name, possibly with a prepended directory and filename
-//
-//  Programmer: Hank Childs
-//  Creation:   March 5, 2001
-//
-//  Modifications:
-//
-//    Sean Ahern, Fri Feb  8 13:57:12 PST 2002
-//    Added error checking.
-//
-//    Cyrus Harrison, Wed Dec 21 15:22:21 PST 2011
-//    Limited support for Silo nameschemes, use new multi block cache data
-//    structures.
-//
-// ****************************************************************************
-
-int
-avtSiloFileFormat::GetMeshtype(DBfile *dbfile, const char *mesh)
-{
-    string dirvar;
-    DBfile *correctFile = dbfile;
-    DetermineFileAndDirectory(mesh, "", correctFile, dirvar);
-    int rv = DBInqMeshtype(correctFile, dirvar.c_str());
-    if (rv < 0)
-    {
-        char str[1024];
-        sprintf(str, "Unable to determine mesh type for \"%s\".", mesh);
-        EXCEPTION1(SiloException, str);
-    }
-    return rv;
-}
-
-
 // ****************************************************************************
 //  Method: avtSiloFileFormat::GetMeshname
 //
@@ -13424,19 +13453,14 @@ avtSiloFileFormat::GetMeshtype(DBfile *dbfile, const char *mesh)
 //
 // ****************************************************************************
 
-void
+int
 avtSiloFileFormat::GetMeshname(DBfile *dbfile, const char *var, char *meshname)
 {
     string dirvar;
     DBfile *correctFile = dbfile;
     DetermineFileAndDirectory(var, "", correctFile, dirvar);
     int rv = DBInqMeshname(correctFile, dirvar.c_str(), meshname);
-    if (rv < 0)
-    {
-        char str[1024];
-        sprintf(str, "Unable to determine mesh for %s.", var);
-        EXCEPTION1(SiloException, str);
-    }
+    return rv;
 }
 
 
@@ -13593,6 +13617,12 @@ avtSiloFileFormat::GetAuxiliaryData(const char *var, int domain,
         }
         rv = (void *) GetDataExtents(var);
         df = avtIntervalTree::Destruct;
+    }
+    else if (strcmp(type, AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION) == 0)
+    {
+        debug1  << "GetAuxiliaryData Local::AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION"  <<endl;
+        rv = GetLocalDomainBoundaryInfo(domain,var);
+        df = avtLocalStructuredDomainBoundaryList::Destruct;
     }
 
     //
@@ -13930,6 +13960,7 @@ avtSiloFileFormat::AllocAndDetermineMeshnameForUcdmesh(int dom, const char *mesh
     return meshname;
 }
 
+
 // ****************************************************************************
 //  Method: avtSiloFileFormat::GetExternalFacelist
 //
@@ -13998,6 +14029,7 @@ avtSiloFileFormat::GetExternalFacelist(int dom, const char *mesh)
     return rv;
 }
 
+
 // ****************************************************************************
 //  Method: avtSiloFileFormat::GetGlobalNodeIds
 //
@@ -14005,7 +14037,7 @@ avtSiloFileFormat::GetExternalFacelist(int dom, const char *mesh)
 //      Gets the global node ids from the Silo file
 //
 //  Programmer: Mark C. Miller
-//  Creation:   August 4, 2004 
+//  Creation:   August 4, 2004
 //
 //  Modifications:
 //    Mark C. Miller, Thu Oct 14 15:18:31 PDT 2004
@@ -14061,7 +14093,7 @@ avtSiloFileFormat::GetGlobalNodeIds(int dom, const char *mesh)
     DBSetDataReadMask2(DBUMGlobNodeNo);
     DBucdmesh *um = DBGetUcdmesh(domain_file, directory_mesh.c_str());
     DBSetDataReadMask2(mask);
-    if (um == NULL)
+    if (um == NULL && !ignoreMissingBlocks)
         EXCEPTION1(InvalidVariableException, mesh);
 
     vtkDataArray *rv = NULL;
@@ -14081,6 +14113,90 @@ avtSiloFileFormat::GetGlobalNodeIds(int dom, const char *mesh)
     delete [] meshname;
 
     return rv;
+}
+
+
+// ****************************************************************************
+//  Method: avtSiloFileFormat::GetLocalDomainBoundaryInfo
+//
+//  Purpose:
+//      Constructs a neighbor list from a scalable format convention.
+//
+//  Programmer: Cyrus Harrison
+//  Creation:  Tue Apr 17 13:00:29 PDT 2012
+//
+//  Modifications:
+//
+//
+// ****************************************************************************
+
+avtLocalStructuredDomainBoundaryList *
+avtSiloFileFormat::GetLocalDomainBoundaryInfo(int domain, const char *var)
+{
+    debug5 << "Reading in domain " << domain << ", local boundary info for "
+           << var << endl;
+    debug5 << "Reading in from toc " << filenames[tocIndex] << endl;
+
+    string mmesh_name = metadata->MeshForVar(var);
+
+    debug5 << "Reading in domain " << domain
+           << ", local boundary info for " << var
+           << " mesh name = : " << mmesh_name << endl;
+
+    // now get the multimesh
+
+    int type;
+    DBfile *dbfile = GetFile(tocIndex);
+    string directory_mesh;
+    DBmultimesh *mm;
+    DBfile *domain_file = dbfile;
+
+    GetMeshHelper(domain, mmesh_name.c_str(), &mm, &type, &domain_file, directory_mesh);
+
+    int numdecomp_pack = 0;
+
+    string mesh_dir_parent(FileFunctions::Dirname(directory_mesh.c_str()));
+    ostringstream oss;
+    oss << mesh_dir_parent << "/" << "NumDecomp_pack";
+    if(!DBInqVarExists(domain_file,oss.str().c_str()))
+    {
+        debug5 << "Skipping read of local domain boundaries: "
+               << oss.str().c_str() << " does not exist."  <<endl;
+        return NULL;
+    }
+    DBReadVar(domain_file,oss.str().c_str(),&numdecomp_pack);
+    int *decomp = new int[numdecomp_pack];
+    oss.str("");
+    oss << mesh_dir_parent << "/" << "Decomp_pack";
+    if(!DBInqVarExists(domain_file,oss.str().c_str()))
+    {
+        debug5 << "Skipping read of local domain boundaries: "
+               << oss.str().c_str() << " does not exist." <<endl;
+        return NULL;
+    }
+    DBReadVar(domain_file,oss.str().c_str(),decomp);
+
+    //
+    // extract the packed info into a avtLocalStructuredDomainBoundaryList
+    //
+
+    int *dc_ptr = decomp;
+    int lid     = *dc_ptr++;
+    int nbnd    = *dc_ptr++;
+    avtLocalStructuredDomainBoundaryList *res =
+                    new avtLocalStructuredDomainBoundaryList(domain,dc_ptr);
+    dc_ptr+=6;
+    for (int i=0; i < nbnd; i++)
+    {
+        res->AddNeighbor(dc_ptr[0],   // nei id
+                         dc_ptr[1],   // match
+                         &dc_ptr[2],  // orient
+                         &dc_ptr[5]); // extents
+        dc_ptr += 11;
+    }
+
+    //res->Print(cout);
+    return res;
 }
 
 // ****************************************************************************
@@ -14144,7 +14260,7 @@ avtSiloFileFormat::GetGlobalZoneIds(int dom, const char *mesh)
     DBSetDataReadMask2(DBUMZonelist|DBZonelistGlobZoneNo|DBZonelistInfo);
     DBucdmesh *um = DBGetUcdmesh(domain_file, directory_mesh.c_str());
     DBSetDataReadMask2(mask);
-    if (um == NULL)
+    if (um == NULL && !ignoreMissingBlocks)
         EXCEPTION1(InvalidVariableException, mesh);
 
     vtkDataArray *rv = NULL;
@@ -14691,7 +14807,7 @@ avtSiloFileFormat::CalcExternalFacelist(DBfile *dbfile, const char *mesh)
     DBucdmesh *um = DBGetUcdmesh(correctFile, realvar.c_str());
     DBSetDataReadMask2(mask);
     VisitMutexUnlock("avtSiloFileFormat::CalcExternalFacelist");
-    if (um == NULL)
+    if (um == NULL && !ignoreMissingBlocks)
         EXCEPTION1(InvalidVariableException, mesh);
     DBfacelist *fl = um->faces;
 
@@ -14790,6 +14906,10 @@ avtSiloFileFormat::PopulateIOInformation(const std::string &meshname, avtIOInfor
 //    mesh name. Note that the mesh name is not currently used but the intent
 //    is to allow different ioInfo for different multi-meshes.
 //
+//    Cyrus Harrison, Mon Dec 21 11:35:05 PST 2015
+//    Remove n^2 algorithm when constructing map from filenames to domain id 
+//    lists. 
+//
 // ****************************************************************************
 
 bool
@@ -14863,31 +14983,44 @@ avtSiloFileFormat::PopulateIOInformationEx(const std::string &meshname, avtIOInf
             return false;
         }
 
-        vector<string> filenames;
+        //
+        // ioInfo needs a vector from each file's index, to a vector with a 
+        // list of domain ids it contains. 
+        // the groups vector holds this info.
         vector<vector<int> > groups;
+        
+        // use a map to avoid previous n^2 lookup implementation 
+        map<string,int> filename_index_map;
+
+        /// we know we need an entry for each domain, so init groups to the proper size
+        groups.resize(mm->nblocks);
+        
+        // loop over all domains and find which file (and file index) the domain is 
+        // associated with 
         for (i = 0 ; i < mm->nblocks ; i++)
         {
             string filename;
             string location;
             DetermineFilenameAndDirectory(mm_ent->GenerateName(i).c_str(),
                                           "", filename, location);
-            int index = -1;
-            for (j = 0 ; j < (int)filenames.size() ; j++)
+
+            // check if we have already seen this filename
+            int fname_index = -1;
+            map<string,int>::const_iterator itr = filename_index_map.find(filename);
+            if (itr != filename_index_map.end())
             {
-                if (filename == filenames[j])
-                {
-                    index = j;
-                    break;
-                }
+                // if found, use the index
+                fname_index = itr->second;
             }
-            if (index == -1)
+            else
             {
-                filenames.push_back(string(filename));
-                vector<int> newvector_placeholder;
-                groups.push_back(newvector_placeholder);
-                index = (int)filenames.size()-1;
+                // if not, assign it a new index
+                fname_index = filename_index_map.size();
+                filename_index_map[filename] = fname_index;
             }
-            groups[index].push_back(i);
+
+            /// add this domain id to the list of ids for the found filename
+            groups[fname_index].push_back(i);
         }
 
         ioInfo.SetNDomains(mm->nblocks);
@@ -17242,4 +17375,22 @@ static int FindFirstNonEmptyBlock(char const *mbobj_name, int nblocks,
         }
     }
     return blocknum;
+}
+
+// Temporary: Replace with DBGetIndex after new Silo is available
+static int
+db_get_index(DBnamescheme const *ns, int natnum)
+{
+    char const *name_str = DBGetName(ns, natnum);
+    int i = 0;
+
+    if (!name_str) return -1;
+
+    while (name_str[i] && !(strchr("0123456789+-",      name_str[i  ]) &&
+                            strchr("0123456789.aAbBcCdDeEfFxX+-", name_str[i+1])))
+        i++;
+
+    if (!name_str[i]) return -1;
+
+    return (int) strtol(&name_str[i], 0, 10);
 }

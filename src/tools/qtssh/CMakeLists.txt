@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -195,8 +195,8 @@ ADD_DEFINITIONS(-DSECURITY_WIN32)
 ENDIF(WIN32)
 
 SET(RELEVANT_QT_LIBS 
-${QT_QTGUI_LIBRARY}
-${QT_QTCORE_LIBRARY}
+    ${QT_QTGUI_LIBRARY}
+    ${QT_QTCORE_LIBRARY}
 )
 IF(VISIT_STATIC)
     MAC_NIB_INSTALL(qtssh)

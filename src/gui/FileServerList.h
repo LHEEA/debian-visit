@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -326,9 +326,10 @@ public:
     void GetProgressCallback(bool (*cb)(void *, int), void *data);
 
     // Used to poke metadata into here if the mdserver has incomplete metadata
-    void SetOpenFileMetaData(const avtDatabaseMetaData*, int timeState);
-    void SetOpenFileSIL(const avtSIL*);
-
+    void SetFileMetaData(const QualifiedFilename &filename,
+                         const avtDatabaseMetaData*, int timeState);
+    void SetFileSIL(const QualifiedFilename &filename, const avtSIL*);
+                               
     // Convenience functions to determine if a component is selected.
     bool HostChanged() const;
     bool PathChanged() const;

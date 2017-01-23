@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,12 +56,11 @@ class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QPushButton;
-class QvisColorTableButton;
 class QRadioButton;
 class QSpinBox;
 class QDoubleSpinBox;
 class QVBoxLayout;
-class QGridLayout;
+class QvisColorTableButton;
 class QvisColorSelectionWidget;
 class QvisGaussianOpacityBar;
 class QvisOpacitySlider;
@@ -239,6 +238,21 @@ private slots:
     void setMaterialKd(double val);
     void setMaterialKs(double val);
     void setMaterialN(double val);
+    void shiftGuassiansLeft();
+    void shiftGuassiansRight();
+    void raiseGuassians();
+    void lowerGuassians();
+    void thinGuassians();
+    void thickenGuassians();
+    void raiseLeftGuassians();
+    void raiseRightGuassians();
+    void clearAllGuassians();
+    void setGuassians();
+    void setManyGuassians();
+
+
+
+
 private:
     int                      plotType;
     VolumeAttributes         *volumeAtts;
@@ -340,6 +354,18 @@ private:
     QLabel                   *Kd;
     QLabel                   *Ks;
     QLabel                   *specPow;
+
+    QPushButton              *shiftLeftButton;
+    QPushButton              *shiftRightButton;
+    QPushButton              *lowerPeaksButton;
+    QPushButton              *raisePeaksButton;
+    QPushButton              *thinningButton;
+    QPushButton              *thickenButton;
+    QPushButton              *rightToLeftButton;
+    QPushButton              *leftToRightButton;
+    QPushButton              *clearGaussButton;
+    QPushButton              *setGaussButton;
+    QPushButton              *setManyGaussButton;
 
     //Sampling group
     QGroupBox               *resampleGroup;

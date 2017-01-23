@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,8 +53,6 @@
 #include <algorithm>
 
 #include <vtkPlane.h>
-
-#include <float.h>
 
 // ****************************************************************************
 //  Method: avtPoincareIC constructor
@@ -143,7 +141,7 @@ avtPoincareIC::~avtPoincareIC()
 //  Method: avtPoincareIC::CheckForTermination
 //
 //  Purpose:
-//      Checks to see if we should terminate the streamline.
+//      Checks to see if we should terminate the integral curve.
 //
 //  Programmer: Hank Childs
 //  Creation:   October 4, 2010
@@ -351,7 +349,7 @@ avtPoincareIC::IntersectPlane(const avtVector &p0, const avtVector &p1,
 //  Method: avtPoincareIC::Serialize
 //
 //  Purpose:
-//      Serializes a streamline so it can be sent to another processor.
+//      Serializes a integral curve so it can be sent to another processor.
 //
 //  Programmer: Hank Childs
 //  Creation:   October 4, 2010

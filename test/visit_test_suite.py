@@ -156,6 +156,10 @@ def parse_test_specific_vargs(test_file):
 #    Kathleen Biagas, Thu Sep 4 16:45:39 MST 2014
 #    Use exe path only for sim_dir on Windows.
 #
+#    Burlen Loring, Wed Oct 21 15:44:24 PDT 2015
+#    Added an option (--display-failed) to display current,
+#    baseline, and diff in a popup window as the test runs.
+#
 # ----------------------------------------------------------------------------
 def launch_visit_test(args):
     """
@@ -241,8 +245,10 @@ def launch_visit_test(args):
     tparams["width"]          = opts["width"]
     tparams["height"]         = opts["height"]
     tparams["ctest"]          = opts["ctest"]
+    tparams["display_failed"] = opts["display_failed"]
     tparams["parallel_launch"]= opts["parallel_launch"]
     tparams["host_profile_dir"]   = opts["host_profile_dir"]
+    tparams["sessionfiles"]= opts["sessionfiles"]
 
     exe_dir, exe_file = os.path.split(tparams["visit_bin"])
     if sys.platform.startswith("win"):
@@ -396,6 +402,12 @@ def log_test_result(result_dir,result):
 #    Brad Whitlock, Mon Dec 15 15:42:32 PST 2014
 #    Added --data-host, --host-profile-dir.
 #
+#    Burlen Loring, Wed Oct 21 15:44:24 PDT 2015
+#    Added an option (--display-failed) to display current,
+#    baseline, and diff in a popup window as the test runs.
+#
+#    Mark C. Miller, Tue Sep  6 18:54:31 PDT 2016
+#    Added sessionfiles option to rigoursly test session files
 # ----------------------------------------------------------------------------
 def default_suite_options():
     data_dir_def    = abs_path(visit_root(),"data")
@@ -441,7 +453,9 @@ def default_suite_options():
                       "timeout":3600,
                       "nprocs":nprocs_def,
                       "ctest":False,
+                      "display_failed":False,
                       "parallel_launch":"mpirun",
+                      "sessionfiles":False,
                       "no_timings":False,
                       "rsync_post":None}
     return opts_full_defs
@@ -472,12 +486,18 @@ def finalize_options(opts):
 #    Eric Brugger, Fri Aug 15 10:04:27 PDT 2014
 #    I added the ability to specify the parallel launch method.
 #
-#    Kathleen Biagas, Wed Nov 5 14:32:21 PST 2014 
+#    Kathleen Biagas, Wed Nov 5 14:32:21 PST 2014
 #    On windows, glob any '*.py' tests names.
 #
 #    Matthew Wheeler, Mon Dec 15 12:56:00 GMT 2014
 #    Changed pixdiff % to be a float rather than an int
 #
+#    Burlen Loring, Wed Oct 21 15:44:24 PDT 2015
+#    Added an option (--display-failed) to display current,
+#    baseline, and diff in a popup window as the test runs.
+#
+#    Mark C. Miller, Tue Sep  6 18:54:31 PDT 2016
+#    Added sessionfiles option to rigoursly test session files
 # ----------------------------------------------------------------------------
 def parse_args():
     """
@@ -664,11 +684,22 @@ def parse_args():
                       action='callback',
                       callback=ParseThresholdOverride,
                       help="Per case overide of the max allowable error for threshold based image diff")
+    parser.add_option("--display-failed",
+                      default=defs["display_failed"],
+                      action="store_true",
+                      help="use image magick to display the current baseline and diff for each failure")
     parser.add_option("--parallel-launch",
                       default=defs["parallel_launch"],
                       help="specify the parallel launch method. "
                            "Options are mpirun and srun, or a space-separated "
                            "list of parallel launch options.")
+    parser.add_option("--sessionfiles",
+                      dest="sessionfiles",
+                      action = "store_true",
+                      default=defs["sessionfiles"],
+                      help="Rigoursly test session files by saving a session, "
+                           "validating the XML and then perturbing and "
+                           "restoring the session prior to each image save.")
     parser.add_option("--no-timings",
                       dest="no_timings",
                       default=defs["no_timings"],
@@ -926,6 +957,11 @@ def rsync_post(src_dir,rsync_dest):
 #   Kathleen Biagas, Thu Feb  6 14:08:00 PST 2014
 #   Only do ctest logging if ctest is enabled.
 #
+#   Burlen Loring, Fri Oct  2 09:56:26 PDT 2015
+#   Make ctest output for each subtest. Moved the timer code
+#   into the ctest module so that I could track time spent
+#   in the sub test.
+#
 # ----------------------------------------------------------------------------
 def main(opts,tests):
     """
@@ -948,6 +984,8 @@ def main(opts,tests):
     prepare_result_dirs(opts["result_dir"])
     ststamp = timestamp(sep=":")
     stime   = time.time()
+    if opts["ctest"]:
+        ctestInitTestTimer()
     Log("[Starting test suite run @ %s]" % ststamp)
     html_index = HTMLIndex(opts["result_dir"])
     html_index.write_header(opts["modes"],ststamp)
@@ -961,9 +999,6 @@ def main(opts,tests):
     json_index.finalize(etstamp,rtime)
     nskip   = len([ r.skip()  for r in results if r.skip() == True])
     Log("[Test suite run complete @ %s (wall time = %s)]" % (etstamp,rtime))
-    if opts['ctest']:
-        Log(ctestReportWallTime(etime-stime))
-        Log(ctestReportCPUTime(etime-stime))
     if nskip > 0:
         Log("-- %d files due to skip list." % nskip)
     if not error:

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -90,6 +90,9 @@ public:
     virtual void HasPlots(void);
     virtual void NoPlots(void);
     virtual void UpdatePlotList(std::vector<avtActor_p> &lst);
+
+    virtual void SetVisibility(int);
+
 protected:
     bool ShouldBeAddedToRenderer() const;
     void SetText(const char *text);

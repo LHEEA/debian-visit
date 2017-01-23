@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -380,21 +380,19 @@ void
 avtEnSightFileFormat::RegisterVariableList(const char *primVar,
                                            const vector<CharStrRef> &vars2nd)
 {
-    size_t   i, j;
-
     reader->SetReadAllVariables(0);
     reader->GetPointDataArraySelection()->RemoveAllArrays();
     reader->GetCellDataArraySelection()->RemoveAllArrays();
 
     vector<const char *> vars;
     vars.push_back(primVar);
-    for (i = 0 ; i < vars2nd.size() ; i++)
+    for (size_t i = 0 ; i < vars2nd.size() ; i++)
         vars.push_back(*(vars2nd[i]));
 
     if (matnames.size() > 0)
     {
         size_t numRealMats = matnames.size()-1;
-        for (i = 0 ; i < numRealMats ; i++)
+        for (size_t i = 0 ; i < numRealMats ; i++)
         {
             vars.push_back(matnames[i].c_str());
         }
@@ -403,7 +401,7 @@ avtEnSightFileFormat::RegisterVariableList(const char *primVar,
     //
     // Loop through all of the variables and add the ones we are interested in.
     //
-    for (j = 0 ; j < vars.size() ; j++)
+    for (size_t j = 0 ; j < vars.size() ; j++)
     {
         if (strcmp(vars[j], "mesh") == 0)
             continue;
@@ -418,8 +416,8 @@ avtEnSightFileFormat::RegisterVariableList(const char *primVar,
         bool foundVar = false;
         if (!foundVar)
         {
-            size_t nsn = reader->GetNumberOfScalarsPerNode();
-            for (i = 0 ; i < nsn ; i++)
+            int nsn = reader->GetNumberOfScalarsPerNode();
+            for (int i = 0 ; i < nsn ; i++)
             {
                 const char *desc = reader->GetDescription(i,
                                        vtkEnSightReader::SCALAR_PER_NODE);
@@ -433,8 +431,8 @@ avtEnSightFileFormat::RegisterVariableList(const char *primVar,
         }
         if (!foundVar)
         {
-            size_t nsz = reader->GetNumberOfScalarsPerElement();
-            for (i = 0 ; i < nsz ; i++)
+            int nsz = reader->GetNumberOfScalarsPerElement();
+            for (int i = 0 ; i < nsz ; i++)
             {
                 const char *desc = reader->GetDescription(i,
                                     vtkEnSightReader::SCALAR_PER_ELEMENT);
@@ -448,8 +446,8 @@ avtEnSightFileFormat::RegisterVariableList(const char *primVar,
         }
         if (!foundVar)
         {
-            size_t nsn = reader->GetNumberOfVectorsPerNode();
-            for (i = 0 ; i < nsn ; i++)
+            int nsn = reader->GetNumberOfVectorsPerNode();
+            for (int i = 0 ; i < nsn ; i++)
             {
                 const char *desc = reader->GetDescription(i,
                                        vtkEnSightReader::VECTOR_PER_NODE);
@@ -463,8 +461,8 @@ avtEnSightFileFormat::RegisterVariableList(const char *primVar,
         }
         if (!foundVar)
         {
-            size_t nsz = reader->GetNumberOfVectorsPerElement();
-            for (i = 0 ; i < nsz ; i++)
+            int nsz = reader->GetNumberOfVectorsPerElement();
+            for (int i = 0 ; i < nsz ; i++)
             {
                 const char *desc = reader->GetDescription(i,
                                     vtkEnSightReader::VECTOR_PER_ELEMENT);
@@ -890,14 +888,13 @@ avtEnSightFileFormat::GetAuxiliaryData(const char *var, int ts, int domain,
     if (strcmp(type, AUXILIARY_DATA_MATERIAL) != 0)
         return NULL;
 
-    size_t i;
-    size_t nMaterials = matnames.size();
+    int nMaterials = (int)matnames.size();
 
     // Get the material fractions
     std::vector<float *> mats(nMaterials);
     std::vector<vtkFloatArray *> deleteList;
-    size_t nCells = 0;
-    for (i = 0; i < nMaterials-1; i++)
+    vtkIdType nCells = 0;
+    for (int i = 0; i < nMaterials-1; i++)
     {
         vtkDataArray *arr = GetVar(ts, domain, matnames[i].c_str());
         if (arr == NULL)
@@ -912,10 +909,10 @@ avtEnSightFileFormat::GetAuxiliaryData(const char *var, int ts, int domain,
 
     // Calculate fractions for additional "missing" material
     float *addMatPtr =  new float[nCells];
-    for(size_t cellNo = 0; cellNo < nCells; ++cellNo)
+    for(vtkIdType cellNo = 0; cellNo < nCells; ++cellNo)
     {
         double frac = 1.0;
-        for (size_t matNo = 0; matNo < nMaterials - 1; ++matNo)
+        for (int matNo = 0; matNo < nMaterials - 1; ++matNo)
             frac -= mats[matNo][cellNo];
         addMatPtr[cellNo] = frac;
     }
@@ -928,14 +925,12 @@ avtEnSightFileFormat::GetAuxiliaryData(const char *var, int ts, int domain,
     std::vector<int> mix_zone;
     std::vector<float> mix_vf;
 
-    for (i = 0; i < nCells; ++i)
+    for (vtkIdType i = 0; i < nCells; ++i)
     {
-        size_t j;
-
-        // First look for pure materials
+         // First look for pure materials
         int nmats = 0;
         int lastMat = -1;
-        for (j = 0; j < nMaterials; ++j)
+        for (int j = 0; j < nMaterials; ++j)
         {
             if (mats[j][i] > 0)
             {
@@ -952,7 +947,7 @@ avtEnSightFileFormat::GetAuxiliaryData(const char *var, int ts, int domain,
 
         // For unpure materials, we need to add entries to the tables.
         material_list[i] = -1 * (1 + (int)mix_zone.size());
-        for (j = 0; j < nMaterials; ++j)
+        for (int j = 0; j < nMaterials; ++j)
         {
             if (mats[j][i] <= 0)
                 continue;
@@ -967,7 +962,7 @@ avtEnSightFileFormat::GetAuxiliaryData(const char *var, int ts, int domain,
         mix_next[mix_next.size() - 1] = 0;
     }
 
-    int mixed_size = mix_zone.size();
+    int mixed_size = (int)mix_zone.size();
     // get pointers to pass to avtMaterial.  Windows will except if
     // an empty std::vector's zeroth item is dereferenced.
     int *ml = NULL, *mixm = NULL, *mixn = NULL, *mixz = NULL;
@@ -989,7 +984,7 @@ avtEnSightFileFormat::GetAuxiliaryData(const char *var, int ts, int domain,
     df = avtMaterial::Destruct;
 
     delete [] addMatPtr;
-    for (i = 0 ; i < deleteList.size() ; i++)
+    for (size_t i = 0 ; i < deleteList.size() ; i++)
         deleteList[i]->Delete();
 
     return (void*) mat;

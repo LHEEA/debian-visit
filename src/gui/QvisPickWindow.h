@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -227,6 +227,7 @@ private slots:
     void displayIncElsToggled(bool val);
     void displayGlobalIdsToggled(bool val);
     void displayPickLetterToggled(bool val);
+    void displayPickHighlightToggled(bool val);
     void nodeIdToggled(bool val);
     void nodeDomLogToggled(bool val);
     void nodeBlockLogToggled(bool val);
@@ -291,6 +292,7 @@ private:
     QCheckBox          *displayIncEls;
     QCheckBox          *displayGlobalIds;
     QCheckBox          *displayPickLetter;
+    QCheckBox          *displayPickHighlight;
 
     QCheckBox          *nodeId;
     QCheckBox          *nodePhysical;

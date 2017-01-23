@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -102,5 +102,6 @@ DBOptionsAttributes *
 GetTecplotWriteOptions(void)
 {
     DBOptionsAttributes *rv = new DBOptionsAttributes;
+    rv->SetInt("Gzip compression level [1,9] (0 for none)", 0);
     return rv;
 }

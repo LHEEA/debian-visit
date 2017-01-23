@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -128,6 +128,7 @@ SIMV2_API int simv2_invoke_WriteVariable(const char *, const char *, int, visit_
 #define VISIT_COMMANDMETADATA        108
 #define VISIT_OPTIONLIST             109
 
+#define VISIT_MESSAGEMETADATA        110
 
 SIMV2_API int simv2_ObjectType(visit_handle h);
 SIMV2_API int simv2_FreeObject(visit_handle h);

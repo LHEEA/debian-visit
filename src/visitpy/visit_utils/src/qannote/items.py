@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -72,6 +72,31 @@ def process_encoded_text(val):
         curr = rexp.indexIn(val,curr)
     res += val[prev:]
     return res
+
+class Annotations(object):
+    @classmethod
+    def create(cls,params):
+        itype = params.type.lower()
+        if itype == "text":
+            return Text(params)
+        elif itype == "image":
+            return Image(params)
+        elif itype == "line":
+            return Line(params)
+        elif itype == "arrow":
+            return Arrow(params)
+        elif itype == "rect":
+            return Rect(params)
+        elif itype == "circle":
+            return Circle(params)
+        elif itype == "ellipse":
+            return Ellipse(params)
+        elif itype == "textbox":
+            return TextBox(params)
+        elif itype == "multiprogressbar":
+            return MultiProgressBar(params)
+        else:
+            return None
 
 
 class CanvasItem(object):

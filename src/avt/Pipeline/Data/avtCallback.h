@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,6 +108,9 @@ typedef   void  (*ResetTimeoutCallback)(void *, int);
 //    Cameron Christensen, Thursday, July 3, 2014
 //    Add backend type callback.
 //
+//    Alok Hota, Tue Feb 23 19:10:32 PST 2016
+//    Add support for OSPRay.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtCallback
@@ -144,6 +147,11 @@ class PIPELINE_API avtCallback
                                      { useManta = b; }
     static bool                  UseManta(void)
                                      { return useManta; }
+
+    static void                  SetOSPRayMode(bool b)
+                                     { useOSPRay = b; }
+    static bool                  UseOSPRay(void)
+                                     { return useOSPRay; }
 
     static void                  RegisterGetDatabaseCallback(
                                                   GetDatabaseCallback, void *);
@@ -186,6 +194,7 @@ class PIPELINE_API avtCallback
     static bool                  nowinInteractionMode;
     static bool                  swRendering;
     static bool                  useManta;
+    static bool                  useOSPRay;
     static bool                  safeMode;
 
     static GlobalAttributes::BackendType backendType;

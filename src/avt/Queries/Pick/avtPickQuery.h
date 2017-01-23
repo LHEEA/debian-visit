@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -138,6 +138,13 @@ class avtExpressionEvaluatorFilter;
 //    Add GetNFilters, since that will get the number of stages more accurate
 //    for queries over time.
 //
+//    Burlen Loring, Thu Oct  8 12:46:02 PDT 2015
+//    Fix a couple of warnings
+//
+//    Matt Larsen, Fri Jul 8 08:15:00 PDT 2016
+//    Added method ExtractZonePickHighlights to support 
+//    zone highlights
+//
 // ****************************************************************************
 
 class QUERY_API avtPickQuery : public avtDatasetQuery
@@ -161,8 +168,8 @@ class QUERY_API avtPickQuery : public avtDatasetQuery
     void                            SetPickAtts(const PickAttributes *pa);
     void                            SetPickAttsForTimeQuery(const PickAttributes *pa);
     const PickAttributes *          GetPickAtts(void);
-    virtual void                    SetTransform(const avtMatrix *m){};
-    virtual void                    SetInvTransform(const avtMatrix *m){};
+    virtual void                    SetTransform(const avtMatrix *){};
+    virtual void                    SetInvTransform(const avtMatrix *){};
     void                            SetNeedTransform(const bool b)
                                         { needTransform = b; };
     void                            SetSkippedLocate(const bool s)
@@ -207,6 +214,10 @@ class QUERY_API avtPickQuery : public avtDatasetQuery
     void                            ConvertElNamesToGlobal(void);
     void                            SetRealIds(vtkDataSet *);
 
+    void                            ExtractZonePickHighlights(const int &,
+                                                              vtkDataSet *,
+                                                              const int &);                   
+    
     PickAttributes                  pickAtts;
     avtExpressionEvaluatorFilter   *eef;
     avtQueryableSource             *src;

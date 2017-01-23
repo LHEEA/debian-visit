@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,6 +108,9 @@ class vtkPolyData;
 //    Brad Whitlock, Thu Aug  6 16:47:50 PDT 2015
 //    Added support for writing using groups of MPI ranks.
 //
+//    Mark C. Miller, Tue Jun 14 10:38:17 PDT 2016
+//    Added logic to keep track of whether the writeContext wound up with
+//    some processors with no data.
 // ****************************************************************************
 
 class PIPELINE_API avtDatabaseWriter : public virtual avtTerminatingDatasetSink
@@ -161,6 +164,8 @@ class PIPELINE_API avtDatabaseWriter : public virtual avtTerminatingDatasetSink
 
     void               SetWriteContext(avtParallelContext &);
     avtParallelContext &GetWriteContext();
+    bool               GetWriteContextHasNoDataProcs(void) const
+                           { return writeContextHasNoDataProcs; };
   protected:
     bool               shouldAlwaysDoMIR;
     bool               shouldNeverDoMIR;
@@ -176,6 +181,7 @@ class PIPELINE_API avtDatabaseWriter : public virtual avtTerminatingDatasetSink
 
     avtContract_p      savedContract;
     avtParallelContext writeContext;
+    bool               writeContextHasNoDataProcs;
 
     virtual bool       CanHandleMaterials(void) { return false; };
 

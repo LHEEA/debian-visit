@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -322,6 +322,9 @@ typedef std::map<std::string, int> StringIntMap;
 //    Eric Brugger, Fri Oct 28 09:52:40 PDT 2011
 //    Add a multi resolution display capability for AMR data.
 //
+//    Burlen Loring, Sun Sep  6 14:58:03 PDT 2015
+//    Changed the return type of GetNumberOfCells to long long
+//
 //    Kevin Griffin, Wed May 11 16:47:05 PDT 2016
 //    Added a default argument to DeleteActivePlots to determine if the current
 //    active plots should be considered when updating the expression list.
@@ -388,7 +391,7 @@ public:
                  bool applySelections = false, DataNode *attributesNode = 0,
                  int embeddedPlotId = -1);
 
-    int GetNumberOfCells(bool polysOnly = false) const;
+    long long GetNumberOfCells(bool polysOnly = false) const;
 
     // 
     // Keyframing methods

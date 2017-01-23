@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -194,9 +194,9 @@ ELSE()
           IF(${${lib_skip_install}})
             MESSAGE(STATUS "Skipping installation of ${full_lib_path}")
           ELSE(${${lib_skip_install}})
-            IF(NOT "${lib_dir_var}" STREQUAL "/usr/lib")
+            IF(NOT ${lib_dir_var} STREQUAL "/usr/lib")
                 THIRD_PARTY_INSTALL_LIBRARY(${full_lib_path})
-            ENDIF(NOT "${lib_dir_var}" STREQUAL "/usr/lib")
+            ENDIF()
           ENDIF(${${lib_skip_install}})
           GET_FILENAME_COMPONENT(alib ${full_lib_path} NAME)
           LIST(APPEND "${lib_var}" ${alib})

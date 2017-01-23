@@ -9,3 +9,7 @@ svn co svn+ssh://brugger@edison.nersc.gov/project/projectdirs/visit/svn/visit/tr
 
 # Run the test suite.
 svn_bin/regressiontest_surface
+
+sleep 600
+
+svn_bin/regressiontest_surface -branch 2.12RC

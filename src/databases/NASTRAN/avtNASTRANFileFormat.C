@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1076,7 +1076,7 @@ avtNASTRANFileFormat::GetMaterial(const char *mat)
         matnos[mno] = mit->first;
     }
 
-    int dims = matList.size();
+    int dims = (int)matList.size();
     avtMaterial *retval = new avtMaterial((int)uniqMatIds.size(), matnos,
         names, 1, &dims, 0, &matList[0], 0, 0, 0, 0, 0, 0, 0);
 

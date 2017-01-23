@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -638,6 +638,31 @@ class AttsGeneratorFloatArray : public virtual FloatArray , public virtual AttsG
     {
         for (int i=0; i<length; i++)
             c << "    " << name << "["<<i<<"] = " << val[i] << ";" << Endl;
+    }
+};
+
+
+//
+// ------------------------------- FloatVector -------------------------------
+//
+class AttsGeneratorFloatVector : public virtual FloatVector , public virtual AttsGeneratorField
+{
+  public:
+    AttsGeneratorFloatVector(const QString &n, const QString &l)
+        : Field("floatVector",n,l), FloatVector(n,l), AttsGeneratorField("floatVector",n,l) { }
+    virtual bool CanHaveConst() { return true; }
+    virtual QString GetAttributeGroupID()
+    {
+        return "f*";
+    }
+    virtual QString DataNodeConversion()
+    {
+        return "AsFloatVector";
+    }
+    virtual void WriteSourceSetDefault(QTextStream &c)
+    {
+        for (size_t i=0; i < val.size(); i++)
+            c << "    " << name << ".push_back(" << val[i] << ");" << Endl;
     }
 };
 
@@ -1582,6 +1607,7 @@ class AttsFieldFactory
         else if (type == "bool")         f = new AttsGeneratorBool(name,label);
         else if (type == "float")        f = new AttsGeneratorFloat(name,label);
         else if (type == "floatArray")   f = new AttsGeneratorFloatArray(length,name,label);
+        else if (type == "floatVector")  f = new AttsGeneratorFloatVector(name,label);
         else if (type == "double")       f = new AttsGeneratorDouble(name,label);
         else if (type == "doubleArray")  f = new AttsGeneratorDoubleArray(length,name,label);
         else if (type == "doubleVector") f = new AttsGeneratorDoubleVector(name,label);

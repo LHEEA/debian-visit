@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,7 +73,7 @@ class PIPELINE_API avtDO_REPL_STRING : public avtDataObject
 
     virtual const char       *GetType(void)  { return "avtDO_REPL_STRING"; };
     virtual avtDataObject    *Instance(void);
-    virtual int               GetNumberOfCells(bool) const;
+    virtual long long         GetNumberOfCells(bool) const;
 
     /* You will need to implement this if you want your data object to be 
      * passed from the server to the client.

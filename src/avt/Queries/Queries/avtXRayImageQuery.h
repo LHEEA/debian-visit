@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -197,6 +197,7 @@ class QUERY_API avtXRayImageQuery : public avtDatasetQuery
                                   int, int, int, const char *);
 
     void                      ConvertOldImagePropertiesToNew();
+    void                      CheckData(vtkDataSet **, const int);
 };
 
 

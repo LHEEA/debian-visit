@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1130,7 +1130,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
             vector<int> list;
             tree.GetElementsList(pt1, dir, list);
-            int nCells = list.size();
+            int nCells = (int)list.size();
             if (nCells == 0)
                 continue;  // No intersection
 
@@ -1305,7 +1305,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
             vector<int> list;
             tree.GetElementsList(pt1, dir, list);
-            int nCells = list.size();
+            int nCells = (int)list.size();
             if (nCells == 0)
                 continue;  // No intersection
 
@@ -1398,7 +1398,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
             vector<int> list;
             tree.GetElementsList(pt1, dir, list);
-            int nCells = list.size();
+            int nCells = (int)list.size();
             if (nCells == 0)
                 continue;  // No intersection
 
@@ -1564,7 +1564,7 @@ avtXRayFilter::CartesianExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
             vector<int> list;
             tree.GetElementsList(pt1, dir, list);
-            int nCells = list.size();
+            int nCells = (int)list.size();
             if (nCells == 0)
                 continue;  // No intersection
 
@@ -1772,7 +1772,7 @@ avtXRayFilter::CylindricalExecute(vtkDataSet *ds, int &nLinesPerDataset,
 
         vector<int> list;
         tree.GetElementsFromAxiallySymmetricLineIntersection(pt1, dir, list);
-        int nCells = list.size();
+        int nCells = (int)list.size();
         if (nCells == 0)
             continue;  // No intersection
 
@@ -2375,6 +2375,7 @@ avtXRayFilter::CheckDataSets(int nDataSets, vtkDataSet **dataSets)
 {
     int numBins;
     cellDataType = -1;
+    
     for (int i = 0; i < nDataSets; i++)
     {
         vtkDataArray *abs  = dataSets[i]->GetCellData()->GetArray(absVarName.c_str());
@@ -2391,8 +2392,8 @@ avtXRayFilter::CheckDataSets(int nDataSets, vtkDataSet **dataSets)
                                   absVarName.c_str());
             }
             else
-                SNPRINTF(msg,256, "Variable %s not found.",
-                                  absVarName.c_str());
+                SNPRINTF(msg,256, "Variable %s not found.", absVarName.c_str());
+            
             EXCEPTION1(VisItException, msg);
         }
         if (emis == NULL)

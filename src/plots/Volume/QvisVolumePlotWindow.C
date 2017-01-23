@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,7 +55,6 @@ public:
 #endif
 #include <QApplication>
 #include <QComboBox>
-#include <QCursor>
 #include <QDesktopWidget>
 #include <QLayout>
 #include <QPushButton>
@@ -70,7 +69,6 @@ public:
 #include <QTabWidget>
 
 #include <math.h>
-#include <stdio.h>
 #ifdef _WIN32
 // Windows #defines its own min/max, since we are using
 // std::min, std::max, undefine the windows versions here.
@@ -85,7 +83,6 @@ public:
 #include <QvisScribbleOpacityBar.h>
 #include <QvisVariableButton.h>
 #include <QvisColorTableButton.h>
-#include <QNarrowLineEdit.h>
 #include <TransferFunctionWidget.h>
 
 #include <VolumeAttributes.h>
@@ -761,7 +758,7 @@ QvisVolumePlotWindow::CreateOpacityGroup(QWidget *parent, QVBoxLayout *pLayout,
     QPixmap tentIcon(tents_xpm); 
     QPixmap whiteIcon(white_xpm);
 
-    QHBoxLayout *abLayout = new QHBoxLayout(0);
+    QGridLayout *abLayout = new QGridLayout(0);
     abLayout->setMargin(5);
     abLayout->setSpacing(5);
     innerOpacityLayout->addLayout(abLayout);
@@ -769,31 +766,79 @@ QvisVolumePlotWindow::CreateOpacityGroup(QWidget *parent, QVBoxLayout *pLayout,
     zeroButton = new QPushButton(opacityWidgetGroup);
     zeroButton->setIcon(QIcon(blackIcon));
     connect(zeroButton, SIGNAL(clicked()), scribbleAlphaWidget, SLOT(makeTotallyZero()));
-    abLayout->addWidget(zeroButton);
+    abLayout->addWidget(zeroButton,0,0);
 
     rampButton = new QPushButton(opacityWidgetGroup);
     rampButton->setIcon(QIcon(rampIcon));
     connect(rampButton, SIGNAL(clicked()), scribbleAlphaWidget, SLOT(makeLinearRamp()));
-    abLayout->addWidget(rampButton);
+    abLayout->addWidget(rampButton,0,1);
 
     inverseRampButton = new QPushButton(opacityWidgetGroup);
     inverseRampButton->setIcon(QIcon(inverseRampIcon));
     connect(inverseRampButton, SIGNAL(clicked()), scribbleAlphaWidget, SLOT(makeInverseLinearRamp()));
-    abLayout->addWidget(inverseRampButton);
+    abLayout->addWidget(inverseRampButton,0,2);
 
     tentButton = new QPushButton(opacityWidgetGroup);
     tentButton->setIcon(QIcon(tentIcon));
     connect(tentButton, SIGNAL(clicked()), scribbleAlphaWidget, SLOT(makeTent()));
-    abLayout->addWidget(tentButton);
+    abLayout->addWidget(tentButton,0,3);
 
     oneButton = new QPushButton(opacityWidgetGroup);
     oneButton->setIcon(QIcon(whiteIcon));
     connect(oneButton, SIGNAL(clicked()), scribbleAlphaWidget, SLOT(makeTotallyOne()));
-    abLayout->addWidget(oneButton);
+    abLayout->addWidget(oneButton,0,4);
 
     smoothButton = new QPushButton(tr("Smooth"), opacityWidgetGroup);
     connect(smoothButton, SIGNAL(clicked()), scribbleAlphaWidget, SLOT(smoothCurve()));
-    abLayout->addWidget(smoothButton);
+    abLayout->addWidget(smoothButton,0,5);
+
+
+
+    // Add gaussian operators
+    shiftLeftButton = new QPushButton(tr("<-"), opacityWidgetGroup);
+    connect(shiftLeftButton, SIGNAL(clicked()), this, SLOT(shiftGuassiansLeft()));
+    abLayout->addWidget(shiftLeftButton,1,0);
+
+    shiftRightButton = new QPushButton(tr("->"), opacityWidgetGroup);
+    connect(shiftRightButton, SIGNAL(clicked()), this, SLOT(shiftGuassiansRight()));
+    abLayout->addWidget(shiftRightButton,1,1);
+
+    raisePeaksButton = new QPushButton(tr("^"), opacityWidgetGroup);
+    connect(raisePeaksButton, SIGNAL(clicked()), this, SLOT(raiseGuassians()));
+    abLayout->addWidget(raisePeaksButton,1,2);
+
+    lowerPeaksButton = new QPushButton(tr("v"), opacityWidgetGroup);
+    connect(lowerPeaksButton, SIGNAL(clicked()), this, SLOT(lowerGuassians()));
+    abLayout->addWidget(lowerPeaksButton,1,3);
+
+    thinningButton = new QPushButton(tr("-> <-"), opacityWidgetGroup);
+    connect(thinningButton, SIGNAL(clicked()), this, SLOT(thinGuassians()));
+    abLayout->addWidget(thinningButton,1,4);
+
+    thickenButton = new QPushButton(tr("<--->"), opacityWidgetGroup);
+    connect(thickenButton, SIGNAL(clicked()), this, SLOT(thickenGuassians()));
+    abLayout->addWidget(thickenButton,1,5);
+
+    leftToRightButton = new QPushButton(tr(":."), opacityWidgetGroup);
+    connect(leftToRightButton, SIGNAL(clicked()), this, SLOT(raiseLeftGuassians()));
+    abLayout->addWidget(leftToRightButton,1,6);
+
+    rightToLeftButton = new QPushButton(tr(".:"), opacityWidgetGroup);
+    connect(rightToLeftButton, SIGNAL(clicked()), this, SLOT(raiseRightGuassians()));
+    abLayout->addWidget(rightToLeftButton,1,7);
+
+    setGaussButton = new QPushButton(tr(".:.:."), opacityWidgetGroup);
+    connect(setGaussButton, SIGNAL(clicked()), this, SLOT(setGuassians()));
+    abLayout->addWidget(setGaussButton,0,0);
+
+    setManyGaussButton = new QPushButton(tr(".:.:.:.:."), opacityWidgetGroup);
+    connect(setManyGaussButton, SIGNAL(clicked()), this, SLOT(setManyGuassians()));
+    abLayout->addWidget(setManyGaussButton,0,1);
+
+    clearGaussButton = new QPushButton(tr("___"), opacityWidgetGroup);
+    connect(clearGaussButton, SIGNAL(clicked()), this, SLOT(clearAllGuassians()));
+    abLayout->addWidget(clearGaussButton,0,2);
+
 
 
     // Create the opacity attenuation widgets.
@@ -805,8 +850,8 @@ QvisVolumePlotWindow::CreateOpacityGroup(QWidget *parent, QVBoxLayout *pLayout,
     attenuationLabel->setBuddy(attenuationSlider);
     connect(attenuationSlider, SIGNAL(valueChanged(int)),
             this, SLOT(attenuationChanged(int)));
-    abLayout->addWidget(attenuationLabel);
-    abLayout->addWidget(attenuationSlider);
+    abLayout->addWidget(attenuationLabel,0,6);
+    abLayout->addWidget(attenuationSlider,0,7);
 
 
     //
@@ -927,6 +972,10 @@ QvisVolumePlotWindow::Create2DTransferFunctionGroup()
 //   Allen Harvey, Brad Whitlock, Tue Jan 31 16:32:54 PST 2012
 //   Add support for no resampling.
 //
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
+//
 // ****************************************************************************
 
 void QvisVolumePlotWindow::CreateSamplingGroups(QWidget *parent, QLayout *pLayout)
@@ -943,6 +992,7 @@ void QvisVolumePlotWindow::CreateSamplingGroups(QWidget *parent, QLayout *pLayou
         resampleTargetLabel             = new QLabel(tr("Number of samples"),               resampleGroup);
         resampleToggle                  = new QCheckBox(tr("Sample data onto regular grid"),resampleGroup);
         resampleTarget                  = new QSpinBox(                                     resampleGroup);
+        resampleTarget->setKeyboardTracking(false);
         resampleTarget->setMinimum(1000);
         resampleTarget->setMaximum(100000000);
         resampleTarget->setSingleStep(10000);
@@ -984,6 +1034,7 @@ void QvisVolumePlotWindow::CreateSamplingGroups(QWidget *parent, QLayout *pLayou
         QHBoxLayout *texture3dLayout    = new QHBoxLayout(                  texture3dOptions);
         QLabel      *num3DSlicesLabel   = new QLabel(tr("Number of slices"),texture3dOptions);
         num3DSlices                     = new QSpinBox(                     texture3dOptions);
+        num3DSlices->setKeyboardTracking(false);
         num3DSlices->setMinimum(1);
         num3DSlices->setMaximum(1000);
         num3DSlices->setSingleStep(10);
@@ -1023,10 +1074,12 @@ void QvisVolumePlotWindow::CreateSamplingGroups(QWidget *parent, QLayout *pLayou
         samplingButtonGroup->addButton(rasterizationButton, 0);
         samplingButtonGroup->addButton(kernelButton, 1);
         samplingButtonGroup->addButton(trilinearButton, 2);
+        samplesPerRay->setKeyboardTracking(false);
         samplesPerRay->setMinimum(1);
         samplesPerRay->setMaximum(25000);
         samplesPerRay->setSingleStep(50);
         samplesPerRayLabel->setBuddy(samplesPerRay);
+        rendererSamples->setKeyboardTracking(false);
         rendererSamples->setMinimum(1);
         rendererSamples->setMaximum(20);
         rendererSamples->setSingleStep(.1);
@@ -1058,6 +1111,7 @@ void QvisVolumePlotWindow::CreateSamplingGroups(QWidget *parent, QLayout *pLayou
         QHBoxLayout *slivrLayout     = new QHBoxLayout(                  slivrOptions);
         rendererSamplesSLIVRLabel    = new QLabel(tr("Sampling rate"),   slivrOptions);
         rendererSamplesSLIVR         = new QDoubleSpinBox(               slivrOptions);
+        rendererSamplesSLIVR->setKeyboardTracking(false);
         rendererSamplesSLIVR->setMinimum(1);
         rendererSamplesSLIVR->setMaximum(20);
         rendererSamplesSLIVR->setSingleStep(.1);
@@ -1079,6 +1133,7 @@ void QvisVolumePlotWindow::CreateSamplingGroups(QWidget *parent, QLayout *pLayou
         QHBoxLayout *tuvokLayout        = new QHBoxLayout(                  tuvokOptions);
         QLabel      *num3DSlicesLabel   = new QLabel(tr("Number of slices"),tuvokOptions);
         QSpinBox    *num3DSlices        = new QSpinBox(                     tuvokOptions);
+        num3DSlices->setKeyboardTracking(false);
         num3DSlices->setMinimum(1);
         num3DSlices->setMaximum(1000);
         num3DSlices->setSingleStep(10);
@@ -1149,7 +1204,9 @@ void QvisVolumePlotWindow::EnableSLIVRGroup()
     resampleGroup->setVisible(true);
     resampleGroup->setEnabled(true);
     slivrGroup->setVisible(true);
-    slivrOptions->setEnabled(!volumeAtts->GetResampleFlag());
+    //slivrOptions->setEnabled(!volumeAtts->GetResampleFlag());
+    rendererSamplesSLIVRLabel->setEnabled(true);
+    rendererSamplesSLIVR->setEnabled(true);
 }
 
 void QvisVolumePlotWindow::UpdateSamplingGroup()
@@ -1250,6 +1307,11 @@ void QvisVolumePlotWindow::UpdateSamplingGroup()
         EnableSamplingMethods(true);
         samplesPerRayWidget->setEnabled(volumeAtts->GetRendererType()!=VolumeAttributes::RayCastingSLIVR);
         rendererSamplesWidget->setEnabled(volumeAtts->GetRendererType()==VolumeAttributes::RayCastingSLIVR);
+        rendererSamplesSLIVRLabel->setEnabled(true);
+        rendererSamplesSLIVR->setEnabled(true);
+        centeredDiffButton->setEnabled(true);
+        centeredDiffButton->setChecked(true);
+        sobelButton->setEnabled(false);
         break;
 
     default:
@@ -1690,18 +1752,74 @@ QvisVolumePlotWindow::UpdateWindow(bool doAll)
             if(volumeAtts->GetOpacityMode() == VolumeAttributes::FreeformMode)
             {
                 alphaWidget->hide();
+                shiftLeftButton->hide();
+                shiftRightButton->hide();
+                lowerPeaksButton->hide();
+                raisePeaksButton->hide();
+                thinningButton->hide();
+                thickenButton->hide();
+                rightToLeftButton->hide();
+                leftToRightButton->hide();
+                clearGaussButton->hide();
+                setGaussButton->hide();
+                setManyGaussButton->hide();
+
                 scribbleAlphaWidget->show();
+                zeroButton->show();
+                rampButton->show();
+                inverseRampButton->show();
+                tentButton->show();
+                oneButton->show();
+                smoothButton->show();
+
                 scribbleAlphaWidget->setEnabled(true);
             }
             else if(volumeAtts->GetOpacityMode() == VolumeAttributes::GaussianMode)
             {
                 scribbleAlphaWidget->hide();
+                zeroButton->hide();
+                rampButton->hide();
+                inverseRampButton->hide();
+                tentButton->hide();
+                oneButton->hide();
+                smoothButton->hide();
+
                 alphaWidget->show();
+                shiftLeftButton->show();
+                shiftRightButton->show();
+                lowerPeaksButton->show();
+                raisePeaksButton->show();
+                thinningButton->show();
+                thickenButton->show();
+                rightToLeftButton->show();
+                leftToRightButton->show();
+                clearGaussButton->show();
+                setGaussButton->show();
+                setManyGaussButton->show();
             }
             else // from color table
             {
                 alphaWidget->hide();
+                shiftLeftButton->hide();
+                shiftRightButton->hide();
+                lowerPeaksButton->hide();
+                raisePeaksButton->hide();
+                thinningButton->hide();
+                thickenButton->hide();
+                rightToLeftButton->hide();
+                leftToRightButton->hide();
+                clearGaussButton->hide();
+                setGaussButton->hide();
+                setManyGaussButton->hide();
+
                 scribbleAlphaWidget->show();
+                zeroButton->show();
+                rampButton->show();
+                inverseRampButton->show();
+                tentButton->show();
+                oneButton->show();
+                smoothButton->show();
+
                 scribbleAlphaWidget->setEnabled(false);
             }
             break;
@@ -2427,7 +2545,8 @@ QvisVolumePlotWindow::GetCurrentValues(int which_widget)
     // Get the value of the resample target
     if(which_widget == VolumeAttributes::ID_resampleTarget || doAll)
     {
-        volumeAtts->SetResampleTarget(resampleTarget->value());
+        if (resampleTarget->value() != volumeAtts->GetResampleTarget())
+            volumeAtts->SetResampleTarget(resampleTarget->value());
     }
     
     // Get the value of the minimum for the color variable.
@@ -2493,13 +2612,15 @@ QvisVolumePlotWindow::GetCurrentValues(int which_widget)
     // Get the number of samples per ray.
     if(which_widget == VolumeAttributes::ID_samplesPerRay || doAll)
     {
-        volumeAtts->SetSamplesPerRay(samplesPerRay->value());
+        if (samplesPerRay->value() != volumeAtts->GetSamplesPerRay())
+            volumeAtts->SetSamplesPerRay(samplesPerRay->value());
     }
 
     // Get the number of slices for 3D texturing.
     if(which_widget == VolumeAttributes::ID_num3DSlices || doAll)
     {
-        volumeAtts->SetNum3DSlices(num3DSlices->value());
+        if (num3DSlices->value() != volumeAtts->GetNum3DSlices())
+            volumeAtts->SetNum3DSlices(num3DSlices->value());
     }
 
     // Do the skew factor value
@@ -2521,7 +2642,8 @@ QvisVolumePlotWindow::GetCurrentValues(int which_widget)
     // Get the value of the renderer samples
     if(which_widget == VolumeAttributes::ID_rendererSamples || doAll)
     {
-        volumeAtts->SetRendererSamples(rendererSamples->value());
+        if (rendererSamples->value() != volumeAtts->GetRendererSamples())
+            volumeAtts->SetRendererSamples(rendererSamples->value());
     }
 
     if(which_widget == VolumeAttributes::ID_lowGradientLightingClampValue
@@ -3971,6 +4093,18 @@ QvisVolumePlotWindow::setMaterialKa(double val){
 }
 
 
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::setMaterialKd
+//
+// Purpose:
+//   Sets the diffuse reflection coefficient
+//
+// Programmer:  Pascal Grosset
+// Creation:    Tue Apr 10 2012
+//
+// Modifications:
+//
+// ****************************************************************************
 void
 QvisVolumePlotWindow::setMaterialKd(double val){
     double *mat = new double[4];
@@ -3984,6 +4118,18 @@ QvisVolumePlotWindow::setMaterialKd(double val){
 }
 
 
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::setMaterialKs
+//
+// Purpose:
+//   Sets the specular reflection coefficient
+//
+// Programmer:  Pascal Grosset
+// Creation:    Tue Apr 10 2012
+//
+// Modifications:
+//
+// ****************************************************************************
 void
 QvisVolumePlotWindow::setMaterialKs(double val){
     double *mat = new double[4];
@@ -3997,6 +4143,18 @@ QvisVolumePlotWindow::setMaterialKs(double val){
 }
 
 
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::setMaterialN
+//
+// Purpose:
+//   Sets the specular exponent
+//
+// Programmer:  Pascal Grosset
+// Creation:    Tue Apr 10 2012
+//
+// Modifications:
+//
+// ****************************************************************************
 void
 QvisVolumePlotWindow::setMaterialN(double val){
     double *mat = new double[4];
@@ -4007,4 +4165,439 @@ QvisVolumePlotWindow::setMaterialN(double val){
     SetUpdate(false);
 
     Apply();
+}
+
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::shiftGuassiansLeft
+//
+// Purpose:
+//   Shifts all the gaussian curves to the left
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::shiftGuassiansLeft(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = -0.005;
+
+    if (numGaussians > 0)
+    {
+        float *gcpts = new float[numGaussians * 5];
+
+        // Get the gaussian values and modify them
+        for (int i=0; i<numGaussians; ++i)
+        {
+            alphaWidget->getGaussian(i, &gcpts[i*5 + 0], &gcpts[i*5 + 1], &gcpts[i*5 + 2], &gcpts[i*5 + 3], &gcpts[i*5 + 4]);
+            gcpts[i*5 + 0] += value;
+        }
+
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();
+        
+        // Re-add the values
+        alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+        // Delete the gcpts array.
+        delete [] gcpts;
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::shiftGuassiansRight
+//
+// Purpose:
+//   Shifts all the gaussian curves to the right
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::shiftGuassiansRight(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = 0.005;
+
+    if (numGaussians > 0)
+    {
+        float *gcpts = new float[numGaussians * 5];
+
+        // Get the gaussian values and modify them
+        for (int i=0; i<numGaussians; ++i)
+        {
+            alphaWidget->getGaussian(i, &gcpts[i*5 + 0], &gcpts[i*5 + 1], &gcpts[i*5 + 2], &gcpts[i*5 + 3], &gcpts[i*5 + 4]);
+            gcpts[i*5 + 0] += value;
+        }
+
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();
+        
+        // Re-add the values
+        alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+        // Delete the gcpts array.
+        delete [] gcpts;
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::raiseGuassians
+//
+// Purpose:
+//   Raise all the peaks of the gaussian curves
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::raiseGuassians(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = 0.005;
+
+    if (numGaussians > 0)
+    {
+        float *gcpts = new float[numGaussians * 5];
+
+        // Get the gaussian values and modify them
+        for (int i=0; i<numGaussians; ++i)
+        {
+            alphaWidget->getGaussian(i, &gcpts[i*5 + 0], &gcpts[i*5 + 1], &gcpts[i*5 + 2], &gcpts[i*5 + 3], &gcpts[i*5 + 4]);
+            gcpts[i*5 + 1] += value;
+            if (gcpts[i*5 + 1] > 1)
+                gcpts[i*5 + 1] = 1;
+        }
+
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();
+        
+        // Re-add the values
+        alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+        // Delete the gcpts array.
+        delete [] gcpts;
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::lowerGuassians
+//
+// Purpose:
+//   Lower all the peaks of the gaussian curves
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::lowerGuassians(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = -0.005;
+
+    if (numGaussians > 0)
+    {
+        float *gcpts = new float[numGaussians * 5];
+
+        // Get the gaussian values and modify them
+        for (int i=0; i<numGaussians; ++i)
+        {
+            alphaWidget->getGaussian(i, &gcpts[i*5 + 0], &gcpts[i*5 + 1], &gcpts[i*5 + 2], &gcpts[i*5 + 3], &gcpts[i*5 + 4]);
+            gcpts[i*5 + 1] += value;
+            if (gcpts[i*5 + 1] < 0)
+                gcpts[i*5 + 1] = 0;
+        }
+
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();
+        
+        // Re-add the values
+        alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+        // Delete the gcpts array.
+        delete [] gcpts;
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::thinGuassians
+//
+// Purpose:
+//   Makes all the gaussian curve thinner 
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::thinGuassians(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = -0.005;
+
+    if (numGaussians > 0)
+    {
+        float *gcpts = new float[numGaussians * 5];
+
+        // Get the gaussian values and modify them
+        for (int i=0; i<numGaussians; ++i)
+        {
+            alphaWidget->getGaussian(i, &gcpts[i*5 + 0], &gcpts[i*5 + 1], &gcpts[i*5 + 2], &gcpts[i*5 + 3], &gcpts[i*5 + 4]);
+            gcpts[i*5 + 2] += value;
+            if (gcpts[i*5 + 2] < 0)
+                gcpts[i*5 + 2] = 0;
+        }
+
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();
+        
+        // Re-add the values
+        alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+        // Delete the gcpts array.
+        delete [] gcpts;
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::thinGuassians
+//
+// Purpose:
+//   Fattens all the gaussian curves
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::thickenGuassians(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = 0.005;
+
+    if (numGaussians > 0)
+    {
+        float *gcpts = new float[numGaussians * 5];
+
+        // Get the gaussian values and modify them
+        for (int i=0; i<numGaussians; ++i)
+        {
+            alphaWidget->getGaussian(i, &gcpts[i*5 + 0], &gcpts[i*5 + 1], &gcpts[i*5 + 2], &gcpts[i*5 + 3], &gcpts[i*5 + 4]);
+            gcpts[i*5 + 2] += value;
+            if (gcpts[i*5 + 2] > 0.5)
+                gcpts[i*5 + 2] = 0.5;
+        }
+
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();
+        
+        // Re-add the values
+        alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+        // Delete the gcpts array.
+        delete [] gcpts;
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::raiseLeftGuassians
+//
+// Purpose:
+//   Raises the peaks of the cuves on the left and lowes those on the right
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::raiseLeftGuassians(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = 0.1;
+
+    if (numGaussians > 0)
+    {
+        float *gcpts = new float[numGaussians * 5];
+
+        // Get the gaussian values and modify them
+        for (int i=0; i<numGaussians; ++i)
+        {
+            alphaWidget->getGaussian(i, &gcpts[i*5 + 0], &gcpts[i*5 + 1], &gcpts[i*5 + 2], &gcpts[i*5 + 3], &gcpts[i*5 + 4]);
+            gcpts[i*5 + 1] += (value * (0.5-gcpts[i*5 + 0]) );
+            if (gcpts[i*5 + 1] > 1)
+                gcpts[i*5 + 1] = 1;
+        }
+
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();
+        
+        // Re-add the values
+        alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+        // Delete the gcpts array.
+        delete [] gcpts;
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::raiseRightGuassians
+//
+// Purpose:
+//   Raises the peaks of the cuves on the right and lowes those on the left
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::raiseRightGuassians(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = 0.05;
+
+    if (numGaussians > 0)
+    {
+        float *gcpts = new float[numGaussians * 5];
+
+        // Get the gaussian values and modify them
+        for (int i=0; i<numGaussians; ++i)
+        {
+            alphaWidget->getGaussian(i, &gcpts[i*5 + 0], &gcpts[i*5 + 1], &gcpts[i*5 + 2], &gcpts[i*5 + 3], &gcpts[i*5 + 4]);
+            gcpts[i*5 + 1] += (value * (gcpts[i*5 + 0] - 0.5) );
+            if (gcpts[i*5 + 1] > 1)
+                gcpts[i*5 + 1] = 1;
+        }
+
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();
+        
+        // Re-add the values
+        alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+        // Delete the gcpts array.
+        delete [] gcpts;
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::raiseRightGuassians
+//
+// Purpose:
+//   Clears the transfer function window of gaussian curves
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::clearAllGuassians(){
+    int numGaussians = alphaWidget->getNumberOfGaussians();
+    float value = 0.1;
+
+    if (numGaussians > 0)
+    {
+        // Delete the gaussians
+        alphaWidget->removeAllGaussians();  
+    }
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::setGuassians
+//
+// Purpose:
+//   Initializes 10 gaussian curves
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::setGuassians(){
+    // Delete the gaussians
+    alphaWidget->removeAllGaussians();  
+
+    int numGaussians = 10;
+    float intervalWidth = 1.0/numGaussians;
+    float *gcpts = new float[numGaussians * 5];
+
+    for (int i=0; i<numGaussians; ++i)
+    {
+        gcpts[i*5 + 0] = intervalWidth/2 + intervalWidth*i;   // position
+        gcpts[i*5 + 1] = 0.5;               // height
+        gcpts[i*5 + 2] = intervalWidth/2;   // width
+        gcpts[i*5 + 3] = 0;                 // height
+        gcpts[i*5 + 4] = 0;                 // height
+    }
+
+    // Add the gaussians
+    alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+    // Delete the gcpts array.
+    delete [] gcpts;
+}
+
+
+// ****************************************************************************
+// Method:  QvisVolumePlotWindow::setManyGuassians
+//
+// Purpose:
+//   Initializes 20 gaussian curves
+//
+// Programmer:  Pascal Grosset
+// Creation:    Wed Sep 25 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisVolumePlotWindow::setManyGuassians(){
+    // Delete the gaussians
+    alphaWidget->removeAllGaussians();  
+
+    int numGaussians = 20;
+    float intervalWidth = 1.0/numGaussians;
+    float *gcpts = new float[numGaussians * 5];
+
+
+    for (int i=0; i<numGaussians; ++i)
+    {
+        gcpts[i*5 + 0] = intervalWidth/2 + intervalWidth*i;   // position
+        gcpts[i*5 + 1] = 0.5;               // height
+        gcpts[i*5 + 2] = intervalWidth/2;   // width
+        gcpts[i*5 + 3] = 0;   // height
+        gcpts[i*5 + 4] = 0;   // height
+    }
+
+    // Add the gaussians
+    alphaWidget->setAllGaussians(numGaussians, gcpts);
+
+    // Delete the gcpts array.
+    delete [] gcpts;
 }

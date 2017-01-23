@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -136,14 +136,14 @@ class PLOTTER_API avtLevelsLegend : public avtLegend
     virtual void    SetFont(int family, bool bold, bool italic, bool shadow);
     virtual void    SetNumberFormat(const char *);
 
-    void            SetColorBarVisibility(const int);
+    void            SetColorBarVisibility(const bool);
     void            SetRange(double min, double max);
     void            SetLevels(const std::vector<double> &);
     void            SetLevels(const std::vector<std::string> &);
     void            SetLookupTable(vtkLookupTable *);
     void            SetLabelColorMap(const LevelColorMap &);
     void            SetReverseOrder(const bool);
-    void            SetVarRangeVisibility(const int);
+    void            SetVarRangeVisibility(const bool);
     void            SetVarRange(double min, double max);
 
     virtual void    SetUseSuppliedLabels(bool);
@@ -163,8 +163,8 @@ class PLOTTER_API avtLevelsLegend : public avtLegend
     vtkLookupTable            *lut;
     vtkVisItScalarBarActor    *sBar;
 
-    int                        barVisibility;
-    int                        rangeVisibility;
+    bool                       barVisibility;
+    bool                       rangeVisibility;
     bool                       titleVisibility;
     int                        labelVisibility;
     bool                       minmaxVisibility;

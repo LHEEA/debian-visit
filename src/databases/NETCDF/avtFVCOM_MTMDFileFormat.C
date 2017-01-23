@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -302,7 +302,7 @@ avtFVCOM_MTMDFileFormat::Init()
     for(dom=0; dom<(int)ndoms; ++dom)
     {
 
-        size_t start[]={dom,0};
+        size_t start[]={static_cast<size_t>(dom),0};
         size_t count[]={1, nfnames};
         ptrdiff_t stride[]={1,1};
 

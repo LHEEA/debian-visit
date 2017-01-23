@@ -1,6 +1,6 @@
 /*****************************************************************************
  *
- * Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+ * Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
  * Produced at the Lawrence Berkeley National Laboratory
  * All rights reserved.
  *
@@ -313,12 +313,13 @@ avtH5NimrodFileFormat::avtH5NimrodFileFormat (const char *filename):
                         H5G_DATASET, kdx, name, len_of_name);
                 scalarvarnames[kdx] = name;
             }
+
+            H5Gclose (group_id);
         }        
     }
 
     debug5 << "num scalarvars: " << nscalarvars << std::endl;
     debug5 << "num vectorvars: " << nvectorvars << std::endl;
-    H5Gclose (group_id);
     H5Gclose (grid_id);
     H5Gclose (root_id);
     H5Fclose (file_id);

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -36,9 +36,6 @@
 #
 # Modifications:
 #
-#   Hank Childs, Fri Jun  4 17:03:43 CDT 2010
-#   Remove avtStreamlineWrapper.
-#
 #   Hank Childs, Sat Jun  5 19:03:22 CDT 2010
 #   Add avtPICSFilter.
 #
@@ -66,6 +63,12 @@
 #
 #   Kevin Griffin, Mon Nov 3 12:41:11 PDT 2014
 #   Add avtSubsetBlockMergeFilter.
+#
+#   Eric Brugger, Thu Jan 14 08:44:32 PST 2016
+#   Add linking of vtkm library.
+#
+#   Cyrus Harrison, Mon Nov  7 10:03:35 PST 2016
+#   Add avtPolylineCleanupFilter
 #
 #****************************************************************************/
 
@@ -95,6 +98,10 @@ avtMissingDataFilter.C
 avtMultiresFilter.C
 avtNamedSelectionFilter.C
 avtPointToGlyphFilter.C
+avtPolylineAddEndPointsFilter.C
+avtPolylineCleanupFilter.C
+avtPolylineToRibbonFilter.C
+avtPolylineToTubeFilter.C
 avtRayCompositer.C
 avtRayTracer.C
 avtResampleFilter.C
@@ -143,7 +150,9 @@ ${VISIT_SOURCE_DIR}/avt/VisWindow/Proxies
 ${VISIT_SOURCE_DIR}/avt/VisWindow/Tools
 ${VISIT_SOURCE_DIR}/avt/VisWindow/VisWindow
 ${VISIT_SOURCE_DIR}/engine/main
+${VISIT_SOURCE_DIR}/vtkm
 ${EAVL_INCLUDE_DIR}
+${VTKM_INCLUDE_DIR}
 ${VTK_INCLUDE_DIRS}
 )
 
@@ -152,12 +161,12 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_D
 
 #********************************* SERIAL ************************************
 ADD_LIBRARY(avtfilters_ser ${AVTFILTERS_SOURCES})
-TARGET_LINK_LIBRARIES(avtfilters_ser visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_ser avtdatabase_ser avtdbatts ${EAVL_LIB})
+TARGET_LINK_LIBRARIES(avtfilters_ser visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_ser avtdatabase_ser avtdbatts ${EAVL_LIB} ${VTKM_LIB} vtkFiltersModeling)
 VISIT_INSTALL_TARGETS(avtfilters_ser)
 
 #********************************* PARALLEL **********************************
 IF(VISIT_PARALLEL)
     ADD_PARALLEL_LIBRARY(avtfilters_par ${AVTFILTERS_SOURCES})
-    TARGET_LINK_LIBRARIES(avtfilters_par visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_par avtdatabase_par avtdbatts ${EAVL_LIB})
+    TARGET_LINK_LIBRARIES(avtfilters_par visitcommon lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_par avtdatabase_par avtdbatts ${EAVL_LIB} ${VTKM_LIB} vtkFiltersModeling)
     VISIT_INSTALL_TARGETS(avtfilters_par)
 ENDIF(VISIT_PARALLEL)

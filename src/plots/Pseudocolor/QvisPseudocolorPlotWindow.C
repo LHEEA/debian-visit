@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,7 +39,6 @@
 #include <QWidget> 
 #include <QLayout> 
 #include <QGroupBox>
-#include <QPushButton> 
 #include <QRadioButton>
 #include <QButtonGroup>
 #include <QLabel>
@@ -57,8 +56,9 @@
 #include <QvisLineStyleWidget.h>
 #include <QvisLineWidthWidget.h>
 #include <QvisVariableButton.h>
+#include <QvisColorButton.h>
 
-#include "QvisCollapsibleFrame.h"
+#include <QvisCollapsibleFrame.h>
 
 // ****************************************************************************
 // Method: QvisPseudocolorPlotWindow::QvisPseudocolorPlotWindow
@@ -187,60 +187,60 @@ QvisPseudocolorPlotWindow::~QvisPseudocolorPlotWindow()
 //   Kathleen Bonnell, Mon Jan 17 18:02:39 MST 2011
 //   Change colorTableButton to colorTableWidget to gain invert toggle.
 //
+//   Cyrus Harrison, Wed Nov  2 18:43:13 PDT 2016
+//   Changed layout to use tabs.
+//
 // ****************************************************************************
 
 void
 QvisPseudocolorPlotWindow::CreateWindowContents()
-{ 
-    propertyLayout = new QvisCollapsibleLayout(central);
-    propertyLayout->setParent( this );
-    topLayout->addWidget(propertyLayout);
+{
+    // create atts window a with  a standard tab style layout
+    QTabWidget *propertyTabs = new QTabWidget(central);
+    topLayout->addWidget(propertyTabs);
 
-    // // ----------------------------------------------------------------------
-    // // Data tab
-    // // ----------------------------------------------------------------------
+    // ----------------------------------------------------------------------
+    // Data tab
+    // ----------------------------------------------------------------------
     QWidget *dataTab = new QWidget(central);
+    propertyTabs->addTab(dataTab, tr("Data"));
     CreateDataTab(dataTab);
 
-    QvisCollapsibleFrame* dataFrame =
-      propertyLayout->addFrame( tr("Data"), dataTab);
-
-    dataFrame->setShow();
-
-    // // ----------------------------------------------------------------------
-    // // Geometry tab
-    // // ----------------------------------------------------------------------
+    // ----------------------------------------------------------------------
+    // Geometry tab
+    // ----------------------------------------------------------------------
     QWidget *geometryTab = new QWidget(central);
+    propertyTabs->addTab(geometryTab, tr("Geometry"));
     CreateGeometryTab(geometryTab);
+    
+//     This code was used to create the accordion style layout 
 
-    QvisCollapsibleFrame* geometryFrame =
-      propertyLayout->addFrame( tr("Geometry"), geometryTab);
-
-    geometryFrame->setHide();
-
-    // QTabWidget *propertyTabs = new QTabWidget(central);
-    // topLayout->addWidget(propertyTabs);
-
-    // // ----------------------------------------------------------------------
-    // // Data tab
-    // // ----------------------------------------------------------------------
-    // QWidget *dataTab = new QWidget(central);
-    // propertyTabs->addTab(dataTab, tr("Data"));
-    // CreateDataTab(dataTab);
-
-    // // ----------------------------------------------------------------------
-    // // Geometry tab
-    // // ----------------------------------------------------------------------
-    // QWidget *geometryTab = new QWidget(central);
-    // propertyTabs->addTab(geometryTab, tr("Geometry"));
-    // CreateGeometryTab(geometryTab);
-
-    // ----------------------------------------------------------------------
-    // Extras tab
-    // ----------------------------------------------------------------------
-    // QWidget *extrasTab = new QWidget(central);
-    // propertyTabs->addTab(extrasTab, tr("Extras"));
-    // CreateExtrasTab(extrasTab);
+//     propertyLayout = new QvisCollapsibleLayout(central);
+//     propertyLayout = new QvisCollapsibleLayout(central);
+//     propertyLayout->setParent( this );
+//     topLayout->addWidget(propertyLayout);
+//
+//     // // ----------------------------------------------------------------------
+//     // // Data tab
+//     // // ----------------------------------------------------------------------
+//     QWidget *dataTab = new QWidget(central);
+//     CreateDataTab(dataTab);
+//
+//     QvisCollapsibleFrame* dataFrame =
+//       propertyLayout->addFrame( tr("Data"), dataTab);
+//
+//     dataFrame->setShow();
+//
+//     // // ----------------------------------------------------------------------
+//     // // Geometry tab
+//     // // ----------------------------------------------------------------------
+//     QWidget *geometryTab = new QWidget(central);
+//     CreateGeometryTab(geometryTab);
+//
+//     QvisCollapsibleFrame* geometryFrame =
+//       propertyLayout->addFrame( tr("Geometry"), geometryTab);
+//
+//     geometryFrame->setHide();
 }
 
 
@@ -403,8 +403,12 @@ QvisPseudocolorPlotWindow::CreateDataTab(QWidget *pageData)
     opacityType->addItem(tr("Fully opaque"),0);
     opacityType->addItem(tr("Constant"),2);
     opacityType->addItem(tr("Ramp"),3);
-    // ARS - FIX ME  - FIX ME  - FIX ME  - FIX ME  - FIX ME 
+    // ARS - FIX ME  - FIX ME  - FIX ME  - FIX ME  - FIX ME
+    // This functionality was possible with the deprecated Streamline
+    // plot but it is currently not possible using the vtkMapper and
+    // avtActor.
     // opacityType->addItem(tr("Variable range"),4);
+    
     connect(opacityType, SIGNAL(activated(int)),
             this, SLOT(opacityTypeChanged(int)));
     colorLayout->addWidget(new QLabel(tr("Opacity"), central), gRow,0);
@@ -522,6 +526,13 @@ QvisPseudocolorPlotWindow::CreateDataTab(QWidget *pageData)
 // Creation:   Tue Dec 29 14:37:53 EST 2009
 //
 // Modifications:
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
+//
+//   Eric Brugger, Wed Oct 26 09:18:20 PDT 2016
+//   I modified the plot to support independently setting the point style
+//   for the two end points of lines.
 //
 // ****************************************************************************
 
@@ -560,8 +571,8 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     lineLayout->addWidget(lineType, 0, 1);
 
     // ARS - FIX ME  - FIX ME  - FIX ME  - FIX ME  - FIX ME 
-    lineTypeLabel->hide();
-    lineType->hide();
+    // lineTypeLabel->hide();
+    // lineType->hide();
 
     // Line style / width
     lineStyleLabel = new QLabel(tr("Line style"), central);
@@ -583,15 +594,6 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
 
 
     // Tube/ribbon
-    tubeDisplayDensityLabel = new QLabel(tr("Display density"), central);
-    lineLayout->addWidget(tubeDisplayDensityLabel, 1, 3, Qt::AlignRight);
-
-    tubeDisplayDensity = new QSpinBox(central);
-    tubeDisplayDensity->setMinimum(2);
-    tubeDisplayDensity->setMaximum(100);
-    lineLayout->addWidget(tubeDisplayDensity, 1, 4);
-    connect(tubeDisplayDensity, SIGNAL(valueChanged(int)), this, SLOT(tubeDisplayDensityChanged(int)));
-
     tubeRadiusLabel = new QLabel(tr("Radius"), central);
     tubeRadiusLabel->setToolTip(tr("Radius used for tubes and ribbons."));
     lineLayout->addWidget(tubeRadiusLabel, 1, 0, Qt::AlignRight);
@@ -607,39 +609,34 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     connect(tubeRadiusSizeType, SIGNAL(activated(int)), this, SLOT(tubeRadiusSizeTypeChanged(int)));
     lineLayout->addWidget(tubeRadiusSizeType, 1, 2);
 
-    // Tube vary radius.
-    tubeRadiusVary = new QCheckBox(tr("Vary radius"), central);
-    connect(tubeRadiusVary, SIGNAL(toggled(bool)), this, SLOT(tubeRadiusVaryChanged(bool)));
-    lineLayout->addWidget(tubeRadiusVary, 2, 0);
-    
-    tubeRadiusVaryVariableLabel = new QLabel(tr("Variable"), central);
-    lineLayout->addWidget(tubeRadiusVaryVariableLabel, 2, 1, Qt::AlignRight);
-    tubeRadiusVaryVariable = new QvisVariableButton(true, true, true,
-                                                    QvisVariableButton::Scalars, central);
-    connect(tubeRadiusVaryVariable, SIGNAL(activated(const QString &)),
-            this, SLOT(tubeRadiusVaryVariableChanged(const QString&)));
-    lineLayout->addWidget(tubeRadiusVaryVariable, 2, 2);
+    // Tube variable radius.
 
-    tubeRadiusVaryFactorLabel = new QLabel(tr("Factor"), central);
-    lineLayout->addWidget(tubeRadiusVaryFactorLabel, 2, 3, Qt::AlignRight);
-    tubeRadiusVaryFactorEdit = new QLineEdit(central);
-    connect(tubeRadiusVaryFactorEdit, SIGNAL(returnPressed()),
-            this, SLOT(tubeRadiusVaryFactorProcessText()));
-    lineLayout->addWidget(tubeRadiusVaryFactorEdit, 2, 4);
+    tubeRadiusVarEnabled = new QCheckBox(tr("Variable radius"), central);
+    connect(tubeRadiusVarEnabled, SIGNAL(toggled(bool)), this, SLOT(tubeRadiusVarToggled(bool)));
+    lineLayout->addWidget(tubeRadiusVarEnabled, 2, 1, Qt::AlignRight);
+    tubeRadiusVar = new QvisVariableButton(false, true, true,
+                                           QvisVariableButton::Scalars, central);
+    connect(tubeRadiusVar, SIGNAL(activated(const QString &)),
+            this, SLOT(tubeRadiusVarChanged(const QString&)));
+    lineLayout->addWidget(tubeRadiusVar, 2, 2);
+
+    tubeRadiusVarRatioLabel = new QLabel(tr("Max/Min Ratio"), central);
+    lineLayout->addWidget(tubeRadiusVarRatioLabel, 2, 3, Qt::AlignRight);
+    tubeRadiusVarRatio = new QLineEdit(central);
+    connect(tubeRadiusVarRatio, SIGNAL(returnPressed()),
+            this, SLOT(tubeRadiusVarRatioProcessText()));
+    lineLayout->addWidget(tubeRadiusVarRatio, 2, 4);
 
 
-    // ribbonWidth = new QLineEdit(displayGrp);
-    // lineLayout->addWidget(ribbonWidth, 1, 1);
-    // connect(ribbonWidth, SIGNAL(returnPressed()),
-    //         this, SLOT(ribbonWidthProcessText()));
+    tubeResolutionLabel = new QLabel(tr("Resolution"), central);
+    lineLayout->addWidget(tubeResolutionLabel, 0, 3, Qt::AlignRight);
 
-
-
-    // ribbonSizeType = new QComboBox(displayGrp);
-    // ribbonSizeType->addItem(tr("Absolute"), 0);
-    // ribbonSizeType->addItem(tr("Fraction of Bounding Box"), 1);
-    // connect(ribbonSizeType, SIGNAL(activated(int)), this, SLOT(ribbonSizeTypeChanged(int)));
-    // lineLayout->addWidget(ribbonSizeType, 1, 2);
+    tubeResolution = new QSpinBox(central);
+    tubeResolution->setKeyboardTracking(false);
+    tubeResolution->setMinimum(3);
+    tubeResolution->setMaximum(100);
+    lineLayout->addWidget(tubeResolution, 0, 4);
+    connect(tubeResolution, SIGNAL(valueChanged(int)), this, SLOT(tubeResolutionChanged(int)));
 
 
     // Splitter
@@ -647,52 +644,75 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     splitter->setFrameStyle(QFrame::HLine + QFrame::Raised);
     lineLayout->addWidget(splitter, 3, 0, 1, 5);
 
+    // End points
+    tailStyleLabel = new QLabel(tr("Tail"), central);
+    lineLayout->addWidget(tailStyleLabel, 4, 0, Qt::AlignRight);
 
-    endPointTypeLabel = new QLabel(tr("Show end points"), central);
-    lineLayout->addWidget(endPointTypeLabel, 4, 0);
+    tailStyle = new QComboBox(central);
+    tailStyle->addItem(tr("None"), 0);
+    tailStyle->addItem(tr("Sphere"), 1);
+    tailStyle->addItem(tr("Cone"), 2);
+    connect(tailStyle, SIGNAL(activated(int)), this, SLOT(tailStyleChanged(int)));
+    lineLayout->addWidget(tailStyle, 4, 1);
 
-    endPointType = new QComboBox(central);
-    endPointType->addItem(tr("None"), 0);
-    endPointType->addItem(tr("Tails"), 1);
-    endPointType->addItem(tr("Heads"), 2);
-    endPointType->addItem(tr("Both"), 3);
-    connect(endPointType, SIGNAL(activated(int)), this, SLOT(endPointTypeChanged(int)));
-    lineLayout->addWidget(endPointType, 4, 1);
+    headStyleLabel = new QLabel(tr("Head"), central);
+    lineLayout->addWidget(headStyleLabel, 4, 2, Qt::AlignRight);
 
-    // ARS - FIX ME  - FIX ME  - FIX ME  - FIX ME  - FIX ME 
-    endPointTypeLabel->hide();
-    endPointType->hide();
-
-    endPointStyleLabel = new QLabel(tr("Style"), central);
-    lineLayout->addWidget(endPointStyleLabel, 5, 0, Qt::AlignRight);
-
-    endPointStyle = new QComboBox(central);
-    endPointStyle->addItem(tr("Spheres"), 0);
-    endPointStyle->addItem(tr("Cones"), 1);
-    connect(endPointStyle, SIGNAL(activated(int)), this, SLOT(endPointStyleChanged(int)));
-    lineLayout->addWidget(endPointStyle, 5, 1);
-
+    headStyle = new QComboBox(central);
+    headStyle->addItem(tr("None"), 0);
+    headStyle->addItem(tr("Sphere"), 1);
+    headStyle->addItem(tr("Cone"), 2);
+    connect(headStyle, SIGNAL(activated(int)), this, SLOT(headStyleChanged(int)));
+    lineLayout->addWidget(headStyle, 4, 3);
 
     endPointRadiusLabel = new QLabel(tr("Radius"), central);
-    lineLayout->addWidget(endPointRadiusLabel, 6, 0, Qt::AlignRight);
+    lineLayout->addWidget(endPointRadiusLabel, 5, 0, Qt::AlignRight);
 
     endPointRadius = new QLineEdit(central);
-    lineLayout->addWidget(endPointRadius, 6, 1);
+    lineLayout->addWidget(endPointRadius, 5, 1);
     connect(endPointRadius, SIGNAL(returnPressed()), this, SLOT(endPointRadiusProcessText()));
 
     endPointRadiusSizeType = new QComboBox(central);
     endPointRadiusSizeType->addItem(tr("Absolute"), 0);
-    endPointRadiusSizeType->addItem(tr("Fraction of Bounding Box"), 1);
+    endPointRadiusSizeType->addItem(tr("Fraction of bounding box"), 1);
     connect(endPointRadiusSizeType, SIGNAL(activated(int)), this, SLOT(endPointRadiusSizeTypeChanged(int)));
-    lineLayout->addWidget(endPointRadiusSizeType, 6, 2);
+    lineLayout->addWidget(endPointRadiusSizeType, 5, 2);
 
-
-    endPointRatioLabel = new QLabel(tr("Height:Radius Ratio"), central);
-    lineLayout->addWidget(endPointRatioLabel, 7, 0, 1, 2, Qt::AlignRight);
+    endPointRatioLabel = new QLabel(tr("Cone ratio"), central);
+    lineLayout->addWidget(endPointRatioLabel, 5, 3, Qt::AlignRight);
 
     endPointRatio = new QLineEdit(central);
-    lineLayout->addWidget(endPointRatio, 7, 2);
-    connect(endPointRatio, SIGNAL(returnPressed()), this, SLOT(endPointRatioProcessText()));
+    connect(endPointRatio, SIGNAL(returnPressed()),
+            this, SLOT(endPointRatioProcessText()));
+    lineLayout->addWidget(endPointRatio, 5, 4);
+
+    // End point variable radius.
+    endPointRadiusVarEnabled = new QCheckBox(tr("Variable radius"), central);
+    connect(endPointRadiusVarEnabled, SIGNAL(toggled(bool)), this, SLOT(endPointRadiusVarToggled(bool)));
+    lineLayout->addWidget(endPointRadiusVarEnabled, 6, 0, 1, 2, Qt::AlignRight);
+    
+    endPointRadiusVar = new QvisVariableButton(true, true, true,
+                                               QvisVariableButton::Scalars, central);
+    connect(endPointRadiusVar, SIGNAL(activated(const QString &)),
+            this, SLOT(endPointRadiusVarChanged(const QString&)));
+    lineLayout->addWidget(endPointRadiusVar, 6, 2);
+
+    endPointRadiusVarRatioLabel = new QLabel(tr("Max/Min ratio"), central);
+    lineLayout->addWidget(endPointRadiusVarRatioLabel, 6, 3, Qt::AlignRight);
+    endPointRadiusVarRatio = new QLineEdit(central);
+    connect(endPointRadiusVarRatio, SIGNAL(returnPressed()),
+            this, SLOT(endPointRadiusVarRatioProcessText()));
+    lineLayout->addWidget(endPointRadiusVarRatio, 6, 4);
+
+    endPointResolutionLabel = new QLabel(tr("Resolution"), central);
+    lineLayout->addWidget(endPointResolutionLabel, 7, 0, Qt::AlignRight);
+
+    endPointResolution = new QSpinBox(central);
+    endPointResolution->setKeyboardTracking(false);
+    endPointResolution->setMinimum(3);
+    endPointResolution->setMaximum(100);
+    lineLayout->addWidget(endPointResolution, 7, 1);
+    connect(endPointResolution, SIGNAL(valueChanged(int)), this, SLOT(endPointResolutionChanged(int)));
 
     //
     // Create point related controls.
@@ -745,17 +765,19 @@ QvisPseudocolorPlotWindow::CreateGeometryTab(QWidget *pageGeometry)
     renderingLayout->addWidget( renderWireframe, 0,2);
     connect(renderWireframe, SIGNAL(toggled(bool)),
             this, SLOT(renderWireframeChanged(bool)));
+    wireframeRenderColor = new QvisColorButton(central);
+    renderingLayout->addWidget(wireframeRenderColor, 0,3);
+    connect(wireframeRenderColor, SIGNAL(selectedColor(const QColor &)),
+            this, SLOT(wireframeColorChanged(const QColor &)));
 
     renderPoints = new QCheckBox(tr("Points"), central);
-    renderingLayout->addWidget( renderPoints, 0,3);
+    renderingLayout->addWidget( renderPoints, 0,4);
     connect(renderPoints, SIGNAL(toggled(bool)),
             this, SLOT(renderPointsChanged(bool)));
-
-    // ARS - FIX ME  - FIX ME  - FIX ME  - FIX ME  - FIX ME 
-    renderLabel->hide();
-    renderSurfaces->hide();
-    renderWireframe->hide();
-    renderPoints->hide();
+    pointsRenderColor = new QvisColorButton(central);
+    renderingLayout->addWidget(pointsRenderColor, 0,5);
+    connect(pointsRenderColor, SIGNAL(selectedColor(const QColor &)),
+            this, SLOT(pointColorChanged(const QColor &)));
 
     // Create the smoothing options
     renderingLayout->addWidget(new QLabel(tr("Smoothing"), central), 1,0);
@@ -902,6 +924,13 @@ QvisPseudocolorPlotWindow::CreateExtrasTab(QWidget *pageExtras)
 //   Kathleen Biagas, Thu Apr 9 07:19:54 MST 2015
 //   Use helper function DoubleToQString for consistency in formatting across
 //   all windows.
+//
+//   Eric Brugger, Wed Oct 26 09:18:20 PDT 2016
+//   I modified the plot to support independently setting the point style
+//   for the two end points of lines.
+//
+//   Cyrus Harrison, Wed Nov  2 19:09:51 PDT 2016
+//   Remove tubeRadiusVarLabel, the check box used for this includes a label.
 //
 // ****************************************************************************
 
@@ -1117,33 +1146,41 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
               lineWidth->hide();
             }
 
-            if( pcAtts->GetLineType() == PseudocolorAttributes::Tube )
+            if( pcAtts->GetLineType() == PseudocolorAttributes::Tube ||
+                pcAtts->GetLineType() == PseudocolorAttributes::Ribbon )
             {
-              tubeDisplayDensityLabel->show();
-              tubeDisplayDensity->show();
+              if( pcAtts->GetLineType() == PseudocolorAttributes::Tube )
+              {
+                  tubeResolutionLabel->show();
+                  tubeResolution->show();
+              }
+              else if( pcAtts->GetLineType() == PseudocolorAttributes::Ribbon )
+              {
+                  tubeResolutionLabel->hide();
+                  tubeResolution->hide();
+              }
+              
               tubeRadiusLabel->show();
               tubeRadius->show();
               tubeRadiusSizeType->show();
-              
-              tubeRadiusVary->show();
-              tubeRadiusVaryVariableLabel->show();
-              tubeRadiusVaryVariable->show();
-              tubeRadiusVaryFactorLabel->show();
-              tubeRadiusVaryFactorEdit->show();
+              tubeRadiusVarEnabled->show();
+              tubeRadiusVar->show();
+              tubeRadiusVar->show();
+              tubeRadiusVarRatioLabel->show();
+              tubeRadiusVarRatio->show();
             }
             else
             {
-              tubeDisplayDensityLabel->hide();
-              tubeDisplayDensity->hide();
+              tubeResolutionLabel->hide();
+              tubeResolution->hide();
               tubeRadiusLabel->hide();
               tubeRadius->hide();
               tubeRadiusSizeType->hide();
-              
-              tubeRadiusVary->hide();
-              tubeRadiusVaryVariableLabel->hide();
-              tubeRadiusVaryVariable->hide();
-              tubeRadiusVaryFactorLabel->hide();
-              tubeRadiusVaryFactorEdit->hide();
+              tubeRadiusVarEnabled->hide();
+              tubeRadiusVar->hide();
+              tubeRadiusVar->hide();
+              tubeRadiusVarRatioLabel->hide();
+              tubeRadiusVarRatio->hide();
             }
 
             break;
@@ -1160,11 +1197,11 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
             lineWidth->blockSignals(false);
             break;
 
-            // tube
-          case PseudocolorAttributes::ID_tubeDisplayDensity:
-            tubeDisplayDensity->blockSignals(true);
-            tubeDisplayDensity->setValue(pcAtts->GetTubeDisplayDensity());
-            tubeDisplayDensity->blockSignals(false);
+            // tubes and ribbons
+        case PseudocolorAttributes::ID_tubeResolution:
+            tubeResolution->blockSignals(true);
+            tubeResolution->setValue(pcAtts->GetTubeResolution());
+            tubeResolution->blockSignals(false);
             break;
 
         case PseudocolorAttributes::ID_tubeRadiusSizeType:
@@ -1193,82 +1230,102 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
             }
             break;
 
-        case PseudocolorAttributes::ID_varyTubeRadius:
-            tubeRadiusVary->blockSignals(true);
+        case PseudocolorAttributes::ID_tubeRadiusVarEnabled:
+            tubeRadiusVar->blockSignals(true);
 
-            tubeRadiusVary->setChecked( pcAtts->GetVaryTubeRadius() );
-            tubeRadiusVaryVariableLabel->setEnabled( pcAtts->GetVaryTubeRadius() );
-            tubeRadiusVaryVariable->setEnabled( pcAtts->GetVaryTubeRadius() );
-            tubeRadiusVaryFactorLabel->setEnabled( pcAtts->GetVaryTubeRadius() );
-            tubeRadiusVaryFactorEdit->setEnabled( pcAtts->GetVaryTubeRadius() );              
-            tubeRadiusVary->blockSignals(false);
+            tubeRadiusVarEnabled->setChecked( pcAtts->GetTubeRadiusVarEnabled() );
+            tubeRadiusVar->setEnabled( pcAtts->GetTubeRadiusVarEnabled() );
+            tubeRadiusVarRatioLabel->setEnabled( pcAtts->GetTubeRadiusVarEnabled() );
+            tubeRadiusVarRatio->setEnabled( pcAtts->GetTubeRadiusVarEnabled() );
+            tubeRadiusVar->blockSignals(false);
 
-        case PseudocolorAttributes::ID_varyTubeRadiusVariable:
-            tubeRadiusVaryVariable->blockSignals(true);
-            tubeRadiusVaryVariable->setText(pcAtts->GetVaryTubeRadiusVariable().c_str());
-            tubeRadiusVaryVariable->blockSignals(false);
+        case PseudocolorAttributes::ID_tubeRadiusVar:
+            tubeRadiusVar->blockSignals(true);
+            tubeRadiusVar->setText(pcAtts->GetTubeRadiusVar().c_str());
+            tubeRadiusVar->blockSignals(false);
             break;
 
-        case PseudocolorAttributes::ID_varyTubeRadiusFactor:
-            tubeRadiusVaryFactorEdit->blockSignals(true);
-            tubeRadiusVaryFactorEdit->setText(DoubleToQString(pcAtts->GetVaryTubeRadiusFactor()));
-            tubeRadiusVaryFactorEdit->blockSignals(false);
+        case PseudocolorAttributes::ID_tubeRadiusVarRatio:
+            tubeRadiusVarRatio->blockSignals(true);
+            tubeRadiusVarRatio->setText(DoubleToQString(pcAtts->GetTubeRadiusVarRatio()));
+            tubeRadiusVarRatio->blockSignals(false);
             break;
 
             // endpoints
-        case PseudocolorAttributes::ID_endPointType:
-            endPointType->blockSignals(true);
-            endPointType->setCurrentIndex(int(pcAtts->GetEndPointType()));
-            endPointType->blockSignals(false);
-            
-            if( bool(pcAtts->GetEndPointType()) )
-            {
-              endPointStyleLabel->show();
-              endPointStyle->show();
-              endPointRadiusSizeType->show();
-              endPointRadiusLabel->show();
-              endPointRadius->show();
-              
-              endPointRatioLabel->show();
-              endPointRatio->show();
-            }
-            else
-            {
-              endPointStyleLabel->hide();
-              endPointStyle->hide();
-              endPointRadiusSizeType->hide();
-              endPointRadiusLabel->hide();
-              endPointRadius->hide();         
-              endPointRatioLabel->hide();
-              endPointRatio->hide();
-            }
-
-            endPointStyleLabel->setEnabled( bool(pcAtts->GetEndPointType()) );
-            endPointStyle->setEnabled( bool(pcAtts->GetEndPointType()) );
-            endPointRadiusSizeType->setEnabled( bool(pcAtts->GetEndPointType()) );
-            endPointRadiusLabel->setEnabled( bool(pcAtts->GetEndPointType()) );
-            endPointRadius->setEnabled( bool(pcAtts->GetEndPointType()) );
-
-            endPointRatioLabel->setEnabled( bool(pcAtts->GetEndPointType()) );
-            endPointRatio->setEnabled( bool(pcAtts->GetEndPointType()) );
-
+        case PseudocolorAttributes::ID_endPointResolution:
+            endPointResolution->blockSignals(true);
+            endPointResolution->setValue(pcAtts->GetEndPointResolution());
+            endPointResolution->blockSignals(false);
             break;
 
-        case PseudocolorAttributes::ID_endPointStyle:
-            endPointStyle->blockSignals(true);
-            endPointStyle->setCurrentIndex(int(pcAtts->GetEndPointStyle()));
-            endPointStyle->blockSignals(false);
-
-            if( pcAtts->GetEndPointStyle() == PseudocolorAttributes::Cones )
+        case PseudocolorAttributes::ID_tailStyle:
+        case PseudocolorAttributes::ID_headStyle:
+            tailStyle->blockSignals(true);
+            tailStyle->setCurrentIndex(int(pcAtts->GetTailStyle()));
+            tailStyle->blockSignals(false);
+            headStyle->blockSignals(true);
+            headStyle->setCurrentIndex(int(pcAtts->GetHeadStyle()));
+            headStyle->blockSignals(false);
+            
             {
-              endPointRatioLabel->show();
-              endPointRatio->show();
+            bool showEndPointAttributes =
+                pcAtts->GetTailStyle() != PseudocolorAttributes::None ||
+                pcAtts->GetHeadStyle() != PseudocolorAttributes::None;
+            if (showEndPointAttributes)
+            {
+                endPointRadiusLabel->show();
+                endPointRadius->show();
+                endPointRadiusSizeType->show();
+                endPointRatioLabel->show();
+                endPointRatio->show();
+
+                endPointRadiusVarEnabled->show();
+                endPointRadiusVar->show();
+                endPointRadiusVarRatioLabel->show();
+                endPointRadiusVarRatio->show();
+
+                endPointResolutionLabel->show();
+                endPointResolution->show();
             }
             else
             {
-              endPointRatioLabel->hide();
-              endPointRatio->hide();
+                endPointRadiusLabel->hide();
+                endPointRadius->hide();         
+                endPointRadiusSizeType->hide();
+                endPointRatioLabel->hide();
+                endPointRatio->hide();
+
+                endPointRadiusVarEnabled->hide();
+                endPointRadiusVar->hide();
+                endPointRadiusVarRatioLabel->hide();
+                endPointRadiusVarRatio->hide();
+
+                endPointResolutionLabel->hide();
+                endPointResolution->hide();
             }
+
+            if (pcAtts->GetTailStyle() == PseudocolorAttributes::Cones ||
+                pcAtts->GetHeadStyle() == PseudocolorAttributes::Cones)
+            {
+                endPointRatioLabel->show();
+                endPointRatio->show();
+            }
+            else
+            {
+                endPointRatioLabel->hide();
+                endPointRatio->hide();
+            }
+
+            endPointRadiusLabel->setEnabled(showEndPointAttributes);
+            endPointRadius->setEnabled(showEndPointAttributes);
+            endPointRadiusSizeType->setEnabled(showEndPointAttributes);
+            endPointRatioLabel->setEnabled(showEndPointAttributes);
+            endPointRatio->setEnabled(showEndPointAttributes);
+
+            endPointResolutionLabel->setEnabled(showEndPointAttributes);
+            endPointResolution->setEnabled(showEndPointAttributes);
+            }
+
             break;
 
         case PseudocolorAttributes::ID_endPointRadiusSizeType:
@@ -1300,6 +1357,27 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
             endPointRatio->setText(DoubleToQString(pcAtts->GetEndPointRatio()));
             break;
 
+        case PseudocolorAttributes::ID_endPointRadiusVarEnabled:
+            endPointRadiusVar->blockSignals(true);
+
+            endPointRadiusVarEnabled->setChecked( pcAtts->GetEndPointRadiusVarEnabled() );
+            endPointRadiusVar->setEnabled( pcAtts->GetEndPointRadiusVarEnabled() );
+            endPointRadiusVarRatioLabel->setEnabled( pcAtts->GetEndPointRadiusVarEnabled() );
+            endPointRadiusVarRatio->setEnabled( pcAtts->GetEndPointRadiusVarEnabled() );
+            endPointRadiusVar->blockSignals(false);
+
+        case PseudocolorAttributes::ID_endPointRadiusVar:
+            endPointRadiusVar->blockSignals(true);
+            endPointRadiusVar->setText(pcAtts->GetEndPointRadiusVar().c_str());
+            endPointRadiusVar->blockSignals(false);
+            break;
+
+        case PseudocolorAttributes::ID_endPointRadiusVarRatio:
+            endPointRadiusVarRatio->blockSignals(true);
+            endPointRadiusVarRatio->setText(DoubleToQString(pcAtts->GetEndPointRadiusVarRatio()));
+            endPointRadiusVarRatio->blockSignals(false);
+            break;
+
             // smoothing
         case PseudocolorAttributes::ID_smoothingLevel:
             smoothingLevelButtons->blockSignals(true);
@@ -1313,17 +1391,40 @@ QvisPseudocolorPlotWindow::UpdateWindow(bool doAll)
             renderSurfaces->setChecked( pcAtts->GetRenderSurfaces() );
             renderSurfaces->blockSignals(false);
             break;
-            // render surface
+            // render wireframe
         case PseudocolorAttributes::ID_renderWireframe:
             renderWireframe->blockSignals(true);
             renderWireframe->setChecked( pcAtts->GetRenderWireframe() );
             renderWireframe->blockSignals(false);
             break;
-            // render surface
+        case PseudocolorAttributes::ID_wireframeColor:
+            { // new scope
+            QColor temp(pcAtts->GetWireframeColor().Red(),
+                        pcAtts->GetWireframeColor().Green(),
+                        pcAtts->GetWireframeColor().Blue());
+            wireframeRenderColor->blockSignals(true);
+            wireframeRenderColor->setButtonColor(temp);
+            wireframeRenderColor->blockSignals(false);
+            wireframeRenderColor->setEnabled(pcAtts->GetRenderWireframe());
+            }
+            break;
+
+            // render point
         case PseudocolorAttributes::ID_renderPoints:
             renderPoints->blockSignals(true);
             renderPoints->setChecked( pcAtts->GetRenderPoints() );
             renderPoints->blockSignals(false);
+            pointsRenderColor->setEnabled(pcAtts->GetRenderPoints());
+            break;
+        case PseudocolorAttributes::ID_pointColor:
+            { // new scope
+            QColor temp(pcAtts->GetPointColor().Red(),
+                        pcAtts->GetPointColor().Green(),
+                        pcAtts->GetPointColor().Blue());
+            pointsRenderColor->blockSignals(true);
+            pointsRenderColor->setButtonColor(temp);
+            pointsRenderColor->blockSignals(false);
+            }
             break;
 
             // legend
@@ -1455,12 +1556,12 @@ QvisPseudocolorPlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // tube density
-    if (which_widget == PseudocolorAttributes::ID_tubeDisplayDensity|| doAll)
+    // tube resolution
+    if (which_widget == PseudocolorAttributes::ID_tubeResolution|| doAll)
     {
         // This can only be an integer, so no error checking is needed.
-        int val = tubeDisplayDensity->value();
-        pcAtts->SetTubeDisplayDensity(val);
+        if (tubeResolution->value() != pcAtts->GetTubeResolution())
+            pcAtts->SetTubeResolution(tubeResolution->value());
     }
 
     // tube radius
@@ -1469,7 +1570,16 @@ QvisPseudocolorPlotWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(tubeRadius, val))
-            pcAtts->SetTubeRadiusAbsolute(val);
+        {
+            if (val > 0.0)
+              pcAtts->SetTubeRadiusAbsolute(val);
+            else
+            {
+                ResettingError(tr("Tube radius must be > 0.0"),
+                               DoubleToQString(pcAtts->GetTubeRadiusAbsolute()));
+                pcAtts->SetTubeRadiusAbsolute(pcAtts->GetTubeRadiusAbsolute());
+            }
+        }
         else
         {
             ResettingError(tr("tube radius"),
@@ -1482,7 +1592,16 @@ QvisPseudocolorPlotWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(tubeRadius, val))
-            pcAtts->SetTubeRadiusBBox(val);
+        {
+            if (val > 0.0)
+              pcAtts->SetTubeRadiusBBox(val);
+            else
+            {
+                ResettingError(tr("Tube radius must be > 0.0"),
+                               DoubleToQString(pcAtts->GetTubeRadiusBBox()));
+                pcAtts->SetTubeRadiusBBox(pcAtts->GetTubeRadiusBBox());
+            }
+        }
         else
         {
             ResettingError(tr("tube radius"),
@@ -1491,40 +1610,56 @@ QvisPseudocolorPlotWindow::GetCurrentValues(int which_widget)
         }
     }
 
-    // tube radius vary factor
-    if (which_widget == PseudocolorAttributes::ID_varyTubeRadiusFactor || doAll)
+    // tube radius variable Ratio
+    if (which_widget == PseudocolorAttributes::ID_tubeRadiusVarRatio || doAll)
     {
         double val;
-        bool res = LineEditGetDouble(tubeRadiusVaryFactorEdit, val);
-        if (res)
+        if (LineEditGetDouble(tubeRadiusVarRatio, val))
         {
             if (val >= 1.0)
-                pcAtts->SetVaryTubeRadiusFactor(val);
+                pcAtts->SetTubeRadiusVarRatio(val);
             else
             {
-                ResettingError(tr("Tube vary radius factor must be >= 1.0"),
-                               DoubleToQString(pcAtts->GetVaryTubeRadiusFactor()));
-                pcAtts->SetVaryTubeRadiusFactor(pcAtts->GetVaryTubeRadiusFactor());
+                ResettingError(tr("Tube variable radius ratio must be >= 1.0"),
+                               DoubleToQString(pcAtts->GetTubeRadiusVarRatio()));
+                pcAtts->SetTubeRadiusVarRatio(pcAtts->GetTubeRadiusVarRatio());
             }
         }
         else
         {
-            ResettingError(tr("Tube vary radius factor"),
-                DoubleToQString(pcAtts->GetVaryTubeRadiusFactor()));
-            pcAtts->SetVaryTubeRadiusFactor(pcAtts->GetVaryTubeRadiusFactor());
+            ResettingError(tr("Tube variable radius ratio"),
+                DoubleToQString(pcAtts->GetTubeRadiusVarRatio()));
+            pcAtts->SetTubeRadiusVarRatio(pcAtts->GetTubeRadiusVarRatio());
         }
     }
 
-    // endPoint radius
+    // End point resolution
+    if (which_widget == PseudocolorAttributes::ID_endPointResolution|| doAll)
+    {
+        // This can only be an integer, so no error checking is needed.
+        if (endPointResolution->value() != pcAtts->GetEndPointResolution())
+            pcAtts->SetEndPointResolution(endPointResolution->value());
+    }
+
+    // End point radius
     if ((which_widget == PseudocolorAttributes::ID_endPointRadiusAbsolute || doAll)
         && pcAtts->GetEndPointRadiusSizeType() == PseudocolorAttributes::Absolute)
     {
         double val;
         if(LineEditGetDouble(endPointRadius, val))
-            pcAtts->SetEndPointRadiusAbsolute(val);
+        {
+            if (val > 0.0)
+                pcAtts->SetEndPointRadiusAbsolute(val);
+            else
+            {
+                ResettingError(tr("End point radius must be > 0.0"),
+                               DoubleToQString(pcAtts->GetEndPointRadiusAbsolute()));
+                pcAtts->SetEndPointRadiusAbsolute(pcAtts->GetEndPointRadiusAbsolute());
+            }
+        }
         else
         {
-            ResettingError(tr("endPoint radius"),
+            ResettingError(tr("End point radius"),
                 DoubleToQString(pcAtts->GetEndPointRadiusAbsolute()));
             pcAtts->SetEndPointRadiusAbsolute(pcAtts->GetEndPointRadiusAbsolute());
         }
@@ -1535,10 +1670,19 @@ QvisPseudocolorPlotWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(endPointRadius, val))
-            pcAtts->SetEndPointRadiusBBox(val);
+        {
+            if (val > 0.0)
+                pcAtts->SetEndPointRadiusBBox(val);
+            else
+            {
+                ResettingError(tr("End point radius must be > 0.0"),
+                               DoubleToQString(pcAtts->GetEndPointRadiusBBox()));
+                pcAtts->SetEndPointRadiusBBox(pcAtts->GetEndPointRadiusBBox());
+            }
+        }
         else
         {
-            ResettingError(tr("endPoint radius"),
+            ResettingError(tr("End point radius"),
                 DoubleToQString(pcAtts->GetEndPointRadiusBBox()));
             pcAtts->SetEndPointRadiusBBox(pcAtts->GetEndPointRadiusBBox());
         }
@@ -1548,12 +1692,43 @@ QvisPseudocolorPlotWindow::GetCurrentValues(int which_widget)
     {
         double val;
         if(LineEditGetDouble(endPointRatio, val))
-            pcAtts->SetEndPointRatio(val);
+        {
+            if (val > 0.0)
+              pcAtts->SetEndPointRatio(val);
+            else
+            {
+              ResettingError(tr("End point height ratio must be > 0.0"),
+                             DoubleToQString(pcAtts->GetEndPointRatio()));
+              pcAtts->SetEndPointRatio(pcAtts->GetEndPointRatio());
+            }
+        }
         else
         {
             ResettingError(tr("endPoint ratio"),
                 DoubleToQString(pcAtts->GetEndPointRatio()));
             pcAtts->SetEndPointRatio(pcAtts->GetEndPointRatio());
+        }
+    }
+    // End point radius variable ratio
+    if (which_widget == PseudocolorAttributes::ID_endPointRadiusVarRatio || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(endPointRadiusVarRatio, val))
+        {
+            if (val >= 1.0)
+                pcAtts->SetEndPointRadiusVarRatio(val);
+            else
+            {
+                ResettingError(tr("EndPoint variable radius ratio must be >= 1.0"),
+                               DoubleToQString(pcAtts->GetEndPointRadiusVarRatio()));
+                pcAtts->SetEndPointRadiusVarRatio(pcAtts->GetEndPointRadiusVarRatio());
+            }
+        }
+        else
+        {
+            ResettingError(tr("EndPoint variable radius ratio"),
+                DoubleToQString(pcAtts->GetEndPointRadiusVarRatio()));
+            pcAtts->SetEndPointRadiusVarRatio(pcAtts->GetEndPointRadiusVarRatio());
         }
     }
     // Do the point size value and point size var value.
@@ -1986,9 +2161,9 @@ QvisPseudocolorPlotWindow::lineWidthChanged(int newWidth)
 
 
 void
-QvisPseudocolorPlotWindow::tubeDisplayDensityChanged(int val)
+QvisPseudocolorPlotWindow::tubeResolutionChanged(int val)
 {
-    pcAtts->SetTubeDisplayDensity(val);
+    pcAtts->SetTubeResolution(val);
     Apply();
 }
 
@@ -2009,46 +2184,52 @@ QvisPseudocolorPlotWindow::tubeRadiusSizeTypeChanged(int v)
 }
 
 void
-QvisPseudocolorPlotWindow::tubeRadiusVaryChanged(bool val)
+QvisPseudocolorPlotWindow::tubeRadiusVarToggled(bool val)
 {
-    pcAtts->SetVaryTubeRadius( val );
+    pcAtts->SetTubeRadiusVarEnabled( val );
     Apply();
 }
 
 void
-QvisPseudocolorPlotWindow::tubeRadiusVaryVariableChanged(const QString &var)
+QvisPseudocolorPlotWindow::tubeRadiusVarChanged(const QString &var)
 {
-    pcAtts->SetVaryTubeRadiusVariable(var.toStdString());
+    pcAtts->SetTubeRadiusVar(var.toStdString());
     Apply();
 }
 
 void
-QvisPseudocolorPlotWindow::tubeRadiusVaryFactorProcessText()
+QvisPseudocolorPlotWindow::tubeRadiusVarRatioProcessText()
 {
-    GetCurrentValues(PseudocolorAttributes::ID_varyTubeRadiusFactor);
+    GetCurrentValues(PseudocolorAttributes::ID_tubeRadiusVarRatio);
     Apply();
 }
 
 void
-QvisPseudocolorPlotWindow::endPointTypeChanged(int newType)
+QvisPseudocolorPlotWindow::tailStyleChanged(int newStyle)
 {
-    pcAtts->SetEndPointType((PseudocolorAttributes::EndPointType)newType);
+    pcAtts->SetTailStyle((PseudocolorAttributes::EndPointStyle)newStyle);
     Apply();
 }
 
 void
-QvisPseudocolorPlotWindow::endPointStyleChanged(int newStyle)
+QvisPseudocolorPlotWindow::headStyleChanged(int newStyle)
 {
-    pcAtts->SetEndPointStyle((PseudocolorAttributes::EndPointStyle)newStyle);
+    pcAtts->SetHeadStyle((PseudocolorAttributes::EndPointStyle)newStyle);
     Apply();
 }
-
 
 void
 QvisPseudocolorPlotWindow::endPointRadiusProcessText()
 {
     GetCurrentValues(PseudocolorAttributes::ID_endPointRadiusAbsolute);
     GetCurrentValues(PseudocolorAttributes::ID_endPointRadiusBBox);
+    Apply();
+}
+
+void
+QvisPseudocolorPlotWindow::endPointResolutionChanged(int val)
+{
+    pcAtts->SetEndPointResolution(val);
     Apply();
 }
 
@@ -2066,6 +2247,26 @@ QvisPseudocolorPlotWindow::endPointRadiusSizeTypeChanged(int v)
     Apply();
 }
 
+void
+QvisPseudocolorPlotWindow::endPointRadiusVarToggled(bool val)
+{
+    pcAtts->SetEndPointRadiusVarEnabled( val );
+    Apply();
+}
+
+void
+QvisPseudocolorPlotWindow::endPointRadiusVarChanged(const QString &var)
+{
+    pcAtts->SetEndPointRadiusVar(var.toStdString());
+    Apply();
+}
+
+void
+QvisPseudocolorPlotWindow::endPointRadiusVarRatioProcessText()
+{
+    GetCurrentValues(PseudocolorAttributes::ID_endPointRadiusVarRatio);
+    Apply();
+}
 
 
 // ****************************************************************************
@@ -2105,6 +2306,7 @@ void
 QvisPseudocolorPlotWindow::renderWireframeChanged(bool val)
 {
     pcAtts->SetRenderWireframe(val);
+    wireframeRenderColor->setEnabled(val);
     SetUpdate(false);
     Apply();
 }
@@ -2113,6 +2315,7 @@ void
 QvisPseudocolorPlotWindow::renderPointsChanged(bool val)
 {
     pcAtts->SetRenderPoints(val);
+    pointsRenderColor->setEnabled(val);
     SetUpdate(false);
     Apply();
 }
@@ -2128,5 +2331,23 @@ void
 QvisPseudocolorPlotWindow::lightingToggled(bool val)
 {
     pcAtts->SetLightingFlag(val);
+    Apply();
+}
+
+void
+QvisPseudocolorPlotWindow::wireframeColorChanged(const QColor &color)
+{
+    ColorAttribute temp(color.red(), color.green(), color.blue());
+    pcAtts->SetWireframeColor(temp);
+    SetUpdate(false);
+    Apply();
+}
+
+void
+QvisPseudocolorPlotWindow::pointColorChanged(const QColor &color)
+{
+    ColorAttribute temp(color.red(), color.green(), color.blue());
+    pcAtts->SetPointColor(temp);
+    SetUpdate(false);
     Apply();
 }

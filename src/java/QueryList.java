@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -78,7 +78,7 @@ public class QueryList extends AttributeSubject
     public final static int WINDOWTYPE_SHAPELETSDECOMP = 10;
     public final static int WINDOWTYPE_XRAYIMAGE = 11;
     public final static int WINDOWTYPE_LINESAMPLERINFO = 12;
-    public final static int WINDOWTYPE_STREAMLINEINFO = 13;
+    public final static int WINDOWTYPE_INTEGRALCURVEINFO = 13;
     public final static int WINDOWTYPE_PICK = 14;
     public final static int WINDOWTYPE_LINEOUT = 15;
     public final static int WINDOWTYPE_COMPACTNESS = 16;
