@@ -58,8 +58,11 @@
 #include <avtParallel.h>
 #include <avtIdentifierSelection.h>
 
+#include <DebugStream.h>
+
 #include <map>
 #include <string>
+#include <algorithm>
 
 // ****************************************************************************
 //  Method: avtPersistentParticlesFilter constructor
@@ -206,10 +209,24 @@ avtPersistentParticlesFilter::Execute(void)
         (! GetInput()->GetInfo().GetValidity().GetNodesPreserved()) )
     {
         std::string msg("The PersistentParticle operator is implemented "
-                        "such that it must be the first operator applied."
-                        "  Please try again, moving all operators after "
-                        "PersistentParticles in the pipeline.");
-        EXCEPTION1(ImproperUseException, msg);
+                        "such that upstream operators must preserve the "
+                        "nodes, zones, and spatial meta data. The following "
+                        "were NOT preseved: " );
+        
+        if(! GetInput()->GetInfo().GetValidity().GetSpatialMetaDataPreserved())
+          msg += std::string("spatial meta data - ");
+        if(! GetInput()->GetInfo().GetValidity().GetZonesPreserved())
+          msg += std::string("zones - ");
+        if(! GetInput()->GetInfo().GetValidity().GetNodesPreserved())
+          msg += std::string("nodes - ");
+
+        msg += std::string("Please try again, by moving all operators after "
+                           "PersistentParticles in the pipeline. "
+                           "If you have applied a named selection this "
+                           "warning can, in most cases be safely ignored.");
+        
+        avtCallback::IssueWarning(msg.c_str());
+//      EXCEPTION1(ImproperUseException, msg);
     }
 
     int numStates = GetInput()->GetInfo().GetAttributes().GetNumStates(); 
@@ -248,7 +265,7 @@ avtPersistentParticlesFilter::Execute(void)
     }
 
     // If the path type is relative to the current time slider state
-    else //if( atts.GetStopPathType()  == PersistentParticlesAttributes::Relative )
+    else //if( atts.GetStopPathType() == PersistentParticlesAttributes::Relative )
     {
         int stopOffset = atts.GetStopIndex();
         stopTimeSlice = activeTimeStep + stopOffset;
@@ -267,18 +284,18 @@ avtPersistentParticlesFilter::Execute(void)
     if (stopTimeSlice >= numStates)
       stopTimeSlice = numStates-1;
 
-    //Update the start and end frame as well as the stride.
+    // Update the start and end frame as well as the stride.
     SetStartFrame(startTimeSlice);
     SetEndFrame(stopTimeSlice);
     SetStride( atts.GetStride() );
 
-    //Clean-up the current output dataset if necessary
+    // Clean-up the current output dataset if necessary
     if( particlePathData ) {
         particlePathData->Delete();
         particlePathData = NULL;
     }
 
-    //Iterate over the time series
+    // Iterate over the time series
     avtExecuteThenTimeLoopFilter::Execute();
 }
 
@@ -374,7 +391,7 @@ avtPersistentParticlesFilter::Iterate(int ts, avtDataTree_p tree)
 void
 avtPersistentParticlesFilter::IterateMergeData(int ts, avtDataTree_p tree)
 {
-    //Merge the datasets but do not connect the particles
+    // Merge the datasets but do not connect the particles
     trees.push_back(tree);
 
     //Define whether any dimensions needs to be replaced
@@ -382,21 +399,22 @@ avtPersistentParticlesFilter::IterateMergeData(int ts, avtDataTree_p tree)
     bool replaceY = (atts.GetTraceVariableY() != "default");
     bool replaceZ = (atts.GetTraceVariableZ() != "default");
 
-    //We are done if data only needs to be merged
-    if( !(replaceX || replaceY || replaceZ) ){
+    // We are done if data only needs to be merged
+    if( !(replaceX || replaceY || replaceZ) ) {
         return;
     }
 
-    //If data is only merged (i.e. no paths are computed) but at least one
-    //variable needs to be replaced, then replace the variable and return.
+    // If data is only merged (i.e. no paths are computed) but at least one
+    // variable needs to be replaced, then replace the variable and return.
 
-    //Ask for the dataset
-    vtkDataSet **dsets;
+    // Ask for the dataset
     int nds;
-    dsets = tree->GetAllLeaves(nds);
+    vtkDataSet **dsets = tree->GetAllLeaves(nds);
+
     int nds2 = nds;
     SumIntAcrossAllProcessors(nds2);
-    if (nds2 < 1 || nds > 1)
+
+    if ( 1 < nds || nds2 < 1)
     {
         // Free the memory from the GetAllLeaves function call.
         delete [] dsets;
@@ -414,48 +432,55 @@ avtPersistentParticlesFilter::IterateMergeData(int ts, avtDataTree_p tree)
         return;
     }
 
-    vtkDataSet *currDs = dsets[0];
     // Free the memory from the GetAllLeaves function call.
     delete [] dsets;
 
+    vtkDataSet *currDs = dsets[0];
     vtkPointSet *uGrid = vtkPointSet::SafeDownCast(currDs);
+
     if (uGrid == 0)
     {
-        EXCEPTION1(ImproperUseException, "avtPersistentParticlesFilter only supports "
-                                         "vtkPointSet data");
+        EXCEPTION1(ImproperUseException,
+                   "avtPersistentParticlesFilter only supports "
+                   "vtkPointSet data");
     }
 
-    //Get the point data from the current timestep
-    vtkPoints *currPoints = uGrid->GetPoints();
-
-    //Get the data to be used as x variable
     vtkDataArray *currXData = 0;
+    vtkDataArray *currYData = 0;
+    vtkDataArray *currZData = 0;
+
+    // Get the data to be used as x variable
     if( replaceX ){
-      currXData = uGrid->GetPointData()->GetArray( atts.GetTraceVariableX().c_str() );
+      currXData =
+        uGrid->GetPointData()->GetArray( atts.GetTraceVariableX().c_str() );
       if( currXData == 0 )
         EXCEPTION1(ImproperUseException, "X coordinate variable not found.");
 
     }
-    //Get the data to be used as y variable
-    vtkDataArray *currYData = 0;
+    // Get the data to be used as y variable
     if( replaceY  ){
-      currYData = uGrid->GetPointData()->GetArray( atts.GetTraceVariableY().c_str() );
+      currYData =
+        uGrid->GetPointData()->GetArray( atts.GetTraceVariableY().c_str() );
       if( currYData == 0 )
         EXCEPTION1(ImproperUseException, "Y coordinate variable not found.");
     }
-    //Get the data to be used as z variable
-    vtkDataArray *currZData = 0;
+    // Get the data to be used as z variable
     if( atts.GetTraceVariableZ() != "default" ){
-      currZData = uGrid->GetPointData()->GetArray( atts.GetTraceVariableZ().c_str() );
+      currZData =
+        uGrid->GetPointData()->GetArray( atts.GetTraceVariableZ().c_str() );
       if( currZData == 0 )
         EXCEPTION1(ImproperUseException, "Z coordinate variable not found.");
     }
 
-    //Replace the requested data dimensions
+    // Get the point data from the current timestep
+    vtkPoints *currPoints = uGrid->GetPoints();
+
+    // Replace the requested data dimensions
     vtkIdType nPoints = uGrid->GetNumberOfPoints();
+
     for (vtkIdType i = 0; i < nPoints; ++i)
     {
-       //Get the next point and update its coordinates if necessary
+       // Get the next point and update its coordinates if necessary
        double* nextPoint = currPoints->GetPoint(i);
        if (replaceX)
            nextPoint[0] = currXData->GetTuple1(i);
@@ -512,12 +537,13 @@ avtPersistentParticlesFilter::IterateTraceData(int ts, avtDataTree_p tree)
     bool showPoints = atts.GetShowPoints();
 
     //Ask for the dataset
-    vtkDataSet **dsets;
     int nds;
-    dsets = tree->GetAllLeaves(nds);
+    vtkDataSet **dsets = tree->GetAllLeaves(nds);
+
     int nds2 = nds;
     SumIntAcrossAllProcessors(nds2);
-    if (nds2 < 1 || nds > 1)
+
+    if ( 1 < nds || nds2 < 1 )
     {
         // Free the memory from the GetAllLeaves function call.
         delete [] dsets;
@@ -527,104 +553,177 @@ avtPersistentParticlesFilter::IterateTraceData(int ts, avtDataTree_p tree)
     }
 
     if (nds == 0)
-    {
-        // Free the memory from the GetAllLeaves function call.
-        delete [] dsets;
-
         haveData = false;
+
+    vtkDataSet *currDs = 0;
+    vtkPointSet *uGrid = 0;
+    vtkPoints *currPoints = 0;
+
+    vtkPointData *currPointData = 0;
+    vtkCellData *currCellData = 0;
+    
+    int component = 0;
+    vtkDataArray *currIndexVar = 0;
+    vtkDataArray *currXData = 0;
+    vtkDataArray *currYData = 0;
+    vtkDataArray *currZData = 0;
+
+    if( haveData )
+    {
+      currDs = dsets[0];
+      uGrid = vtkPointSet::SafeDownCast(currDs);
+
+      if (uGrid == 0)
+      {
+        EXCEPTION1(ImproperUseException,
+                   "avtPersistentParticlesFilter only supports "
+                   "vtkPointSets data");
+      }
+
+      // Get the point data from the current timestep
+      currPoints = uGrid->GetPoints();
+
+      // Get the current PointData
+      currPointData = uGrid->GetPointData();
+      currCellData  = uGrid->GetCellData();
+      
+      // Get the ID variable. Use the mainVariable if default is specified
+      if( atts.GetIndexVariable() != "default" ) {
+        currIndexVar =
+          uGrid->GetPointData()->GetArray( atts.GetIndexVariable().c_str() );
+      }
+      else
+      {
+        currIndexVar = uGrid->GetPointData()->GetArray( mainVariable.c_str() );
+
+        // The main variable was not found. It must have been a mesh
+        // name so try the node numbers.
+        if(currIndexVar == 0)
+        {
+            currIndexVar =
+              uGrid->GetPointData()->GetArray( "avtOriginalNodeNumbers" );
+            component = 1;
+        }
+      }
+      
+      if (currIndexVar == 0) {
+        EXCEPTION1(ImproperUseException, "Index variable not found.");
+      }
+
+      // Get the data to be used as x variable
+      if( replaceX ) {
+        currXData =
+          uGrid->GetPointData()->GetArray( atts.GetTraceVariableX().c_str() );
+        if( currXData == 0 )
+          EXCEPTION1(ImproperUseException, "X coordinate variable not found.");
+      }
+      // Get the data to be used as y variable
+      if( replaceY  ) {
+        currYData =
+          uGrid->GetPointData()->GetArray( atts.GetTraceVariableY().c_str() );
+        if( currYData == 0 )
+          EXCEPTION1(ImproperUseException, "Y coordinate variable not found.");
+      }
+      // Get the data to be used as z variable
+      if( atts.GetTraceVariableZ() != "default" ) {
+        currZData =
+          uGrid->GetPointData()->GetArray( atts.GetTraceVariableZ().c_str() );
+        if( currZData == 0 )
+          EXCEPTION1(ImproperUseException, "Z coordinate variable not found.");
+      }
+    
+      // Create a new output dataset if needed.  If first timestep or if
+      // output dataset has not been created yet
+      if( !particlePathData ) {
+        //Create and initalize the new dataset
+        particlePathData = vtkUnstructuredGrid::New();
+        particlePathData->SetPoints(vtkPoints::New(currPoints->GetDataType()));
+        particlePathData->GetPointData()->ShallowCopy(uGrid->GetPointData());
+        particlePathData->GetCellData()->ShallowCopy(uGrid->GetCellData());
+      }
+    }
+
+    // Free the memory from the GetAllLeaves function call.
+    delete [] dsets;
+    
+#ifdef PARALLEL
+    int nProcs = PAR_Size();
+    int rank   = PAR_Rank();
+#else
+    int nProcs = 1;
+    int rank   = 0;
+#endif
+    // Parallel
+
+    // Points can be scattered across ranks and there is no gaurantee
+    // that a point will be on the same rank with each times step. As
+    // such, all of the data must be collected with each rank
+    // connecting the same points each time step.
+
+    // Note this ifdef can be removed with the code used in serial but
+    // there is no need to globalize the data.
+#ifdef PARALLEL
+    int haveDataAcrossAll = haveData;
+    
+    SumIntAcrossAllProcessors(haveDataAcrossAll);
+
+    int globalSize, myOffset, nCellComps, nPointComps;
+    int *numPerProc = new int[nProcs];
+    int *allIndexes;
+    double *allIds, *allPoints, *allPointData, *allCellData;
+
+    // Globalize all of the ids and their indexes into the array.
+    ComputeGlobalSizeAndOffset( currIndexVar, numPerProc,
+                                globalSize, myOffset );
+    
+    // The ids are sorted and have their original indexes.
+    GlobalizeData( currIndexVar, component, globalSize, myOffset,
+                   allIds, allIndexes);
+
+    // Globalize all of the points.
+    GlobalizeData( currPoints, currXData, currYData, currZData,
+                   globalSize, myOffset, allPoints);
+
+    // Globalize all of the point and cell data.
+    GlobalizeData( currPointData, globalSize, myOffset, nPointComps, allPointData);
+    GlobalizeData( currCellData,  globalSize, myOffset, nCellComps, allCellData);
+
+    int myStart, myEnd, total, nParticles = globalSize;
+    
+    GetDecomp( numPerProc, myStart, myEnd, total );
+
+    delete [] numPerProc;
+    
+    // Connect only those particles that belong to this rank.
+    if ( total )
+    {
+      debug5 << "IterateTraceData(): Rank " << rank
+             << " connects " << total << " of " << nParticles << " particles "
+             << " from " << myStart << " to " << myEnd
+             << " in the tree." << std::endl;
+    }
+    // This rank does not have any particles to connect.
+    else
+    {
+        debug5 << "IterateTraceData(): Rank " << rank
+               << " no particles to connect." << std::endl;
+
         return;
     }
 
-    vtkDataSet *currDs = dsets[0];
-    // Free the memory from the GetAllLeaves function call.
-    delete [] dsets;
-
-    vtkPointSet *uGrid = vtkPointSet::SafeDownCast(currDs);
-
-    if (uGrid == 0)
-    {
-        EXCEPTION1(ImproperUseException, "avtPersistentParticlesFilter only supports "
-                                         "vtkPointSets data");
-    }
-
-    //Get the point data from the current timestep
-    vtkPoints *currPoints = uGrid->GetPoints();
-
-    //Get the ID variable. Use the mainVariable if default is specified
-    vtkDataArray *currWeight = 0;
-    int component = 0;
-    if( atts.GetIndexVariable() != "default" ) {
-      currWeight =
-        uGrid->GetPointData()->GetArray( atts.GetIndexVariable().c_str() );
-    }
-    else
-    {
-        currWeight = uGrid->GetPointData()->GetArray( mainVariable.c_str() );
-        // The main variable was not found. It must have been a mesh name so
-        // try the node numbers.
-        if(currWeight == 0)
-        {
-            currWeight = uGrid->GetPointData()->GetArray( "avtOriginalNodeNumbers" );
-            component = 1;
-        }
-    }
-    if (currWeight == 0) {
-      EXCEPTION1(ImproperUseException, "Index variable not found.");
-    }
-
-    //Get the data to be used as x variable
-    vtkDataArray *currXData = 0;
-    if( replaceX ) {
-      currXData =
-        uGrid->GetPointData()->GetArray( atts.GetTraceVariableX().c_str() );
-
-      if( currXData == 0 )
-        EXCEPTION1(ImproperUseException, "X coordinate variable not found.");
-    }
-    //Get the data to be used as y variable
-    vtkDataArray *currYData = 0;
-    if( replaceY  ) {
-      currYData =
-        uGrid->GetPointData()->GetArray( atts.GetTraceVariableY().c_str() );
-
-      if( currYData == 0 )
-        EXCEPTION1(ImproperUseException, "Y coordinate variable not found.");
-    }
-    //Get the data to be used as z variable
-    vtkDataArray *currZData = 0;
-    if( atts.GetTraceVariableZ() != "default" ) {
-      currZData =
-        uGrid->GetPointData()->GetArray( atts.GetTraceVariableZ().c_str() );
-
-      if( currZData == 0 )
-        EXCEPTION1(ImproperUseException, "Z coordinate variable not found.");
-    }
-    //Get the current PointData
-    vtkPointData *currData = uGrid->GetPointData();
-    vtkCellData *currCellData = uGrid->GetCellData();
-
-    //Create a new output dataset if needed
-    //If first timestep or if output dataset has not been created yet
-    if( !particlePathData ) {
-          //Create and initalize the new dataset
-          particlePathData = vtkUnstructuredGrid::New();
-          particlePathData->SetPoints(vtkPoints::New(currPoints->GetDataType()));
-          vtkPointData* allData = uGrid->GetPointData();
-          particlePathData->GetPointData()->ShallowCopy(allData);
-          particlePathData->GetCellData()->ShallowCopy(uGrid->GetCellData());
-    }
-
-    //Write the current particles into a map to decide which ones
-    //should be traced. Check if particle ID is unique, if not then
-    //stop tracing of that particle
-    vtkIdType nPoints = uGrid->GetNumberOfPoints();
+    // Write the current particles that belong to this rank into a map
+    // to decide which ones should be traced. Check if particle ID is
+    // unique, if not then stop tracing of that particle.
     std::map<double, bool> trace;
     int numSkipped = 0;
-    for( vtkIdType i=0 ; i<nPoints ;++i )
-    {
-        double id = currWeight->GetComponent(i, component);
 
-        //if particle ID is not already in the map then true, else false
+    for( vtkIdType i=myStart; i<=myEnd; ++i )
+    {
+        double id = allIds[i];
+
+        debug5 << id << std::endl;
+        
+        // If particle ID is not already in the map then true, else false
         std::map<double, bool >::iterator fP = trace.find( id );
  
         trace[id] = (fP==trace.end());
@@ -633,19 +732,143 @@ avtPersistentParticlesFilter::IterateTraceData(int ts, avtDataTree_p tree)
             numSkipped++;
     }
 
-    //Traverse all points
-    for( unsigned int i=0 ; i<nPoints ; ++i )
+    // Traverse the particles that belong to this rank.
+    for( unsigned int ii=myStart; ii<=myEnd; ++ii )
     {
-      double id = currWeight->GetComponent(i, component);
+      double id = allIds[ii];
+      int index = allIndexes[ii];
 
-      //trace only if particle id is unique
+      // Trace only if the particle id is unique
       if (trace[id])
       {
-          //Get the current particle path if it is already defined
+          // Get the current particle path if it is already defined
+          std::map<double, vtkIdType>::iterator lastPoint =
+            particlePaths.find( id );
+          
+          double* nextPathPoint = &(allPoints[3*index]);
+        
+          // Add the point to the map
+          vtkPoints* pathPoints = particlePathData->GetPoints();
+          vtkIdType newPointIndex =
+            pathPoints->InsertNextPoint( nextPathPoint );
+          
+          particlePathData->SetPoints( pathPoints );
+
+          // Copy the pointdata from the input mesh to the output mesh
+          vtkPointData* tmpPointData = particlePathData->GetPointData();
+          int nArrays = tmpPointData->GetNumberOfArrays();
+
+          double *ptr = &(allPointData[nPointComps*index]);
+          
+          for( int j=0; j<nArrays; ++j)
+          {
+            tmpPointData->GetArray(j)->InsertTuple( newPointIndex, ptr );
+            int nComps = tmpPointData->GetArray(j)->GetNumberOfComponents();
+
+            for( int k=0; k<nComps; ++k)
+              ++ptr;
+          }
+
+          // Add points if the user wants them - however add them in
+          // if the start and stop times slices are the same which
+          // prevents plots from horking because of getting an
+          // unstructured grid with no cells.
+          if( showPoints || startTimeSlice == stopTimeSlice )
+          {
+            vtkIdType newCellIndex =
+              particlePathData->InsertNextCell(VTK_VERTEX, 1, &newPointIndex);
+            
+            // Copy the celldata from the input mesh to the output mesh
+            vtkCellData* tmpCellData = particlePathData->GetCellData();
+            int nArrays = tmpCellData->GetNumberOfArrays();
+
+            double *ptr = &(allCellData[nCellComps*index]);
+
+            for( int j=0; j<nArrays; ++j)
+            {
+              tmpCellData->GetArray(j)->InsertTuple( newCellIndex, ptr );
+              int nComps = tmpCellData->GetArray(j)->GetNumberOfComponents();
+
+              for( int k=0; k<nComps; ++k)
+                ++ptr;
+            }
+          }
+
+          // Add a new line segment
+          if( lastPoint != particlePaths.end() )
+          {
+            //define the points that make the line
+            vtkIdType *pointList = new vtkIdType[2];
+            pointList[0]   = (*lastPoint).second;
+            pointList[1]   = newPointIndex;
+
+            // Add a new line segment
+            vtkIdType newCellIndex =
+              particlePathData->InsertNextCell( VTK_LINE, 2, pointList );
+
+            // Copy the celldata from the input mesh to the output mesh
+            vtkCellData* tmpCellData = particlePathData->GetCellData();
+            int nArrays = tmpCellData->GetNumberOfArrays();
+
+            double *ptr = &(allCellData[nCellComps*index]);
+            
+            for( int j=0; j<nArrays; ++j)
+            {
+              tmpCellData->GetArray(j)->InsertTuple( newCellIndex, ptr );
+              int nComps = tmpCellData->GetArray(j)->GetNumberOfComponents();
+              
+              for( int k=0; k<nComps; ++k)
+                ++ptr;
+            }
+            delete[] pointList;
+          }
+
+          // Update the map
+          particlePaths[ id ] = newPointIndex;
+      }
+    }
+
+    // Serial
+
+    // The above works in serial but there is no need to globalize the
+    // data. As such, use the VTK data directly.
+#else
+    if( !haveData )
+        return;
+
+    // Write the current particles into a map to decide which ones
+    // should be traced. Check if particle ID is unique, if not then
+    // stop tracing of that particle
+    vtkIdType nPoints = uGrid->GetNumberOfPoints();
+    std::map<double, bool> trace;
+    int numSkipped = 0;
+
+    for( vtkIdType i=0 ; i<nPoints ;++i )
+    {
+        double id = currIndexVar->GetComponent(i, component);
+
+        // If particle ID is not already in the map then true, else false
+        std::map<double, bool >::iterator fP = trace.find( id );
+ 
+        trace[id] = (fP==trace.end());
+
+        if( fP != trace.end() )
+            numSkipped++;
+    }
+
+    // Traverse all particles
+    for( unsigned int i=0; i<nPoints; ++i )
+    {
+      double id = currIndexVar->GetComponent(i, component);
+
+      // Trace only if the particle id is unique
+      if (trace[id])
+      {
+          // Get the current particle path if it is already defined
           std::map<double, vtkIdType>::iterator lastPoint =
             particlePaths.find( id );
 
-          //Get the next point and update its coordinates if necessary
+          // Get the next point and update its coordinates if necessary
           double* nextPathPoint = currPoints->GetPoint(i);
           if( replaceX )
             nextPathPoint[0] = currXData->GetTuple1(i);
@@ -654,38 +877,46 @@ avtPersistentParticlesFilter::IterateTraceData(int ts, avtDataTree_p tree)
           if( replaceZ )
             nextPathPoint[2] = currZData->GetTuple1(i);
           
-          //Add the point to the map
+          // Add the point to the map
           vtkPoints* pathPoints = particlePathData->GetPoints();
-          vtkIdType newPointIndex = pathPoints->InsertNextPoint( nextPathPoint );
+          vtkIdType newPointIndex =
+            pathPoints->InsertNextPoint( nextPathPoint );
+          
           particlePathData->SetPoints( pathPoints );
 
-          //Copy the pointdata from the input mesh to the output mesh
-          vtkPointData* allData = particlePathData->GetPointData();
-          for( unsigned int j=0 ; j< (unsigned int)allData->GetNumberOfArrays() ; j++) {
-            allData->GetArray(j)->
-              InsertTuple( newPointIndex,
-                           currData->GetArray(j)->GetTuple(i) );
+          // Copy the pointdata from the input mesh to the output mesh
+          vtkPointData* allPointData = particlePathData->GetPointData();
+          unsigned int nArrays = allPointData->GetNumberOfArrays();
+      
+          for( unsigned int j=0; j<nArrays; j++)
+          {
+              allPointData->GetArray(j)->
+                InsertTuple( newPointIndex,
+                             currPointData->GetArray(j)->GetTuple(i) );
           }
 
-          //Add points if the user wants them - however add them in if
-          //the start and stop times slices are the same which
-          //prevents plots from horking because of getting an
-          //unstructured grid with no cells.
+          // Add points if the user wants them - however add them in
+          // if the start and stop times slices are the same which
+          // prevents plots from horking because of getting an
+          // unstructured grid with no cells.
           if( showPoints || startTimeSlice == stopTimeSlice )
           {
             vtkIdType newCellIndex =
               particlePathData->InsertNextCell(VTK_VERTEX, 1, &newPointIndex);
             
-            //Copy the celldata from the input mesh to the output mesh
+            // Copy the celldata from the input mesh to the output mesh
             vtkCellData* allCellData = particlePathData->GetCellData();
-            for( unsigned int j=0 ; j<(unsigned int)allCellData->GetNumberOfArrays() ; j++) {
-              allCellData->GetArray(j)->
-                InsertTuple( newCellIndex,
-                             currCellData->GetArray(j)->GetTuple(i) );
+            unsigned int nArrays = allCellData->GetNumberOfArrays();
+
+            for( unsigned int j=0; j<nArrays; j++)
+            {
+                allCellData->GetArray(j)->
+                  InsertTuple( newCellIndex,
+                               currCellData->GetArray(j)->GetTuple(i) );
             }
           }
 
-          //Add a new line segment
+          // Add a new line segment
           if( lastPoint != particlePaths.end() )
           {
             //define the points that make the line
@@ -693,24 +924,29 @@ avtPersistentParticlesFilter::IterateTraceData(int ts, avtDataTree_p tree)
             pointList[0]   = (*lastPoint).second;
             pointList[1]   = newPointIndex;
 
-            //Add a new line segment
+            // Add a new line segment
             vtkIdType newCellIndex =
               particlePathData->InsertNextCell( VTK_LINE, 2, pointList );
 
-            //Copy the celldata from the input mesh to the output mesh
+            // Copy the celldata from the input mesh to the output mesh
             vtkCellData* allCellData = particlePathData->GetCellData();
-            for( unsigned int j=0 ; j<(unsigned int)allCellData->GetNumberOfArrays() ; j++) {
+            unsigned int nArrays = allCellData->GetNumberOfArrays();
+
+            for( unsigned int j=0; j<nArrays; j++)
+            {
                allCellData->GetArray(j)->
                  InsertTuple( newCellIndex,
                               currCellData->GetArray(j)->GetTuple(i) );
             }
+
             delete[] pointList;
           }
 
-          //Update the map
+          // Update the map
           particlePaths[ id ] = newPointIndex;
       }
     }
+#endif
 }
 
 // ****************************************************************************
@@ -744,28 +980,28 @@ avtPersistentParticlesFilter::Finalize(void)
      if (! haveData)
          return;
 
-      //Merge the data but do not connect the traces of particles
+      // Merge the data but do not connect the traces of particles
       if( ! atts.GetConnectParticles() ){
           avtDataTree_p newTree = new avtDataTree((int)trees.size(), &(trees[0]));
           SetOutputDataTree(newTree);
           trees.clear();
       }
       else{
-            //Find the index of the main variable in the new path datasets
+            // Find the index of the main variable in the new path datasets
             int index =0;
             vtkPointData* pointData = particlePathData->GetPointData();
-            //find the main variable
+            // Find the main variable
             for( int i=0 ; i<pointData->GetNumberOfArrays() ; ++i ){
                   if( mainVariable.compare( pointData->GetArray(i)->GetName() ) == 0 ){
                         index =i;
                         break;
                   }
             }
-            //Set the according array to be the active array
+            // Set the according array to be the active array
             pointData->SetScalars( pointData->GetArray(index) );
             avtDataTree_p newTree = new avtDataTree( particlePathData , 0 );
             SetOutputDataTree(newTree);
-            particlePaths.clear(); //Clear the map for the next run
+            particlePaths.clear(); // Clear the map for the next run
             particlePaths = std::map<double, vtkIdType>();
             particlePathData->Delete();
             particlePathData = NULL;
@@ -793,21 +1029,22 @@ avtPersistentParticlesFilter::Finalize(void)
 avtContract_p
 avtPersistentParticlesFilter::ModifyContract(avtContract_p in_contract)
 {
-    //Create the output contract
+    // Create the output contract
     avtContract_p out_contract = new avtContract(in_contract);
 
-    //add the index variable to the contract if necessay
+    // Add the index variable to the contract if necessay
     if( atts.GetIndexVariable() != "default")
         out_contract->GetDataRequest()->AddSecondaryVariable( atts.GetIndexVariable().c_str() );
     else
     {
-        // We did not specify an index variable so we'll be using the data request's
-        // variable. But that could be the name of the mesh in some pipelines. To be
-        // safe, request original cells too so they can be used as the index variable
-        // when a mesh name is used.
+        // We did not specify an index variable so we'll be using the
+        // data request's variable. But that could be the name of the
+        // mesh in some pipelines. To be safe, request original cells
+        // too so they can be used as the index variable when a mesh
+        // name is used.
         out_contract->GetDataRequest()->TurnNodeNumbersOn();
     }
-    //add the tracing variables to the contract if necessary
+    // Add the tracing variables to the contract if necessary
     if( atts.GetTraceVariableX() != "default")
        out_contract->GetDataRequest()->AddSecondaryVariable( atts.GetTraceVariableX().c_str() );
     if( atts.GetTraceVariableY() != "default")
@@ -846,26 +1083,26 @@ avtPersistentParticlesFilter::ModifyContract(avtContract_p in_contract)
 void
 avtPersistentParticlesFilter::UpdateDataObjectInfo(void)
 {
-    //Define the topology of the output data
+    // Define the topology of the output data
     avtDataObject_p           out_data_object = GetOutput();
     avtDataObjectInformation &out_data_info   = out_data_object->GetInfo();
     avtDataAttributes        &out_data_atts   = out_data_info.GetAttributes();
     avtDataValidity &out_data_validity = GetOutput()->GetInfo().GetValidity();
-    out_data_atts.SetTopologicalDimension(1); //we have lines as output
-    // the output is node centered data
+    out_data_atts.SetTopologicalDimension(1); // We have lines as output
+    // The output is node centered data
     if(out_data_atts.ValidActiveVariable())
         out_data_atts.SetCentering(AVT_NODECENT, out_data_atts.GetVariableName().c_str());
 
-    //In case that we have a 2D dataset but the output data is 3D we also
-    //need to update the dimensionality of the data
+    // In case that we have a 2D dataset but the output data is 3D we
+    // also need to update the dimensionality of the data
     if( atts.GetTraceVariableZ() != "default" &&
         out_data_atts.GetSpatialDimension() != 3 )
     {
-         //Update the data validity
+         // Update the data validity
            out_data_validity.InvalidateSpatialMetaData();
            out_data_validity.InvalidateZones();
            out_data_validity.SetPointsWereTransformed(true);
-           //update the spatial dimensions
+           // Update the spatial dimensions
            out_data_atts.SetSpatialDimension(3);
            out_data_atts.SetCanUseTransform(false);
            if( out_data_atts.HasInvTransform() )
@@ -873,4 +1110,425 @@ avtPersistentParticlesFilter::UpdateDataObjectInfo(void)
     }
 
     out_data_atts.AddFilterMetaData("PersistentParticles");
+}
+
+
+// ****************************************************************************
+// Method: avtPersistentParticlesFilter::ComputeGlobalSelectionSize
+//
+// Purpose: Compute the global number of ids when all processors are
+//   considered. Also provide an offset into a global array where the
+//   local data should be stored.
+//
+// Arguments:
+//   indexVariable : The local index array
+//   globalSize : The size of the global selection.
+//   myOffset   : The offset into the global array where the local data
+//                can be stored.
+//
+// Programmer: Allen Sanderson
+// Creation:   Fri Jan 20 2017
+//   
+// ****************************************************************************
+void
+avtPersistentParticlesFilter::ComputeGlobalSizeAndOffset(
+    vtkDataArray *indexVariable, int *numPerProc,
+    int &globalSize, int &myOffset) const
+{
+    const char *mName =
+      "avtPersistentParticlesFilter::ComputeGlobalSizeAndOffset: ";
+    debug5 << mName << std::endl;
+
+    int nIds;
+
+    // Some ranks may not have data.
+    if( indexVariable )
+      nIds = indexVariable->GetNumberOfTuples();
+    else
+      nIds = 0;
+    
+#ifdef PARALLEL
+    int nProcs = PAR_Size();
+    int rank   = PAR_Rank();
+    
+    // Compute the global selection size.
+    int *numPerProcIn = new int[nProcs];
+
+    for (int i = 0 ; i < nProcs ; i++)
+        numPerProcIn[i] = 0;
+
+    numPerProcIn[rank] = nIds;
+
+    SumIntArrayAcrossAllProcessors(numPerProcIn, numPerProc, nProcs);
+
+    globalSize = 0;
+    for (int i=0; i<nProcs; ++i)
+        globalSize += numPerProc[i];
+    
+    myOffset = 0;
+    for (int i=0; i<rank; ++i)
+        myOffset += numPerProc[i];
+
+    delete [] numPerProcIn;
+#else
+    globalSize = (int) nIds;
+    myOffset = 0;
+#endif
+}
+
+
+// ****************************************************************************
+// Method: avtPersistentParticlesFilter::GlobalizeData
+//
+// Purpose: 
+//   Globalize the ids
+//
+// Arguments:
+//   indexVariable  : The local ids.
+//   component      : Location in the VTK component
+//   globalSize : The size of the global array.
+//   myOffset   : The local offset into the global array.
+//   allFrequencies : The returned array contains all of the ids.
+//
+// Programmer: Allen Sanderson
+// Creation:   Fri Jan 20 2017
+//
+// ****************************************************************************
+struct pair_sort {
+  bool operator()(std::pair<int, double> a, std::pair<int, double> b)
+  {   
+    return a.second < b.second;
+  }   
+};
+
+void avtPersistentParticlesFilter::GlobalizeData(
+    vtkDataArray *indexVariable, const int component,
+    const int globalSize, const int myOffset,
+    double *&allIds, int *&allIndexes) const
+{
+    allIds     = new double[globalSize];
+    allIndexes = new int[globalSize];
+
+    int nIds;
+
+    // Some ranks may not have data.
+    if( indexVariable )
+      nIds = indexVariable->GetNumberOfTuples();
+    else
+      nIds = 0;
+    
+#ifdef PARALLEL
+    // Unpack the data into arrays
+    double *sendIds = new double[globalSize];
+    memset(sendIds, 0, sizeof(double) * globalSize);
+
+    for(int i = myOffset, j=0; j<nIds; ++i, ++j)
+      sendIds[i] = indexVariable->GetComponent(j, component);
+ 
+    // Globalize
+    SumDoubleArrayAcrossAllProcessors(sendIds, allIds, globalSize);
+
+    // Now sort all of the ids so each rank will have the same ids
+    // with each time step.
+
+    // NOTE: If the number of ids changes were screwed.    
+    std::vector< std::pair< int, double > > indexes(globalSize);
+
+    for(int i=0; i<globalSize; ++i)
+      indexes[i] = std::pair<double, double>(i, allIds[i]);
+
+    std::sort( indexes.begin(), indexes.end(), pair_sort() );
+
+    // Store the sorted ids and their original index. 
+    for(int i=0; i<globalSize; ++i)
+    {
+      allIds[i]     = indexes[i].second;
+      allIndexes[i] = indexes[i].first;
+    }
+    
+    delete [] sendIds;
+#else
+    // Unpack the data into arrays
+    for(int i = myOffset, j=0; j<nIds; ++i, ++j)
+    {
+      allIds[i] = indexVariable->GetComponent(j, component);
+      allIndexes[i] = i;
+    }
+ #endif
+}
+
+
+// ****************************************************************************
+// Method: avtPersistentParticlesFilter::GlobalizeData
+//
+// Purpose: 
+//   Globalize the points
+//
+// Arguments:
+//   currPoints - the local points.
+//   currXData - the optional replacement X coordinate
+//   currYData - the optional replacement Y coordinate
+//   currZData - the optional replacement Z coordinate
+//   globalSize : The size of the global array.
+//   myOffset   : The local offset into the global array.
+//   allPoints  : The returned array contains all of the points.
+//
+// Programmer: Allen Sanderson
+// Creation:   Fri Jan 20 2017
+//   
+// ****************************************************************************
+void avtPersistentParticlesFilter::GlobalizeData(
+    vtkPoints *currPoints,
+    vtkDataArray *currXData,
+    vtkDataArray *currYData,
+    vtkDataArray *currZData,
+    int globalSize, int myOffset,
+    double *&allPoints) const
+{
+    allPoints = new double[3*globalSize];
+
+    int nPoints;
+
+    // Some ranks may not have data.
+    if( currPoints )
+      nPoints = currPoints->GetNumberOfPoints();
+    else
+      nPoints = 0;
+    
+#ifdef PARALLEL
+    // Unpack the data into arrays
+    double *sendPoints = new double[3*globalSize];
+    memset(sendPoints, 0, sizeof(double) * 3 * globalSize);
+
+    for(int i = myOffset, j=0; j<nPoints; ++i, ++j)
+    {
+        double *ptr = &(sendPoints[3*i]);
+      
+        // Get the next point and update its coordinates if necessary
+        currPoints->GetPoint(j, ptr);
+
+        if( currXData )
+          ptr[0] = currXData->GetTuple1(j);
+        if( currYData )
+          ptr[1] = currYData->GetTuple1(j);
+        if( currZData )
+          ptr[2] = currZData->GetTuple1(j);
+    }
+
+    // Globalize
+    SumDoubleArrayAcrossAllProcessors(sendPoints, allPoints, 3*globalSize);
+
+    delete [] sendPoints;
+#else
+    // Unpack the data into arrays
+    for(int i = myOffset, j=0; j<nPoints; ++i, ++j)
+    {
+        double *ptr = &(allPoints[3*i]);
+      
+        // Get the next point and update its coordinates if necessary
+        currPoints->GetPoint(j, ptr);
+
+        if( currXData )
+          ptr[0] = currXData->GetTuple1(j);
+        if( currYData )
+          ptr[1] = currYData->GetTuple1(j);
+        if( currZData )
+          ptr[2] = currZData->GetTuple1(j);
+    }
+#endif
+}          
+
+
+// ****************************************************************************
+// Method: avtPersistentParticlesFilter::GlobalizeData
+//
+// Purpose: 
+//   Globalize the attributess
+//
+// Arguments:
+//   selection  : The local attributes.
+//   globalSize : The size of the global array.
+//   myOffset   : The local offset into the global array.
+//   nComponents : The total number of components.
+//   allData     : The returned array contains all of the attributess.
+//
+// Programmer: Allen Sanderson
+// Creation:   Fri Jan 20 2017
+//
+// ****************************************************************************
+void avtPersistentParticlesFilter::GlobalizeData(
+    vtkDataSetAttributes *attributes,
+    const int globalSize, const int myOffset,
+    int &nComponents, double *&allData) const
+{
+    nComponents = 0;
+
+    int nTuples;
+    int nData;
+
+    // Some ranks may not have data.
+    if( attributes )
+    {
+      nTuples = attributes->GetArray(0)->GetNumberOfTuples();
+      nData = attributes->GetNumberOfArrays();
+
+      for( unsigned int k=0 ; k<nData ; ++k)
+        nComponents += attributes->GetArray(k)->GetNumberOfComponents();
+    }
+    else
+    {
+      nTuples = 0;
+      nData = 0;
+    }
+
+    // Ranks with no data need to to get a valid value for nComponents.
+#ifdef PARALLEL
+    nComponents = UnifyMaximumValue(nComponents);
+#endif
+    
+    allData = new double[nComponents*globalSize];
+
+#ifdef PARALLEL
+    // Unpack the data into arrays
+    double *sendData = new double[nComponents*globalSize];
+    memset(sendData, 0, sizeof(double) * nComponents*globalSize);
+
+    for(int i = myOffset, j=0; j<nTuples; ++i, ++j)
+    {
+        double *ptr = &sendData[i*nComponents];
+
+        for( unsigned int k=0 ; k<nData ; ++k)
+        {
+          int nComp = attributes->GetArray(k)->GetNumberOfComponents();
+          
+          double *data = attributes->GetArray(k)->GetTuple(j);
+
+          for( unsigned int l=0; l<nComp ; ++l)
+          {
+            *ptr = data[l];
+            ++ptr;
+          }       
+        }
+    }
+        
+    // Globalize
+    SumDoubleArrayAcrossAllProcessors(sendData, allData,
+                                      nComponents*globalSize);
+
+    delete [] sendData;
+#else
+    // Unpack the data into arrays
+    for(int i = myOffset, j=0; j<nTuples; ++i, ++j)
+    {
+        double *ptr = &allData[i*nComponents];
+
+        for( unsigned int k=0 ; k<nData ; ++k)
+        {
+          int nComp = attributes->GetArray(k)->GetNumberOfComponents();
+          
+          double *data = attributes->GetArray(k)->GetTuple(j);
+
+          for( unsigned int l=0; l<nComp ; ++l)
+          {
+            *ptr = data[l];
+            ++ptr;
+          }       
+        }
+    }
+#endif
+}
+
+
+// ****************************************************************************
+// Method: avtPersistentParticlesFilter::GetDecomp
+//
+// Purpose: 
+//   Distribute a set of objects evenly amongst all ranks
+//
+// Arguments:
+//   numPerProc : The number of objects belonging to each rank
+//   firstIndex : The index of the first object on this rank
+//   lastIndex  : The index of the lastst object on this rank
+//   total      : The total number of ojects on this rank
+//
+// Programmer: Allen Sanderson
+// Creation:   Fri Jan 20 2017 
+//
+// ****************************************************************************
+void avtPersistentParticlesFilter::GetDecomp( int *numPerProc,
+                                              int &firstIndex,
+                                              int &lastIndex,
+                                              int &total ) const
+{
+#ifdef PARALLEL
+  // Check to see if this processor has any data. If not do
+  // redistribute any data to it.
+  if( numPerProc[PAR_Rank()] == 0 )
+  {
+    firstIndex = -1;
+    lastIndex  = -2;
+    total      =  0;
+  }
+  
+  // This processor has data so calculate how many objects it will get.
+  else
+  {
+    int rank   = 0;
+    int nProcs = 0;
+    int nObjects = 0;
+
+    // Get the total number of objects, the total number of processors
+    // with data, and the number of processors with data before this
+    // processor.
+    for( int i=0; i<PAR_Size(); ++i)
+    {
+      nObjects += numPerProc[i];
+
+      // The total number of processors with data. 
+      if( numPerProc[i] )
+      {
+        ++nProcs;
+
+        // The number of processors with data before this
+        // processor. This value is a virtual rank, i.e. what the rank
+        // would be considering only those processors with data.
+        if( i < PAR_Rank() )
+          ++rank;
+      }
+    }
+
+    // Get the number of objects per rank and the remainder.
+    int nObjectsPerProc = (nObjects / nProcs);
+    int oneExtraUntil   = (nObjects % nProcs);
+
+    // Ranks with one extra object.
+    if (rank < oneExtraUntil)
+    {
+        firstIndex = (rank  ) * (nObjectsPerProc+1);
+        lastIndex  = (rank+1) * (nObjectsPerProc+1) - 1;
+        
+        total = lastIndex - firstIndex + 1;
+    }
+    // Ranks with the standard number of objects.
+    else if( nObjectsPerProc ) 
+    {
+        firstIndex = (rank  ) * (nObjectsPerProc) + oneExtraUntil;
+        lastIndex  = (rank+1) * (nObjectsPerProc) + oneExtraUntil - 1;
+        
+        total = lastIndex - firstIndex + 1;
+    }
+    // Ranks with no data - only happens when there are more ranks
+    // than objects.
+    else
+    {
+        firstIndex = -1;
+        lastIndex  = -2;
+        total      =  0;
+    }
+  }
+#else
+  firstIndex = 0;
+  lastIndex = numPerProc[0] - 1;
+  total     = numPerProc[0];
+#endif
 }

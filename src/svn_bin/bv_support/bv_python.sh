@@ -259,32 +259,6 @@ EOF
     return 0
 }
 
-function apply_python_icc_patch
-{
-    info "Patching Python: fix ffi64 issue for icc"
-    patch -f -p0 << \EOF
-diff -c Modules/_ctypes/libffi/src/x86/ffi64.c.orig Modules/_ctypes/libffi/src/x86/ffi64.c
-*** Modules/_ctypes/libffi/src/x86/ffi64.c.orig 2013-11-12 15:02:51.585653535 -0800
---- Modules/_ctypes/libffi/src/x86/ffi64.c      2013-11-12 15:20:47.000000000 -0800
-***************
-*** 39,44 ****
---- 39,45 ----
-  #define MAX_SSE_REGS 8
-  
-  #if defined(__INTEL_COMPILER)
-+ #include "xmmintrin.h"
-  #define UINT128 __m128
-  #else
-  #if defined(__SUNPRO_C)
-EOF
-    if [[ $? != 0 ]] ; then
-        warn "Python patch for icc fialed."
-        return 1
-    fi
-
-    return 0
-}
-
 function apply_python_patch
 {
     if [[ "$OPSYS" == "Darwin" ]]; then
@@ -294,12 +268,6 @@ function apply_python_patch
             if [[ $? != 0 ]] ; then
                 return 1
             fi
-        fi
-    fi
-    if [[ "${C_COMPILER}" == "icc" ]]; then
-        apply_python_icc_patch
-        if [[ $? != 0 ]] ; then
-            return 1
         fi
     fi
 
@@ -358,21 +326,19 @@ function build_python
     PYTHON_PREFIX_DIR="$VISITDIR/python/$PYTHON_VERSION/$VISITARCH"
     if [[ "$DO_STATIC_BUILD" == "no" ]]; then
         PYTHON_SHARED="--enable-shared"
-        if [[ "$C_COMPILER" == "gcc" ]]; then
-            #
-            # python's --enable-shared configure flag doesn't link
-            # the exes it builds correclty when installed to a non standard
-            # prefix. To resolve this we need to add a rpath linker flags.
-            #
-            mkdir -p ${PYTHON_PREFIX_DIR}/lib/
-            if [[ $? != 0 ]] ; then
-                warn "Python configure failed.  Giving up"
-                return 1
-            fi
+        #
+        # python's --enable-shared configure flag doesn't link
+        # the exes it builds correclty when installed to a non standard
+        # prefix. To resolve this we need to add a rpath linker flags.
+        #
+        mkdir -p ${PYTHON_PREFIX_DIR}/lib/
+        if [[ $? != 0 ]] ; then
+            warn "Python configure failed.  Giving up"
+            return 1
+        fi
 
-            if [[ "$OPSYS" != "Darwin" || ${VER%%.*} -ge 9 ]]; then
-                PYTHON_LDFLAGS="-Wl,-rpath,${PYTHON_PREFIX_DIR}/lib/ -pthread"
-            fi
+        if [[ "$OPSYS" != "Darwin" || ${VER%%.*} -ge 9 ]]; then
+            PYTHON_LDFLAGS="-Wl,-rpath,${PYTHON_PREFIX_DIR}/lib/ -pthread"
         fi
     fi
 

@@ -224,6 +224,9 @@ protected:
     virtual void PostExecute(void)
     {
         const char *mName = "CQHistogramCalculationFilter::PostExecute: ";
+        debug5 << mName << std::endl;
+        StackTimer t0(mName);
+
         avtDataObject_p dob = GetInput();
         avtDataset_p ds;
         CopyTo(ds, dob);
@@ -279,6 +282,9 @@ protected:
     virtual avtContract_p ModifyContract(avtContract_p contract)
     {
         const char *mName = "CQHistogramCalculationFilter::ModifyContract: ";
+        debug5 << mName << std::endl;
+        StackTimer t0(mName);
+
         avtContract_p newContract = new avtContract(contract);
         std::string origvar(newContract->GetDataRequest()->GetOriginalVariable());
 
@@ -473,6 +479,10 @@ private:
                        int globalSize, int myOffset,
                        double *&allVariables) const;
 
+    void MakeDataUnique(int &globalSize,
+                        CQCellIdentifier *&allIds,
+                        int *&allFrequencies) const;
+
     // Members that we calculate as stage 1 of the selection calculation during
     // frequency calculation.
     std::string idVariable;
@@ -520,8 +530,10 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CreateSelection(
     double &min,
     double &max)
 {
-    debug5 << "CreateSelection: phase 1" << std::endl;
-    StackTimer t0("CreateSelection: phase 1");
+    const char *mName = "CumulativeQuery<>::CreateSelection Phase 1: ";
+    debug5 << mName << std::endl;
+    StackTimer t0(mName);
+
     cellFrequency.clear();
     cellsPerTimeStep.clear();
 
@@ -573,18 +585,18 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CreateSelection(
 
 template <class CQCellIdentifier, class CQSelection>
 void
-CumulativeQuery<CQCellIdentifier,
-                CQSelection>::CreateSelection(const SelectionProperties &props,
-                                              const CQSelection &cellFrequency,
-                                              const std::vector<CQSelection> &cellsPerTimeStep,
-                                              CQSelection &narrowedSelection,
-                                              doubleVector &hist,
-                                              double &min,
-                                              double &max)
+CumulativeQuery<CQCellIdentifier, CQSelection>::CreateSelection(
+    const SelectionProperties &props,
+    const CQSelection &cellFrequency,
+    const std::vector<CQSelection> &cellsPerTimeStep,
+    CQSelection &narrowedSelection,
+    doubleVector &hist,
+    double &min,
+    double &max)
 {
-    debug5 << "CreateSelection: phase 2" << std::endl;
-
-    StackTimer t0("CreateSelection: phase 2");
+    const char *mName = "CumulativeQuery<>::CreateSelection Phase 2: ";
+    debug5 << mName << std::endl;
+    StackTimer t0(mName);
 
     //
     // Apply the summation rule so we get a subset of the
@@ -701,9 +713,9 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CalculateFrequency(
     CQSelection &cellFrequency,
     std::vector < CQSelection > &cellsPerTimeStep) const
 {
-    debug5 << "CalculateFrequency" << std::endl;
-    const char *mName = "CQFilter::CalculateFrequency: ";
-    StackTimer t0("CalculateFrequency");
+    const char *mName = "CumulativeQuery<>::CalculateFrequency: ";
+    debug5 << mName << std::endl;  
+    StackTimer t0(mName);
 
     // Make sure that the cellsPerTimestep vector is initialized properly.
     cellsPerTimeStep.resize(timesteps.size() );
@@ -712,7 +724,8 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CalculateFrequency(
     if(props.GetHistogramType() == SelectionProperties::HistogramVariable)
     {
         histVar = props.GetHistogramVariable();
-        debug5 << "We're doing histogram by variable " << histVar << std::endl;
+        debug5 << mName
+               << "We're doing histogram by variable " << histVar << std::endl;
     }
   
     for(size_t ts = 0; ts < timesteps.size(); ++ts)
@@ -724,22 +737,30 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CalculateFrequency(
             continue;
         }
 
+        debug5 << mName << "Time step " << ts << std::endl;
+        
         // Iterate over all pieces of the data for the current time step and 
         // figure out the set of cells.
         int nleaves = 0;
         vtkDataSet **leaves = timesteps[ts]->GetAllLeaves(nleaves);
 
+        debug5 << mName << "  nleaves " << nleaves << std::endl;
+
         for (int i = 0 ; i < nleaves ; i++)
         {
             vtkIdType ncells = leaves[i]->GetNumberOfCells();
+
+            debug5 << mName << "    leaf[" << i << "]  ncells "
+                   << ncells << std::endl;
+
             if(ncells == 0)
                 continue;
-
+            
             // Get the id variable.
             vtkDataArray *arr =
               leaves[i]->GetCellData()->GetArray(idVariable.c_str());
             
-            if(arr == NULL && 
+            if(arr == NULL &&
                leaves[i]->GetNumberOfCells() == leaves[i]->GetNumberOfPoints())
             {
                 arr = leaves[i]->GetPointData()->GetArray(idVariable.c_str());
@@ -747,14 +768,14 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CalculateFrequency(
 
             if (arr == NULL)
             {
-                debug5 << mName << "Could not locate id variable " << idVariable
+                debug1 << mName << "Could not locate id variable " << idVariable
                        << ". This dataset will not contribute to the selection."
                        << std::endl;
                 continue;
             }
             if (arr->GetVoidPointer(0) == NULL)
             {
-                debug5 << mName << "Could not locate id variable " << idVariable
+                debug1 << mName << "Could not locate id variable " << idVariable
                        << ". This dataset will not contribute to the selection."
                        << std::endl;
                 continue;
@@ -774,7 +795,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CalculateFrequency(
                     
                     if(pointVar != NULL)
                     {
-                        debug5 << "Recentering " << histVar
+                        debug3 << mName << "Recentering " << histVar
                                << " so we can histogram with it." << std::endl;
                         
                         vtkPointDataToCellData *pd2cd =
@@ -787,7 +808,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CalculateFrequency(
                         cellVar = ds2->GetCellData()->GetArray(histVar.c_str());
                         if(cellVar != NULL)
                         {
-                            debug5 << "We have forced " << histVar
+                            debug3 << mName << "We have forced " << histVar
                                    << " to be zonal" << std::endl;
                             
                             cellVar->Register(NULL);
@@ -798,7 +819,8 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::CalculateFrequency(
                     }
                     else
                     {
-                        debug5 << "Could not get requested histogram variable: "
+                        debug1 << mName
+                               << "Could not get requested histogram variable: "
                                << histVar << std::endl;
                     }
                 }
@@ -902,8 +924,9 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::Summation(
     CQSelection &selection,
     std::vector< CQSelection > &selectionPerTimeStep) const
 {
-    debug5 << "Summation" << std::endl;
-    StackTimer t0("Summation");
+    const char *mName = "CumulativeQuery<>::Summation: ";
+    debug5 << mName << std::endl;
+    StackTimer t0(mName);
 
     unsigned int nts = cellsPerTimeStep.size();
 
@@ -914,7 +937,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::Summation(
         typename CQSelection::const_iterator it;
         for(it = cellFrequency.begin(); it != cellFrequency.end(); ++it)
         {
-            if((unsigned  int)it->second.frequency == nts)
+            if((unsigned int)it->second.frequency == nts)
             {
                 selection[it->first] = it->second;
 
@@ -938,7 +961,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::Summation(
             }
         }
     }
-    else
+    else // if(props.GetCombineRule() == SelectionProperties::CombineOr)
     {
         selection = cellFrequency;
 
@@ -975,14 +998,21 @@ void
 CumulativeQuery<CQCellIdentifier, CQSelection>::ComputeGlobalSizeAndOffset(
     const CQSelection &selection, int &globalSize, int &myOffset) const
 {
+    const char *mName = "CumulativeQuery<>::ComputeGlobalSizeAndOffset: ";
+    debug5 << mName << std::endl;
+
 #ifdef PARALLEL
-    // Compute the global selection size. 
+    // Compute the global selection size.
     int *numPerProcIn = new int[PAR_Size()];
     int *numPerProc   = new int[PAR_Size()];
+
     for (int i = 0 ; i < PAR_Size() ; i++)
         numPerProcIn[i] = 0;
+
     numPerProcIn[PAR_Rank()] = selection.size();
+
     SumIntArrayAcrossAllProcessors(numPerProcIn, numPerProc, PAR_Size());
+
     globalSize = 0;
     for (int i = 0 ; i < PAR_Size() ; i++)
         globalSize += numPerProc[i];
@@ -994,9 +1024,15 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::ComputeGlobalSizeAndOffset(
     delete [] numPerProcIn;
     delete [] numPerProc;
 #else
-    globalSize = (int)selection.size();
+    globalSize = (int) selection.size();
     myOffset = 0;
 #endif
+
+    debug5 << mName << "selection size " << selection.size() << "  "
+           << "global size " << globalSize << "  "
+           << "myOffset " << myOffset << "  "
+           << std::endl;
+    
 }
 
 // ****************************************************************************
@@ -1027,29 +1063,28 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::GlobalizeData(
     const CQSelection &selection,
     int globalSize, int myOffset, int *&allFrequencies) const
 {
-    int i;
-    typename CQSelection::const_iterator it;
+    allFrequencies = new int[globalSize];
+
 #ifdef PARALLEL
     // Unpack the data into arrays
     int *sendFrequency = new int[globalSize];
     memset(sendFrequency, 0, sizeof(int) * globalSize);
 
-    for(i = myOffset, it = selection.begin(); it != selection.end(); ++it, ++i)
+    typename CQSelection::const_iterator it = selection.begin();
+    
+    for(int i = myOffset; it != selection.end(); ++it, ++i)
         sendFrequency[i] = it->second.frequency;
  
     // Globalize
-    allFrequencies = new int[globalSize];
     SumIntArrayAcrossAllProcessors(sendFrequency, allFrequencies, globalSize);
 
     delete [] sendFrequency;
 #else
     // Unpack the data into arrays
-    allFrequencies = new int[globalSize];
-
-    for(i = myOffset, it = selection.begin(); it != selection.end(); ++it, ++i)
-    {
+    typename CQSelection::const_iterator it = selection.begin();
+    
+    for(int i = myOffset; it != selection.end(); ++it, ++i)
         allFrequencies[i] = it->second.frequency;
-    }
 #endif
 }
 
@@ -1110,6 +1145,76 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::GlobalizeData(
 }
 
 // ****************************************************************************
+// Method: CumulativeQuery::MakeDataUnique
+//
+// Purpose:
+
+//   Clean up the globalize selection data by removing all duplicates
+//   cell ids and adjusting the frequency. This will occur when cell
+//   ids are on different ranks for differening time steps thus may be
+//   in allIds multiple times.
+//
+// Arguments:
+//   globalSize     : The size of the global selection.
+//   allIds         : The returned array contains the global selection ids
+//   allFrequencies : The returned array contains the global selection frequencies.
+
+//
+// Programmer: Allen Sanderson
+// Creation:   Fri Jan 20 2017
+//
+// ****************************************************************************
+template <class CQCellIdentifier, class CQSelection>
+void
+CumulativeQuery<CQCellIdentifier, CQSelection>::MakeDataUnique(
+    int &globalSize,
+    CQCellIdentifier *&allIds,
+    int *&allFrequencies) const
+{
+#ifdef PARALLEL
+    std::map< CQCellIdentifier, int> idFreqMap;
+    typename std::map< CQCellIdentifier, int>::iterator it;
+
+    // Get each of the unique cell id 
+    for( int i=0; i<globalSize; ++i )
+    {
+        CQCellIdentifier cellid(allIds[i]);
+
+        it = idFreqMap.find(cellid);
+        
+        if( it == idFreqMap.end() )
+          idFreqMap[cellid] = allFrequencies[i];
+        else
+          // We've seen this cell before
+          idFreqMap[cellid] += allFrequencies[i];
+    }
+
+    // If the map size differs from the global size then ids were not
+    // all unique.
+    if( idFreqMap.size() != globalSize )
+    {
+      // Replace the previous
+      globalSize = idFreqMap.size();
+
+      delete[] allIds;
+      delete[] allFrequencies;
+      
+      allIds         = new CQCellIdentifier[globalSize];
+      allFrequencies = new int[globalSize];
+      
+      it = idFreqMap.begin();
+      
+      for( int i=0; i<globalSize; ++i, ++it )
+      {
+          allIds[i]         = it->first;
+          allFrequencies[i] = it->second;
+      }
+    }
+#endif
+}
+
+
+// ****************************************************************************
 // Method: CumulativeQuery::GlobalizeSelection
 //
 // Purpose: 
@@ -1154,8 +1259,9 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::GlobalizeSelection(
     double **&allVariablesPerTimeStep,
     std::vector< int >& globalSizePerTimeStep) const
 {
-    debug5 << "GlobalizeSelection" << std::endl;
-    StackTimer t0("GlobalizeSelection");
+    const char *mName = "CumulativeQuery<>::GlobalizeSelection: ";
+    debug5 << mName << std::endl;
+    StackTimer t0(mName);
 
     int myOffset = 0;
     std::vector< int > myOffsetPerTimeStep;
@@ -1172,7 +1278,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::GlobalizeSelection(
 
     if(globalSize > avtNamedSelection::MaximumSelectionSize())
     {
-        debug5 << "The number of total cells (" << globalSize
+        debug1 << mName<< "The number of total cells (" << globalSize
                << ") is above the allowed limit." << std::endl;
         return false;
     }
@@ -1199,6 +1305,10 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::GlobalizeSelection(
     // Globalize the selection data
     GlobalizeData(selection, globalSize, myOffset, allFrequencies);
 
+    // Make sure the ids are all unique if not, adjust the frequency.
+    MakeDataUnique( globalSize, allIds, allFrequencies );   
+
+    //  Globalize across all time steps
     allIdsPerTimeStep = new CQCellIdentifier *[nts];
     allVariablesPerTimeStep = new double *[nts];
 
@@ -1289,11 +1399,9 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
     CQSelection &narrowedSelection,
     doubleVector &histogram ) const
 {
-    debug5 << "SelectAndHistogram" << std::endl;
-    const char *mName = "CQFilter::SelectAndHistogram: ";
-    StackTimer t0("SelectAndHistogram");
-
-    debug5 << mName << "start" << std::endl;
+    const char *mName = "CumulativeQuery<>::SelectAndHistogram: ";
+    debug5 << mName << "selectionPerTimeStep" << std::endl;
+    StackTimer t0(mName);
 
     int numBins = selectionPerTimeStep.size();
     
@@ -1332,6 +1440,9 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
 
       histogram.push_back( double(selectionPerTimeStep[bin].size()) );
     }
+
+    debug5 << mName << "Done selected " << narrowedSelection.size()
+           << std::endl;
 }
 
 
@@ -1381,16 +1492,17 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
     CQSelection &narrowedSelection,
     doubleVector &histogram) const
 {
-    debug5 << "SelectAndHistogram" << std::endl;
-    const char *mName = "CQFilter::SelectAndHistogram: ";
-    StackTimer t0("SelectAndHistogram");
-
-    debug5 << mName << "start" << std::endl;
+    const char *mName = "CumulativeQuery<>::SelectAndHistogram: ";
+    debug5 << mName << "HistogramTime" << std::endl;
+    StackTimer t0( mName );
 
     int numBins = totalCellsPerTimeStep.size();
 
     for(int bin = 0; bin < numBins; ++bin)
     {
+        debug5 << mName << "totalCellsPerTimeStep "
+               << totalCellsPerTimeStep[bin] << std::endl;
+
         // If the bin is one that we're selecting then add its cells
         // to the narrowed selection.
         if(props.GetHistogramStartBin() <= bin &&
@@ -1423,7 +1535,8 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
         histogram.push_back(totalCellsPerTimeStep[bin]);
     }
 
-    debug5 << mName << "end" << std::endl;
+    debug5 << mName << "Done selected " << narrowedSelection.size()
+           << std::endl;
 }
 
 // ****************************************************************************
@@ -1476,11 +1589,16 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
     double &min,
     double &max) const
 {
-    debug5 << "SelectAndHistogram" << std::endl;
-    const char *mName = "CQFilter::SelectAndHistogram: ";
-    StackTimer t0("SelectAndHistogram");
-
-    debug5 << mName << "start" << std::endl;
+    const char *mName = "CumulativeQuery<>::SelectAndHistogram: ";
+    if(props.GetHistogramType() == SelectionProperties::HistogramID)
+    {
+      debug5 << mName << "HistogramID" << std::endl;
+    }
+    else if(props.GetHistogramType() == SelectionProperties::HistogramMatches)
+    {
+      debug5 << mName << "HistogramMatches" << std::endl;
+    }
+    StackTimer t0(mName);
 
     // Create an index variable that we'll sort using another variable.
     int *index = new int[totalCells];
@@ -1552,7 +1670,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
         binPoints[numBins] = totalCells;
     }
 
-    debug5 << "numBins=" << numBins
+    debug5 << mName << "numBins=" << numBins
            << ", startBin=" << props.GetHistogramStartBin()
            << ", endBin=" << props.GetHistogramEndBin() << std::endl;
 
@@ -1563,7 +1681,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
         if( props.GetHistogramStartBin() <= bin &&
             bin <= props.GetHistogramEndBin() )
         {
-            debug5 << "Bin " << bin << "contains indices ["
+            debug5 << mName << "Bin " << bin << "contains indices ["
                    << binPoints[bin] << ", " << binPoints[bin+1]
                    << "). Adding cells from this bin to the new selection."
                    << std::endl;
@@ -1592,8 +1710,10 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
                 averageForBin = sum / double(binPoints[bin+1] - binPoints[bin]);
             else
                 averageForBin = 0;
+
             histogram.push_back(averageForBin);
-            debug5 << "Bin " << bin << " average frequency: "
+
+            debug5 << mName << "Bin " << bin << " average frequency: "
                    << averageForBin << std::endl;
         }
         else if(props.GetHistogramType() ==
@@ -1605,7 +1725,9 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
 
     delete [] binPoints;
     delete [] index;
-    debug5 << mName << "end" << std::endl;
+    
+    debug5 << mName << "Done selected " << narrowedSelection.size()
+           << std::endl;
 }
 
 
@@ -1660,11 +1782,9 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
     double &min,
     double &max) const
 {
-    debug5 << "SelectAndHistogram" << std::endl;
-    const char *mName = "CQFilter::SelectAndHistogram: ";
-    StackTimer t0("SelectAndHistogram");
-
-    debug5 << mName << "start" << std::endl;
+    const char *mName = "CumulativeQuery<>::SelectAndHistogram: ";
+    debug5 << mName << "HistogramVariable" << std::endl;
+    StackTimer t0(mName);
 
     int nts = totalCellsPerTimeStep.size();
 
@@ -1691,7 +1811,6 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
         ++i;
       }
     }
-
 
     // We need to bin the index array into some number of bins and select
     // the cells in the selected bins into our new narrowed selection.
@@ -1728,7 +1847,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
     // The ending binPoints will always be the totalCells.
     binPoints[numBins] = totalCells;
 
-    debug5 << "numBins=" << numBins
+    debug5 << mName << "numBins=" << numBins
            << ", startBin=" << props.GetHistogramStartBin()
            << ", endBin=" << props.GetHistogramEndBin() << std::endl;
 
@@ -1739,7 +1858,7 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
         if(props.GetHistogramStartBin() <= bin &&
            bin <= props.GetHistogramEndBin())
         {
-            debug5 << "Bin " << bin << "contains indices ["
+            debug5 << mName << "Bin " << bin << "contains indices ["
                    << binPoints[bin] << ", " << binPoints[bin+1]
                    << "). Adding cells from this bin to the new selection."
                    << std::endl;
@@ -1773,7 +1892,9 @@ CumulativeQuery<CQCellIdentifier, CQSelection>::SelectAndHistogram(
 
     delete [] binPoints;
     delete [] index;
-    debug5 << mName << "end" << std::endl;
+
+    debug5 << mName << "Done selected " << narrowedSelection.size()
+           << std::endl;
 }
 
 // *****************************************************************************
@@ -1849,6 +1970,10 @@ CQDomainZoneIdSelection::CreateNamedSelection(const std::string &name) const
     {
         doms[i] = it->first.first;
         zones[i] = it->first.second;
+
+        debug5 << "CQDomainZoneIdSelection::CreateNamedSelection  " << i
+               << "  domain " << it->first.first
+               << " zone  " << it->first.second << std::endl;
     }
     avtZoneIdNamedSelection *ns = new avtZoneIdNamedSelection(name);
     ns->SetIdentifiers((int)size(), doms, zones);
@@ -1861,7 +1986,7 @@ CQDomainZoneIdSelection::CreateNamedSelection(const std::string &name) const
 // Method: CQDomainZoneIdSelection::CreateSelectedDataset
 //
 // Purpose: 
-//   Create a VTK that encodes the selection map keys..
+//   Create a VTK that encodes the selection map keys.
 //
 // Arguments:
 //   idVariable : The name of the array we'll put into the VTK dataset to
@@ -1898,7 +2023,9 @@ CQDomainZoneIdSelection::CreateSelectedDataset(const std::string &idVariable) co
     ids->SetName(idVariable.c_str());
     ids->SetNumberOfComponents(2);
     ids->SetNumberOfTuples(size());
+
     unsigned int *ptr = (unsigned int *)ids->GetVoidPointer(0);
+
     for(const_iterator it = begin(); it != end(); ++it)
     {
         *ptr++ = it->first.first;
@@ -1936,6 +2063,9 @@ CQDomainZoneIdSelection::CellIdentifierFromTuple(vtkDataArray *arr,
                                                  vtkIdType cellid) const
 {
     const unsigned int *ptr = (const unsigned int *)arr->GetVoidPointer(0);
+
+    debug5 << "CQDomainZoneId  " << cellid << "  "
+           << ptr[cellid*2] << "  " << ptr[cellid*2+1] << std::endl;
     return CQDomainZoneId(ptr[cellid*2], ptr[cellid*2+1]);
 }
 
@@ -1971,21 +2101,33 @@ CQDomainZoneIdSelection::GlobalizeIds(int globalSize, int myOffset,
     // Unpack the keys into arrays
     int *sendKey = new int[globalSize*2];
     memset(sendKey, 0, sizeof(int) * globalSize * 2);
+
     for(i = 0, it = begin(); it != end(); ++it, ++i)
     {
         int idx = (myOffset + i) * 2;
         sendKey[idx]     = it->first.first;
         sendKey[idx + 1] = it->first.second;
+
+        debug5 << "local keys " << i << "  " 
+               << it->first.first << "  " << it->first.second
+               << std::endl;
     }
+    
     // Globalize
     int *allKeys = new int[globalSize * 2];
     SumIntArrayAcrossAllProcessors(sendKey, allKeys, globalSize * 2);
     delete [] sendKey;
+
     // Turn the arrays back into keys
     allIds = new CQDomainZoneId[globalSize];
     int *ptr = allKeys;
+
     for(i = 0; i < globalSize; ++i, ptr += 2)
+    {
         allIds[i] = CQDomainZoneId(ptr[0], ptr[1]);
+        debug5 << "global keys " << i << "  "  << ptr[0] << "  " << ptr[1]
+               << std::endl;
+    }
     delete [] allKeys;
 #else
     allIds = new CQDomainZoneId[size()+1];
@@ -2062,8 +2204,15 @@ CQVariableIdSelection::CreateNamedSelection(const std::string &name) const
     // Create the floating point named selection
     std::vector<double> ids;
     ids.reserve(size());
+    int i = 0;
     for(const_iterator it = begin(); it != end(); ++it)
+    {
         ids.push_back(it->first);
+        
+        debug5 << "CQVariableIdSelection::CreateNamedSelection  " << i++
+               << " value  " << it->first << std::endl;
+    }
+    
     avtFloatingPointIdNamedSelection *ns =
       new avtFloatingPointIdNamedSelection(name);
     ns->SetIdentifiers(ids);
@@ -2146,6 +2295,10 @@ CQVariableId
 CQVariableIdSelection::CellIdentifierFromTuple(vtkDataArray *arr,
                                                vtkIdType cellid) const
 {
+
+    debug5 << "CellIdentifierFromTuple  " << cellid << "  "
+           << arr->GetTuple1(cellid) << std::endl;
+    
     return arr->GetTuple1(cellid);
 }
 
@@ -2380,19 +2533,23 @@ template <class CQImpl, class CQSelection>
 avtContract_p
 CQFilter<CQImpl,CQSelection>::ModifyContract(avtContract_p contract)
 {
+    const char *mName = "CQFilter<>::ModifyContract: ";
+    debug5 << mName << std::endl;
+
     avtContract_p newContract = avtTimeLoopCollectorFilter::ModifyContract(contract);
 
     // We may need to extract another variable.
     if(props.GetHistogramType() == SelectionProperties::HistogramVariable)
     {
         const std::string &histVar = props.GetHistogramVariable();
-        debug5 << "We're doing histogram by variable " << histVar << std::endl;
+        debug5 << mName
+               << "We're doing histogram by variable " << histVar << std::endl;
 
         std::string origvar(newContract->GetDataRequest()->GetOriginalVariable());
         if(origvar != histVar &&
            !newContract->GetDataRequest()->HasSecondaryVariable(histVar.c_str()))
         {
-            debug5 << "Making sure we add " << histVar
+            debug5 << mName << "Making sure we add " << histVar
                    << " to the contract so we'll have it" << std::endl;
             newContract->GetDataRequest()->AddSecondaryVariable(histVar.c_str());
         }
@@ -2439,7 +2596,9 @@ public:
 
     virtual ~CumulativeQueryCacheItem()
     {
-        debug5 << "Deleting CumulativeQueryCacheItem." << std::endl;
+        const char *mName =
+            "CumulativeQueryCacheItem::~CumulativeQueryCacheItem: ";
+        debug5 << mName << "Deleting." << std::endl;
     }
 
     CQSelection      cellFrequency;
@@ -2618,7 +2777,10 @@ CheckProperties(const SelectionProperties &newProps,
 static SelectionSummary
 BuildSummary(const CQHistogramCalculationFilter &hist)
 {
-    const char *mName = "CumulativeQueryNamedSelectionExtension::BuildSummary: ";
+    const char *mName =
+      "CumulativeQueryNamedSelectionExtension::BuildSummary: ";
+    debug5 << mName << std::endl;
+    StackTimer t0(mName);
 
     // Stash hist's histograms into this class so we can return them
     // from the engine.
@@ -2695,12 +2857,14 @@ BuildSummary(const CQHistogramCalculationFilter &hist)
 
 template <class CQFilterType, class CQSelection>
 static avtNamedSelection *
-GetSelectionEx(avtDataObject_p dob, avtContract_p contract, const SelectionProperties &props, 
-    avtNamedSelectionCache &cache, CQFilterType &cqFilter, CQSelection &selection, 
-    SelectionSummary &outSummary)
+GetSelectionEx(avtDataObject_p dob, avtContract_p contract,
+               const SelectionProperties &props, 
+               avtNamedSelectionCache &cache, CQFilterType &cqFilter,
+               CQSelection &selection, SelectionSummary &outSummary)
 {
-    const char *mName =
-      "CumulativeQueryNamedSelectionExtension::GetSelection: ";
+    const char *mName = "GetSelectionEx<>::GetSelection: ";
+    debug5 << mName << std::endl;
+    StackTimer t0(mName);
     
     avtNamedSelection *ns = NULL;
 
@@ -2819,10 +2983,14 @@ GetSelectionEx(avtDataObject_p dob, avtContract_p contract, const SelectionPrope
         }
 
         // Execute the full pipeline.
-        debug1 << mName << "Must re-execute pipeline to create named selection" << std::endl;
+        debug1 << mName
+               << "Must re-execute pipeline to create named selection"
+               << std::endl;
+
         TimedCodeBlock("CQ Pipeline update",
             newdob->Update(contract);
         );
+
         debug1 << mName
                << "Done re-executing pipeline to create named selection"
                << std::endl;
@@ -2907,8 +3075,8 @@ CumulativeQueryNamedSelectionExtension::GetSelection(avtDataObject_p dob,
     if(props.GetIdVariableType() == SelectionProperties::UseZoneIDForID)
     {
         CQFilter<CumulativeQuery<CQDomainZoneId, CQDomainZoneIdSelection>,
-                 CQDomainZoneIdSelection
-                > cqFilter;
+                 CQDomainZoneIdSelection > cqFilter;
+        
         cqFilter.GetCumulativeQuery().SetIdVariable(GetIdVariable(props));
         CQDomainZoneIdSelection selection;
         ns = GetSelectionEx(dob, contract, props, cache, cqFilter,
@@ -2940,8 +3108,8 @@ CumulativeQueryNamedSelectionExtension::GetSelection(avtDataObject_p dob,
     else if(props.GetIdVariableType() == SelectionProperties::UseVariableForID)
     {
         CQFilter<CumulativeQuery<CQVariableId, CQVariableIdSelection>,
-                 CQVariableIdSelection
-                > cqFilter;
+                 CQVariableIdSelection > cqFilter;
+        
         cqFilter.GetCumulativeQuery().SetIdVariable(GetIdVariable(props));
         CQVariableIdSelection selection;
         ns = GetSelectionEx(dob, contract, props, cache, cqFilter,
