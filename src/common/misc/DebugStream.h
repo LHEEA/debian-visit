@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -59,7 +59,7 @@ namespace DebugStream
     extern MISC_API bool Level5();
 
     // Obtain a given level's stream object
-    extern MISC_API ostream& Stream1();
+    extern MISC_API ostream& Stream1(char const *__file__=0, int=-1);
     extern MISC_API ostream& Stream2();
     extern MISC_API ostream& Stream3();
     extern MISC_API ostream& Stream4();
@@ -69,10 +69,12 @@ namespace DebugStream
     extern MISC_API int GetLevel();
 }
 
-#define debug1 if (!DebugStream::Level1()) ; else (DebugStream::Stream1())
+#define debug1 if (!DebugStream::Level1()) ; else (DebugStream::Stream1((char const *)__FILE__,(int)__LINE__))
 #define debug2 if (!DebugStream::Level2()) ; else (DebugStream::Stream2())
 #define debug3 if (!DebugStream::Level3()) ; else (DebugStream::Stream3())
 #define debug4 if (!DebugStream::Level4()) ; else (DebugStream::Stream4())
 #define debug5 if (!DebugStream::Level5()) ; else (DebugStream::Stream5())
+
+#define vcerr(c) if (VisItInit::IsComponent(#c)) std::cerr << #c ": "
 
 #endif

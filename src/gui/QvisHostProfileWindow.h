@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -173,6 +173,11 @@ class QNetworkAccessManager;
 //    David Camp, Mon Aug  4 10:46:09 PDT 2014
 //    Added controls to set the threads option.
 //
+//    Kathleen Biagas, Wed Dec 16 11:07:43 MST 2015
+//    Replace slot 'sshCommandChanged' with 'sshCommandRetPressed', so that
+//    sshCommand is only processed once editing has finished.  Will be
+//    triggered by 'returnPressed'/'editingFinished' signals from the widget.
+//
 // ****************************************************************************
 
 class GUI_API QvisHostProfileWindow : public QvisPostableWindowObserver
@@ -255,7 +260,7 @@ private slots:
     void toggleSSHPort(bool);
     void sshPortChanged(const QString &port);
     void toggleSSHCommand(bool);
-    void sshCommandChanged(const QString &port);
+    void sshCommandRetPressed();
     void toggleUseGateway(bool);
     void gatewayHostChanged(const QString &port);
     void clientHostNameMethodChanged(int);

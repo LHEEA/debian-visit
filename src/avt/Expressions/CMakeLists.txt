@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -74,6 +74,9 @@
 #
 #    Kevin Griffin, Tue Jul 29 10:08:40 PDT 2014
 #    Added q_criterion.
+#
+#    Timo Bremer, Fri Oct 28 09:09:27 PDT 2016
+#    Added merge tree and local threshold.
 #
 #****************************************************************************/
 
@@ -167,10 +170,12 @@ General/avtIsNaNExpression.C
 General/avtKeyAggregatorExpression.C
 General/avtLambda2Expression.C
 General/avtLaplacianExpression.C
+General/avtLocalThresholdExpression.C
 General/avtMIRvfExpression.C
 General/avtMagnitudeExpression.C
 General/avtMatErrorExpression.C
 General/avtMatvfExpression.C
+General/avtMergeTreeExpression.C
 General/avtMeshCoordinateExpression.C
 General/avtMinMaxExpression.C
 General/avtNMatsExpression.C

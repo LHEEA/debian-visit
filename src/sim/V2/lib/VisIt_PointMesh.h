@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,8 +50,7 @@ int VisIt_PointMesh_setCoordsXY(visit_handle obj, visit_handle x, visit_handle y
 int VisIt_PointMesh_setCoordsXYZ(visit_handle obj, visit_handle x, visit_handle y, visit_handle z);
 int VisIt_PointMesh_setCoords(visit_handle obj, visit_handle c);
 
-int VisIt_PointMesh_getCoords(visit_handle obj, int *ndims, int *coordMode, 
-                              visit_handle *x, visit_handle *y, visit_handle *z, visit_handle *c);
+int VisIt_PointMesh_getCoords(visit_handle obj, int *ndims, int *coordMode, visit_handle *x, visit_handle *y, visit_handle *z, visit_handle *c);
 
 #ifdef __cplusplus
 }

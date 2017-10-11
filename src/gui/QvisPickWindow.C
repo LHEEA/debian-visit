@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -326,6 +326,9 @@ QvisPickWindow::~QvisPickWindow()
 //   Dirk Schubert (Allinea Software), Fri Oct 12, 2012
 //   Add "Focus DDT on Pick" button optionally (HAVE_DDT)
 //
+//   Kathleen Biagas, Fri Mar 20 16:07:53 PDT 2015
+//   Added button for resetting pick letter.
+//
 // ****************************************************************************
 
 void
@@ -417,6 +420,11 @@ QvisPickWindow::CreateWindowContents()
             this, SLOT(clearPicks()));
     gLayout->addWidget(clearPicksButton, 4, 2, 1, 2);
 
+    QPushButton *resetLetterButton = new QPushButton(tr("Reset Pick Letter"), 
+                                                    central);
+    connect(resetLetterButton, SIGNAL(clicked()),
+            this, SLOT(resetPickLetter()));
+    gLayout->addWidget(resetLetterButton, 5, 2, 1, 2);
   
     optionsTabWidget = new QTabWidget(central);
     connect(optionsTabWidget, SIGNAL(currentChanged(int)),
@@ -488,6 +496,12 @@ QvisPickWindow::CreateDisplayOptionsTab()
     connect(displayPickLetter, SIGNAL(toggled(bool)),
             this, SLOT(displayPickLetterToggled(bool)));
     dLayout->addWidget(displayPickLetter, 4, 0, 1, 4);
+
+    displayPickHighlight = new QCheckBox(tr("Pick Highlights"), 
+                                      pageDisplay);
+    connect(displayPickHighlight, SIGNAL(toggled(bool)),
+            this, SLOT(displayPickHighlightToggled(bool)));
+    dLayout->addWidget(displayPickHighlight, 4, 2, 1, 2);
 
 
     // Node settings
@@ -887,6 +901,14 @@ QvisPickWindow::UpdateAll(bool doAll)
         displayPickLetter->blockSignals(false);
     }
 
+    // displayPickHighlight
+    if (pickAtts->IsSelected(PickAttributes::ID_showPickHighlight) || doAll)
+    {
+        displayPickHighlight->blockSignals(true);
+        displayPickHighlight->setChecked(pickAtts->GetShowPickHighlight());
+        displayPickHighlight->blockSignals(false);
+    }
+
     // createSpreadsheet
     if (pickAtts->IsSelected(PickAttributes::ID_createSpreadsheet) || doAll)
     {
@@ -1001,11 +1023,17 @@ QvisPickWindow::UpdateTimeOptions()
 //   Jonathan Byrd Mon Feb 4, 2013
 //   Record data concerning the latest pick in the pickRecord array
 //
+//   Kathleen Biagas, Tue Apr 25 17:09:57 PDT 2017
+//   Added call to ResizeTabs, in case user changed #tabs without clicking
+//   'Apply' before perfoming picks.  It's a no-op if #tabs hasn't changed.
+//
 // ****************************************************************************
 
 void
 QvisPickWindow::UpdatePage()
 {
+    ResizeTabs(); // no-op if numtabs hasn't changed
+
     QString pickLetter(pickAtts->GetPickLetter().c_str());
 
     if (!savePicks && pickAtts->GetClearWindow())
@@ -1897,6 +1925,28 @@ QvisPickWindow::displayPickLetterToggled(bool val)
     Apply();
 }
 
+// ****************************************************************************
+// Method: QvisPickWindow::displayPickHighlihgtToggled
+//
+// Purpose:
+//   This is a Qt slot function that sets the flag indicating whether
+//   or not the pick highlight should be displayed. 
+//
+// Arguments:
+//   val : The state of the toggle button.
+//
+// Programmer: Matt Larsen 
+// Creation:   Jul 18, 2016 
+//
+// ****************************************************************************
+ 
+void
+QvisPickWindow::displayPickHighlightToggled(bool val)
+{   
+    pickAtts->SetShowPickHighlight(val);
+    Apply();
+}
+
 
 // ****************************************************************************
 // Method: QvisPickWindow::preserveCoordActivated
@@ -2105,6 +2155,27 @@ QvisPickWindow::clearPicks()
 {
     GetViewerMethods()->ClearPickPoints();
 }
+
+
+// ****************************************************************************
+// Method: QvisPickWindow::resetPickLetter
+//
+// Purpose:
+//   This is a Qt slot function for resetting the Pick letter.
+//
+// Programmer: Kathleen Biagas
+// Creation:   March 20, 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+QvisPickWindow::resetPickLetter()
+{
+    GetViewerMethods()->ResetPickLetter();
+}
+
 
 // ****************************************************************************
 // Method: QvisPickWindow::redoPickClicked()

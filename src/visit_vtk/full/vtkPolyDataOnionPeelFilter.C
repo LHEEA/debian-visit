@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -100,8 +100,8 @@ vtkPolyDataOnionPeelFilter::vtkPolyDataOnionPeelFilter()
     this->maxLayersReached = 0;
     this->maxLayerNum = VTK_INT_MAX;
     this->AdjacencyType = VTK_NODE_ADJACENCY;
-    this->ReconstructOriginalCells = 0; 
-    this->SeedIdIsForCell = 1; 
+    this->ReconstructOriginalCells = false; 
+    this->SeedIdIsForCell = true; 
 
     this->layerCellIds = vtkIdList::New();
     this->layerCellIds->Allocate(500);

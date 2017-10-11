@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -219,10 +219,12 @@ LCSViewerEnginePluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
 {
     LCSAttributes *atts_in = (LCSAttributes *)atts;
 
-    const char *typeString[3][3] = { { "Time", "Arc length",
-                                       "Ave. dist. from seed" },
-                                     { "First", "Second", "Third" },
-                                     { "FTLE", "FDLE", "FSLE" } };
+    const char *typeString[3][7] =
+    { { "Time", "Arc length", "Ave. dist. from seed", "", "", "", "" },
+      { "Smallest", "Intermediate", "Largest",
+        "Pos. shear", "Neg. shear",
+        "Pos. linear shear", "Pos. combo shear" },
+      { "FTLE", "FDLE", "FSLE", "", "", "", "" } };
 
     const char *operatorString[4] = { "Base", "Gradient", "Jacobian", "Ratio" };
 
@@ -247,7 +249,7 @@ LCSViewerEnginePluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
         k = atts_in->GetOperatorType();
 
         var += std::string(" - ") + std::string(typeString[i][j]) +
-               std::string(" - ") + std::string(operatorString[k]);
+               std::string(" ")   + std::string(operatorString[k]);
 
     }
     else if( atts_in->GetOperationType() == LCSAttributes::EigenValue ||
@@ -266,10 +268,13 @@ LCSViewerEnginePluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
     }
     else //if( atts_in->GetOperationType() == LCSAttributes::Lyapunov )
     {
+        i = 1;
+        j = atts_in->GetEigenComponent();
+        var += std::string(" - ") + std::string(typeString[i][j]);
+
         i = 2;
         j = atts_in->GetTerminationType();
-
-        var += std::string(" - ") + std::string(typeString[i][j]);
+        var += std::string(" ")   + std::string(typeString[i][j]);
     }
 
     return var;
@@ -293,3 +298,4 @@ LCSViewerEnginePluginInfo::GetMenuName() const
 {
     return "LCS";
 }
+

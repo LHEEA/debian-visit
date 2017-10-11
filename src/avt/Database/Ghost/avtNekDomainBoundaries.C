@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -356,7 +356,7 @@ avtNekDomainBoundaries::CreateNeighborList(const vector<int>         &domainNum,
     if (multipleBlocks && meshes.size() == 1)
         nLocalDomains = meshes[0]->GetNumberOfPoints()/ptsPerDomain;
     else
-        nLocalDomains = meshes.size();
+        nLocalDomains = (int) meshes.size();
     int ii, ff, pp, cc;
     const int  f[6][4] = { {0, 2, 4, 6},
                            {1, 3, 5, 7},
@@ -556,7 +556,7 @@ avtNekDomainBoundaries::CreateNeighborList(const vector<int>         &domainNum,
 
     //Send all the matches to proc 0
     int *aNumMatches = NULL;
-    int  nMatches = aMatchedFaces.size() / 4;
+    int  nMatches = (int)aMatchedFaces.size() / 4;
     if (iRank == 0)
         aNumMatches = new int[nProcs];
     
@@ -611,7 +611,7 @@ avtNekDomainBoundaries::CreateNeighborList(const vector<int>         &domainNum,
     }
     else
     {
-        err = MPI_Send( &(aMatchedFaces[0]), aMatchedFaces.size(), 
+        err = MPI_Send( &(aMatchedFaces[0]), (int)aMatchedFaces.size(), 
                         MPI_INT,  0, 888, VISIT_MPI_COMM);
         if (err != MPI_SUCCESS)
             EXCEPTION1(ImproperUseException, 
@@ -800,7 +800,7 @@ avtNekDomainBoundaries::CreateGhostNodes(vector<int>          domainNum,
     }
     else
     {
-        numToIterate = meshes.size();
+        numToIterate = (int)meshes.size();
         partOfLargerArray = false;
         gn = NULL;
     }
@@ -841,7 +841,7 @@ avtNekDomainBoundaries::CreateGhostNodes(vector<int>          domainNum,
             }
             else if (bAllDomainsSorted)
             {
-                int min = 0, max = allDomains.size()-1, mid;
+                int min = 0, max = (int)allDomains.size()-1, mid;
                 while (min <= max)
                 {
                     mid = (max+min)/2;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -552,7 +552,6 @@ ColorControlPointList::CreateNode(DataNode *parentNode, bool completeSave, bool 
         addToParent = true;
         node->AddNode(new DataNode("category", categoryName));
     }
-
 
     // Add the node to the parent node.
     if(addToParent || forceAdd)
@@ -1511,8 +1510,8 @@ ColorControlPointList::GetColors(unsigned char *rgb,
         c2_g++;
         c2_b++;
         c2_a++;
-        color_start_i = int(c1_pos[0] * float(ncolors));
-        color_end_i = int(c2_pos[0] * float(ncolors));
+        color_start_i = int(c1_pos[0] * float(ncolors - 1));
+        color_end_i = int(c2_pos[0] * float(ncolors - 1));
         color_range = color_end_i - color_start_i;
 
         if(color_range > 1)
@@ -1592,11 +1591,12 @@ ColorControlPointList::GetColors(unsigned char *rgb,
     }
 
     /********************************************
-     * Phase V -- Postsample colors if needed.
+     * Phase VI -- Postsample colors if needed.
      ********************************************/
     if(postSample)
     {
         c = 0;
+        int ca = 0;
         for(i = 0; i < oldNColors; ++i)
         {
             float t;
@@ -1609,7 +1609,7 @@ ColorControlPointList::GetColors(unsigned char *rgb,
             rgb[c++] = dest[index*3+1];
             rgb[c++] = dest[index*3+2];
             if (alpha)
-                alpha[c++] = dest_a[index*3+2];
+                alpha[ca++] = dest_a[index];
         }
 
         delete [] dest;

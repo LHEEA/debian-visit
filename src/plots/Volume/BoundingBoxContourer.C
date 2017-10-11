@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,6 +49,25 @@
 #include <float.h>
 
 #include <vtkTriangulationTables.h>
+
+// ****************************************************************************
+//  Method:  BoundingBoxContourer::BoundingBoxContourer
+//
+//  Purpose:
+//   Constructor
+//
+//  Programmer:  Jeremy Meredith
+//  Creation:    October  2, 2003
+//
+// ****************************************************************************
+BoundingBoxContourer::BoundingBoxContourer()
+{
+    for(int i = 0; i < 8; ++i)
+    {
+        x[i] = y[i] = z[i] = 0.f;
+        v[i] = r[i] = s[i] = t[i] = 0.f;
+    }
+}
 
 // ****************************************************************************
 //  Method:  BoundingBoxContourer::GetEdgeIsoCoord

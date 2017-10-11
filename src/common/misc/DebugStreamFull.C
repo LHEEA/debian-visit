@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,6 +39,7 @@
 #include <DebugStreamFull.h>
 #include <DebugStream.h>
 #include <visitstream.h>
+#include <VisItInit.h>
 
 #if defined(_WIN32)
 #include <windows.h>
@@ -57,6 +58,8 @@ using std::vector;
 vector<DebugStreamFull::DebugStreamBuf*> DebugStreamFull::DebugStreamBuf::allBuffers;
 int DebugStreamFull::DebugStreamBuf::curLevel;
 
+int DebugStreamFull::numThreadLogs = 1;
+
 // global DebugStreams
 // We make these static so they are NOT visible outside this file
 static DebugStreamFull debug1_realobj(1);
@@ -65,13 +68,31 @@ static DebugStreamFull debug3_realobj(3);
 static DebugStreamFull debug4_realobj(4);
 static DebugStreamFull debug5_realobj(5);
 
+bool IsThread0(void)
+{
+    if (VisItInit::GetNumberOfThreads() <= 1)
+        return true;
+    if (VisItInit::GetMyThreadID() == 0)
+        return true;
+    return false;
+}
 bool DebugStream::Level1() { return debug1_realobj.isenabled(); };
 bool DebugStream::Level2() { return debug2_realobj.isenabled(); };
 bool DebugStream::Level3() { return debug3_realobj.isenabled(); };
 bool DebugStream::Level4() { return debug4_realobj.isenabled(); };
 bool DebugStream::Level5() { return debug5_realobj.isenabled(); };
 
-ostream& DebugStream::Stream1() { return *((ostream*) &debug1_realobj); };
+ostream& DebugStream::Stream1(char const *__file__, int __line__)
+{
+    if (debug1_realobj.isdecorated() && __file__)
+    {
+        *((ostream*) &debug1_realobj) << __file__;
+        if (debug1_realobj.isdecorated() && __line__ > -1)
+            *((ostream*) &debug1_realobj) << ":" << __line__;
+        *((ostream*) &debug1_realobj) << " ";
+    }
+    return *((ostream*) &debug1_realobj);
+};
 ostream& DebugStream::Stream2() { return *((ostream*) &debug2_realobj); };
 ostream& DebugStream::Stream3() { return *((ostream*) &debug3_realobj); };
 ostream& DebugStream::Stream4() { return *((ostream*) &debug4_realobj); };
@@ -316,10 +337,15 @@ DebugStreamFull::DebugStreamBuf::SetLevel(int level_)
 void
 DebugStreamFull::DebugStreamBuf::close()
 {
-    if (out)
+    if(out == NULL) return;
+
+    for(int i=0; i<numThreadLogs; ++i) 
+        if (out[i])
+            out[i].close();
+ 
+    if(out) 
     {
-        out->close();
-        delete out;
+        delete [] out;
         out = NULL;
     }
 }
@@ -357,25 +383,37 @@ DebugStreamFull::DebugStreamBuf::open(const char *filename_, bool buffer_debug)
 {
     close();
     strcpy(filename, filename_);
-    out = new ofstream;
-    out->open(filename, ios::out);
-    if (! *out)
-    {
-        delete out;
-        out = NULL;
-    }
-    else
-    {
-        // flush the buffer after every operation
-        if (!buffer_debug)
-            out->setf(ios::unitbuf);
-#ifndef NO_SETBUF
-        // the previous flag does nothing on SunOS;
-        // I hate to do this, but I'm doing it to force automatic flushing:
-        if (!buffer_debug)
-            out->rdbuf()->setbuf((char*)0,0);
+    out = new ofstream[numThreadLogs];
+ 
+    for(int i=0; i<numThreadLogs; ++i) {
+        std::stringstream fname;
+#if VISIT_THREAD
+        fname << filename << i << ".vlog";
+#else
+        fname << filename << ".vlog";
 #endif
+        out[i].open(fname.str().c_str(), ios::out);
+        if (! out[i])
+        {
+            //out[i] is a value, not a pointer....
+            //delete [] out;
+            //out = NULL;
+        }
+        else
+        {
+            // flush the buffer after every operation
+            if (!buffer_debug)
+                out[i].setf(ios::unitbuf);
+
+#ifndef NO_SETBUF
+            // the previous flag does nothing on SunOS;
+            // I hate to do this, but I'm doing it to force automatic flushing:
+            if (!buffer_debug)
+                out[i].rdbuf()->setbuf((char*)0,0);
+#endif
+        }
     }
+    
 }
 
 
@@ -400,12 +438,13 @@ DebugStreamFull::DebugStreamBuf::open(const char *filename_, bool buffer_debug)
 int
 DebugStreamFull::DebugStreamBuf::put(int c)
 {
-    if (out &&
+    int t_id = VisItInit::GetMyThreadID();
+    if ( t_id < numThreadLogs && out != NULL && out[t_id] &&
         curLevel <= level)
     {
         if (c!=EOF)
         {
-            out->put((char)c);
+            out[t_id].put((char)c);
         }
     }
     return c;
@@ -472,6 +511,7 @@ DebugStreamFull::DebugStreamFull(int level_) : ostream(new DebugStreamBuf)
     buf = (DebugStreamBuf*)(rdbuf());
     buf->SetLevel(level);
     enabled = false;
+    decorate = false;
 }
 
 
@@ -548,7 +588,7 @@ DebugStreamFull::~DebugStreamFull()
 //
 // ****************************************************************************
 
-
+#if VISIT_THREAD
 void
 DebugStreamFull::open(const char *progname, bool clobber, bool buffer_debug)
 {
@@ -557,10 +597,90 @@ DebugStreamFull::open(const char *progname, bool clobber, bool buffer_debug)
 #ifdef WIN32
     // On windows, we always use pids, so won't need to rename, and thus
     // don't need to prepend a letter.
-    sprintf(filename, "%s.%d.vlog", progname, level);
+    sprintf(filename, "%s.%d.thr", progname, level);
 
 #else
-    sprintf(filename, "A.%s.%d.vlog", progname, level);
+    sprintf(filename, "A.%s.%d.thr", progname, level);
+
+    // only rename old vlogs if we don't have pids
+    bool renameOld = !clobber && (strspn(progname, ".0123456789") == 0);
+
+    // Move all older filenames by one letter
+    if (renameOld)
+    {
+        char filenametmp1[256];
+        char filenametmp2[256];
+        int fileThr = 0;
+        sprintf(filenametmp1, "E.%s.%d.thr%d.vlog", progname, level, fileThr);
+        while (access( filenametmp1, F_OK) != -1 )
+        {
+             unlink(filenametmp1);               // E->deleted 
+             sprintf(filenametmp1, "E.%s.%d.thr%d.vlog", progname, level, ++fileThr);
+        }
+        fileThr = 0;
+        sprintf(filenametmp1, "E.%s.%d.thr%d.vlog", progname, level, fileThr);
+        sprintf(filenametmp2, "D.%s.%d.thr%d.vlog", progname, level, fileThr);
+        while (access( filenametmp2, F_OK) != -1 )
+        {
+            rename(filenametmp2, filenametmp1); // D->E
+ 
+            ++fileThr;
+            sprintf(filenametmp1, "E.%s.%d.thr%d.vlog", progname, level, fileThr);
+            sprintf(filenametmp2, "D.%s.%d.thr%d.vlog", progname, level, fileThr);
+        }
+        fileThr = 0;
+        sprintf(filenametmp1, "D.%s.%d.thr%d.vlog", progname, level, fileThr);
+        sprintf(filenametmp2, "C.%s.%d.thr%d.vlog", progname, level, fileThr);
+        while (access( filenametmp2, F_OK) != -1 )
+        {
+            rename(filenametmp2, filenametmp1); // C->D
+ 
+            ++fileThr;
+            sprintf(filenametmp1, "D.%s.%d.thr%d.vlog", progname, level, fileThr);
+            sprintf(filenametmp2, "C.%s.%d.thr%d.vlog", progname, level, fileThr);
+        }
+        fileThr = 0;
+        sprintf(filenametmp1, "C.%s.%d.thr%d.vlog", progname, level, fileThr);
+        sprintf(filenametmp2, "B.%s.%d.thr%d.vlog", progname, level, fileThr);
+        while (access( filenametmp2, F_OK) != -1 )
+        {
+            rename(filenametmp2, filenametmp1); // B->C
+ 
+            ++fileThr;
+            sprintf(filenametmp1, "C.%s.%d.thr%d.vlog", progname, level, fileThr);
+            sprintf(filenametmp2, "B.%s.%d.thr%d.vlog", progname, level, fileThr);
+        }
+        fileThr = 0;
+        sprintf(filenametmp1, "B.%s.%d.thr%d.vlog", progname, level, fileThr);
+        sprintf(filenametmp2, "A.%s.%d.thr%d.vlog", progname, level, fileThr);
+        while (access( filenametmp2, F_OK) != -1 )
+        {
+            rename(filenametmp2, filenametmp1); // A->B
+ 
+            ++fileThr;
+            sprintf(filenametmp1, "B.%s.%d.thr%d.vlog", progname, level, fileThr);
+            sprintf(filenametmp2, "A.%s.%d.thr%d.vlog", progname, level, fileThr);
+        }
+    }
+#endif
+
+    // ok, open the stream
+    buf->open(filename, buffer_debug);
+    enabled = true;
+}
+#else
+void
+DebugStreamFull::open(const char *progname, bool clobber, bool buffer_debug)
+{
+    char filename[256];
+
+#ifdef WIN32
+    // On windows, we always use pids, so won't need to rename, and thus
+    // don't need to prepend a letter.
+    sprintf(filename, "%s.%d", progname, level);
+
+#else
+    sprintf(filename, "A.%s.%d", progname, level);
 
     // only rename old vlogs if we don't have pids
     bool renameOld = !clobber && (strspn(progname, ".0123456789") == 0);
@@ -571,15 +691,47 @@ DebugStreamFull::open(const char *progname, bool clobber, bool buffer_debug)
         char filenametmp1[256];
         char filenametmp2[256];
         sprintf(filenametmp1, "E.%s.%d.vlog", progname, level);
-        unlink(filenametmp1);               // E->deleted 
+        while (access( filenametmp1, F_OK) != -1 )
+        {
+             unlink(filenametmp1);               // E->deleted 
+             sprintf(filenametmp1, "E.%s.%d.vlog", progname, level);
+        }
+        sprintf(filenametmp1, "E.%s.%d.vlog", progname, level);
         sprintf(filenametmp2, "D.%s.%d.vlog", progname, level);
-        rename(filenametmp2, filenametmp1); // D->E
+        while (access( filenametmp2, F_OK) != -1 )
+        {
+            rename(filenametmp2, filenametmp1); // D->E
+ 
+            sprintf(filenametmp1, "E.%s.%d.vlog", progname, level);
+            sprintf(filenametmp2, "D.%s.%d.vlog", progname, level);
+        }
+        sprintf(filenametmp1, "D.%s.%d.vlog", progname, level);
+        sprintf(filenametmp2, "C.%s.%d.vlog", progname, level);
+        while (access( filenametmp2, F_OK) != -1 )
+        {
+            rename(filenametmp2, filenametmp1); // C->D
+ 
+            sprintf(filenametmp1, "D.%s.%d.vlog", progname, level);
+            sprintf(filenametmp2, "C.%s.%d.vlog", progname, level);
+        }
         sprintf(filenametmp1, "C.%s.%d.vlog", progname, level);
-        rename(filenametmp1, filenametmp2); // C->D
         sprintf(filenametmp2, "B.%s.%d.vlog", progname, level);
-        rename(filenametmp2, filenametmp1); // B->C
-        sprintf(filenametmp1, "A.%s.%d.vlog", progname, level);
-        rename(filenametmp1, filenametmp2); // A->B
+        while (access( filenametmp2, F_OK) != -1 )
+        {
+            rename(filenametmp2, filenametmp1); // B->C
+ 
+            sprintf(filenametmp1, "C.%s.%d.vlog", progname, level);
+            sprintf(filenametmp2, "B.%s.%d.vlog", progname, level);
+        }
+        sprintf(filenametmp1, "B.%s.%d.vlog", progname, level);
+        sprintf(filenametmp2, "A.%s.%d.vlog", progname, level);
+        while (access( filenametmp2, F_OK) != -1 )
+        {
+            rename(filenametmp2, filenametmp1); // A->B
+
+            sprintf(filenametmp1, "B.%s.%d.vlog", progname, level);
+            sprintf(filenametmp2, "A.%s.%d.vlog", progname, level);
+        }
     }
 #endif
 
@@ -587,6 +739,7 @@ DebugStreamFull::open(const char *progname, bool clobber, bool buffer_debug)
     buf->open(filename, buffer_debug);
     enabled = true;
 }
+#endif
 
 
 // ****************************************************************************
@@ -658,12 +811,20 @@ DebugStreamFull::close()
 //
 //    Mark C. Miller, Tue Apr 14 16:01:49 PDT 2009
 //    Added option to buffer the debug logs.
+//
+//    Elliott Ewing, Fri Oct 3 16:10:05 PDT 2015
+//    Added argument to specify number of threaded logs from command line args.
 // ****************************************************************************
 
 void
-DebugStreamFull::Initialize(const char *progname, int debuglevel, bool sigs,
-    bool clobber, bool buffer_debug)
+DebugStreamFull::Initialize(const char *progname, int debuglevel, int numThreadLogs_, bool sigs,
+    bool clobber, bool buffer_debug, bool _decorate)
 {
+    if(numThreadLogs_ >= VisItInit::GetNumberOfThreads())
+        numThreadLogs = VisItInit::GetNumberOfThreads();
+    else 
+        numThreadLogs = numThreadLogs_;
+ 
     switch (debuglevel)
     {
       case 5:  debug5_realobj.open(progname, clobber, buffer_debug);
@@ -679,6 +840,7 @@ DebugStreamFull::Initialize(const char *progname, int debuglevel, bool sigs,
       default:
         break;
     }
+    debug1_realobj.decorate = _decorate;
 
     if (sigs)
     {

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -100,6 +100,8 @@
 #include <avtVariableSkewExpression.h>
 #include <avtVectorComposeExpression.h>
 #include <avtVectorDecomposeExpression.h>
+#include <avtMergeTreeExpression.h>
+#include <avtLocalThresholdExpression.h>
 
 #include <visit-python-config.h>
 #ifdef VISIT_PYTHON_FILTERS
@@ -506,6 +508,9 @@ avtVectorExpr::CreateFilters(ExprPipelineState *state)
 //    Kevin Griffin, Tue Aug 5 15:01:27 PDT 2014
 //    Added lambda2 expression.
 //
+//    Timo Bremer, Fri Oct 28 09:09:27 PDT 2016
+//    Added merge_tree, split_tree and local_threshold.
+//
 // ****************************************************************************
 
 avtExpressionFilter *
@@ -565,6 +570,12 @@ avtFunctionExpr::CreateFilters(string functionName)
         return new avtProcessorIdExpression();
     if (functionName == "threadid")
         return new avtThreadIdExpression();
+    if (functionName == "merge_tree")
+        return new avtMergeTreeExpression(true);
+    if (functionName == "split_tree")
+        return new avtMergeTreeExpression(false);
+    if (functionName == "local_threshold")
+        return new avtLocalThresholdExpression();
     if (functionName == "python" || functionName == "py")
 #ifdef VISIT_PYTHON_FILTERS
         return new avtPythonExpression();
@@ -785,6 +796,12 @@ avtFunctionExpr::CreateFilters(string functionName)
 //      Jeremy Meredith, Tue Feb 19 16:19:24 EST 2008
 //      Fixed the ordering of naming for internal variable names.
 //
+//      Kevin Griffin, Wed May 24 18:02:20 PDT 2017
+//      Added all arguments to the filter output name to ensure that it
+//      is unique. Only using variable names can result in a name collision
+//      which happens with the matvf function when the material names are
+//      the same. Fixes Bug #2825.
+//
 // ****************************************************************************
 void
 avtFunctionExpr::CreateFilters(ExprPipelineState *state)
@@ -836,6 +853,17 @@ avtFunctionExpr::CreateFilters(ExprPipelineState *state)
         else
             argsText = inputName + "," + argsText;
     }
+
+    std::vector<ArgExpr*> *arguments = args->GetArgs();
+    if(arguments->size() > nvars)
+    {
+        for(i=nvars; i<arguments->size(); i++)
+        {
+            ArgExpr *otherarg = (*arguments)[i];
+            argsText = argsText + "," + otherarg->GetText();
+        }
+    }
+
     string outputName = functionName + "(" + argsText + ")";
 
     // Take the stack of variable names and feed them to the function in

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -95,11 +95,12 @@ avtXmdvWriter : virtual public avtDatabaseWriter
 
     virtual void   OpenFile(const std::string &, int);
     virtual void   WriteHeaders(const avtDatabaseMetaData *,
-                                std::vector<std::string> &, 
-                                std::vector<std::string> &,
-                                std::vector<std::string> &);
+                                const std::vector<std::string> &, 
+                                const std::vector<std::string> &,
+                                const std::vector<std::string> &);
     virtual void   WriteChunk(vtkDataSet *, int);
     virtual void   CloseFile(void);
+    virtual void   WriteRootFile();
 };
 
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -42,23 +42,16 @@
 #include <AttributeSubject.h>
 
 class ParallelCoordinatesAttributes;
-class QButtonGroup;
 class QCheckBox;
 class QComboBox;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
 class QTreeWidget;
-class QSlider;
-class QSpinBox;
-class QVBox;
-class QvisColorButton;
-class QvisColorTableButton;
-class QvisLineStyleWidget;
-class QvisLineWidthWidget;
-class QvisOpacitySlider;
-class QvisVariableButton;
 class QTreeWidgetItem;
+class QSlider;
+class QvisColorButton;
+class QvisVariableButton;
 
 // ****************************************************************************
 // Class: QvisParallelCoordinatesPlotWindow

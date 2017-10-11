@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -333,7 +333,7 @@ public:
     void         SetTimesAreAccurate(bool);
     bool         IsTimeAccurate(int) const;
     bool         AreAllTimesAccurateAndValid(int=-1) const;
-    void         ReplaceForbiddenCharacters(std::vector<char> &, stringVector &);
+    void         ReplaceForbiddenCharacters(void);
     void         Add(avtMeshMetaData *);
     void         Add(avtScalarMetaData *);
     void         Add(avtVectorMetaData *);
@@ -394,7 +394,7 @@ public:
     void  RegisterWarningCallback(void (*)(const char *));
     static void (*WarningCallback)(const char *);
     static bool haveWarningCallback;
-    void IssueWarning(const char *msg);
+    void IssueWarning(const char *msg) const;
     bool VarIsCompound(const std::string &inVar) const;
     void ParseCompoundForVar(const std::string &inVar, std::string &outVar) const;
     void ParseCompoundForMesh(const std::string &inVar, std::string &meshName) const;
@@ -410,6 +410,11 @@ public:
     int GetGhostZoneTypesPresent(std::string name) const;
     void ClearGhostTypesPresent(std::string name);
     void AddGhostZoneTypePresent(std::string name, avtGhostsZonesPresent v);
+    int GetTotalVarCount(void) const;
+    char const * GetSEGEnvVarName() const;
+    char const * GetSEGWarningString() const;
+    void IssueSEGWarningMessage() const;
+    bool ShouldDisableSEG(bool envOverride=false) const;
 
     // IDs that can be used to identify fields in case statements
     enum {

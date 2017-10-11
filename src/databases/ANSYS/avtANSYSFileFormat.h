@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,6 +58,9 @@
 //
 //  Modifications:
 //
+//    Mark C. Miller, 12Apr17
+//    Adjust interface to Interpret methods to support more flexibility in
+//    format string.
 // ****************************************************************************
 
 class avtANSYSFileFormat : public avtSTSDFileFormat
@@ -79,9 +82,7 @@ public:
     // file.  These should only be defined if the file format knows what the
     // time and/or cycle is.
     //
-    // virtual bool      ReturnsValidCycle() const { return true; };
     // virtual int       GetCycle(void);
-    // virtual bool      ReturnsValidTime() const { return true; };
     // virtual double    GetTime(void);
     //
 
@@ -96,9 +97,10 @@ public:
 
 protected:
     bool ReadFile(const char *, int nLines);
-    void InterpretFormatString(char *line, int &firstFieldWidth, int &fieldStart,
-                               int &fieldWidth, int &expectedLineLength) const;
-    void Interpret(const char *fmt, int &fieldWidth, int &linelen) const;
+    void InterpretFormatString(char *line, int numFields, int &firstFieldWidth,
+             int &fieldStart, int &fieldWidth, int &expectedLineLength) const;
+    void Interpret(const char *fmt, bool isstd, int &numFields,
+             int &fieldWidth, int &linelen) const;
 
     // DATA MEMBERS
     vtkDataSet            *meshDS;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -102,8 +102,9 @@
 #include <avtWeightedVariableSummationQuery.h>
 #include <avtXRayImageQuery.h>
 #include <avtZoneCenterQuery.h>
-#include <avtStreamlineInfoQuery.h>
+#include <avtIntegralCurveInfoQuery.h>
 #include <avtLineSamplerInfoQuery.h>
+#include <avtGyRadiusQuery.h>
 
 #include <visit-python-config.h>
 #ifdef VISIT_PYTHON_FILTERS
@@ -319,9 +320,6 @@ avtQueryFactory::Instance()
 //    Cyrus Harrison, Tue Sep 21 11:12:17 PDT 2010
 //    Added explicit passing of args to the python filter query.
 //
-//    Dave Pugmire, Tue Nov  9 14:57:20 EST 2010
-//    Add Streamline Info query.
-//
 //    Kathleen Bonnell, Thu Feb 17 09:51:44 PST 2011
 //    Set number of vars for LocateAndPickNode/Zone queries, and 
 //    VariableyByNode/Zone queries.
@@ -347,6 +345,9 @@ avtQueryFactory::Instance()
 //
 //    Kathleen Biagas, Thu Jan 10 08:43:14 PST 2013
 //    Use new MapNode method for testing existence of numeric entry.
+//
+//    Kevin Griffin, Thu Aug 11 10:53:13 PDT 2016
+//    Added the GyRadius Query
 //
 // ****************************************************************************
 
@@ -667,14 +668,19 @@ avtQueryFactory::CreateQuery(const QueryAttributes *qa)
                       "VisIt was build without Python Filter support.");
 #endif
     }
-    else if (CaseInsenstiveEqual(qname,"Streamline Info"))
+    else if (CaseInsenstiveEqual(qname,"Integral Curve Info"))
     {
-        query = new avtStreamlineInfoQuery();
+        query = new avtIntegralCurveInfoQuery();
     }
 
     else if (CaseInsenstiveEqual(qname,"Line Sampler Info"))
     {
         query = new avtLineSamplerInfoQuery();
+    }
+
+    else if (CaseInsenstiveEqual(qname,"GyRadius"))
+    {
+        query = new avtGyRadiusQuery();
     }
 
     if (query == NULL && !foundAQuery)
@@ -774,9 +780,9 @@ avtQueryFactory::GetDefaultInputParams(const string &qname)
         avtShapeletDecompositionQuery::GetDefaultInputParams(params);
         retval = params.ToXML();
     }
-    else if (CaseInsenstiveEqual(qname,"Streamline Info"))
+    else if (CaseInsenstiveEqual(qname,"Inetgral Curve Info"))
     {
-        avtStreamlineInfoQuery::GetDefaultInputParams(params);
+        avtIntegralCurveInfoQuery::GetDefaultInputParams(params);
         retval = params.ToXML();
     }
     else if (CaseInsenstiveEqual(qname,"Line Sampler Info"))
@@ -809,6 +815,11 @@ avtQueryFactory::GetDefaultInputParams(const string &qname)
     else if (CaseInsenstiveEqual(qname,"TrajectoryByNode"))
     {
         avtTrajectoryByNode::GetDefaultInputParams(params);
+        retval = params.ToXML();
+    }
+    else if (CaseInsenstiveEqual(qname,"GyRadius"))
+    {
+        avtGyRadiusQuery::GetDefaultInputParams(params);
         retval = params.ToXML();
     }
     return retval;

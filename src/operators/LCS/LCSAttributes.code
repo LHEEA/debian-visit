@@ -1,4 +1,3 @@
-Target: xml2atts
 Function: CopyAttributes
 Declaration: bool CopyAttributes(const AttributeGroup *atts);
 Definition:
@@ -38,7 +37,6 @@ LCSAttributes::CopyAttributes(const AttributeGroup *atts)
     return retval;
 }
 
-Target: xml2atts
 Function: CreateCompatible
 Declaration: AttributeSubject *CreateCompatible(const std::string &tname) const
 Definition:
@@ -74,7 +72,6 @@ LCSAttributes::CreateCompatible(const std::string &tname) const
     return retval;
 }
 
-Target: xml2atts
 Function: ChangesRequireRecalculation
 Declaration: bool ChangesRequireRecalculation(const LCSAttributes &) const;
 Definition:
@@ -130,15 +127,15 @@ LCSAttributes::ChangesRequireRecalculation(const LCSAttributes &obj) const
     //Check the general stuff first...
 
     if( sourceType != obj.sourceType ||
+
+        auxiliaryGrid != obj.auxiliaryGrid ||
+        auxiliaryGridSpacing != obj.auxiliaryGridSpacing ||
+
+        fieldType != obj.fieldType ||
+        fieldConstant != obj.fieldConstant ||
+
         integrationDirection != obj.integrationDirection ||
-        maxSteps != obj.maxSteps ||
-        terminationType != obj.terminationType ||
-        terminateBySize != obj.terminateBySize ||
-        termSize != obj.termSize ||
-        terminateByDistance != obj.terminateByDistance ||
-        termDistance != obj.termDistance ||
-        terminateByTime != obj.terminateByTime ||
-        termTime != obj.termTime ||
+        integrationType != obj.integrationType ||
         maxStepLength != obj.maxStepLength ||
         limitMaximumTimestep != obj.limitMaximumTimestep ||
         maxTimeStep != obj.maxTimeStep ||
@@ -146,19 +143,42 @@ LCSAttributes::ChangesRequireRecalculation(const LCSAttributes &obj) const
         absTolSizeType != obj.absTolSizeType ||
         absTolAbsolute != obj.absTolAbsolute ||
         absTolBBox != obj.absTolBBox ||
-        fieldType != obj.fieldType ||
-        fieldConstant != obj. fieldConstant||
-        integrationType != obj.integrationType ||
-        parallelizationAlgorithmType != obj.parallelizationAlgorithmType ||
-        maxProcessCount != obj.maxProcessCount ||
-        maxDomainCacheSize != obj.maxDomainCacheSize ||
-        workGroupSize != obj.workGroupSize ||
+
+        operationType != obj.operationType ||
+        eigenComponent != obj.eigenComponent ||
+        eigenWeight != obj.eigenWeight ||
+        operatorType != obj.operatorType ||
+        cauchyGreenTensor != obj.cauchyGreenTensor ||
+        clampLogValues != obj.clampLogValues ||
+
+        terminationType != obj.terminationType ||
+        terminateBySize != obj.terminateBySize ||
+        termSize != obj.termSize ||
+        terminateByDistance != obj.terminateByDistance ||
+        termDistance != obj.termDistance ||
+        terminateByTime != obj.terminateByTime ||
+        termTime != obj.termTime ||
+        maxSteps != obj.maxSteps ||
+
+        thresholdLimit != obj.thresholdLimit ||
+        radialLimit != obj.radialLimit ||
+        boundaryLimit != obj.boundaryLimit ||
+        seedLimit != obj.seedLimit ||
+
         pathlines != obj.pathlines ||
         pathlinesOverrideStartingTimeFlag != obj.pathlinesOverrideStartingTimeFlag ||
         pathlinesOverrideStartingTime != obj.pathlinesOverrideStartingTime ||
         pathlinesCMFE != obj.pathlinesCMFE ||
-        forceNodeCenteredData != obj.forceNodeCenteredData ||
+
+        parallelizationAlgorithmType != obj.parallelizationAlgorithmType ||
+        maxProcessCount != obj.maxProcessCount ||
+        maxDomainCacheSize != obj.maxDomainCacheSize ||
+        workGroupSize != obj.workGroupSize ||
+
+        issueAdvectionWarnings != obj.issueAdvectionWarnings ||
+        issueBoundaryWarnings != obj.issueBoundaryWarnings ||
         issueTerminationWarnings != obj.issueTerminationWarnings ||
+        issueStepsizeWarnings != obj.issueStepsizeWarnings ||
         issueStiffnessWarnings != obj.issueStiffnessWarnings ||
         issueCriticalPointsWarnings != obj.issueCriticalPointsWarnings ||
         criticalPointThreshold != obj.criticalPointThreshold )
@@ -179,24 +199,16 @@ LCSAttributes::ChangesRequireRecalculation(const LCSAttributes &obj) const
     }
 
     //Check by source type.
-    if ((sourceType == RegularGrid) &&
-         POINT_DIFFERS(Resolution, obj.Resolution))
+    if (sourceType == RegularGrid)
     {
-        return true;
-    }
-
-    if ((sourceType == RegularGrid) &&
-         UseDataSetStart == Subset &&
-         POINT_DIFFERS(StartPosition, obj.StartPosition))
-    {
-        return true;
-    }
-
-    if ((sourceType == RegularGrid) &&
-         UseDataSetEnd == Subset &&
-         POINT_DIFFERS(EndPosition, obj.EndPosition))
-    {
-        return true;
+         if( (POINT_DIFFERS(Resolution, obj.Resolution)) ||
+             (UseDataSetStart == Subset &&
+              POINT_DIFFERS(StartPosition, obj.StartPosition)) ||
+             (UseDataSetEnd == Subset &&
+              POINT_DIFFERS(EndPosition, obj.EndPosition)) )
+        {
+            return true;
+        }
     }
 
     return false;
@@ -230,9 +242,12 @@ LCSViewerEnginePluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
 {
     LCSAttributes *atts_in = (LCSAttributes *)atts;
 
-    const char *typeString[2][3] = { { "FTLE", "FDLE", "FSLE" },
-                                     { "Time", "Arc length",
-                                       "Ave. dist. from seed" } };
+    const char *typeString[3][7] =
+    { { "Time", "Arc length", "Ave. dist. from seed", "", "", "", "" },
+      { "Smallest", "Intermediate", "Largest",
+        "Pos. shear", "Neg. shear",
+        "Pos. linear shear", "Pos. combo shear" },
+      { "FTLE", "FDLE", "FSLE", "", "", "", "" } };
 
     const char *operatorString[4] = { "Base", "Gradient", "Jacobian", "Ratio" };
 
@@ -248,23 +263,43 @@ LCSViewerEnginePluginInfo::GetOperatorVarDescription(AttributeSubject *atts,
 
     int i, j, k;
 
-    if( atts_in->GetOperationType() == LCSAttributes::Lyapunov )
+    if( atts_in->GetOperationType() == LCSAttributes::IntegrationTime ||
+        atts_in->GetOperationType() == LCSAttributes::ArcLength ||
+        atts_in->GetOperationType() == LCSAttributes::AverageDistanceFromSeed )
     {
         i = 0;
-        j = atts_in->GetTerminationType();
-
-        var += std::string(" - ") + std::string(typeString[i][j]);
-    }
-    else
-    {
-        i = 1;
-        j = atts_in->GetOperationType() - 1;
+        j = atts_in->GetOperationType();
         k = atts_in->GetOperatorType();
 
         var += std::string(" - ") + std::string(typeString[i][j]) +
-               std::string(" - ") + std::string(operatorString[k]);
+               std::string(" ")   + std::string(operatorString[k]);
 
+    }
+    else if( atts_in->GetOperationType() == LCSAttributes::EigenValue ||
+             atts_in->GetOperationType() == LCSAttributes::EigenVector )
+    {
+        i = 1;
+        j = atts_in->GetEigenComponent();
+
+        var += std::string(" - ") + std::string(typeString[i][j]) +
+          std::string(" Eigen ");
+
+        if( atts_in->GetOperationType() == LCSAttributes::EigenValue )
+          var += std::string( "value" );
+        else if( atts_in->GetOperationType() == LCSAttributes::EigenVector )
+          var += std::string( "vector" );
+    }
+    else //if( atts_in->GetOperationType() == LCSAttributes::Lyapunov )
+    {
+        i = 1;
+        j = atts_in->GetEigenComponent();
+        var += std::string(" - ") + std::string(typeString[i][j]);
+
+        i = 2;
+        j = atts_in->GetTerminationType();
+        var += std::string(" ")   + std::string(typeString[i][j]);
     }
 
     return var;
 }
+

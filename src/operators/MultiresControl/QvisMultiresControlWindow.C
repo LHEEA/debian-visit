@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -36,8 +36,6 @@
 *
 *****************************************************************************/
 #include <algorithm>
-#include <cstdio>
-#include <string>
 
 #include <QApplication>
 #include <QLabel>
@@ -48,9 +46,7 @@
 #include <DebugStream.h>
 #include <FileServerList.h>
 #include <MultiresControlAttributes.h>
-#include <ViewerProxy.h>
 
-using std::string;
 
 // ****************************************************************************
 // Method: QvisMultiresControlWindow::QvisMultiresControlWindow

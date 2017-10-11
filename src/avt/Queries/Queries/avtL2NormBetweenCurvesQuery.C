@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -128,7 +128,7 @@ avtL2NormBetweenCurvesQuery::CompareCurves(int n1, const float *x1,
     PutOnSameXIntervals(n1, x1, y1, n2, x2, y2, usedX, newCurve1Vals,
                         newCurve2Vals);
 
-    int total_n_pts = usedX.size();
+    int total_n_pts = (int)usedX.size();
     double integral = 0;
     for (int i = 0 ; i < total_n_pts-1 ; i++)
     {

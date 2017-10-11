@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,6 +86,10 @@
 //   Brad Whitlock, Mon Jul 21 11:33:44 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Biagas, Mon Jul 13 13:11:00 PDT 2015
+//   Place 'useForeground' checkbox before text color button, added
+//   textColorLabel so it can be disabled when the button is disabled.
+//
 // ****************************************************************************
 
 QvisText3DInterface::QvisText3DInterface(QWidget *parent) : 
@@ -126,6 +130,7 @@ QvisText3DInterface::QvisText3DInterface(QWidget *parent) :
     cLayout->addWidget(rb, row, 1);
     // Add controls for relative height
     relativeHeightSpinBox = new QSpinBox(this);
+    relativeHeightSpinBox->setKeyboardTracking(false);
     relativeHeightSpinBox->setMinimum(1);
     relativeHeightSpinBox->setMaximum(100);
     relativeHeightSpinBox->setSuffix("%");
@@ -158,6 +163,7 @@ QvisText3DInterface::QvisText3DInterface(QWidget *parent) :
     ++row;
 
     rotateZ = new QSpinBox(this);
+    rotateZ->setKeyboardTracking(false);
     rotateZ->setMinimum(-360);
     rotateZ->setMaximum(360);
     rotateZ->setButtonSymbols(QSpinBox::PlusMinus);
@@ -166,6 +172,7 @@ QvisText3DInterface::QvisText3DInterface(QWidget *parent) :
             this, SLOT(rotateZChanged(int)));
     QLabel *rotateZLabel = new QLabel(tr("Rotate Z"), this);
     rotateX = new QSpinBox(this);
+    rotateX->setKeyboardTracking(false);
     rotateX->setMinimum(-360);
     rotateX->setMaximum(360);
     rotateX->setButtonSymbols(QSpinBox::PlusMinus);
@@ -174,6 +181,7 @@ QvisText3DInterface::QvisText3DInterface(QWidget *parent) :
             this, SLOT(rotateXChanged(int)));
     QLabel *rotateXLabel = new QLabel(tr("Rotate X"), this);
     rotateY = new QSpinBox(this);
+    rotateY->setKeyboardTracking(false);
     rotateY->setMinimum(-360);
     rotateY->setMaximum(360);
     rotateY->setButtonSymbols(QSpinBox::PlusMinus);
@@ -197,11 +205,20 @@ QvisText3DInterface::QvisText3DInterface(QWidget *parent) :
     cLayout->addWidget(splitter2, row, 0, 1, 4);
     ++row;
 
+    // Added a use foreground toggle
+    useForegroundColorCheckBox = new QCheckBox(tr("Use foreground color"), this);
+    connect(useForegroundColorCheckBox, SIGNAL(toggled(bool)),
+            this, SLOT(useForegroundColorToggled(bool)));
+    cLayout->addWidget(useForegroundColorCheckBox, row, 0, 1, 3);
+    ++row;
+
     // Add controls for the text color.
+    textColorLabel = new QLabel(tr("Text color"), this);
+    cLayout->addWidget(textColorLabel, row, 0, Qt::AlignLeft);
+
     textColorButton = new QvisColorButton(this);
     connect(textColorButton, SIGNAL(selectedColor(const QColor &)),
             this, SLOT(textColorChanged(const QColor &)));
-    cLayout->addWidget(new QLabel(tr("Text color")), row, 0, Qt::AlignLeft);
     cLayout->addWidget(textColorButton, row, 1);
     textColorOpacity = new QvisOpacitySlider(0, 255, 10, 0, this);
     connect(textColorOpacity, SIGNAL(valueChanged(int)),
@@ -209,12 +226,6 @@ QvisText3DInterface::QvisText3DInterface(QWidget *parent) :
     cLayout->addWidget(textColorOpacity, row, 2, 1, 2);
     ++row;
 
-    // Added a use foreground toggle
-    useForegroundColorCheckBox = new QCheckBox(tr("Use foreground color"), this);
-    connect(useForegroundColorCheckBox, SIGNAL(toggled(bool)),
-            this, SLOT(useForegroundColorToggled(bool)));
-    cLayout->addWidget(useForegroundColorCheckBox, row, 0, 1, 3);
-    ++row;
 
     // Added a visibility toggle
     visibleCheckBox = new QCheckBox(tr("Visible"), this);
@@ -286,6 +297,9 @@ QvisText3DInterface::GetMenuText(const AnnotationObject &annot) const
 //   Brad Whitlock, Mon Jul 21 11:38:06 PDT 2008
 //   Qt 4.
 //
+//   Kathleen Biagas, Mon Jul 13 13:19:45 PDT 2015
+//   Enable/disable textColorLabel along with textColorButton.
+//
 // ****************************************************************************
 
 void
@@ -347,6 +361,7 @@ QvisText3DInterface::UpdateControls()
         QColor tmp(255,255,255);
         textColorButton->setButtonColor(tmp);
         textColorButton->setEnabled(false);
+        textColorLabel->setEnabled(false);
         textColorOpacity->setGradientColor(tmp);
     }
     else
@@ -356,6 +371,7 @@ QvisText3DInterface::UpdateControls()
                   annot->GetTextColor().Blue());
         textColorButton->setButtonColor(tc);
         textColorButton->setEnabled(true);
+        textColorLabel->setEnabled(true);
         textColorOpacity->setGradientColor(tc);
     }
     textColorOpacity->setValue(annot->GetTextColor().Alpha());
@@ -423,9 +439,7 @@ QvisText3DInterface::GetCurrentValues(int which_widget)
     if(which_widget == 2 || doAll)
     {
         // Get its new current value and store it in the atts.
-        ForceSpinBoxUpdate(relativeHeightSpinBox);
-        int h = relativeHeightSpinBox->value();
-        annot->SetRelativeHeight(h);
+        annot->SetRelativeHeight(relativeHeightSpinBox->value());
     }
 
     if(which_widget == 3 || doAll)
@@ -452,7 +466,6 @@ QvisText3DInterface::GetCurrentValues(int which_widget)
     if(which_widget == 4 || doAll)
     {
         // Get its new current value and store it in the atts.
-        ForceSpinBoxUpdate(rotateZ);
         int r = rotateZ->value();
         double rotations[3];
         rotations[0] = annot->GetRotations()[0];
@@ -464,7 +477,6 @@ QvisText3DInterface::GetCurrentValues(int which_widget)
     if(which_widget == 5 || doAll)
     {
         // Get its new current value and store it in the atts.
-        ForceSpinBoxUpdate(rotateX);
         int r = rotateX->value();
         double rotations[3];
         rotations[0] = (double)r;
@@ -476,7 +488,6 @@ QvisText3DInterface::GetCurrentValues(int which_widget)
     if(which_widget == 6 || doAll)
     {
         // Get its new current value and store it in the atts.
-        ForceSpinBoxUpdate(rotateY);
         int r = rotateY->value();
         double rotations[3];
         rotations[0] = annot->GetRotations()[0];

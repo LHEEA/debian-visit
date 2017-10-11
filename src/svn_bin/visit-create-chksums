@@ -53,15 +53,15 @@ fi
 version2=`echo $version | tr "." "_"`
 
 #
-# Create the directory to check out the files into.
+# Download the files.
 #
 rm -rf checksum_dir
 mkdir checksum_dir
 cd checksum_dir
-echo "Checking out third_party..."
-svn co http://portal.nersc.gov/svn/visit/tags/$version/third_party
-echo "Checking out $version..."
-svn co http://portal.nersc.gov/svn/visit/trunk/releases/$version
+echo "Downloading third_party..."
+svn co svn+ssh://brugger@edison.nersc.gov/project/projectdirs/visit/svn/visit/tags/$version/third_party
+echo "Downloading $version..."
+svn co svn+ssh://brugger@edison.nersc.gov/project/projectdirs/visit/svn/visit/trunk/releases/$version
 
 #
 # Create an awk script for use with the filesize command
@@ -110,26 +110,29 @@ do
    rm -f $output
 
    cd $version
-   echo ""                                          >  ../$output
-   echo "The VisIt executable $property"            >> ../$output
-   echo ""                                          >> ../$output
-   $cmd INSTALL_NOTES                               >> ../$output
-   $cmd VisIt-$version.dmg                          >> ../$output
-   $cmd jvisit$version.tar.gz                       >> ../$output
-   $cmd visit${version}.exe                         >> ../$output
-   $cmd visit-install$version2                      >> ../$output
-   $cmd visit${version}_x64.exe                     >> ../$output
-   $cmd visit$version2.darwin-x86_64.tar.gz         >> ../$output
-   $cmd visit$version2.linux-x86_64-ubuntu11.tar.gz >> ../$output
-   $cmd visit$version2.linux-x86_64-ubuntu14.tar.gz >> ../$output
-   $cmd visit$version2.linux-x86_64-rhel6.tar.gz    >> ../$output
+   echo ""                                                >  ../$output
+   echo "The VisIt executable $property"                  >> ../$output
+   echo ""                                                >> ../$output
+   $cmd INSTALL_NOTES                                     >> ../$output
+   $cmd VisIt-$version.dmg                                >> ../$output
+   $cmd jvisit$version.tar.gz                             >> ../$output
+   $cmd visit${version}.exe                               >> ../$output
+   $cmd visit-install$version2                            >> ../$output
+   $cmd visit${version}_x64.exe                           >> ../$output
+   $cmd visit$version2.darwin-x86_64.tar.gz               >> ../$output
+   $cmd visit$version2.linux-x86_64-ubuntu11.tar.gz       >> ../$output
+   $cmd visit$version2.linux-x86_64-ubuntu11-wmesa.tar.gz >> ../$output
+   $cmd visit$version2.linux-x86_64-ubuntu14.tar.gz       >> ../$output
+   $cmd visit$version2.linux-x86_64-ubuntu14-wmesa.tar.gz >> ../$output
+   $cmd visit$version2.linux-x86_64-rhel7.tar.gz          >> ../$output
+   $cmd visit$version2.linux-x86_64-rhel7-wmesa.tar.gz    >> ../$output
 
-   echo ""                                          >> ../$output
-   echo "The VisIt source code $property"           >> ../$output
-   echo ""                                          >> ../$output
-   $cmd build_visit$version2                        >> ../$output
-   $cmd $dist.tar.gz                                >> ../$output
-   $cmd visitdev$version.exe                        >> ../$output
+   echo ""                                                >> ../$output
+   echo "The VisIt source code $property"                 >> ../$output
+   echo ""                                                >> ../$output
+   $cmd build_visit$version2                              >> ../$output
+   $cmd $dist.tar.gz                                      >> ../$output
+   $cmd visitdev$version.exe                              >> ../$output
    cd ../third_party
    files=`ls`
    for file in $files

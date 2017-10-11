@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -213,6 +213,9 @@ class MessageAttributes;
 //   Brad Whitlock, Mon Dec 13 10:37:33 PST 2010
 //   I added "Ex" versions of GetMetaData and GetSIL.
 //
+//    David Camp, Thu Aug 27 09:40:00 PDT 2015
+//    Added Save and Restore Session functions for remote hosts.
+//
 // ****************************************************************************
 
 class GUI_API FileServerList : public AttributeSubject
@@ -271,6 +274,8 @@ public:
     void SetFilePlugin(const QualifiedFilename &filename, const std::string &plugin);
     void CreateGroupList(const std::string &filename,
                          const stringVector &groupList);
+    void SaveSessionFile(const std::string &host, const std::string &filename, const std::string &contents);
+    void RestoreSessionFile(const std::string &host, const std::string &filename, std::string &contents);
 
     const std::string &GetHost() const;
     const std::string &GetPath() const;
@@ -318,11 +323,13 @@ public:
     void SetStartServerCallback(ConnectCallback *cb, void *data);
     void SetConnectCallback(ConnectCallback *cb, void *data);
     void SetProgressCallback(bool (*cb)(void *, int), void *data);
+    void GetProgressCallback(bool (*cb)(void *, int), void *data);
 
     // Used to poke metadata into here if the mdserver has incomplete metadata
-    void SetOpenFileMetaData(const avtDatabaseMetaData*, int timeState);
-    void SetOpenFileSIL(const avtSIL*);
-
+    void SetFileMetaData(const QualifiedFilename &filename,
+                         const avtDatabaseMetaData*, int timeState);
+    void SetFileSIL(const QualifiedFilename &filename, const avtSIL*);
+                               
     // Convenience functions to determine if a component is selected.
     bool HostChanged() const;
     bool PathChanged() const;

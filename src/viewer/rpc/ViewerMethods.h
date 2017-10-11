@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -138,9 +138,6 @@ class ViewerState;
 //   Brad Whitlock, Fri Aug 27 10:38:23 PDT 2010
 //   I added RenamePickLabel.
 //
-//   Dave Pugmire, Tue Nov  9 16:09:44 EST 2010
-//   Added dumpSteps for streamline info query.
-//
 //   Brad Whitlock, Tue Dec 14 16:45:05 PST 2010
 //   I added new methods that let me pass selection properties when creating
 //   or updating a selection.
@@ -178,6 +175,9 @@ class ViewerState;
 //
 //   Kathleen Biagas, Mon Dec 22 10:19:45 PST 2014
 //   Add SetRemoveDuplicateNodes.
+//
+//   David Camp, Thu Aug 27 09:40:00 PDT 2015
+//   Added host name to the Export and Import of the state functions.
 //
 // ****************************************************************************
 
@@ -414,11 +414,12 @@ public:
     void ResetMeshManagementAttributes();
 
     void WriteConfigFile();
-    void ExportEntireState(const std::string &filename);
-    void ImportEntireState(const std::string &filename, bool inVisItDir);
+    void ExportEntireState(const std::string &filename, const std::string &hostname);
+    void ImportEntireState(const std::string &filename, bool inVisItDir, const std::string &hostname);
     void ImportEntireStateWithDifferentSources(const std::string &filename,
                                                bool inVisItDir,
-                                               const stringVector &sources);
+                                               const stringVector &sources,
+                                               const std::string &hostname);
     void ReadHostProfilesFromDirectory(const std::string &dir, bool clear);
 
     void SetPlotSILRestriction();
@@ -454,7 +455,7 @@ public:
 
     /// Experimental features (that are not official yet)
     void ExportWindows(const intVector &windowIds, const std::string& format);
-    void ExportHostProfile(const std::string& profile, const std::string &filename, const bool& saveInUserDir = false);
+    void ExportHostProfile(const std::string &profile, const std::string &filename, bool saveInUserDir = false);
     void UpdateMouseActions(const int& windowId, const std::string& mouseButton, const double &start_dx, const double& start_dy, const double& end_dx, const double &end_dy, const bool &ctrl, const bool &shift);
     void GetFileList(const std::string& path);
     void ForceRedraw(int windowId);

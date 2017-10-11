@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -43,7 +43,7 @@
   ply (python lex & yacc) parser for a simple expression language.
   I used Mayam's visit_exprs.py as a starting point & adapted a subset
   of rules from VisIt's existing expression language parser:
-   http://portal.nersc.gov/svn/visit/trunk/src/common/expr/ExprGrammar.C
+   http://visit.ilight.com/svn/visit/trunk/src/common/expr/ExprGrammar.C
 
   I also used the following references:
    http://drdobbs.com/web-development/184405580
@@ -58,8 +58,11 @@
 import sys
 import os
 
-import ply.lex as lex
-import ply.yacc as yacc
+try:
+    import ply.lex as lex
+    import ply.yacc as yacc
+except ImportError as e:
+    pass
 
 #------------------------------------------------------------------
 # Key objects used to encapsulate the data flow network components.
@@ -245,10 +248,6 @@ def t_error(t):
     print("Illegal character '%s'" % t.value[0])
     t.lexer.skip(1)
 
-# Build the lexer
-lex.lex()
-
-
 #------------------
 # Parsing rules
 #------------------
@@ -394,10 +393,15 @@ def p_error(p):
     if p:
         print "<line",p.lineno, "> Syntax Error", p.type, p.value
 
-# Build the parser
-yacc.yacc()
 
 class Parser(object):
+    @classmethod
+    def init(cls):
+        # Build the lexer
+        lex.lex()
+        # Build the parser
+        yacc.yacc()
+    
     @classmethod
     def parse(cls,txt):
         """

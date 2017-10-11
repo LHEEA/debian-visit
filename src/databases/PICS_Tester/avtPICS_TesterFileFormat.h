@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -81,8 +81,7 @@ class avtPICS_TesterFileFormat : public avtMTMDFileFormat
     // Otherwise, VisIt will make up some reasonable ones for you.
     //
     // virtual void        GetCycles(std::vector<int> &);
-    virtual void        GetTimes(std::vector<double> &t) { t = times; };
-    //
+    virtual void           GetTimes(std::vector<double> &t) { t = times; };
 
     virtual int            GetNTimesteps(void);
 
@@ -117,7 +116,7 @@ class avtPICS_TesterFileFormat : public avtMTMDFileFormat
 
     FlowType flowType;
 
-    double global_bounds[3];
+    double global_extents[3];
 
     // Double gyre flow constants
     double dg_A;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -73,9 +73,6 @@ avtIVPM3DC1Integrator::avtIVPM3DC1Integrator()
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    numStep = 0;
-    degenerate_iterations = 0;
-    stiffness_eps = tol / 1000.0;
 }
 
 // ****************************************************************************
@@ -89,24 +86,6 @@ avtIVPM3DC1Integrator::avtIVPM3DC1Integrator()
 
 avtIVPM3DC1Integrator::~avtIVPM3DC1Integrator()
 {
-}
-
-
-// ****************************************************************************
-//  Method: avtIVPM3DC1Integrator::SetMaximumDegenerateIterations
-//
-//  Purpose:
-//      Sets the maximum number of degenerate steps allowed
-//
-//  Creationist: Allen Sanderson
-//  Creation:   Octobert 24, 2009
-//
-// ****************************************************************************
-
-void
-avtIVPM3DC1Integrator::SetMaximumDegenerateIterations( const unsigned int& max )
-{
-    max_degenerate_iterations = max;
 }
 
 
@@ -125,7 +104,6 @@ void
 avtIVPM3DC1Integrator::SetTolerances(const double& relt, const double& abst)
 {
     tol = abst;
-    stiffness_eps = tol / 1000.0;
 }
 
 // ****************************************************************************
@@ -145,9 +123,6 @@ avtIVPM3DC1Integrator::Reset(const double& t_start,
                              const avtVector& v_start)
 {
     t = t_start;
-    numStep = 0;
-
-    degenerate_iterations = 0;
     yCur = y_start;
     h = h_max;
 }
@@ -198,9 +173,17 @@ avtIVPM3DC1Integrator::Step(avtIVPField* field, double t_max,
     if( (t + 1.01*h - t_max) * direction > 0.0 ) 
         h = t_max - t;
 
-    // stepsize underflow?
+    // stepsize underflow - go right up to the smallest value
+    // needed for pathlines.
     if( 0.1*std::abs(h) <= std::abs(t)*epsilon )
+    {
+        if (DebugStream::Level5())
+        {
+            debug5 << "\tavtIVPM3DC1Integrator::Step(): exiting at t = " 
+                   << t << ", step size too small (h = " << h << ")\n";
+        }
         return avtIVPSolver::STEPSIZE_UNDERFLOW;
+    }
 
     avtIVPSolver::Result res;
     avtVector yNew = yCur;
@@ -230,7 +213,6 @@ avtIVPM3DC1Integrator::Step(avtIVPField* field, double t_max,
 
         ivpstep->t0 = t;
         ivpstep->t1 = t + h;
-        numStep++;
 
         yCur = yNew;
         t = t+h;
@@ -401,7 +383,7 @@ avtIVPM3DC1Integrator::getBfield(const avtIVPField* field, avtVector y)
   }
   else 
   {
-    float B[3];
+    double B[3];
 
     m3dField->interpBcomps(B, pt, element, xieta);
     
@@ -639,15 +621,8 @@ avtIVPM3DC1Integrator::getBfield2(const avtIVPField* field,
 void
 avtIVPM3DC1Integrator::AcceptStateVisitor(avtIVPStateHelper& aiss)
 {
-    aiss.Accept(numStep)
-        .Accept(tol)
-        .Accept(degenerate_iterations)
-        .Accept(max_degenerate_iterations)
-        .Accept(stiffness_eps)
-        .Accept(h)
-        .Accept(h_max)
-        .Accept(t)
-        .Accept(yCur)
-        .Accept(ys[0])
+    avtIVPSolver::AcceptStateVisitor(aiss);
+
+    aiss.Accept(ys[0])
         .Accept(ys[1]);
 }

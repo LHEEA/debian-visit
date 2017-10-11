@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1899,7 +1899,7 @@ GetDirName(const char *path)
 {
     string dir = "";
 
-    int len = strlen(path);
+    int len = (int)strlen(path);
     const char *last = path + (len-1);
     while (*last != '/' && last > path)
     {

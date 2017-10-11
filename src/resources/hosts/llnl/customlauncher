@@ -13,7 +13,7 @@
 class JobSubmitter_qsub_LLNL(JobSubmitter_qsub):
     def __init__(self, launcher):
         super(JobSubmitter_qsub_LLNL, self).__init__(launcher)
-        self.usettc = self.sectorname() in ("aztec", "rzalastor")
+        self.usettc = self.sectorname() in ("borax", "rzalastor")
 
     def IsRunningOnXchem(self):
         return self.sectorname() == "xchem"
@@ -39,6 +39,16 @@ class JobSubmitter_qsub_LLNL(JobSubmitter_qsub):
 #
 #   Brad Whitlock, Wed Jun  5 16:24:26 PDT 2013
 #   Special handling of networking arguments for BG/Q.
+#
+#   Cyrus Harrison, Tue Aug 23 08:21:12 PDT 2016
+#   Added check for sequioa (seqlac)
+#
+#   Eric Brugger, Wed Mar 22 13:43:49 PDT 2017
+#   I added the MPI library paths to the LD_LIBRARY_PATH for borax, quartz,
+#   rzgenie and rztrona.
+#
+#   Eric Brugger, Thu Jun 15 11:44:37 PDT 2017
+#   I added the MPI library paths to the LD_LIBRARY_PATH for rztopaz.
 #
 ###############################################################################
 
@@ -70,11 +80,26 @@ class LLNLLauncher(MainLauncher):
         if self.parallelArgs.parallel and \
            (string.find(self.generalArgs.exe_name, "_par") != -1 or \
             string.find(self.generalArgs.exe_name, "_ser") != -1):
-            if self.sectorname() == "vulcanlac" or self.sectorname() == "rzuseqlac":
+            if self.sectorname() == "vulcanlac" or \
+               self.sectorname() == "rzuseqlac" or \
+               self.sectorname() == "seqlac":
                 self.generalArgs.host = self.GetIPAddress()
                 self.generalArgs.guesshost = 0
                 self.generalArgs.sshtunneling = 0
                 self.generalArgs.noloopback = 1
+
+        #
+        # Set the LD_LIBRARY_PATH to include the path to MPI on borax,
+        # quartz, rzgenie, rztopaz and rztrona.
+        #
+        if self.sectorname() == "borax" or \
+           self.sectorname() == "quartz" or \
+           self.sectorname() == "rzgenie" or \
+           self.sectorname() == "rztopaz" or \
+           self.sectorname() == "rztrona":
+            mpi_ld_library_paths = ["/usr/tce/packages/mvapich2/mvapich2-2.2-intel-16.0.3/lib", "/usr/tce/packages/intel/intel-16.0.3/lib/intel64"]
+            SETENV("LD_LIBRARY_PATH", self.joinpaths(mpi_ld_library_paths))
+
     #
     # Override the JobSubmitterFactory method so the custom job submitter can
     # be returned.

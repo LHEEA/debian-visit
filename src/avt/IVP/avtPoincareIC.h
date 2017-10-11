@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,7 +53,7 @@ class vtkObject;
 //
 //  Purpose:
 //      A derived type of avtStateRecorderIntegralCurve.  This class 
-//      decides how to terminate a streamline.
+//      decides how to terminate a Poncare integral curve.
 //
 //  Programmer: Hank Childs
 //  Creation:   October 4, 2010
@@ -262,7 +262,7 @@ public:
 
   // If a surface it's overlap is found geometrically
   // If an island (primary or secondary) toroidalPeriod / toroidalResonance
-  float nnodes;
+  double nnodes;
 
   unsigned int maxPunctures;
   unsigned int numPunctures;
@@ -319,8 +319,12 @@ public:
     avtPoincareIC();
     virtual ~avtPoincareIC();
 
-    virtual void  Serialize(MemStream::Mode mode, MemStream &buff, 
-                            avtIVPSolver *solver, SerializeFlags serializeFlags);
+    virtual void  Serialize(MemStream::Mode mode,
+                            MemStream &buff, 
+                            avtIVPSolver *solver,
+                            SerializeFlags serializeFlags);
+
+    virtual void  MergeIntegralCurve(avtIntegralCurve *);
 
   protected:
     avtPoincareIC( const avtPoincareIC& );
@@ -332,26 +336,33 @@ public:
   public:
     virtual bool CheckForTermination(avtIVPStep& step, avtIVPField *);
 
-    bool         TerminatedBecauseOfMaxIntersections(void) 
+    virtual void SetMaxSteps( int ms ) { maxSteps = ms; }
+    virtual int  GetNumSteps() { return numSteps; }
+    virtual bool TerminatedBecauseOfMaxSteps(void)
+                                 { return terminatedBecauseOfMaxSteps; };
+
+    virtual void SetMaxIntersections( int mi ) { maxIntersections = mi; };
+    virtual int  GetNumIntersections( ) { return numIntersections; };
+    virtual bool TerminatedBecauseOfMaxIntersections(void) 
                             { return terminatedBecauseOfMaxIntersections; };
 
-    bool         TerminatedBecauseOfMaxSteps(void) 
-                            { return terminatedBecauseOfMaxSteps; };
-
-    // Intersection points.
-    unsigned int    numIntersections;
-    unsigned int    maxIntersections;
-
   protected:
-    double intersectPlaneEq[4]; // Typically the Y=0 plane i.e. 0, 1, 0
-    bool   terminatedBecauseOfMaxIntersections;
-
     bool             doTime;
     double           maxTime;
 
     unsigned int     numSteps;
     unsigned int     maxSteps;
     bool             terminatedBecauseOfMaxSteps;
+
+    unsigned int     numIntersections;
+    unsigned int     maxIntersections;
+    bool             terminatedBecauseOfMaxIntersections;
+
+    // Intersection plane definition.
+    avtVector intersectPlanePt;
+    avtVector intersectPlaneNorm;
+
+    double intersectPlaneEq[4]; // Typically the Y=0 plane i.e. 0, 1, 0
 
   public:
     // Intersection period for the double Poncare section
@@ -366,7 +377,6 @@ public:
 
     // The fieldline properties as returned from the analysis library.
     FieldlineProperties properties;
-
 
     ////// Code for rational surface search
     avtPoincareIC *src_seed_ic;

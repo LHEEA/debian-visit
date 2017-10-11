@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -69,9 +69,9 @@ setup(name='visit_utils',
       version='0.1',
       author = 'Cyrus Harrison',
       author_email = 'cyrush@llnl.gov',
-      description='VisIt Utilties Module',
+      description='VisIt Utilities Module',
       package_dir = {'visit_utils':'src'},
-      packages=['visit_utils','visit_utils.qannote'],
+      packages=['visit_utils','visit_utils.qannote','visit_utils.qplot'],
       cmdclass = { 'test': setup_tests.ExecuteTests})
 
 if using_visit:

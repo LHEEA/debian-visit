@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -135,6 +135,9 @@ protected:
   TimeStepInfo*    (*getTimeStepInfo)(DataArchive*, GridP*, int, bool);
 
   GridDataRaw*     (*getGridData)(DataArchive*, GridP*, int, int, std::string, int, int, int[3], int[3]);
+
+  bool             (*variableExists)(DataArchive*, std::string);
+
   ParticleDataRaw* (*getParticleData)(DataArchive*, GridP*, int, int, std::string, int, int);
 
   std::string      (*getParticlePositionName)(DataArchive*);

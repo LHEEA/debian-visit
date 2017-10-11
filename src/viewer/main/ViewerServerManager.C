@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -274,11 +274,13 @@ ViewerServerManager::AddArguments(RemoteProxyBase *component,
     // Add arguments to the mdserver.
     if(GetViewerProperties()->GetDebugLevel() > 0)
     {
+        char const *bufferDebug = "b";
+        char const *decorateDebug = "d";
         char temp[10];
-        if (GetViewerProperties()->GetBufferDebug())
-            SNPRINTF(temp, 10, "%db", GetViewerProperties()->GetDebugLevel());
-        else
-            SNPRINTF(temp, 10, "%d", GetViewerProperties()->GetDebugLevel());
+        SNPRINTF(temp, 10, "%d%s%s",
+            GetViewerProperties()->GetDebugLevel(),
+            GetViewerProperties()->GetBufferDebug()?bufferDebug:"",
+            GetViewerProperties()->GetDecorateDebug()?decorateDebug:"");
         component->AddArgument("-debug");
         component->AddArgument(temp);
     }

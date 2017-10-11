@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,8 @@
 #endif
 #include <new>
 #include <cstring>
+#include <sstream>
+using std::ostringstream;
 
 #include <ConfigureInfo.h>
 #include <DebugStreamFull.h>
@@ -85,6 +87,9 @@ static ErrorFunction errorFunction = NULL;
 static void *errorFunctionArgs = NULL;
 static bool initializeCalled = false;
 static bool finalizeCalled = false;
+static ThreadIDFunction threadIDFunction = NULL;
+static void *threadIDFunctionArgs = NULL;
+static int numThreads = 1;
 
 // ****************************************************************************
 //  Function: striparg
@@ -235,6 +240,10 @@ NewHandler(void)
 //    Tom Fogal, Wed Sep 28 13:40:21 MDT 2011
 //    Fix a UMR that valgrind complained about.
 //
+//    Mark C. Miller, Thu Sep 10 11:07:15 PDT 2015
+//    Added logic to manage decoration of level 1 debug logs with __FILE__
+//    and __LINE__; an extra 'd' in debug level arg will turn on these log
+//    decorations.
 // ****************************************************************************
 
 void
@@ -252,9 +261,11 @@ VisItInit::Initialize(int &argc, char *argv[], int r, int n, bool strip, bool si
     bool usePid = false;
 #endif
     bool bufferDebug = false;
+    bool decorateDebug1 = false;
     bool clobberVlogs = false;
     bool vtk_debug = false;
     bool enableTimings = false;
+    int threadDebugLogs=1;
     for (i=1; i<argc; i++)
     {
         if (strcmp("-debug_engine_rank", argv[i]) == 0)
@@ -304,8 +315,10 @@ VisItInit::Initialize(int &argc, char *argv[], int r, int n, bool strip, bool si
                     cerr << "Warning: clamping debug level to 0\n";
                     debuglevel = 0;
                 }
-                if (i+1 < argc && *(argv[i+1]+1) == 'b')
+                if (i+1 < argc && strchr(argv[i+1],'b'))
                     bufferDebug = true;
+                if (i+1 < argc && strchr(argv[i+1],'d'))
+                    decorateDebug1 = true;
 
                 if(strip)
                 {
@@ -317,6 +330,13 @@ VisItInit::Initialize(int &argc, char *argv[], int r, int n, bool strip, bool si
                     ++i;
                 }
             }
+        }
+        else if (strcmp("-thread-debug", argv[i]) == 0)
+        {
+            if(i+1 < argc && isdigit(*(argv[i+1]))) 
+                threadDebugLogs = atoi(argv[i+1]);
+            else 
+                cerr << "Warning: number of threaded debug logs not specified, assuming 1\n";
         }
         else if (strcmp("-debug-processor-stride", argv[i]) == 0)
         {
@@ -418,16 +438,21 @@ VisItInit::Initialize(int &argc, char *argv[], int r, int n, bool strip, bool si
 
     // Initialize the debug streams and also add the command line arguments
     // to the debug logs.
-    DebugStreamFull::Initialize(progname, debuglevel, sigs, clobberVlogs, bufferDebug);
+    DebugStreamFull::Initialize(progname, debuglevel, threadDebugLogs, sigs, 
+        clobberVlogs, bufferDebug, decorateDebug1);
+    ostringstream oss;
     for(i = 0; i < argc; ++i)
-        debug1 << argv[i] << " ";
-    debug1 << endl;
+        oss << argv[i] << " ";
+    oss << endl;
+    debug1 << oss.str();
 
     TimingsManager::Initialize(progname);
     // In case TimingsManager was already initialized...
     visitTimer->SetFilename(progname);
     if(enableTimings)
         visitTimer->Enable();
+
+    atexit(VisItInit::Finalize);
 
 #if !defined(_WIN32)
     std::set_new_handler(NewHandler);
@@ -484,7 +509,7 @@ VisItInit::GetComponentName(void)
 //  Purpose: Return integer index of component name in list of all components
 //
 // ****************************************************************************
-const int
+int
 VisItInit::ComponentNameToID(const char *compName)
 {
     int n = sizeof(allComponentNames) / sizeof(allComponentNames[0]);
@@ -678,4 +703,89 @@ RemovePrependedDirs(const char *path, char *name)
     {
         strcpy(name, path + lastSlash);
     }
+}
+
+
+// ****************************************************************************
+//  Function: VisItInit::GetNumberOfThreads
+// 
+//  Purpose:
+//      Gets the number of threads for this component.  (This is currently 
+//      always 1, except for when the engine is running with threads.  This
+//      function helps modules like DebugStream and TimingsManager deal with
+//      the possibility of threading.)
+//
+//  Programmer: Hank Childs
+//  Creation:   July 4, 2015
+//  
+// ****************************************************************************
+
+int
+VisItInit::GetNumberOfThreads()
+{
+    return numThreads;
+}
+
+
+// ****************************************************************************
+//  Function: VisItInit::SetNumberOfThreads
+// 
+//  Purpose:
+//      Sets the number of threads for this component.  (This is currently 
+//      always 1, except for when the engine is running with threads.  This
+//      function helps modules like DebugStream and TimingsManager deal with
+//      the possibility of threading.  It is only anticipated that this function
+//      is called on the engine.)
+//
+//  Programmer: Hank Childs
+//  Creation:   July 4, 2015
+//  
+// ****************************************************************************
+
+void
+VisItInit::SetNumberOfThreads(int nt)
+{
+    numThreads = nt;
+}
+
+
+// ****************************************************************************
+//  Function: VisItInit::RegisterThreadIDFunction
+// 
+//  Purpose:
+//      Sets a function that can get the thread ID.  This is currently only
+//      expected to be called on the engine, when running with threading.
+//
+//  Programmer: Hank Childs
+//  Creation:   July 4, 2015
+//  
+// ****************************************************************************
+
+void
+VisItInit::RegisterThreadIDFunction(ThreadIDFunction f, void *a)
+{
+    threadIDFunction     = f;
+    threadIDFunctionArgs = a;
+}
+
+
+// ****************************************************************************
+//  Function: VisItInit::GetMyThreadID
+// 
+//  Purpose:
+//      Gets the current thread's ID.  Returns 0 if not running in a threaded
+//      mode.
+//
+//  Programmer: Hank Childs
+//  Creation:   July 4, 2015
+//  
+// ****************************************************************************
+
+int
+VisItInit::GetMyThreadID(void)
+{
+    if (threadIDFunction != NULL)
+        return threadIDFunction(threadIDFunctionArgs);
+
+    return 0;
 }

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -143,6 +143,8 @@ def hosts(vdir=None,legacy=False,reload=False):
             __hosts.update(llnl_closed)
         else:
             if vdir is None:
+                if not os.environ.has_key("VISITHOME"):
+                    raise VisItException("hosts() requires VISITHOME env var or explicit vdir argument")
                 vdir = os.environ["VISITHOME"]
             hpf_files = glob.glob(pjoin(vdir,".visit","hosts","*.xml"))
             for hpf_file in hpf_files:

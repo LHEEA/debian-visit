@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -309,8 +309,8 @@ avtPuReMDFileFormat::GetMesh(int ts, const char *name)
 
         vtkCellArray *lines = vtkCellArray::New();
         pd->SetLines(lines);
-        int nb = bonds.size();
-        for (int k = 0 ; k < nb ; k++)
+        size_t nb = bonds.size();
+        for (size_t k = 0 ; k < nb ; k++)
         {
             lines->InsertNextCell(2);
             lines->InsertCellPoint(bonds[k].first);

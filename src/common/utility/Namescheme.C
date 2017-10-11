@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -600,4 +600,25 @@ const char *Namescheme::GetName(int natnum)
         FREE(tmpExpr);
     }
     return SaveReturnedString(retval);
+}
+
+int Namescheme::GetIndex(int natnum)
+{
+    char const *name_str = this->GetName(natnum);
+    int i = 0;
+
+    if (!name_str) return -1;
+
+    while (name_str[i] && !(strchr("0123456789+-",                name_str[i  ]) &&
+                            strchr("0123456789.aAbBcCdDeEfFxX+-", name_str[i+1])))
+        i++;
+
+    if (!name_str[i]) return -1;
+
+    return (int) strtol(&name_str[i], 0, 10);
+}
+
+void Namescheme::FreeClassStaticResources(void)
+{
+    SaveReturnedString(0);
 }

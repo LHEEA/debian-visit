@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -35,6 +35,9 @@
 # DAMAGE.
 #
 # Modifications:
+#
+#  Cyrus Harrison, Thu Apr 19 16:07:11 PDT 2012
+#  Added Ghost/avtLocalStructuredDomainBoundaries.C
 #
 #****************************************************************************/
 
@@ -73,6 +76,7 @@ Ghost/avtDomainBoundaries.C
 Ghost/avtIsenburgSGG.C
 Ghost/avtStreamingGhostGenerator.C
 Ghost/avtStructuredDomainBoundaries.C
+Ghost/avtLocalStructuredDomainBoundaries.C
 Ghost/avtUnstructuredDomainBoundaries.C
 Ghost/avtNekDomainBoundaries.C
 Ghost/avtStructuredDomainNesting.C

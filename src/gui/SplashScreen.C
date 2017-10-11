@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -197,6 +197,39 @@
 //    Eric Brugger, Wed Apr 22 11:38:06 PDT 2015
 //    Changed the date on the splash screen to May 2015.
 //
+//    Eric Brugger, Mon Jun  8 08:38:45 PDT 2015
+//    Changed the date on the splash screen to June 2015.
+//
+//    Eric Brugger, Mon Jun  8 08:38:45 PDT 2015
+//    Changed the date on the splash screen to October 2015.
+//
+//    Eric Brugger, Wed Feb 17 16:17:38 PST 2016
+//    Changed the date on the splash screen to February 2016.
+//
+//    Eric Brugger, Wed Feb 24 17:08:45 PST 2016
+//    Changed the year on the splash screen to 2016.
+//
+//    Eric Brugger, Fri Mar 25 09:51:03 PDT 2016
+//    Changed the date on the splash screen to March 2016.
+//
+//    Eric Brugger, Fri Mar 25 09:51:03 PDT 2016
+//    Changed the date on the splash screen to June 2016.
+//
+//    Eric Brugger, Tue Aug  9 11:39:33 PDT 2016
+//    Changed the date on the splash screen to August 2016.
+//
+//    Eric Brugger, Tue Oct 25 12:42:32 PDT 2016
+//    Changed the date on the splash screen to November 2016.
+//
+//    Eric Brugger, Tue Jan  3 07:54:18 PST 2017
+//    Changed the date on the splash screen to January 2017.
+//
+//    Eric Brugger, Wed Mar 22 14:44:13 PDT 2017
+//    Changed the date on the splash screen to April 2017.
+//
+//    Eric Brugger, Thu Jun  8 15:15:03 PDT 2017
+//    Changed the date on the splash screen to April 2017.
+//
 // ****************************************************************************
 
 SplashScreen::SplashScreen(bool cyclePictures) : QFrame(0, Qt::SplashScreen)
@@ -270,7 +303,7 @@ SplashScreen::SplashScreen(bool cyclePictures) : QFrame(0, Qt::SplashScreen)
             painter.scale(scale, scale);
             QFont font("helvetica", 20, QFont::Bold, true);
             font.setItalic(false);
-            int x = 250;
+            int x = 270;
             int y = pictures[i].height() - 8;
             painter.setPen(Qt::black);
             painter.drawText(int(x / scale), int(y / scale), ver);
@@ -317,9 +350,9 @@ SplashScreen::SplashScreen(bool cyclePictures) : QFrame(0, Qt::SplashScreen)
            << tr("October")
            << tr("November")
            << tr("December");
-    int currentMonth = 5;
+    int currentMonth = 6;
     lLayout->addWidget(new QLabel(versionText, this));
-    lLayout->addWidget(new QLabel(months[currentMonth-1] + " 2015", this));
+    lLayout->addWidget(new QLabel(months[currentMonth-1] + " 2017", this));
 
     copyrightButton = 0;
     contributorButton = 0;

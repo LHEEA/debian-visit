@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -147,28 +147,31 @@ FOREACH(LIB ${R_LIB})
 ENDFOREACH(LIB in ${MESA_LIB})
 
 
-IF (NOT WIN32)
+IF(VISIT_PYTHON_DIR)
+  IF (NOT WIN32)
     EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E remove -f
                             ${CMAKE_CURRENT_BINARY_DIR}/python)
     EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E create_symlink
                             ${VISIT_PYTHON_DIR}
                             ${CMAKE_CURRENT_BINARY_DIR}/python)
-ELSE (NOT WIN32)
+  ELSE (NOT WIN32)
 
     # because you don't need to choose your configuration up-front
     # on windows, make this a custom target so they are copied to the
     # correct lib/${CFG} directory
-    ADD_CUSTOM_TARGET(python_lib ALL)
-    ADD_CUSTOM_COMMAND(TARGET python_lib POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ADD_CUSTOM_TARGET(python_lib ALL
+        COMMAND ${CMAKE_COMMAND} -E copy_directory
             ${VISIT_PYTHON_DIR}/Lib
             ${VISIT_LIBRARY_DIR}/python/Lib
-            COMMENT "Copying ${VISIT_PYTHON_DIR}/Lib/ ${VISIT_LIBRARY_DIR}/python/Lib"
-            )
-ENDIF (NOT WIN32)
+        COMMENT "Copying ${VISIT_PYTHON_DIR}/Lib/ ${VISIT_LIBRARY_DIR}/python/Lib")
+    if(VISIT_NO_ALLBUILD)
+        add_dependencies(visit_special_builds python_lib)
+    endif()
+  ENDIF (NOT WIN32)
+ENDIF()
 
 # prepare site-packages
-IF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE))
+IF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_LIBPYSIDE))
     IF(NOT WIN32)
         EXECUTE_PROCESS(COMMAND ${CMAKE_COMMAND} -E make_directory
                         ${CMAKE_CURRENT_BINARY_DIR}/site-packages
@@ -181,7 +184,7 @@ IF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE))
             MESSAGE(WARNING "Failed to create lib/site-packages/")
         ENDIF(NOT "${LIB_SITE_PKGS_MKDIR}" STREQUAL "0")
     ENDIF(NOT WIN32)
-ENDIF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE))
+ENDIF(VISIT_PYTHON_FILTERS OR (VISIT_PYTHON_SCRIPTING AND HAVE_LIBPYSIDE))
 
 IF(VISIT_PYTHON_FILTERS)
 # We need to be able to locate the vtk python wrapper lib at run time.
@@ -209,29 +212,19 @@ IF(VISIT_PYTHON_FILTERS)
         # because you don't need to choose your configuration up-front
         # on windows, make this a custom target so they are copied to the
         # correct lib/${CFG} directory
-        ADD_CUSTOM_TARGET(vtk_python_modules ALL)
-        IF(${VTK_VERSION} VERSION_LESS "6.1.0")
-            ADD_CUSTOM_COMMAND(TARGET vtk_python_modules POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_directory
-                        ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk
-                        ${VISIT_LIBRARY_DIR}/site-packages/vtk
-                COMMAND ${CMAKE_COMMAND} -E copy
-                        ${VTK_EGG_FILE}
-                        ${VISIT_LIBRARY_DIR}/site-packages
-                COMMENT "Copying ${VTK_PY_WRAPPERS_DIR}/site-packages to ${VISIT_LIBRARY_DIR}/site-packages/vtk"
-                )
-        ELSE()
-            ADD_CUSTOM_COMMAND(TARGET vtk_python_modules POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_directory
-                        ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk
-                        ${VISIT_LIBRARY_DIR}/site-packages/vtk
-                COMMENT "Copying ${VTK_PY_WRAPPERS_DIR}/site-packages to ${VISIT_LIBRARY_DIR}/site-packages/vtk"
-                )
-        ENDIF()
+        ADD_CUSTOM_TARGET(vtk_python_modules ALL
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    ${VTK_PY_WRAPPERS_DIR}/site-packages/vtk
+                    ${VISIT_LIBRARY_DIR}/site-packages/vtk
+            COMMENT "Copying ${VTK_PY_WRAPPERS_DIR}/site-packages to ${VISIT_LIBRARY_DIR}/site-packages/vtk"
+        )
+        if(VISIT_NO_ALLBUILD)
+            add_dependencies(visit_special_builds vtk_python_modules)
+        endif()
     ENDIF (NOT WIN32)
 ENDIF(VISIT_PYTHON_FILTERS)
 
-IF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)
+IF(VISIT_PYTHON_SCRIPTING AND HAVE_LIBPYSIDE)
     MESSAGE(STATUS "Adding PySide to lib/site-packages/")
     IF (NOT WIN32)
         FILE(GLOB PYSIDE_MODULE_ITEMS "${PYSIDE_PYTHONPATH}/*")
@@ -251,13 +244,15 @@ IF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)
             ENDIF(NOT "${PYSIDE_MODULE_SYM_CREATE}" STREQUAL "0")
         ENDFOREACH(ITM ${PYSIDE_MODULE_ITEMS})
     ELSE (NOT WIN32)
-        ADD_CUSTOM_TARGET(pyside_modules ALL)
-        ADD_CUSTOM_COMMAND(TARGET pyside_modules POST_BUILD
+        ADD_CUSTOM_TARGET(pyside_modules ALL
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                     ${PYSIDE_PYTHONPATH}/PySide
                     ${VISIT_LIBRARY_DIR}/site-packages/PySide
             COMMENT "Copying ${PYSIDE_PYTHONPATH}/PySide to ${VISIT_LIBRARY_DIR}/site-packages/PySide"
-            )
+        )
+        if(VISIT_NO_ALLBUILD)
+            add_dependencies(visit_special_builds pyside_modules)
+        endif()
     ENDIF (NOT WIN32)
-ENDIF(VISIT_PYTHON_SCRIPTING AND HAVE_PYSIDE)
+ENDIF(VISIT_PYTHON_SCRIPTING AND HAVE_LIBPYSIDE)
 

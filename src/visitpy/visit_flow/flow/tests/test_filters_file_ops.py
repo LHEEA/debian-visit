@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -47,8 +47,8 @@ import unittest
 import os
 from os.path import join as pjoin
 
-from flow import *
-from flow.filters import file_ops
+from visit_flow import *
+from visit_flow.filters import file_ops
 
 # uncomment for detailed exe info
 #import logging
@@ -75,7 +75,7 @@ class TestFile(unittest.TestCase):
         mv["pattern"] = pjoin(odir,"result.%04d.txt")
         w.connect("finput","mv:in")
         print w.graph
-        sspace = StateSpace({"idx":10})
+        sspace = StateSpace({"index":10})
         sgen = StateVectorGenerator(sspace)
         for svec in sgen:
             w.execute(svec)

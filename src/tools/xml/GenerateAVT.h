@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -893,9 +893,7 @@ class AVTGeneratorPlugin : public PluginBase
             h << "    // file.  These should only be defined if the file format knows what the" << Endl;
             h << "    // time and/or cycle is." << Endl;
             h << "    //" << Endl;
-            h << "    // virtual bool      ReturnsValidCycle() const { return true; };" << Endl;
             h << "    // virtual int       GetCycle(void);" << Endl;
-            h << "    // virtual bool      ReturnsValidTime() const { return true; };" << Endl;
             h << "    // virtual double    GetTime(void);" << Endl;
             h << "    //" << Endl;
             h << "" << Endl;
@@ -1487,7 +1485,7 @@ class AVTGeneratorPlugin : public PluginBase
             c << "" << Endl;
             c << "" << Endl;
             c << "// ****************************************************************************" << Endl;
-            c << "//  Method: avtEMSTDFileFormat::GetNTimesteps" << Endl;
+            c << "//  Method: avt"<<name<<"FileFormat::GetNTimesteps" << Endl;
             c << "//" << Endl;
             c << "//  Purpose:" << Endl;
             c << "//      Tells the rest of the code how many timesteps there are in this file." << Endl;
@@ -2134,7 +2132,7 @@ class AVTGeneratorPlugin : public PluginBase
             c << "" << Endl;
             c << "" << Endl;
             c << "// ****************************************************************************" << Endl;
-            c << "//  Method: avtEMSTDFileFormat::GetNTimesteps" << Endl;
+            c << "//  Method: avt"<<name<<"FileFormat::GetNTimesteps" << Endl;
             c << "//" << Endl;
             c << "//  Purpose:" << Endl;
             c << "//      Tells the rest of the code how many timesteps there are in this file." << Endl;

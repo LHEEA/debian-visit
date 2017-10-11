@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,26 +39,11 @@
 #include "QvisExtractPointFunction2DWindow.h"
 
 #include <ExtractPointFunction2DAttributes.h>
-#include <ViewerProxy.h>
 
-#include <QCheckBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
-#include <QSpinBox>
-#include <QButtonGroup>
-#include <QRadioButton>
-#include <QvisColorTableButton.h>
-#include <QvisOpacitySlider.h>
-#include <QvisColorButton.h>
-#include <QvisLineStyleWidget.h>
-#include <QvisLineWidthWidget.h>
-#include <QvisVariableButton.h>
 
-#include <stdio.h>
-#include <string>
-
-using std::string;
 
 // ****************************************************************************
 // Method: QvisExtractPointFunction2DWindow::QvisExtractPointFunction2DWindow
@@ -176,10 +161,10 @@ QvisExtractPointFunction2DWindow::UpdateWindow(bool doAll)
         switch(i)
         {
           case ExtractPointFunction2DAttributes::ID_I:
-            I->setText(IntToQString(atts->GetI()));
+            I->setText(IntsToQString(atts->GetI()));
             break;
           case ExtractPointFunction2DAttributes::ID_J:
-            J->setText(IntToQString(atts->GetJ()));
+            J->setText(IntsToQString(atts->GetJ()));
             break;
         }
     }
@@ -209,13 +194,13 @@ QvisExtractPointFunction2DWindow::GetCurrentValues(int which_widget)
     // Do I
     if(which_widget == ExtractPointFunction2DAttributes::ID_I || doAll)
     {
-        int val;
-        if(LineEditGetInt(I, val))
+        intVector val;
+        if(LineEditGetInts(I, val))
             atts->SetI(val);
         else
         {
             ResettingError(tr("I"),
-                IntToQString(atts->GetI()));
+                IntsToQString(atts->GetI()));
             atts->SetI(atts->GetI());
         }
     }
@@ -223,13 +208,13 @@ QvisExtractPointFunction2DWindow::GetCurrentValues(int which_widget)
     // Do J
     if(which_widget == ExtractPointFunction2DAttributes::ID_J || doAll)
     {
-        int val;
-        if(LineEditGetInt(J, val))
+        intVector val;
+        if(LineEditGetInts(J, val))
             atts->SetJ(val);
         else
         {
             ResettingError(tr("J"),
-                IntToQString(atts->GetJ()));
+                IntsToQString(atts->GetJ()));
             atts->SetJ(atts->GetJ());
         }
     }

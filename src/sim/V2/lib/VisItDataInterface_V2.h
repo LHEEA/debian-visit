@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,9 +47,12 @@
 #include <VisIt_NameList.h>
 #include <VisIt_MaterialMetaData.h>
 #include <VisIt_MeshMetaData.h>
+#include <VisIt_MessageMetaData.h>
 #include <VisIt_SimulationMetaData.h>
 #include <VisIt_SpeciesMetaData.h>
 #include <VisIt_VariableMetaData.h>
+
+#include <VisIt_OptionList.h>
 
 /* Data */
 #include <VisIt_CSGMesh.h>

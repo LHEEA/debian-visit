@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -119,7 +119,7 @@ ClampColor(const double c)
 vtkDataArray *
 avtHSVColorComposeExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsIndex)
 {
-    int numinputs = varnames.size();
+    size_t numinputs = varnames.size();
     if (numinputs != 3)
     {
         EXCEPTION2(ExpressionException, outputVariableName, 

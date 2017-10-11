@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,6 +107,17 @@ class DBOptionsAttributes;
 //    I modified the reading of pvti, pvtr and pvts files to handle the case
 //    where the piece extent was a subset of the whole extent.
 //
+//    Kathleen Biagas, Fri Feb  6 06:09:01 PST 2015
+//    Added vtk_meshname, to store MeshName provided in file (if present).
+//
+//    Kathleen Biagas, Thu Aug 13 17:25:03 PDT 2015
+//    Add support for groups and block names.
+//
+//    Eric Brugger, Tue Jun 20 13:44:39 PDT 2017
+//    Modified the STSD databases so that they get the database metadata
+//    from the first non empty database for a collection of STSD databases
+//    that have been grouped into a multi data version using a visit file.
+//
 // ****************************************************************************
 
 class avtVTKFileReader
@@ -125,6 +136,8 @@ class avtVTKFileReader
 
     void          PopulateDatabaseMetaData(avtDatabaseMetaData *);
 
+    bool          IsEmpty();
+
     void          FreeUpResources(void);
 
     double        GetTime(void);
@@ -138,7 +151,15 @@ class avtVTKFileReader
 
     bool                  readInDataset;
 
-    int                   nblocks;
+    int                      ngroups;
+    std::string              groupPieceName;
+    std::vector<std::string> groupNames;
+
+    int                      nblocks;
+    std::string              blockPieceName;
+    std::vector<std::string> blockNames;
+    std::vector<int>         groupIds;
+
     char                **pieceFileNames;
     vtkDataSet          **pieceDatasets;
     int                 **pieceExtents;
@@ -150,6 +171,7 @@ class avtVTKFileReader
     std::vector<std::string> matnames;
     double                vtk_time;
     int                   vtk_cycle;
+    std::string           vtk_meshname;
 
     std::string           fileExtension;
     std::string           pieceExtension;

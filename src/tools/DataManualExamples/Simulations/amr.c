@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -80,7 +80,7 @@ simulation_data_dtor(simulation_data *sim)
 {
 }
 
-const char *cmd_names[] = {"halt", "step", "run"};
+const char *cmd_names[] = {"halt", "step", "run", "update"};
 
 void simulate_one_timestep(simulation_data *sim);
 void read_input_deck(void) { }

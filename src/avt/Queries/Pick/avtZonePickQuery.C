@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -142,6 +142,13 @@ avtZonePickQuery::SetInvTransform(const avtMatrix *m)
 //
 //    Kathleen Bonnell, Fri Jul  8 14:15:21 PDT 2005 
 //    Modified test for determining if 'real' id needs to be calculated. 
+//
+//    Matt Larsen, Fri Jul 8 08:15:00 PDT 2016
+//    Added call to base class ExtractZonePickHighlights to support 
+//    zone highlight
+//
+//    Matt Larsen, Mon Sep 11 10:15:00 PDT 2016
+//    Fixed issue with the wrong cell being highlighted with Mili
 //
 // ****************************************************************************
 
@@ -321,6 +328,9 @@ avtZonePickQuery::Execute(vtkDataSet *ds, const int dom)
         // 
         pickAtts.SetCellPoint(pickAtts.GetPickPoint());
     }
+    //By this point, the element Id should be the original zone
+    //if it was decomposed.
+    this->ExtractZonePickHighlights(pickedZone, ds, dom);
 }
 
 

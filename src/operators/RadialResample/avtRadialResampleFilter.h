@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -64,6 +64,9 @@
 //
 //  Modifications:
 //
+//    Kevin Griffin, Fri Mar 24 18:06:06 PDT 2017
+//    Added ModifyContract and UpdateDataObjectInfo methods.
+//
 // ****************************************************************************
 
 class avtRadialResampleFilter : public avtPluginDatasetToDatasetFilter
@@ -79,9 +82,12 @@ class avtRadialResampleFilter : public avtPluginDatasetToDatasetFilter
 
     virtual void         SetAtts(const AttributeGroup*);
     virtual bool         Equivalent(const AttributeGroup*);
+    virtual avtContract_p   ModifyContract(avtContract_p);
+    virtual void            UpdateDataObjectInfo(void);
 
   protected:
     RadialResampleAttributes   atts;
+    std::string resampleVarName;
     
     bool GetBounds(double[6]);
 

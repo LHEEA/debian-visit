@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -477,7 +477,7 @@ QvisHostProfileWindow::CreateRemoteProfilesGroup()
     gridLayout->addWidget(importButton, 0, 2, 1, 1);
 
     /// todo: use a configuration API to load remote url..
-    remoteUrl->addItem("http://portal.nersc.gov/svn/visit/trunk/src/resources/hosts/");
+    remoteUrl->addItem("http://visit.ilight.com/svn/visit/trunk/src/resources/hosts/");
     remoteUrl->setCurrentIndex(0);
 
     remoteTree = new QTreeWidget(currentGroup);
@@ -696,6 +696,11 @@ QvisHostProfileWindow::downloadHosts(QNetworkReply *reply)
 //   Brad Whitlock, Wed Aug 15 13:58:14 PDT 2012
 //   I added ssh command.
 //
+//    Kathleen Biagas, Wed Dec 16 11:07:43 MST 2015
+//    Replace slot 'sshCommandChanged' with 'sshCommandRetPressed', so that
+//    sshCommand is only processed once editing has finished.  Will be
+//    triggered by 'returnPressed'/'editingFinished' signals from the widget.
+//
 // ****************************************************************************
 
 QWidget *
@@ -749,6 +754,7 @@ QvisHostProfileWindow::CreateMachineSettingsGroup()
     connect(maxNodesCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(toggleUseMaxNodes(bool)));
     maxNodes = new QSpinBox(machineGroup);
+    maxNodes->setKeyboardTracking(false);
     maxNodes->setRange(1, 1000000);
     connect(maxNodes, SIGNAL(valueChanged(int)),
             this, SLOT(maxNodesChanged(int)));
@@ -760,6 +766,7 @@ QvisHostProfileWindow::CreateMachineSettingsGroup()
     connect(maxProcessorsCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(toggleUseMaxProcessors(bool)));
     maxProcessors = new QSpinBox(machineGroup);
+    maxProcessors->setKeyboardTracking(false);
     maxProcessors->setRange(1, 16000000);
     connect(maxProcessors, SIGNAL(valueChanged(int)),
             this, SLOT(maxProcessorsChanged(int)));
@@ -860,8 +867,10 @@ QvisHostProfileWindow::CreateMachineSettingsGroup()
 
     sshCommand = new QLineEdit(connectionGroup);
     sshCommandCheckBox = new QCheckBox(tr("SSH command"), connectionGroup);
-    connect(sshCommand, SIGNAL(textChanged(const QString &)),
-            this, SLOT(sshCommandChanged(const QString &)));
+    connect(sshCommand, SIGNAL(returnPressed()),
+            this, SLOT(sshCommandRetPressed()));
+    connect(sshCommand, SIGNAL(editingFinished()),
+            this, SLOT(sshCommandRetPressed()));
     connect(sshCommandCheckBox, SIGNAL(toggled(bool)),
             this, SLOT(toggleSSHCommand(bool)));
     cLayout->addWidget(sshCommandCheckBox, cRow, 0, 1, 2);
@@ -1010,6 +1019,7 @@ QvisHostProfileWindow::CreateBasicSettingsGroup()
     row++;
 
     timeout = new QSpinBox(currentGroup);
+    timeout->setKeyboardTracking(false);
     timeout->setRange(1, 1440);
     timeout->setSingleStep(1);
     connect(timeout, SIGNAL(valueChanged(int)),
@@ -1020,6 +1030,7 @@ QvisHostProfileWindow::CreateBasicSettingsGroup()
     row++;
 
     threads = new QSpinBox(currentGroup);
+    threads->setKeyboardTracking(false);
     threads->setRange(0, 256);
     threads->setSingleStep(1);
     connect(threads, SIGNAL(valueChanged(int)),
@@ -1156,8 +1167,10 @@ QvisHostProfileWindow::CreateLaunchSettingsGroup()
     launchMethod->addItem("qsub/mpirun");
     launchMethod->addItem("qsub/srun");
     launchMethod->addItem("sbatch/aprun");
+    launchMethod->addItem("sbatch/ibrun");
     launchMethod->addItem("sbatch/mpiexec");
     launchMethod->addItem("sbatch/mpirun");
+    launchMethod->addItem("sbatch/srun");
     connect(launchMethod, SIGNAL(activated(const QString &)),
             this, SLOT(launchMethodChanged(const QString &)));
     launchCheckBox = new QCheckBox(tr("Parallel launch method"), currentGroup);
@@ -1192,6 +1205,7 @@ QvisHostProfileWindow::CreateLaunchSettingsGroup()
     row = 0;
 
     numProcessors = new QSpinBox(defaultGroup);
+    numProcessors->setKeyboardTracking(false);
     numProcessors->setRange(1,999999);
     numProcessors->setSingleStep(1);
     connect(numProcessors, SIGNAL(valueChanged(int)),
@@ -1202,6 +1216,7 @@ QvisHostProfileWindow::CreateLaunchSettingsGroup()
     row++;
 
     numNodes = new QSpinBox(defaultGroup);
+    numNodes->setKeyboardTracking(false);
     numNodes->setRange(1,999999);
     numNodes->setSingleStep(1);
     
@@ -1453,6 +1468,7 @@ QvisHostProfileWindow::CreateHWAccelSettingsGroup()
 
     QLabel* lblNGPUs = new QLabel(tr("Number of GPUs per node:"), hardwareGroup);
     sbNGPUs = new QSpinBox();
+    sbNGPUs->setKeyboardTracking(false);
     sbNGPUs->setRange(0, 2048);
     sbNGPUs->setEnabled(true);
     connect(sbNGPUs, SIGNAL(valueChanged(const QString&)), this,
@@ -2360,6 +2376,10 @@ QvisHostProfileWindow::UpdateWindowSensitivity()
 //   David Camp, Mon Aug  4 10:46:09 PDT 2014
 //   Added the threads option.
 //
+//   Kathleen Biagas, Wed Dec 16 11:07:43 MST 2015
+//   Ensure quoted sshCommand is preserved, split args on ' ' only after the
+//   end of the quoted command.
+//
 // ****************************************************************************
 
 bool
@@ -2451,52 +2471,22 @@ QvisHostProfileWindow::GetCurrentValues()
     // Do the number of processors
     if (currentLaunch && currentLaunch->GetParallel())
     {
-        bool okay = false;
-        temp = numProcessors->text();
-        temp = temp.trimmed();
-        if(!temp.isEmpty())
-        {
-            int nProc = temp.toInt(&okay);
-            if(okay)
-            {
-                if (nProc != currentLaunch->GetNumProcessors())
-                    needNotify = true;
-                currentLaunch->SetNumProcessors(nProc);
-            }
-        }
- 
-        if(!okay)
+        int nProc = numProcessors->value();
+        if (nProc != currentLaunch->GetNumProcessors())
         {
             needNotify = true;
-            msg = tr("An invalid number of processors was specified,"
-                     " reverting to %1 processors.").
-                  arg(currentLaunch->GetNumProcessors());
-            Message(msg);
+            currentLaunch->SetNumProcessors(nProc);
         }
     }
 
     // Do the number of nodes
     if (currentLaunch && currentLaunch->GetParallel())
     {
-        bool okay = false;
-        temp = numNodes->text();
-        temp = temp.trimmed();
-        if(!temp.isEmpty())
-        {
-            int nNodes = temp.toInt(&okay);
-            if(okay)
-            {
-                currentLaunch->SetNumNodes(nNodes);
-            }
-        }
- 
-        if(!okay)
+        int nNodes = numNodes->value();
+        if (nNodes != currentLaunch->GetNumNodes())
         {
             needNotify = true;
-            msg = tr("An invalid number of nodes was specified,"
-                     " reverting to %1 nodes.").
-                  arg(currentLaunch->GetNumNodes());
-            Message(msg);
+            currentLaunch->SetNumNodes(nNodes);
         }
     }
 
@@ -2614,52 +2604,22 @@ QvisHostProfileWindow::GetCurrentValues()
     // Do the timeout
     if (currentLaunch)
     {
-        bool okay = false;
-        temp = timeout->text();
-        temp = temp.trimmed();
-        if(!temp.isEmpty())
+        int tOut = timeout->value();
+        if (tOut != currentLaunch->GetTimeout())
         {
-            int tOut = temp.toInt(&okay);
-            if(okay)
-            {
-                if (tOut != currentLaunch->GetTimeout())
-                    needNotify = true;
-                currentLaunch->SetTimeout(tOut);
-            }
-        }
- 
-        if(!okay)
-        {
-            needNotify = true;
-            msg = tr("An invalid timeout was specified, reverting to %1 minutes.").
-                  arg(currentLaunch->GetTimeout());
-            Message(msg);
+           needNotify = true;
+           currentLaunch->SetTimeout(tOut);
         }
     }
 
     // Do the threads
     if (currentLaunch)
     {
-        bool okay = false;
-        temp = threads->text();
-        temp = temp.trimmed();
-        if (!temp.isEmpty())
-        {
-            int tOut = temp.toInt(&okay);
-            if (okay)
-            {
-                if (tOut != currentLaunch->GetNumThreads())
-                    needNotify = true;
-                currentLaunch->SetNumThreads(tOut);
-            }
-        }
-
-        if (!okay)
+        int tOut = threads->value();
+        if (tOut != currentLaunch->GetNumThreads())
         {
             needNotify = true;
-            msg = tr("An invalid threads value was specified, reverting to %1 minutes.").
-                  arg(currentLaunch->GetNumThreads());
-            Message(msg);
+            currentLaunch->SetNumThreads(tOut);
         }
     }
 
@@ -2722,11 +2682,32 @@ QvisHostProfileWindow::GetCurrentValues()
         temp = sshCommand->text();
 
         stringVector newCommand;
-        QStringList cmd(temp.split(' '));
-        for(int i = 0; i < cmd.size(); ++i)
-            newCommand.push_back(cmd[i].toStdString());
-        if (currentMachine->GetSshCommand() != newCommand)
-            needNotify = true;
+        if (temp.startsWith('\"'))
+        {
+            if (temp.endsWith('\"'))
+            {
+                newCommand.push_back(temp.toStdString());
+            }
+            else
+            {
+                // split into command and args.
+                int pos = temp.indexOf("\"", 1);
+                QString cmd(temp.left(pos+1));
+                newCommand.push_back(cmd.toStdString());
+                QString args(temp.right(temp.size()-pos-2));
+                QStringList arglist(args.split(' '));
+                for(int i = 0; i < arglist.size(); ++i)
+                    newCommand.push_back(arglist[i].toStdString());
+            }
+        }
+        else
+        {
+            QStringList cmd(temp.split(' '));
+            for(int i = 0; i < cmd.size(); ++i)
+                newCommand.push_back(cmd[i].toStdString());
+            if (currentMachine->GetSshCommand() != newCommand)
+                needNotify = true;
+        }
 
         currentMachine->SetSshCommand(newCommand);
     }
@@ -4041,32 +4022,56 @@ QvisHostProfileWindow::toggleSSHCommand(bool state)
 }
 
 // ****************************************************************************
-//  Method:  QvisHostProfileWindow::sshCommandChanged
+//  Method:  QvisHostProfileWindow::sshCommandRetPressed
 //
 //  Purpose:
 //    Change the remote ssh command for all profiles with the
 //    same remote host name based on a changed widget value.
 //
 //  Arguments:
-//    command : The string indicating the ssh command.
 //
 //  Programmer:  Brad Whitlock
 //  Creation:    Wed Aug 15 14:16:42 PDT 2012
 //
 //  Modifications:
+//    Kathleen Biagas, Wed Dec 16 11:07:43 MST 2015
+//    Changed name to sshCommandRetPressed, removed arg.
+//    Ensure quoted command is preserved, split args on ' ' only after the
+//    end of the quoted command.
 //
 // ****************************************************************************
 
 void
-QvisHostProfileWindow::sshCommandChanged(const QString &s)
+QvisHostProfileWindow::sshCommandRetPressed()
 {
     if (currentMachine == NULL)
         return;
 
+    QString s(sshCommand->text());
     stringVector newCommand;
-    QStringList cmd(s.split(' '));
-    for(int i = 0; i < cmd.size(); ++i)
-        newCommand.push_back(cmd[i].toStdString());
+    // preserve surrounding quotes if present
+    if (s.startsWith('\"'))
+    {
+        if (s.endsWith('\"'))
+            newCommand.push_back(s.toStdString());
+        else
+        {
+            // split into command and args.
+            int pos = s.indexOf("\"", 1);
+            QString cmd(s.left(pos+1));
+            newCommand.push_back(cmd.toStdString());
+            QString args(s.right(s.size()-pos-2));
+            QStringList arglist(args.split(' '));
+            for(int i = 0; i < arglist.size(); ++i)
+                newCommand.push_back(arglist[i].toStdString());
+        }
+    }
+    else
+    {
+        QStringList cmd(s.split(' '));
+        for(int i = 0; i < cmd.size(); ++i)
+            newCommand.push_back(cmd[i].toStdString());
+    }
 
     currentMachine->SetSshCommand(newCommand);
 }

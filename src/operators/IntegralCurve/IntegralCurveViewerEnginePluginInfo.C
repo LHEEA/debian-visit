@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -234,6 +234,14 @@ IntegralCurveViewerEnginePluginInfo::GetOperatorVarDescription(AttributeSubject 
       var = justTheVar;
     }
     
+    else if( strncmp(var.c_str(), "operators/LCS/",
+                     strlen("operators/LCS/")) == 0)
+    {
+      std::string justTheVar = var.substr(strlen("operators/LCS/"));
+
+      var = justTheVar;
+    }
+
     var += std::string(" - ") +
         std::string(typeString[atts_in->GetDataValue()]);
 

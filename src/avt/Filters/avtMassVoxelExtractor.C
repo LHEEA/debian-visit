@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -832,7 +832,7 @@ avtMassVoxelExtractor::RegisterGrid(vtkRectilinearGrid *rgrid,
         ghosts = NULL;
 
     ncell_arrays = 0;
-    for (size_t i = 0 ; i < (size_t)rgrid->GetCellData()->GetNumberOfArrays() ; i++)
+    for (size_t i = 0 ; i < (size_t) rgrid->GetCellData()->GetNumberOfArrays() ; i++)
     {
         vtkDataArray *arr = rgrid->GetCellData()->GetArray(i);
         const char *name = arr->GetName();
@@ -1547,7 +1547,7 @@ avtMassVoxelExtractor::SampleVariable(int first, int last, int w, int h)
         indices[2] = index_bottom;      indices[3] = index_top;
         indices[0] = index_left;        indices[1] = index_right;
 
-        if (trilinearInterpolation){
+        if (trilinearInterpolation || rayCastingSLIVR){
             if (indices[0] < 0 || indices[0]>dims[0]-2)
                 valid_sample[i] = false;
 
@@ -1569,27 +1569,7 @@ avtMassVoxelExtractor::SampleVariable(int first, int last, int w, int h)
                 valid_sample[i] = false;
         }
 
-        if (rayCastingSLIVR){
-            if (indices[0] < 1 || indices[0]>dims[0]-2)
-                valid_sample[i] = false;
-
-            if (indices[1] < 1 || indices[1]>dims[0]-2)
-                valid_sample[i] = false;
-
-
-            if (indices[2] < 1 || indices[2]>dims[1]-2)
-                valid_sample[i] = false;
-
-            if (indices[3] < 1 || indices[3]>dims[1]-2)
-                valid_sample[i] = false;
-
-
-            if (indices[4] < 1 || indices[4]>dims[2]-2)
-                valid_sample[i] = false;
-
-            if (indices[5] < 1 || indices[5]>dims[2]-2)
-                valid_sample[i] = false;
-        }
+      
 
         if (!valid_sample[i]){
             continue;
@@ -2505,7 +2485,7 @@ avtMassVoxelExtractor::ExtractImageSpaceGrid(vtkRectilinearGrid *rgrid,
     std::vector<int>     cell_vartypes;
     std::vector<int>     cell_size;
     std::vector<int>     cell_index;
-    for (i = 0 ; i < (size_t)rgrid->GetCellData()->GetNumberOfArrays() ; i++)
+    for (i = 0 ; i < rgrid->GetCellData()->GetNumberOfArrays() ; i++)
     {
         vtkDataArray *arr = rgrid->GetCellData()->GetArray(i);
         const char *name = arr->GetName();
@@ -2532,7 +2512,7 @@ avtMassVoxelExtractor::ExtractImageSpaceGrid(vtkRectilinearGrid *rgrid,
     std::vector<int>     pt_vartypes;
     std::vector<int>     pt_size;
     std::vector<int>     pt_index;
-    for (i = 0 ; i < (size_t)rgrid->GetPointData()->GetNumberOfArrays() ; i++)
+    for (i = 0 ; i < rgrid->GetPointData()->GetNumberOfArrays() ; i++)
     {
         vtkDataArray *arr = rgrid->GetPointData()->GetArray(i);
         const char *name = arr->GetName();

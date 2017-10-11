@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -69,7 +69,7 @@ public:
     ~ViewerText();
 
     bool empty() const;
-    bool size() const;
+    size_t size() const;
 
     ViewerText operator = (const char *obj);
     ViewerText operator = (const std::string &obj);

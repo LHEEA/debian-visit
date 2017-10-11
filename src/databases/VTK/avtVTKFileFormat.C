@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,7 @@
 avtVTK_STSDFileFormat::avtVTK_STSDFileFormat(const char *filename, DBOptionsAttributes *opts) : 
     avtSTSDFileFormat(filename)
 {
+    GetCycleFromFilename(filename);
     reader = new avtVTKFileReader(filename, opts);
 }
 
@@ -47,6 +48,7 @@ avtVTK_STSDFileFormat::avtVTK_STSDFileFormat(const char *filename,
     DBOptionsAttributes *opts, avtVTKFileReader *r) : 
     avtSTSDFileFormat(filename)
 {
+    GetCycleFromFilename(filename);
     reader = r;
 }
 
@@ -67,16 +69,45 @@ avtVTK_STSDFileFormat::FreeUpResources(void)
     reader->FreeUpResources();
 }
 
+// ****************************************************************************
+//  Method: avtVTKFileFormat::GetCycle
+//
+//  Modifications:
+//    Kathleen Biagas, Tue Aug 18 11:38:07 PDT 2015
+//    Check for INVALID_CYCLE instead of INVALID_TIME.
+//
+// ****************************************************************************
+
 int
 avtVTK_STSDFileFormat::GetCycle(void)
 {
-    return reader->GetCycle();
+    int cycle = reader->GetCycle();
+    if( cycle == INVALID_CYCLE )
+      return cycleFromFilename;
+    else
+      return cycle;
 }
+
+// ****************************************************************************
+//  Method: avtVTKFileFormat::GetTime
+//
+//  Modifications:
+//    If cycleFromFilename is invalid, return INVALID_TIME.
+//
+// ****************************************************************************
 
 double
 avtVTK_STSDFileFormat::GetTime(void)
 {
-    return reader->GetTime();
+    double time = reader->GetTime();
+    if( time == INVALID_TIME )
+    {
+        if (cycleFromFilename == INVALID_CYCLE)
+           return INVALID_TIME;
+      return cycleFromFilename;
+    }
+    else
+      return time;
 }
 
 // ****************************************************************************
@@ -99,7 +130,8 @@ avtVTK_STSDFileFormat::GetTime(void)
 int
 avtVTK_STSDFileFormat::GetCycleFromFilename(const char *f) const
 {
-    return GuessCycle(f);
+    cycleFromFilename = GuessCycle(f);
+    return cycleFromFilename;
 }
 
 void
@@ -133,6 +165,12 @@ avtVTK_STSDFileFormat::GetAuxiliaryData(const char *var,
     return reader->GetAuxiliaryData(var, 0, type, d, df);
 }
 
+bool
+avtVTK_STSDFileFormat::IsEmpty()
+{
+    return reader->IsEmpty();
+}
+
 // ****************************************************************************
 // ****************************************************************************
 // ****************************************************************************
@@ -140,6 +178,7 @@ avtVTK_STSDFileFormat::GetAuxiliaryData(const char *var,
 avtVTK_STMDFileFormat::avtVTK_STMDFileFormat(const char *filename, DBOptionsAttributes *opts) : 
     avtSTMDFileFormat(&filename, 1)
 {
+    GetCycleFromFilename(filename);
     reader = new avtVTKFileReader(filename, opts);
 }
 
@@ -147,6 +186,7 @@ avtVTK_STMDFileFormat::avtVTK_STMDFileFormat(const char *filename,
     DBOptionsAttributes *opts, avtVTKFileReader *r) : 
     avtSTMDFileFormat(&filename, 1)
 {
+    GetCycleFromFilename(filename);
     reader = r;
 }
 
@@ -167,16 +207,45 @@ avtVTK_STMDFileFormat::FreeUpResources(void)
     reader->FreeUpResources();
 }
 
+// ****************************************************************************
+//  Method: avtVTKFileFormat::GetCycle
+//
+//  Modifications:
+//    Kathleen Biagas, Tue Aug 18 11:38:07 PDT 2015
+//    Check for INVALID_CYCLE instead of INVALID_TIME.
+//
+// ****************************************************************************
+
 int
 avtVTK_STMDFileFormat::GetCycle(void)
 {
-    return reader->GetCycle();
+    int cycle = reader->GetCycle();
+    if( cycle == INVALID_CYCLE )
+      return cycleFromFilename;
+    else
+      return cycle;
 }
+
+// ****************************************************************************
+//  Method: avtVTKFileFormat::GetTime
+//
+//  Modifications:
+//    If cycleFromFilename is invalid, return INVALID_TIME.
+//
+// ****************************************************************************
 
 double
 avtVTK_STMDFileFormat::GetTime(void)
 {
-    return reader->GetTime();
+    double time = reader->GetTime();
+    if( time == INVALID_TIME )
+    {
+      if (cycleFromFilename == INVALID_CYCLE)
+          return INVALID_TIME;
+      return cycleFromFilename;
+    }
+    else
+      return time;
 }
 
 // ****************************************************************************
@@ -199,7 +268,8 @@ avtVTK_STMDFileFormat::GetTime(void)
 int
 avtVTK_STMDFileFormat::GetCycleFromFilename(const char *f) const
 {
-    return GuessCycle(f);
+    cycleFromFilename = GuessCycle(f);
+    return cycleFromFilename;
 }
 
 void

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,7 +106,7 @@ bool
 supported(const char *key)
 {
 #ifdef HAVE_LIBGLEW
-    return glewIsSupported(key);
+    return glewIsSupported(key)?true:false;
 #else
     return true;
 #endif

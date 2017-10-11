@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -120,6 +120,9 @@ class   ColorAttribute;
 //    Kathleen Biagas, Wed Feb 6 19:38:27 PDT 2013
 //    Changed signature of InsertFilters.
 //
+//    Kathleen Biagas, Wed Apr 13 18:02:22 MST 2016
+//    Added InvalidateTransparencyCache.
+//
 // ****************************************************************************
 
 class PLOTTER_API avtMapper : public avtTerminatingDatasetSink
@@ -164,6 +167,27 @@ class PLOTTER_API avtMapper : public avtTerminatingDatasetSink
 
     virtual void               ReducedDetailModeOn() {; }
     virtual bool               ReducedDetailModeOff() { return false; }
+    virtual void               SetDrawSurfaces(bool v) {drawSurfaces=v;}
+    virtual void               SetDrawWireframe(bool v) {drawWireframe=v;}
+    virtual void               SetWireframeColorScalars(){wireframeColorByScalar=true;}
+    virtual void               SetWireframeColor(double r,double g, double b)
+                               {
+                                   wireframeColor[0]=r;
+                                   wireframeColor[1]=g;
+                                   wireframeColor[2]=b;
+                                   wireframeColorByScalar=false;
+                               }
+    virtual void               SetDrawPoints(bool v) {drawPoints=v;}
+    virtual void               SetPointsColorScalars() {pointsColorByScalar=true;}
+    virtual void               SetPointsColor(double r,double g, double b)
+                               {
+                                   pointColor[0]=r;
+                                   pointColor[1]=g;
+                                   pointColor[2]=b;
+                                   pointsColorByScalar=false;
+                               }
+
+    void                       InvalidateTransparencyCache(void);
 
   protected:
     bool                       immediateMode;
@@ -172,8 +196,15 @@ class PLOTTER_API avtMapper : public avtTerminatingDatasetSink
     avtTransparencyActor      *transparencyActor;
     int                        transparencyIndex;
 
+    bool drawSurfaces, drawWireframe, drawPoints;
+    bool wireframeColorByScalar, pointsColorByScalar;
+    double wireframeColor[3], pointColor[3];
+
+    //DRP. Or call DEFAULT SURFACE??
+    typedef enum {DEFAULT, WIREFRAME, POINT} MapperType;
     vtkDataSetMapper         **mappers;
     int                        nMappers;
+    MapperType                *mapperType;
     vtkActor                 **actors;
 
     double                     globalAmbient;

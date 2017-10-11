@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -48,8 +48,8 @@ import logging
 logging.basicConfig(level=logging.ERROR)
 
 
-import numpy as npy
 try:
+    import numpy as npy
     import vtk
     import vtk.util.numpy_support as vnp
 except:

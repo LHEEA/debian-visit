@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -55,9 +55,9 @@ class ShellCommand(Filter):
         if not self.params.obase is None:
             obase = self.params.obase
         cmd = "%s %s " % (self.params.cmd,self.input("in"))
-        cmd = cmd.replace("{svec.idx}",str(self.state_vector.idx))
+        cmd = cmd.replace("{index}",str(self.state_vector.index()))
         if obase.count("%s") >0:
-            ofname = obase % str(svec.idx)
+            ofname = obase % str(self.state_vector.idx)
         else:
             ofname = obase
         cmd = cmd + ofname

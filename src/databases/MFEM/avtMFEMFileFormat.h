@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -89,9 +89,7 @@ class avtMFEMFileFormat : public avtSTMDFileFormat
     virtual vtkDataArray  *GetVar(int, const char *);
     virtual vtkDataArray  *GetVectorVar(int, const char *);
 
-    virtual bool           ReturnsValidCycle() const;
     virtual int            GetCycle();
-    virtual bool           ReturnsValidTime() const;
     virtual double         GetTime();
 
     virtual void           ActivateTimestep(void);

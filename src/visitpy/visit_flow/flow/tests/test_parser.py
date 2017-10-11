@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -44,14 +44,18 @@
 """
 
 import unittest
-from flow import *
+from visit_flow import *
+
+from decorators import ply_test
 
 # uncomment for detailed exe info
 #import logging
 #logging.basicConfig(level=logging.INFO)
 
 class TestParser(unittest.TestCase):
+    @ply_test
     def test_01_simple_expr(self):
+        Parser.init()
         stmts = Parser.parse("vel_mag = sqrt(vx^2 + vy^2 + vz^2)")
         print ""
         for s in stmts:

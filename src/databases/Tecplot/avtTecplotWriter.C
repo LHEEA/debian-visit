@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,6 +48,7 @@
 
 #include <DebugStream.h>
 #include <ImproperUseException.h>
+#include <visit_gzstream.h>
 
 #include <vtkCell.h>
 #include <vtkCellArray.h>
@@ -71,10 +72,18 @@ using     std::vector;
 #define FLOAT_COLUMN_WIDTH 14
 #define INT_COLUMN_WIDTH   11
 
-avtTecplotWriter::avtTecplotWriter(DBOptionsAttributes *)
+avtTecplotWriter::avtTecplotWriter(DBOptionsAttributes *writeOpts)
 {
     variablesWritten = false;
-    // no options used
+    gzipLevel = 0;
+
+    if (writeOpts &&
+        writeOpts->FindIndex("Gzip compression level [1,9] (0 for none)")>=0)
+    {
+        gzipLevel = writeOpts->GetInt("Gzip compression level [1,9] (0 for none)");
+        if (gzipLevel < 0) gzipLevel = 0;
+        if (gzipLevel > 9) gzipLevel = 9;
+    }
 }
 
 avtTecplotWriter::~avtTecplotWriter()
@@ -94,15 +103,37 @@ avtTecplotWriter::~avtTecplotWriter()
 //    Jeremy Meredith, Tue Mar 27 17:03:47 EDT 2007
 //    Added numblocks (currently ignored) to the OpenFile interface.
 //
+//    Brad Whitlock, Tue Sep  8 16:39:12 PDT 2015
+//    Support write groups.
+//
 // ****************************************************************************
 
 void
 avtTecplotWriter::OpenFile(const string &stemname, int)
 {
     stem = stemname;
-    string filename = stemname+".tec";
-    file.open(filename.c_str());
-    if (!file)
+    string filename;
+    if(writeContext.GroupSize() > 1)
+    {
+        char ext[20];
+        SNPRINTF(ext, 20, ".%d.tec", writeContext.GroupRank());
+        filename = stemname + ext;
+    }
+    else
+        filename = stemname+".tec";
+
+    string ext = "";
+    string mode = writeContext.Rank() == 0 ? "w" : "a";
+    if (gzipLevel)
+    {
+        char levelchar = '0' + gzipLevel;
+        char levelstr[2] = {levelchar, '\0'};
+        mode = "z" + mode + "b" + string(levelstr);
+        ext = ".gz";
+    }
+    file.open(string(filename+ext).c_str(), mode.c_str());
+
+    if (!file())
     {
         EXCEPTION1(ImproperUseException, "Could not open file for writing.");
     }
@@ -122,12 +153,12 @@ avtTecplotWriter::OpenFile(const string &stemname, int)
 
 void
 avtTecplotWriter::WriteHeaders(const avtDatabaseMetaData *md,
-                               vector<string> &scalars,
-                               vector<string> &vectors,
-                               vector<string> &materials)
+                               const vector<string> &scalars,
+                               const vector<string> &vectors,
+                               const vector<string> &materials)
 {
-     const avtMeshMetaData *mmd = md->GetMesh(0); (void) mmd;
 #if 0
+    const avtMeshMetaData *mmd = md->GetMesh(0);
     if (mmd->topologicalDimension != 3)
     {
         EXCEPTION1(ImproperUseException, "The Tecplot writer only supports "
@@ -142,13 +173,20 @@ avtTecplotWriter::WriteHeaders(const avtDatabaseMetaData *md,
     if(!ReallyHasMaterials())
         materialList.clear();
 
-    file << "TITLE = \"" << md->GetDatabaseName().c_str() << ": "
-         << md->GetDatabaseComment().c_str() <<"\"" << endl;
-
-    variablesWritten = false;
+    if(writeContext.Rank() == 0)
+    {
+        file() << "TITLE = \"" << md->GetDatabaseName().c_str() << ": "
+             << md->GetDatabaseComment().c_str() <<"\"" << endl;
+        variablesWritten = false;
+    }
+    else
+    {
+        // We don't want other ranks to write the variable list.
+        variablesWritten = true;
+    }
 
     // Write all of the floats from this point in scientific notation.
-    file << std::scientific;
+    file() << std::scientific;
 }
 
 // ****************************************************************************
@@ -178,7 +216,10 @@ ReallyHasMaterialsEx(avtDataTree_p node)
     {
         for(int i = 0; i < node->GetNChildren(); ++i)
         {
-            if(!ReallyHasMaterialsEx(node->GetChild(i)))
+            avtDataTree_p n2 = node->GetChild(i);
+            if(*n2 == NULL)
+                return false;
+            if(!ReallyHasMaterialsEx(n2))
                 return false;
         }
     }
@@ -197,52 +238,6 @@ avtTecplotWriter::ReallyHasMaterials()
 {
     return ReallyHasMaterialsEx(GetInputDataTree());
 }
-
-// ****************************************************************************
-// Method: avtTecplotWriter::WriteVariables
-//
-// Purpose: 
-//   Write the names of the variables.
-//
-// Arguments:
-//   coordvars : The names of the coordinate variables.
-//
-// Programmer: Brad Whitlock
-// Creation:   Wed Sep  2 11:14:40 PDT 2009
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-avtTecplotWriter::WriteVariables(const vector<string> &coordvars)
-{
-    if(!variablesWritten)
-    {
-        file << "VARIABLES = ";
-        for(size_t i = 0; i < coordvars.size(); ++i)
-        {
-            file << "\"" << coordvars[i] << "\"";
-            if(i < coordvars.size()-1 || (variableList.size()+materialList.size()) > 0)
-                file << ", ";
-        }
-
-        for(size_t i = 0; i < variableList.size(); ++i)
-        {
-            file << "\"" << variableList[i] << "\"";
-            if (i < variableList.size()-1 || (materialList.size() > 0))
-                file << ", ";
-        }
-
-        if(materialList.size() > 0)
-            file << "\"" << materialList[0] << "\"";
-
-        file << endl;
-
-        variablesWritten = true;
-    }
-}
-
 
 // ****************************************************************************
 //  Method: avtTecplotWriter::WriteChunk
@@ -303,7 +298,77 @@ avtTecplotWriter::WriteChunk(vtkDataSet *ds, int chunk)
 void
 avtTecplotWriter::CloseFile(void)
 {
-    file.close();
+    //file().close();
+}
+
+// ****************************************************************************
+// Method: avtTecplotWriter::SequentialOutput
+//
+// Purpose:
+//   Tell the writer whether the format needs MPI-rank sequential access to
+//   write the output file.
+//
+// Returns:    True because we want to have each domain append to the existing
+//             file that was created by its write group leader.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Mar  5 15:45:09 PST 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+avtTecplotWriter::SequentialOutput() const
+{
+    return true;
+}
+
+// ****************************************************************************
+// Method: avtTecplotWriter::WriteVariables
+//
+// Purpose: 
+//   Write the names of the variables.
+//
+// Arguments:
+//   coordvars : The names of the coordinate variables.
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Sep  2 11:14:40 PDT 2009
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+avtTecplotWriter::WriteVariables(const vector<string> &coordvars)
+{
+    if(!variablesWritten)
+    {
+        file() << "VARIABLES = ";
+        for(size_t i = 0; i < coordvars.size(); ++i)
+        {
+            file() << "\"" << coordvars[i] << "\"";
+            if(i < coordvars.size()-1 || (variableList.size()+materialList.size()) > 0)
+                file() << ", ";
+        }
+
+        for(size_t i = 0; i < variableList.size(); ++i)
+        {
+            file() << "\"" << variableList[i] << "\"";
+            if (i < variableList.size()-1 || (materialList.size() > 0))
+                file() << ", ";
+        }
+
+        if(materialList.size() > 0)
+            file() << "\"" << materialList[0] << "\"";
+
+        file() << endl;
+
+        variablesWritten = true;
+    }
 }
 
 // ****************************************************************************
@@ -344,30 +409,30 @@ avtTecplotWriter::WriteCurvilinearMesh(vtkStructuredGrid *sg, int chunk)
     WriteVariables(coordVars);
 
     // Write the zone line
-    file << "ZONE "
+    file() << "ZONE "
          << "T=\"DOMAIN "<<chunk<<"\", "
          << "I="<<dims[0]<<", "
          << "J="<<dims[1]<<", ";
     if(dims[2] > 1)
-        file << "K="<<dims[2]<<", ";
-    file << "F=BLOCK" <<endl;
-    file << endl;
+        file() << "K="<<dims[2]<<", ";
+    file() << "F=BLOCK" <<endl;
+    file() << endl;
 
     int npts = sg->GetNumberOfPoints();
     vtkPoints *vtk_pts = sg->GetPoints();
-    float *vtk_ptr = (float *) vtk_pts->GetVoidPointer(0);
+    vtkDataArray *arr = vtk_pts->GetData();
     for (int d = 0; d < ((dims[2]>1) ? 3 : 2); d++)
     {
         for (int i=0; i<npts; i++)
         {
-            file.width(FLOAT_COLUMN_WIDTH);
-            file << vtk_ptr[3*i + d];
+            file().width(FLOAT_COLUMN_WIDTH);
+            file() << arr->GetComponent(i, d);
             if ((i+1)%10==0 || i==npts-1)
-                file <<"\n";
+                file() <<"\n";
             else
-                file <<" ";
+                file() <<" ";
         }
-        file << endl;
+        file() << endl;
     }
 
     WriteDataArrays(sg);
@@ -408,14 +473,14 @@ avtTecplotWriter::WriteRectilinearMesh(vtkRectilinearGrid *rgrid, int chunk)
     WriteVariables(coordVars);
 
     // Write the zone line.
-    file << "ZONE "
+    file() << "ZONE "
          << "T=\"DOMAIN "<<chunk<<"\", "
          << "I="<<dims[0]<<", "
          << "J="<<dims[1]<<", ";
     if(dims[2] > 1)
-         file << "K="<<dims[2]<<", ";
-    file << "F=BLOCK" <<endl;
-    file << endl;
+         file() << "K="<<dims[2]<<", ";
+    file() << "F=BLOCK" <<endl;
+    file() << endl;
 
     double pt[3];
     for(int d = 0; d < ((dims[2] > 1) ? 3 : 2); ++d)
@@ -431,12 +496,12 @@ avtTecplotWriter::WriteRectilinearMesh(vtkRectilinearGrid *rgrid, int chunk)
                 for(vtkIdType i = 0; i < rgrid->GetXCoordinates()->GetNumberOfTuples(); ++i,++id)
                 {
                     pt[0] = rgrid->GetXCoordinates()->GetTuple1(i);
-                    file.width(FLOAT_COLUMN_WIDTH);
-                    file << pt[d];
+                    file().width(FLOAT_COLUMN_WIDTH);
+                    file() << pt[d];
                     if ((id+1)%10==0 || id==npts_1)
-                        file <<"\n";
+                        file() <<"\n";
                     else
-                        file <<" ";
+                        file() <<" ";
                 }
             }
         }
@@ -615,13 +680,13 @@ avtTecplotWriter::WriteUnstructuredMesh(vtkUnstructuredGrid *ug, int chunk)
         nelements = ntri + nquad;
 
 
-    file << "ZONE "
+    file() << "ZONE "
          << "T=\"DOMAIN "<<chunk<<"\", "
          << "N="<<npts<<", "
          << "E="<<nelements<<", "
          << "F=FEBLOCK, "
          << "ET=" << elemType << endl;
-    file << endl;
+    file() << endl;
 
     vtkPoints *vtk_pts = ug->GetPoints();
     WritePoints(vtk_pts, dim);
@@ -685,20 +750,20 @@ avtTecplotWriter::WriteUnstructuredMesh(vtkUnstructuredGrid *ug, int chunk)
             {
                 for (int i = 0 ; i < 4 ; i++)
                 {
-                    file.width(INT_COLUMN_WIDTH);
-                    file << ids[subids[t*4 + i]]+1 << " ";
+                    file().width(INT_COLUMN_WIDTH);
+                    file() << ids[subids[t*4 + i]]+1 << " ";
                 }
-                file << endl;
+                file() << endl;
             }
 
             for (int t = 0 ; t<ntris; t++)
             {
                 for (int i = 0 ; i < 3 ; i++)
                 {
-                    file.width(INT_COLUMN_WIDTH);
-                    file << ids[subids[t*3 + i]]+1 << " ";
+                    file().width(INT_COLUMN_WIDTH);
+                    file() << ids[subids[t*3 + i]]+1 << " ";
                 }
-                file << endl;
+                file() << endl;
             }
         }
     }
@@ -718,10 +783,10 @@ avtTecplotWriter::WriteUnstructuredMesh(vtkUnstructuredGrid *ug, int chunk)
             {
                 for (int j = 0 ; j < cell->GetNumberOfPoints() ; j++)
                 {
-                    file.width(INT_COLUMN_WIDTH);
-                    file << cell->GetPointId(j)+1 << " ";
+                    file().width(INT_COLUMN_WIDTH);
+                    file() << cell->GetPointId(j)+1 << " ";
                 }
-                file << endl;
+                file() << endl;
             }
         }
     }
@@ -790,13 +855,13 @@ avtTecplotWriter::WritePolyData(vtkPolyData *pd, int chunk)
         coordVars.push_back("Z");
     WriteVariables(coordVars);
 
-    file << "ZONE "
+    file() << "ZONE "
          << "T=\"DOMAIN "<<chunk<<"\", "
          << "N="<<pd->GetPoints()->GetNumberOfPoints()<<", "
          << "E="<<nelements<<", "
          << "F=FEBLOCK, "
          << "ET=" << elemType << endl;
-    file << endl;
+    file() << endl;
 
     // Save the points
     WritePoints(pd->GetPoints(), dim);
@@ -815,25 +880,25 @@ avtTecplotWriter::WritePolyData(vtkPolyData *pd, int chunk)
                 static const int q2t[2][3] = {{0,1,2}, {0,2,3}};
                 for(int i = 0; i < 3; ++i)
                 {
-                    file.width(INT_COLUMN_WIDTH);
-                    file << pts[q2t[0][i]]+1 << " ";
+                    file().width(INT_COLUMN_WIDTH);
+                    file() << pts[q2t[0][i]]+1 << " ";
                 }
-                file << endl;
+                file() << endl;
                 for(int i = 0; i < 3; ++i)
                 {
-                    file.width(INT_COLUMN_WIDTH);
-                    file << pts[q2t[1][i]]+1 << " ";
+                    file().width(INT_COLUMN_WIDTH);
+                    file() << pts[q2t[1][i]]+1 << " ";
                 }
-                file << endl;
+                file() << endl;
             }
             else
             {
                 for(int i = 0; i < npts; ++i)
                 {
-                    file.width(INT_COLUMN_WIDTH);
-                    file << pts[i]+1 << " ";
+                    file().width(INT_COLUMN_WIDTH);
+                    file() << pts[i]+1 << " ";
                 }
-                file << endl;
+                file() << endl;
             }            
         }        
     }
@@ -884,19 +949,18 @@ avtTecplotWriter::WriteDataArrays(vtkDataSet *ds1)
                            string("Couldn't find array ")+variableList[v]+".");
         }
         int ncomps = arr->GetNumberOfComponents();
-        float *ptr = (float *) arr->GetVoidPointer(0);
         if (ncomps == 1)
         {
             for (int i=0; i<npts; i++)
             {
-                file.width(FLOAT_COLUMN_WIDTH);
-                file << ptr[i];
+                file().width(FLOAT_COLUMN_WIDTH);
+                file() << arr->GetTuple1(i);
                 if ((i+1)%10==0 || i==npts-1)
-                    file <<"\n";
+                    file() <<"\n";
                 else
-                    file <<" ";
+                    file() <<" ";
             }
-            file << endl;
+            file() << endl;
         }
     }
 
@@ -910,14 +974,14 @@ avtTecplotWriter::WriteDataArrays(vtkDataSet *ds1)
         int *ptr = (int*)arr->GetVoidPointer(0);
         for (int i=0; i<npts; i++)
         {
-            file.width(INT_COLUMN_WIDTH);
-            file << ptr[i];
+            file().width(INT_COLUMN_WIDTH);
+            file() << ptr[i];
             if ((i+1)%10==0 || i==npts-1)
-                file <<"\n";
+                file() <<"\n";
             else
-                file <<" ";
+                file() <<" ";
         }
-        file << endl;
+        file() << endl;
     }
 
     c2p->Delete();
@@ -947,21 +1011,18 @@ void
 avtTecplotWriter::WritePoints(vtkPoints *pts, int dim)
 { 
     int npts = pts->GetNumberOfPoints();
-
+    vtkDataArray *arr = pts->GetData();
     for (int d = 0; d < dim; d++)
     {
-        float *vtk_ptr = (float *) pts->GetVoidPointer(0);
-        vtk_ptr += d;
-
-        for (int i=0; i<npts; i++, vtk_ptr += 3)
+        for (int i=0; i<npts; i++)
         {
-            file.width(FLOAT_COLUMN_WIDTH);
-            file << *vtk_ptr;
+            file().width(FLOAT_COLUMN_WIDTH);
+            file() << arr->GetComponent(i, d);
             if ((i+1)%10==0 || i==npts-1)
-                file <<"\n";
+                file() <<"\n";
             else
-                file <<" ";
+                file() <<" ";
         }
-        file << endl;
+        file() << endl;
     }
 }

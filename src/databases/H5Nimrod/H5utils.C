@@ -8,7 +8,7 @@ hid_t
 _normalize_h5_type (hid_t type)
 {
     H5T_class_t tclass = H5Tget_class (type);
-    int size = H5Tget_size (type);
+    size_t size = H5Tget_size (type);
 
     switch (tclass)
     {
@@ -45,7 +45,7 @@ _normalize_h5_type (hid_t type)
         default:
             ;                                /* NOP */
     }
-    printf ("Unknown type %d", (int) type);
+    printf ("H5Utils:H5NIMROD Unknown type %d", (int) type);
 
     return -1;
 }
@@ -203,7 +203,7 @@ H5NIMROD_read_float32_array (hid_t parent_id,
     dataset = H5Dopen (parent_id, dataset_name);
     if (dataset < 0)
     {
-        printf ("could not open dataset %s\n", dataset_name);
+        printf ("H5Utils:H5NIMROD Could not open dataset %s\n", dataset_name);
         return H5NIMROD_ERR;
     }
     if (offset == NULL)

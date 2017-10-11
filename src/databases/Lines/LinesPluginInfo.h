@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -82,6 +82,7 @@ class LinesCommonPluginInfo : public virtual CommonDatabasePluginInfo, public vi
     virtual DatabaseType              GetDatabaseType();
     virtual avtDatabase              *SetupDatabase(const char * const *list,
                                                     int nList, int nBlock);
+    virtual std::string               GetLicense() const;
 };
 
 class LinesMDServerPluginInfo : public virtual MDServerDatabasePluginInfo, public virtual LinesCommonPluginInfo

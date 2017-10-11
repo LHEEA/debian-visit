@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -212,6 +212,9 @@ class PLUGIN_API PluginManager
     // arrays containing enabled plugins
     std::vector<void*>                      loadedhandles;
     std::vector<std::string>                loadedids;
+
+    // Has the skip message been issued.
+    std::map<int,int>                       issuedMessage;
 
     // accumlated plugin initialization errors
     std::string                             pluginInitErrors;

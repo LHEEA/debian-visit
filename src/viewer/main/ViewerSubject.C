@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -70,6 +70,7 @@
 #include <DBPluginInfoAttributes.h>
 #include <EngineKey.h>
 #include <EngineList.h>
+#include <Environment.h>
 #include <ExportDBAttributes.h>
 #include <FileOpenOptions.h>
 #include <FileFunctions.h>
@@ -164,6 +165,7 @@
 
 #include <QApplication>
 #include <QSocketNotifier>
+#include <QStyleFactory>
 #include <QvisColorTableButton.h>
 #include <QvisNoDefaultColorTableButton.h>
 
@@ -195,10 +197,17 @@ static int nConfigArgs = 1;
 #endif
 
 #include <algorithm>
+#include <sstream>
 
 #include <visit-config.h>
 #ifdef HAVE_OSMESA
 #include <vtkVisItOSMesaRenderingFactory.h>
+#endif
+
+// We do this so that the strings command on the .o file
+// can tell us whether or not DEBUG_MEMORY_LEAKS was turned on
+#ifdef DEBUG_MEMORY_LEAKS
+static const char *dummy_string1 = "DEBUG_MEMORY_LEAKS";
 #endif
 
 // ****************************************************************************
@@ -371,6 +380,11 @@ ViewerSubject::ViewerSubject() : ViewerBaseUI(),
     interpretCommands(), xfer(), clients(),
     unknownArguments(), clientArguments()
 {
+#ifdef DEBUG_MEMORY_LEAKS
+    // ensure dummy_string1 cannot optimized away
+    char const *dummy = dummy_string1; dummy++;
+#endif
+
     //
     // Initialize pointers to some Qt objects that don't get created
     // until later.
@@ -2368,6 +2382,12 @@ ViewerSubject::ReadConfigFiles(int argc, char **argv)
 //    Eric Brugger, Fri May 10 14:44:11 PDT 2013
 //    I removed support for mangled mesa.
 //
+//    Kathleen Biagas, Fri Jan 22 14:09:28 PST 2016
+//    Use QStyleFactory for list of possible styles.
+//
+//    Alok Hota, Tue Feb 23 19:10:32 PST 2016
+//    Add -ospray argument.
+//
 // ****************************************************************************
 
 void
@@ -2448,18 +2468,23 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
         {
             int debugLevel = 1; 
             bool bufferDebug = false;
+            bool decorateDebug = false;
+
             if (i+1 < argc && isdigit(*(argv[i+1])))
                 debugLevel = atoi(argv[i+1]);
             else
                 cerr << "Warning: debug level not specified, assuming 1" << endl;
 
-            if (i+1 < argc && *(argv[i+1]+1) == 'b')
+            if (i+1 < argc && strchr(argv[i+1],'b'))
                bufferDebug = true;
+            if (i+1 < argc && strchr(argv[i+1],'d'))
+               decorateDebug = true;
 
             if (debugLevel > 0 && debugLevel < 6)
             {
                 GetViewerProperties()->SetDebugLevel(debugLevel);
                 GetViewerProperties()->SetBufferDebug(bufferDebug);
+                GetViewerProperties()->SetDecorateDebug(decorateDebug);
 
                 clientArguments.push_back(argv[i]);
                 clientArguments.push_back(argv[i+1]);
@@ -2535,26 +2560,24 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
                      << endl;
                 continue;
             }
-            if (
-#ifdef QT_WS_MACX
-                strcmp(argv[i + 1], "macintosh") == 0 ||
-#endif
-#ifdef QT_WS_WIN
-                strcmp(argv[i + 1], "windowsxp") == 0 ||
-                strcmp(argv[i + 1], "windowsvista") == 0 ||
-#endif
-                strcmp(argv[i + 1], "windows") == 0 ||
-                strcmp(argv[i + 1], "motif") == 0 ||
-                strcmp(argv[i + 1], "cde") == 0 ||
-                strcmp(argv[i + 1], "plastique") == 0 ||
-                strcmp(argv[i + 1], "cleanlooks") == 0
-               )
+            QStringList availableStyles = QStyleFactory::keys();
+            QString style(argv[i+1]);
+            if (availableStyles.contains(style, Qt::CaseInsensitive))
             {
                 clientArguments.push_back(argv[i]);
                 clientArguments.push_back(argv[i+1]);
 
                 GetViewerState()->GetAppearanceAttributes()->SetStyle(argv[i+1]);
             }
+            else
+            {
+                cerr << "Invalid style: " << style.toStdString() << endl;
+                cerr << "Available styles are: ";
+                for (int i = 0; i < availableStyles.size(); ++i)
+                    cerr << availableStyles.at(i).toStdString() << " ";
+                cerr << endl;
+            }
+
             ++i;
         }
         else if (strcmp(argv[i], "-font") == 0)
@@ -2628,6 +2651,10 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
         else if (strcmp(argv[i], "-manta") == 0)
         {
             avtCallback::SetMantaMode(true);
+        }
+        else if (strcmp(argv[i], "-ospray") == 0)
+        {
+            avtCallback::SetOSPRayMode(true);
         }
         else if (strcmp(argv[i], "-fullscreen") == 0)
         {
@@ -2851,6 +2878,9 @@ ViewerSubject::ProcessCommandLine(int argc, char **argv)
 //    Brad Whitlock, Thu Aug 14 09:57:29 PDT 2008
 //    Use qApp.
 //
+//    Mark C. Miller, Thu Jun  8 15:05:50 PDT 2017
+//    Just exit(0) and don't try to exit nicely. This can impact valgrind
+//    analysis so compile with DEBUG_MEMORY_LEAKS to disable.
 // ****************************************************************************
 
 void
@@ -2884,7 +2914,11 @@ ViewerSubject::Close()
     //
     // Break out of the application loop.
     //
+#ifdef DEBUG_MEMORY_LEAKS
     qApp->exit(0);
+#else
+    exit(0); // HOOKS_IGNORE
+#endif
 }
 
 // ****************************************************************************
@@ -2975,10 +3009,9 @@ void GetSerializedData(int windowIndex,
 
         if(len > 0){
             QByteArray data(result,(int)len);
-
             element.SetData(QString(data.toBase64()).toStdString());
             element.SetFormat(ViewerClientInformation::Image);
-            element.SetWindowId(vwin->GetWindowId()+1);
+            element.SetWindowId(windowIndex+1);//(vwin->GetWindowId()+1);
             elementList.push_back(element);
         }
         delete [] result;
@@ -3055,10 +3088,8 @@ ViewerSubject::ExportWindow()
     JSONNode node;
     node.Parse(GetViewerState()->GetViewerRPC()->GetStringArg1());
 
-
     intVector windowIds = node["plotIds"].AsIntVector();
     std::string format = node["format"].GetString();
-
 
     ViewerClientInformation* qatts = GetViewerState()->GetViewerClientInformation();
     ViewerClientInformation::OutputFormat of;
@@ -3089,7 +3120,7 @@ ViewerSubject::ExportWindow()
         return;
     }
 
-    ViewerClientConnection* client = clients[resultId];
+    ViewerClientConnection* client = clients[clientId];
     ViewerClientAttributes& clatts = client->GetViewerClientAttributes();
 
     // resolution and window
@@ -3126,63 +3157,6 @@ ViewerSubject::ExportWindow()
 }
 
 // ****************************************************************************
-// Method: QvisHostProfileWindow::ExportHostProfile
-//
-// Purpose:
-//   Export Selected HostProfile to Directory.
-//
-// Programmer:
-// Creation:   September 10, 2013
-//
-// Modifications:
-//
-// ****************************************************************************
-
-void
-ViewerSubject::ExportHostProfile()
-{
-    JSONNode node;
-    node.Parse(GetViewerState()->GetViewerRPC()->GetStringArg1());
-
-    std::string profileName = node["profileName"].GetString();
-    std::string fileName = node["fileName"].GetString();
-    bool saveInUserDir = node["saveInUserDir"].GetBool();
-
-    std::string userdir = GetAndMakeUserVisItHostsDirectory();
-    HostProfileList *hpl = GetViewerState()->GetHostProfileList();
-
-    for (int i = 0; i < hpl->GetNumMachines(); ++i)
-    {
-        MachineProfile &pl = hpl->GetMachines(i);
-        std::string host = pl.GetHostNickname();
-
-        if(host != profileName) continue;
-
-        std::string name = "";
-
-        if(!saveInUserDir)
-            name = fileName;
-        else
-            name = userdir + VISIT_SLASH_STRING + fileName;
-
-        GetViewerMessaging()->Status(
-            TR("Host profile %1 exported to %2").
-               arg(host).
-               arg(name));
-
-        // Tell the user what happened.
-        GetViewerMessaging()->Message(
-            TR("VisIt exported host profile \"%1\" to the file: %2. ").
-               arg(host).
-               arg(name));
-
-        SingleAttributeConfigManager mgr(&pl);
-        mgr.Export(name);
-        break;
-    }
-}
-
-// ****************************************************************************
 // Method: ViewerSubject::Export
 //
 // Purpose:
@@ -3212,19 +3186,34 @@ ViewerSubject::Export()
     JSONNode node;
     std::string str = GetViewerState()->GetViewerRPC()->GetStringArg1();
     int clientId = GetViewerState()->GetViewerRPC()->GetIntArg1();
-    std::cout << "EXPORT" << std::endl;
     replaceAll(str,"\\\\", "\\");
     replaceAll(str,"\\\"", "\"");
     node.Parse(str);
 
     std::string action = node["action"].GetString();
+    std::cout << "Export: " << action << std::endl;
+
+    //int clientId = GetViewerState()->GetViewerRPC()->GetIntArg1();
+
+    int resultId = -1;
+    /// Broadcast directly to client..
+    for(int i = 0; i < (int)clients.size(); ++i) {
+        ViewerClientAttributes& client = clients[i]->GetViewerClientAttributes();
+        if(client.GetId() == clientId) {
+            resultId = i;
+            break;
+        }
+    }
+
+    if(resultId < 0) {
+        std::cerr << "Export request for client that does not exist.." << std::endl;
+        return;
+    }
+
+    ViewerClientConnection* client = clients[resultId];
 
     if(action == "ExportWindows") {
         ExportWindow();
-    }
-
-    if(action == "ExportHostProfile") {
-        ExportHostProfile();
     }
 
     if(action == "GetFileList") {
@@ -3260,10 +3249,10 @@ ViewerSubject::Export()
             node["files"] = JSONNode::JSONArray();
             node["dirs"] = JSONNode::JSONArray();
 
-            for(int i = 0; i < list->files.size(); ++i) {
+            for(size_t i = 0; i < list->files.size(); ++i) {
                 node["files"].Append("&quot;" + list->files[i].name + "&quot;" );
             }
-            for(int i = 0; i < list->dirs.size(); ++i) {
+            for(size_t i = 0; i < list->dirs.size(); ++i) {
                 node["dirs"].Append("&quot;" + list->dirs[i].name + "&quot;");
             }
 
@@ -3286,11 +3275,8 @@ ViewerSubject::Export()
             type = (int)ViewerClientAttributes::Data;
         }
 
-        if(clientId >= 0 && clientId < clients.size()) {
-            ViewerClientConnection* conn = clients[clientId];
-
-            intVector& activeWindows = conn->GetViewerClientAttributes().GetWindowIds();
-            intVector& typeWindows = conn->GetViewerClientAttributes().GetRenderingTypes();
+           intVector& activeWindows = client->GetViewerClientAttributes().GetWindowIds();
+            intVector& typeWindows = client->GetViewerClientAttributes().GetRenderingTypes();
             int index = -1;
             for(size_t i = 0; i < activeWindows.size(); ++i) {
                 if(activeWindows[i] == windowId) {
@@ -3298,18 +3284,16 @@ ViewerSubject::Export()
                     break;
                 }
             }
-            //std::cout << "registering new window for clientId " << activeWindows.size() << " "
-            //          << clientId << " " << index << "  " << " " << windowId << " " << type << std::endl;
+            //std::cerr << "registering new window for clientId " << activeWindows.size() << " " << clientId << " " << index << "  " << " " << windowId << " " << type << std::endl;
             if(index == -1) {
                 activeWindows.push_back(windowId);
                 typeWindows.push_back(type);
             }
-        }
 
         /// activeWindows are 1-based but internal windows are 0-based
         /// really confusing :)
-        BroadcastImage(windowId-1, false);
-        BroadcastData(windowId-1, clientId);
+        BroadcastImage(windowId, false);
+        BroadcastData(windowId, resultId);
     }
 
     if(action == "ColorTable") {
@@ -3410,7 +3394,7 @@ ViewerSubject::Export()
         win->ClearWindow(false);
         win->GetPlotList()->RealizePlots(false);
         BroadcastImage(windowId, false);
-        BroadcastData(windowId, clientId);
+        BroadcastData(windowId, resultId);
     }
 }
 
@@ -3502,14 +3486,24 @@ ViewerSubject::SimConnect(EngineKey &ek)
 //
 // Modifications:
 //
+//    Mark C. Miller, Thu Jun  8 15:07:19 PDT 2017
+//    Do nothing if SEG is disabled. Since GetOperatorCreatedExpressions
+//    already updates the global expression list, don't pass it in here. 
+//    Just pass in a dummy, empty list.
 // ****************************************************************************
 
 void
 ViewerSubject::UpdateExpressionCallback(const avtDatabaseMetaData *md, void *)
 {
-    ExpressionList *adder = ParsingExprList::Instance()->GetList();
-    VariableMenuPopulator::GetOperatorCreatedExpressions(*adder, md, 
-                                                         ViewerBase::GetOperatorPluginManager());
+    if (md->ShouldDisableSEG(Environment::exists(md->GetSEGEnvVarName())))
+        return;
+
+    ExpressionList dummyList;
+    // A side effect of calling GetOperatorCreatedExpression is that
+    // global expression list is updated.
+    VariableMenuPopulator::GetOperatorCreatedExpressions(dummyList, md,
+        ViewerBase::GetOperatorPluginManager(),
+        VariableMenuPopulator::GlobalOnly);
 }
 
 // ****************************************************************************
@@ -4201,9 +4195,11 @@ ViewerSubject::BroadcastImage(int windowId, bool inMotion)
         const intVector& typeWindows = clatts.GetRenderingTypes();
 
         for(size_t j = 0; j < activeWindows.size(); ++j) {
-            if(activeWindows[j] == windowId+1 &&
-              (ViewerClientAttributes::RenderType)typeWindows[j] == ViewerClientAttributes::Image) {
+            if(activeWindows[j] == windowId &&
+              (ViewerClientAttributes::RenderType)typeWindows[j] == ViewerClientAttributes::Image) 
+            {
                 activeClients.push_back(clients[i]);
+                break;
             }
         }
     }
@@ -4227,7 +4223,7 @@ ViewerSubject::BroadcastImage(int windowId, bool inMotion)
         if(geometryElementMap.count(dimensions) > 0) continue;
 
         //int timerId = visitTimer->StartTimer(true);
-        GetSerializedData(windowId,
+        GetSerializedData(windowId-1,
                           clatts.GetImageWidth(),
                           clatts.GetImageHeight(),
                           clatts.GetImageResolutionPcnt(),
@@ -5223,6 +5219,16 @@ ViewerSubject::DeferCommandFromSimulation(const EngineKey &key,
 //   Brad Whitlock, Sun Feb 27 21:12:17 PST 2011
 //   I added the SetUI command.
 //
+//   Brad Whitlock, Thu May 28 15:27:56 PDT 2015
+//   I added more commands that can come from simulations.
+//
+//   Brad Whitlock, Fri Aug 14 11:56:26 PDT 2015
+//   I added some arguments to export.
+//
+//   Brad Whitlock, Tue Sep 29 11:06:58 PDT 2015
+//   Get the entire ExportDBAttributes from the simulation so we get the export
+//   options too.
+//
 // ****************************************************************************
 
 void
@@ -5285,6 +5291,160 @@ ViewerSubject::HandleCommandFromSimulation(const EngineKey &key,
             GetViewerState()->GetSimulationUIValues()->SetSvalue(s[3]);
         GetViewerState()->GetSimulationUIValues()->SetEnabled(s[4] == "1");
         GetViewerState()->GetSimulationUIValues()->Notify();
+    }
+    else if(command.substr(0,10) == "SaveWindow")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = SaveWindow
+        // s[1] = dName
+        // s[2] = fName
+        // s[3] = w
+        // s[4] = h
+        // s[5] = format
+        int ival = 0, w = 100, h = 100;
+        if(sscanf(s[3].c_str(), "%d", &ival) == 1)
+            w = (ival > 0) ? ival : w;
+        if(sscanf(s[4].c_str(), "%d", &ival) == 1)
+            h = (ival > 0) ? ival : h;
+        SaveWindowAttributes::FileFormat fmt = SaveWindowAttributes::PNG;
+        SaveWindowAttributes::FileFormat_FromString(s[5], fmt);
+
+        debug5 << "SaveWindow" << endl;
+        debug5 << "\toutputDirectory = " << s[1] << endl;
+        debug5 << "\tfilename = " << s[2] << endl;
+        debug5 << "\twidth = " << w << endl;
+        debug5 << "\theight = " << h << endl;
+        debug5 << "\tformat = " << s[5] << endl;
+
+        // Output to the current directory if the simulation did not
+        // specify a directory. This at least lets it work client-side
+        // when the simulation just passes filenames.
+        bool outputCurrentDirectory = (s[1].empty() || s[1] == ".");
+
+        SaveWindowAttributes *swa = GetViewerState()->GetSaveWindowAttributes();
+        swa->SetFileName(s[2]);
+        swa->SetOutputToCurrentDirectory(outputCurrentDirectory);
+        swa->SetOutputDirectory(s[1]);
+        swa->SetFamily(false);
+        swa->SetFormat(fmt);
+        swa->SetWidth(w);
+        swa->SetHeight(h);
+        swa->SetSaveTiled(false);
+        swa->SetScreenCapture(false);
+        swa->Notify();
+
+        GetViewerMethods()->SaveWindow();
+    }
+    else if(command.substr(0,14) == "ExportDatabase")
+    {
+        // The message is formatted like: ExportDatabase:XML
+        std::stringstream xml(command.substr(15));
+        ExportDBAttributes *atts = GetViewerState()->GetExportDBAttributes();
+        SingleAttributeConfigManager mgr(atts);
+        if(mgr.Import(xml))
+        {
+            atts->Notify();
+            GetViewerMethods()->ExportDatabase();
+        }
+        else
+        {
+            debug5 << "Export failed because the ExportDBAttributes could not "
+                      "be read from simulation." << endl;
+        }
+    }
+    else if(command.substr(0,14) == "RestoreSession")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = RestoreSession
+        // s[1] = filename
+        stringVector sources;
+        for(int i = 0; i < 10; ++i)
+            sources.push_back(db);
+
+        std::string hostname;
+        GetViewerMethods()->
+            ImportEntireStateWithDifferentSources(s[1], false, sources, hostname);
+    }
+    else if(command.substr(0,7) == "AddPlot")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = AddPlot
+        // s[1] = plotType
+        // s[2] = var
+
+        // Get the plugin id from the input plotType, which could be an id or a name.
+        std::string id;
+        for(int i = 0; i < GetPlotPluginManager()->GetNEnabledPlugins(); ++i)
+        {
+            std::string thisID(GetPlotPluginManager()->GetEnabledID(i));
+            if(thisID == s[1])
+                id = thisID;
+            if(GetPlotPluginManager()->GetPluginName(thisID) == s[1])
+                id = thisID;
+        }
+        if(!id.empty())
+        { 
+            bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(false);
+
+            int plotIndex = GetPlotPluginManager()->GetEnabledIndex(id);
+            GetViewerMethods()->AddPlot(plotIndex, s[2]);
+
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyOperatorSave);
+        }
+    }
+    else if(command.substr(0,11) == "AddOperator")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = AddPlot
+        // s[1] = operatorType
+        // s[2] = applyToAll
+
+        // Get the plugin id from the input plotType, which could be an id or a name.
+        std::string id;
+        for(int i = 0; i < GetOperatorPluginManager()->GetNEnabledPlugins(); ++i)
+        {
+            std::string thisID(GetOperatorPluginManager()->GetEnabledID(i));
+            if(thisID == s[1])
+                id = thisID;
+            if(GetOperatorPluginManager()->GetPluginName(thisID) == s[1])
+                id = thisID;
+        }
+        if(!id.empty())
+        {
+            bool applyToAll = (s[2]=="1");
+
+            bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyToAll);
+
+            int operatorIndex = GetOperatorPluginManager()->GetEnabledIndex(id);
+            GetViewerMethods()->AddOperator(operatorIndex);
+
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyOperatorSave);
+        }
+    }
+    else if(command.substr(0,9) == "DrawPlots")
+    {
+        GetViewerMethods()->DrawPlots();
+    }
+    else if(command.substr(0,17) == "DeleteActivePlots")
+    {
+        GetViewerMethods()->DeleteActivePlots();
+    }
+    else if(command.substr(0,14) == "SetActivePlots")
+    {
+        stringVector s = SplitValues(command, ':');
+        // s[0] = SetActivePlots
+        // s[1] = activePlot0
+        // ... more active plots.
+        intVector activePlots;
+        for(size_t i = 1; i < s.size(); ++i)
+        {
+            int ival = atoi(s[i].c_str());
+            if(ival >= 0)
+                activePlots.push_back(ival);
+        }
+        GetViewerMethods()->SetActivePlots(activePlots);
     }
 }
 
@@ -5859,7 +6019,8 @@ ViewerSubject::HandleAnimation()
 
 void ViewerSubject::RenderEventCallback(int windowId, bool inMotion, void* data) {
     ViewerSubject* vs = (ViewerSubject*)data;
-    vs->BroadcastImage(windowId, inMotion);
+    ///this windowId is based on 0 index..
+    vs->BroadcastImage(windowId+1, inMotion);
 }
 
 #include <QVTKInteractor.h>

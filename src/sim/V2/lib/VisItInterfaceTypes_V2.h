@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -102,12 +102,17 @@ typedef enum {
 #define VISIT_DATATYPE_FLOAT              2
 #define VISIT_DATATYPE_DOUBLE             3
 #define VISIT_DATATYPE_LONG               4
+#define VISIT_DATATYPE_STRING             10
 
 /* Array Owner */
 #define VISIT_OWNER_SIM                   0
 #define VISIT_OWNER_VISIT                 1
 #define VISIT_OWNER_COPY                  2
 #define VISIT_OWNER_VISIT_EX              3
+
+/* Array memory layout */
+#define VISIT_MEMORY_CONTIGUOUS           0
+#define VISIT_MEMORY_STRIDED              1
 
 /* Cell Types */
 #define VISIT_CELL_BEAM                   0
@@ -119,6 +124,22 @@ typedef enum {
 #define VISIT_CELL_HEX                    6
 #define VISIT_CELL_POINT                  7
 #define VISIT_CELL_POLYHEDRON             8
+
+#define VISIT_CELL_QUADRATIC_EDGE         20
+#define VISIT_CELL_QUADRATIC_TRI          21
+#define VISIT_CELL_QUADRATIC_QUAD         22
+#define VISIT_CELL_QUADRATIC_TET          23
+#define VISIT_CELL_QUADRATIC_PYR          24
+#define VISIT_CELL_QUADRATIC_WEDGE        25
+#define VISIT_CELL_QUADRATIC_HEX          26
+
+#define VISIT_CELL_BIQUADRATIC_TRI        27
+#define VISIT_CELL_BIQUADRATIC_QUAD       28
+#define VISIT_CELL_TRIQUADRATIC_HEX       29
+#define VISIT_CELL_QUADRATIC_LINEAR_QUAD         30
+#define VISIT_CELL_QUADRATIC_LINEAR_WEDGE        31
+#define VISIT_CELL_BIQUADRATIC_QUADRATIC_WEDGE   32
+#define VISIT_CELL_BIQUADRATIC_QUADRATIC_HEX     33
 
 /* Coordinate modes */
 #define VISIT_COORD_MODE_SEPARATE         0
@@ -203,6 +224,7 @@ typedef enum {
 #define VISIT_CSG_INTERSECT         2130968576 /* 0x7F040000 */
 #define VISIT_CSG_DIFF              2131034112 /* 0x7F050000 */
 #define VISIT_CSG_COMPLIMENT        2131099648 /* 0x7F060000 */
+/* XFORM and SWEEP are not yet implemented */
 #define VISIT_CSG_XFORM             2131165184 /* 0x7F070000 */
 #define VISIT_CSG_SWEEP             2131230720 /* 0x7F080000 */
 
@@ -214,6 +236,10 @@ typedef enum {
 #define VISIT_IMAGEFORMAT_PPM    4
 #define VISIT_IMAGEFORMAT_RGB    5
 #define VISIT_IMAGEFORMAT_TIFF   6
+
+/* Export option keys */
+#define VISIT_EXPORT_WRITE_USING_GROUPS "EXPORT_WRITE_USING_GROUPS"
+#define VISIT_EXPORT_GROUP_SIZE         "EXPORT_GROUP_SIZE"
 
 #ifdef __cplusplus
 }

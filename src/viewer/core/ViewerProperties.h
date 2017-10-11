@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -98,6 +98,7 @@ public:
 
     // Property setting methods
     void SetMasterProcess(bool MasterProcess_);
+    void SetInSitu(bool InSitu_);
     void SetNowin(bool nowin_);
     void SetWindowBorders(const std::string &windowBorders_);
     void SetWindowShift(const std::string &windowShift_);
@@ -121,9 +122,11 @@ public:
     void SetForceSSHTunneling(bool forceSSHTunneling_);
     void SetInExecute(bool inExecute_);
     void SetInLaunch(bool inLaunch_);
+    void SetDecorateDebug(bool decorateDebug_);
 
     // Property getting methods
     bool               GetMasterProcess() const;
+    bool               GetInSitu() const;
     bool               GetNowin() const;
     const std::string  &GetWindowBorders() const;
           std::string  &GetWindowBorders();
@@ -156,11 +159,13 @@ public:
     bool               GetForceSSHTunneling() const;
     bool               GetInExecute() const;
     bool               GetInLaunch() const;
+    bool               GetDecorateDebug() const;
 
 
     // IDs that can be used to identify fields in case statements
     enum {
         ID_MasterProcess = 0,
+        ID_InSitu,
         ID_nowin,
         ID_windowBorders,
         ID_windowShift,
@@ -184,11 +189,13 @@ public:
         ID_forceSSHTunneling,
         ID_inExecute,
         ID_inLaunch,
+        ID_decorateDebug,
         ID__LAST
     };
 
 private:
     bool         MasterProcess;
+    bool         InSitu;
     bool         nowin;
     std::string  windowBorders;
     std::string  windowShift;
@@ -212,11 +219,12 @@ private:
     bool         forceSSHTunneling;
     bool         inExecute;
     bool         inLaunch;
+    bool         decorateDebug;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define VIEWERPROPERTIES_TMFS "bbssssibbbbssbbis*s*s*ibbbb"
+#define VIEWERPROPERTIES_TMFS "bbbssssibbbbssbbis*s*s*ibbbbb"
 
 #endif

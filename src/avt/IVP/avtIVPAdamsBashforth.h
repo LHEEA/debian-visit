@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -114,11 +114,9 @@ class IVP_API avtIVPAdamsBashforth: public avtIVPSolver
     virtual void     AcceptStateVisitor(avtIVPStateHelper &aiss);
     
   private:
-    int abStep, abNSteps;
-    int numStep;
-    int degenerate_iterations;
-    double stiffness_eps;
+    int abCIndex, abNSteps;
     avtVector history[ADAMS_BASHFORTH_NSTEPS];
 //    avtVector dhistory[ADAMS_BASHFORTH_NSTEPS];
 };
+
 #endif

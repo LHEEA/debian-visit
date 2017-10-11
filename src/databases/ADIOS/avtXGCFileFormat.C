@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -82,10 +82,11 @@ bool
 avtXGCFileFormat::Identify(const char *fname)
 {
     string str(fname);
-    if (str.find("xgc.3d") != string::npos)
-    {
+    if (str.find("xgc.") != string::npos)
         return true;
-    }
+    else if (str.find("xgc.particle") != string::npos)
+        return true;
+    
     return false;
 }
 
@@ -191,6 +192,9 @@ avtXGCFileFormat::avtXGCFileFormat(const char *nm)
     numNodes = 0;
     numTris = 0;
     numPhi = 0;
+    
+    string str(nm);
+    haveParticles = (str.find("xgc.particle") != string::npos);
 }
 
 // ****************************************************************************
@@ -290,6 +294,36 @@ avtXGCFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeStat
     Initialize();
     md->SetFormatCanDoDomainDecomposition(false);
 
+    //Particles
+    if (haveParticles)
+    {
+        int numBlocks = 1;
+        
+        map<string, ADIOS_VARINFO*>::const_iterator it;
+        for (it = file->variables.begin(); it != file->variables.end(); it++)
+        {
+            if (it->first.find("iphase") != string::npos)
+            {
+                ADIOS_VARINFO *avi = it->second;
+                numBlocks = avi->sum_nblocks;
+                break;
+            }
+        }
+        
+        avtMeshMetaData *mesh = new avtMeshMetaData;
+        mesh->name = "particles";
+        mesh->meshType = AVT_POINT_MESH;
+        mesh->numBlocks = numBlocks;
+        mesh->blockOrigin = 0;
+        mesh->spatialDimension = 3;
+        mesh->topologicalDimension = 3;
+        mesh->blockTitle = "blocks";
+        mesh->blockPieceName = "block";
+        mesh->hasSpatialExtents = false;
+        md->Add(mesh);
+        return;
+    }
+
     //Mesh.
     avtMeshMetaData *mesh = new avtMeshMetaData;
     mesh->name = "mesh";
@@ -371,6 +405,8 @@ avtXGCFileFormat::GetMesh(int timestate, int domain, const char *meshname)
         return GetSepMesh();
     if (!strcmp(meshname, "mesh2D"))
         return GetMesh2D(timestate, domain);
+    if (!strcmp(meshname, "particles"))
+        return GetParticleMesh(timestate, domain);
 
     vtkDataArray *buff = NULL;
     meshFile->ReadScalarData("/coordinates/values", timestate, &buff);
@@ -382,7 +418,8 @@ avtXGCFileFormat::GetMesh(int timestate, int domain, const char *meshname)
 
     vtkDataArray *conn = NULL, *nextNode = NULL;
     meshFile->ReadScalarData("/cell_set[0]/node_connect_list", timestate, &conn);
-    meshFile->ReadScalarData("/nextnode", timestate, &nextNode);
+    if (!meshFile->ReadScalarData("/nextnode", timestate, &nextNode))
+        meshFile->ReadScalarData("nextnode", timestate, &nextNode);
 
     //Create the points.
     double dPhi = 2.0*M_PI/(double)numPhi;
@@ -440,6 +477,48 @@ avtXGCFileFormat::GetMesh(int timestate, int domain, const char *meshname)
     }
     conn->Delete();
     nextNode->Delete();
+    return grid;
+}
+
+vtkDataSet *
+avtXGCFileFormat::GetParticleMesh(int ts, int domain)
+{
+    vtkDataArray *buff = NULL;
+    file->ReadScalarData("iphase", ts, domain, &buff);
+    int nPts = buff->GetNumberOfTuples() / 9;
+    if (nPts == 0)
+    {
+        if (buff)
+            buff->Delete();
+        return NULL;
+    }
+    
+    vtkPoints *pts = vtkPoints::New();
+    pts->SetNumberOfPoints(nPts);
+    vtkUnstructuredGrid *grid = vtkUnstructuredGrid::New();
+    grid->SetPoints(pts);
+
+    double pt[3];
+    for (int i = 0; i < nPts; i++)
+    {
+        double r = buff->GetTuple1(i*9 +0);
+        double z = buff->GetTuple1(i*9 +1);
+        double p = buff->GetTuple1(i*9 +2);
+        double X = r*cos(p), Y = r*sin(p), Z = z;
+
+        pt[0] = X;
+        pt[1] = Z;
+        pt[2] = -Y;
+        pts->SetPoint(i, pt);
+        //cout<<i<<": ["<<pt[0]<<" "<<pt[1]<<" "<<pt[2]<<"]"<<endl;
+
+        vtkIdType id = i;
+        grid->InsertNextCell(VTK_VERTEX, 1, &id);
+    }
+
+    pts->Delete();
+    buff->Delete();
+
     return grid;
 }
 
@@ -622,6 +701,8 @@ avtXGCFileFormat::GetVar(int timestate, int domain, const char *varname)
 
     vtkDataArray *var = NULL;
     file->ReadScalarData(varname, timestate, &var);
+    if (var == NULL)
+        EXCEPTION1(InvalidVariableException, varname);
     return var;
 }
 
@@ -673,7 +754,8 @@ vtkDataArray *
 avtXGCFileFormat::GetPsi()
 {
     vtkDataArray *psi;
-    meshFile->ReadScalarData("/psi", 0, &psi);
+    if (!meshFile->ReadScalarData("/psi", 0, &psi))
+        meshFile->ReadScalarData("psi", 0, &psi);
 
     return psi;
 }
@@ -696,11 +778,16 @@ avtXGCFileFormat::GetTurbulence(int ts, int dom)
 {
     vtkDataArray *pot0 = NULL, *potm0 = NULL, *eden = NULL, *dpot = NULL, *psi = NULL;
 
-    file->ReadScalarData("/dpot", ts, &dpot);
-    file->ReadScalarData("/pot0", ts, &pot0);
-    file->ReadScalarData("/potm0", ts, &potm0);
-    file->ReadScalarData("/eden", ts, &eden);
-    meshFile->ReadScalarData("/psi", ts, &psi);
+    if(!file->ReadScalarData("/dpot", ts, &dpot))
+        file->ReadScalarData("dpot", ts, &dpot);
+    if (!file->ReadScalarData("/pot0", ts, &pot0))
+        file->ReadScalarData("pot0", ts, &pot0);
+    if (!file->ReadScalarData("/potm0", ts, &potm0))
+        file->ReadScalarData("potm0", ts, &potm0);
+    if (!file->ReadScalarData("/eden", ts, &eden))
+        file->ReadScalarData("eden", ts, &eden);
+    if (!meshFile->ReadScalarData("/psi", ts, &psi))
+        meshFile->ReadScalarData("psi", ts, &psi);
 
     vtkDataArray *psid=NULL, *dens=NULL, *temp1=NULL, *temp2=NULL;
     diagFile->ReadScalarData("/psi_mks", ts, &psid);
@@ -849,11 +936,13 @@ avtXGCFileFormat::Initialize()
     haveSepMesh = f.good();
 
     //Read in mesh/plane info.
-    meshFile->GetScalar("/n_n", numNodes);
-    meshFile->GetScalar("/n_t", numTris);
+    if (!meshFile->GetScalar("/n_n", numNodes))
+        meshFile->GetScalar("n_n", numNodes);
+    if (!meshFile->GetScalar("/n_t", numTris))
+        meshFile->GetScalar("n_t", numTris);
     if (!file->GetScalar("/nphi", numPhi))
         file->GetScalar("nphi", numPhi);
-    
+
     initialized = true;
 }
 

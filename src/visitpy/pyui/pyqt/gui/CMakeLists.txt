@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-400142
 # All rights reserved.
@@ -114,4 +114,12 @@ SET_TARGET_PROPERTIES(${SIP_LIBRARY} PROPERTIES PREFIX "")
 SET_TARGET_PROPERTIES(${SIP_LIBRARY} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/site-packages/visit)
 TARGET_LINK_LIBRARIES(${SIP_LIBRARY} ${pyqtgui_link_libs})
 VISIT_INSTALL_TARGETS_RELATIVE("site-packages/visit" ${SIP_LIBRARY})
+
+
+#
+# If we enable eval, it will appear in the link line, so add ${EAVL_LIBRARY_DIR}
+#
+IF(EAVL_FOUND)
+    LINK_DIRECTORIES(${EAVL_LIBRARY_DIR})
+ENDIF()
 

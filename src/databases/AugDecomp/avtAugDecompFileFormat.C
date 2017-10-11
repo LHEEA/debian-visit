@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -101,7 +101,7 @@ avtAugDecompFileFormat::avtAugDecompFileFormat(const char *augd_filename,
     ifile >> filename;
     if (filename[0] != VISIT_SLASH_CHAR)
     {
-        int len = strlen(augd_filename);
+        int len = (int)strlen(augd_filename);
         const char *last = augd_filename + (len-1);
         while (*last != VISIT_SLASH_CHAR && last > augd_filename)
         {

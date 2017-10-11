@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -253,60 +253,6 @@ avtVectorFilter::PostExecute(void)
     if (magVarName != "")
         OutputSetActiveVariable(magVarName.c_str());
 }
-
-
-// ****************************************************************************
-//  Method: avtVectorFilter::Equivalent
-//
-//  Purpose:
-//      Determines if this vector filter is equivalent to the attributes.
-//
-//  Arguments:
-//      us      A boolean indicating if you should use the stride (true) or
-//              stick with a fixed number of vectors (false).
-//      red     The reduction factor, the stride of number of vectors depending
-//              on us.
-//
-//  Returns:     true if it is equal, false otherwise.
-//
-//  Programmer:  Hank Childs
-//  Creation:    March 21, 2001
-//
-//  Modifications:
-//    Jeremy Meredith, Tue Jul  8 11:12:38 EDT 2008
-//    Added ability to limit vectors to come from original cell only
-//    (useful for material-selected vector plots).
-//
-// ****************************************************************************
-
-bool
-avtVectorFilter::Equivalent(bool us, int red, bool orig)
-{
-    if (us != useStride)
-    {
-        return false;
-    }
-    if (useStride)
-    {
-        if (red != stride)
-        {
-            return false;
-        }
-    }
-    else
-    {
-        if (red != nVectors)
-        {
-            return false;
-        }
-    }
-
-    if (orig != origOnly)
-        return false;
-
-    return true;
-}
-
 
 // ****************************************************************************
 //  Method: avtVectorFilter::ExecuteData

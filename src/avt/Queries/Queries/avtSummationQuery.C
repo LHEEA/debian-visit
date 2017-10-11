@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -326,7 +326,7 @@ avtSummationQuery::PreExecute(void)
 void
 avtSummationQuery::PostExecute(void)
 {
-    int ncomps = sums.size();
+    int ncomps = (int)sums.size();
     // for procs with no data, broadcast the # of comps so they can
     // still particpate in the global sum.
     ncomps = UnifyMaximumValue(ncomps);

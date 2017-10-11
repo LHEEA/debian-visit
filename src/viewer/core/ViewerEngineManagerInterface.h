@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,6 +45,7 @@
 #include <viewercore_exports.h>
 #include <ViewerBase.h>
 #include <avtDataObjectReader.h>
+#include <avtImage.h>
 #include <vectortypes.h>
 #include <avtSILRestriction.h>
 
@@ -181,7 +182,7 @@ public:
                          bool replyWithNullData,
                          void (*waitCB)(void*), void *waitCBData) = 0;
 
-    virtual bool Render(const EngineKey &ek, avtDataObjectReader_p &rdr,
+    virtual int  Render(const EngineKey &ek, avtImage_p &img,
                         bool sendZBuffer, const intVector &networkIds, 
                         int annotMode, int windowID, bool leftEye,
                         void (*waitCB)(void *), void *waitCBData) = 0;

@@ -43,13 +43,8 @@
         Tube
         Ribbon
       </Enum>
-      <Enum name="EndPointType">
-        None
-        Tails
-        Heads
-        Both
-      </Enum>
       <Enum name="EndPointStyle">
+        None
         Spheres
         Cones
       </Enum>
@@ -116,22 +111,22 @@
       <Field name="pointSizeVarEnabled" label="Point size by var enabled" type="bool">
         false
       </Field>
-      <Field name="pointSizeVar" label="Point size by var" type="variablename" vartypes="01000000000">
+      <Field name="pointSizeVar" label="Point size variable" type="variablename" vartypes="01000000000">
         default
       </Field>
       <Field name="pointSizePixels" label="Point size pixels" type="int">
         2
       </Field>
-      <Field name="lineType" label="Line Type" type="enum" subtype="LineType">
-        Line
-      </Field>
       <Field name="lineStyle" label="lineStyle" type="linestyle">
         0
+      </Field>
+      <Field name="lineType" label="Line Type" type="enum" subtype="LineType">
+        Line
       </Field>
       <Field name="lineWidth" label="lineWidth" type="linewidth">
         0
       </Field>
-      <Field name="tubeDisplayDensity" label="tubeDisplayDensity" type="int">
+      <Field name="tubeResolution" label="tubeResolution" type="int">
         10
       </Field>
       <Field name="tubeRadiusSizeType" label="tubeRadiusSizeType" type="enum" subtype="SizeType">
@@ -143,31 +138,42 @@
       <Field name="tubeRadiusBBox" label="Radius (BBox Fraction)" type="double" enabler="tubeRadiusSizeType:FractionOfBBox">
         0.005000
       </Field>
-      <Field name="varyTubeRadius" label="varyTubeRadius" type="bool">
+      <Field name="tubeRadiusVarEnabled" label="Tube Radius by var enabled" type="bool">
         false
       </Field>
-      <Field name="varyTubeRadiusVariable" label="varyTubeRadiusVariable" type="string">
+      <Field name="tubeRadiusVar" label="Tube radius variable" type="string">
       </Field>
-      <Field name="varyTubeRadiusFactor" label="varyTubeRadiusFactor" type="double">
+      <Field name="tubeRadiusVarRatio" label="Tube radius variable ration" type="double">
         10.000000
       </Field>
-      <Field name="endPointType" label="End point type" type="enum" subtype="EndPointType">
+      <Field name="tailStyle" label="Tail style" type="enum" subtype="EndPointStyle">
         None
       </Field>
-      <Field name="endPointStyle" label="End point style" type="enum" subtype="EndPointStyle">
-        Spheres
+      <Field name="headStyle" label="Head style" type="enum" subtype="EndPointStyle">
+        None
       </Field>
       <Field name="endPointRadiusSizeType" label="endPointRadiusSizeType" type="enum" subtype="SizeType">
         FractionOfBBox
       </Field>
       <Field name="endPointRadiusAbsolute" label="endPointRadiusAbsolute" type="double" enabler="endPointRadiusSizeType:Absolute">
-        1.000000
+        0.125000
       </Field>
       <Field name="endPointRadiusBBox" label="Radius (BBox Fraction)" type="double" enabler="endPointRadiusSizeType:FractionOfBBox">
-        0.005000
+        0.050000
       </Field>
-      <Field name="endPointRatio" label="endPointRatio" type="double">
-        2.000000
+      <Field name="endPointResolution" label="End point resolution" type="int">
+        10
+      </Field>
+      <Field name="endPointRatio" label="End point ratio" type="double">
+        5.000000
+      </Field>
+      <Field name="endPointRadiusVarEnabled" label="End point radius by var enabled" type="bool">
+        false
+      </Field>
+      <Field name="endPointRadiusVar" label="End point radius variable" type="string">
+      </Field>
+      <Field name="endPointRadiusVarRatio" label="End point radius variable ration" type="double">
+        10.000000
       </Field>
       <Field name="renderSurfaces" label="Render surfaces" type="int">
         1
@@ -186,6 +192,18 @@
       </Field>
       <Field name="lightingFlag" label="Lighting" type="bool">
         true
+      </Field>
+      <Field name="wireframeColor" label="wireframeColor" type="color" length="4">
+        0
+        0
+        0
+        0
+      </Field>
+      <Field name="pointColor" label="pointColor" type="color" length="4">
+        0
+        0
+        0
+        0
       </Field>
       <Function name="ChangesRequireRecalculation" user="true" member="true">
       </Function>

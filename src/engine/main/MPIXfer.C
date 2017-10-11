@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -197,7 +197,7 @@ MPIXfer::SendInterruption(int mpiInterruptTag)
         MPI_Request *request = new MPI_Request[size-1];
         for (int i=1; i<size; i++)
         {
-            MPI_Isend(buf, 1, MPI_CHAR, i, mpiInterruptTag, VISIT_MPI_COMM, &request[i-1]);
+            MPI_Isend(buf, 1, MPI_UNSIGNED_CHAR, i, mpiInterruptTag, VISIT_MPI_COMM, &request[i-1]);
         }
 
         // Then wait for them all to read the command

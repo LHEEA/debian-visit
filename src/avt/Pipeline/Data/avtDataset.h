@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -145,7 +145,8 @@ class   avtWebpage;
 //    Dave Pugmire, Mon Mar 26 13:50:09 EDT 2012
 //    Add avtExtremeValueAnalysisFilter
 //
-
+//    Burlen Loring, Sun Sep  6 14:58:03 PDT 2015
+//    Changed the return type of GetNumberOfCells to long long
 //
 // ****************************************************************************
 
@@ -165,6 +166,7 @@ class PIPELINE_API avtDataset : public avtDataObject
     friend                   class avtTimeIteratorExpression;
     friend                   class avtXRayImageQuery;
     friend                   class avtResampleExpression;
+    friend                   class avtIndexSelectFilter;
 #ifdef HAVE_LIB_R
     friend                   class  avtExtremeValueAnalysisFilter;
     friend                   class  avtPeaksOverThresholdFilter;
@@ -182,7 +184,7 @@ class PIPELINE_API avtDataset : public avtDataObject
     virtual                 ~avtDataset();
 
     virtual const char      *GetType(void)  { return "avtDataset"; };
-    virtual int              GetNumberOfCells(bool polysOnly = false) const;
+    virtual long long        GetNumberOfCells(bool polysOnly = false) const;
     virtual void             ReleaseData(void);
 
     virtual avtDataObject   *Instance(void);

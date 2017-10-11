@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -37,8 +37,6 @@
 # Modifications:
 #
 #****************************************************************************/
-
-cmake_minimum_required(VERSION 2.8)
 
 SET(TESS2_SOURCES
     bucketalloc.C

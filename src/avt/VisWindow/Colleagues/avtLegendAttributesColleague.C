@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -287,12 +287,15 @@ avtLegendAttributesColleague::GetOptions(AnnotationObject &annot)
 // Creation:   Wed Dec 3 12:46:37 PDT 2003
 //
 // Modifications:
-//   
+//
+//   Burlen Loring, Thu Oct  8 10:37:17 PDT 2015
+//   Fix a compiler warning
 // ****************************************************************************
 
 void
 avtLegendAttributesColleague::UpdatePlotList(std::vector<avtActor_p> &lst)
 {
+    (void)lst;
     // Could always make some of the property setting happen here. Maybe even
     // cache pointer to the legend.
 }

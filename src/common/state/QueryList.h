@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,6 +56,8 @@
 // Creation:   omitted
 //
 // Modifications:
+//   Kevin Griffin, Thu Aug 11 10:53:13 PDT 2016
+//   Added the CompactnessVar window type.
 //   
 // ****************************************************************************
 
@@ -83,10 +85,11 @@ public:
         ShapeletsDecomp,
         XRayImage,
         LineSamplerInfo,
-        StreamlineInfo,
+        IntegralCurveInfo,
         Pick,
         Lineout,
-        Compactness
+        Compactness,
+        CompactnessVar
     };
     enum Groups
     {

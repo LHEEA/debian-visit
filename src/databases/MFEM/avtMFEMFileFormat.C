@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,6 +53,7 @@
 #include <avtDatabaseMetaData.h>
 
 #include <DBOptionsAttributes.h>
+#include <DebugStream.h>
 #include <Expression.h>
 
 #include <InvalidFilesException.h>
@@ -72,6 +73,12 @@
 #include "mfem.hpp"
 
 #include <JSONRoot.h>
+
+#ifdef _WIN32
+#include <string.h>
+#define strncasecmp _strnicmp
+#endif
+
 using     std::string;
 using     std::ostringstream;
 using     std::vector;
@@ -158,6 +165,8 @@ avtMFEMFileFormat::FreeUpResources(void)
 //   Cyrus Harrison, Wed Sep 24 10:47:00 PDT 2014
 //   Move abs path logic into JSONRoot.
 //
+//   Mark C. Miller, Tue Sep 20 18:12:29 PDT 2016
+//   Add expressions
 // ****************************************************************************
 void
 avtMFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
@@ -173,7 +182,7 @@ avtMFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 
     // enumerate datasets)
 
-    for(size_t i=0;i<dset_names.size();i++)
+    for(int i=0;i<(int)dset_names.size();i++)
     {
         JSONRootDataSet &dset =  root_md.DataSet(dset_names[i]);
         int nblocks      = dset.NumberOfDomains();
@@ -267,41 +276,39 @@ avtMFEMFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
             }
         }
     }
-}
 
-// ****************************************************************************
-//  Method: avtMFEMFileFormat::ReturnsValidCycle
-//
-//  Purpose:
-//      Returns if we have valid cycle metadata. For now this always 
-//      returns true. 
-//
-//  Programmer: Cyrus Harrison
-//  Creation:   Wed Oct 15 10:52:22 PDT 2014
-//
-// ****************************************************************************
-bool
-avtMFEMFileFormat::ReturnsValidCycle() const
-{
-    // VisIt doesn't support diff times / cycles for meshes
-    // we loop over all meshes to see if any have valid cycle info
-    if(root)
+    vector<string>expr_names;
+    root_md.Expressions(expr_names);
+    for(size_t i = 0; i < expr_names.size(); i++)
     {
-        std::vector<std::string> dset_names;
-        root->DataSets(dset_names);
-        // enumerate datasets
-        bool not_found = true;
-        for(size_t i=0; i<dset_names.size() && not_found ;i++)
+        JSONRootExpr &jexpr = root_md.Expression(expr_names[i]);
+        
+        Expression::ExprType vartype = Expression::Unknown;
+        if      (!strncasecmp(jexpr.Type().c_str(), "scalar", 6))
+            vartype = Expression::ScalarMeshVar;
+        else if (!strncasecmp(jexpr.Type().c_str(), "vector", 6))
+            vartype = Expression::VectorMeshVar;
+        else if (!strncasecmp(jexpr.Type().c_str(), "tensor", 6))
+            vartype = Expression::TensorMeshVar;
+        else if (!strncasecmp(jexpr.Type().c_str(), "array", 5))
+            vartype = Expression::ArrayMeshVar;
+        else if (!strncasecmp(jexpr.Type().c_str(), "material", 8))
+            vartype = Expression::Material;
+        else if (!strncasecmp(jexpr.Type().c_str(), "species", 7))
+            vartype = Expression::Species;
+        else
         {
-            JSONRootDataSet &dset =  root->DataSet(dset_names[i]);
-            if(dset.HasCycle())
-            {
-                return true;
-            }
+            debug5 << "Warning: unknown expression type \"" << jexpr.Type() << "\" for expression "
+                   << "\"" << expr_names[i] << "\"...skipping it." << endl;
+            continue;
         }
+
+        Expression expr;
+        expr.SetName(expr_names[i]);
+        expr.SetDefinition(jexpr.Defn());
+        expr.SetType(vartype);
+        md->AddExpression(&expr);
     }
-    
-    return false;
 }
 
 // ****************************************************************************
@@ -336,42 +343,6 @@ avtMFEMFileFormat::GetCycle()
     }
     
     return avtFileFormat::INVALID_CYCLE;
-}
-
-
-// ****************************************************************************
-//  Method: avtMFEMFileFormat::ReturnsValidTime
-//
-//  Purpose:
-//      Returns if we have valid time metadata. For now this always 
-//      returns true. 
-//
-//  Programmer: Cyrus Harrison
-//  Creation:   Wed Oct 15 10:52:22 PDT 2014
-//
-// ****************************************************************************
-bool
-avtMFEMFileFormat::ReturnsValidTime() const
-{
-    // VisIt doesn't support diff times / cycles for meshes
-    // we loop over all meshes to see if any have valid time info
-    if(root)
-    {
-        std::vector<std::string> dset_names;
-        root->DataSets(dset_names);
-        // enumerate datasets
-        bool not_found = true;
-        for(size_t i=0; i<dset_names.size() && not_found ;i++)
-        {
-            JSONRootDataSet &dset =  root->DataSet(dset_names[i]);
-            if(dset.HasTime())
-            {
-                return true;
-            }
-        }
-    }
-    
-    return false;
 }
 
 
@@ -501,6 +472,15 @@ avtMFEMFileFormat::GetVectorVar(int domain, const char *varname)
 //  Programmer: Cyrus Harrison
 //  Creation:   Sat Jul  5 11:38:31 PDT 2014
 //
+// Modifications:
+//   Cyrus Harrison, Wed Jun  1 08:46:12 PDT 2016
+//   Change MFEM Mesh constructor call to resolve coordinate system issue
+//   (See: http://visitbugs.ornl.gov/issues/2578)
+//
+//   Cyrus Harrison, Mon Aug 22 20:00:57 PDT 2016
+//   Additional change to MFEM Mesh constructor call to resolve 
+//   coordinate system issue
+//
 // ****************************************************************************
 Mesh *
 avtMFEMFileFormat::FetchMesh(const std::string &mesh_name,int domain)
@@ -530,7 +510,7 @@ avtMFEMFileFormat::FetchMesh(const std::string &mesh_name,int domain)
         EXCEPTION1(InvalidFilesException, msg.str());
     }
    
-    mesh = new Mesh(imesh, 1, 1);
+    mesh = new Mesh(imesh, 1, 0, false);
     imesh.close();
    
     return mesh;
@@ -642,6 +622,8 @@ avtMFEMFileFormat::GetRefinedMesh(const std::string &mesh_name, int domain, int 
 
         pt_idx += refined_geo->RefPts.GetNPoints();
    }
+   
+   delete mesh;
        
    return res_ds;
 }
@@ -804,6 +786,11 @@ avtMFEMFileFormat::GetRefinedVar(const std::string &var_name,
 //  Programmer: Cyrus Harrison
 //  Creation:   Sat Jul  5 11:38:31 PDT 2014
 //
+// Modifications:
+//   Cyrus Harrison, Tue May 23 10:12:52 PDT 2017
+//   Seed rng with domain id for predictable coloring results
+//   (See: http://visitbugs.ornl.gov/issues/2747)
+//
 // ****************************************************************************
 vtkDataArray *
 avtMFEMFileFormat::GetRefinedElementColoring(const std::string &mesh_name,
@@ -840,13 +827,12 @@ avtMFEMFileFormat::GetRefinedElementColoring(const std::string &mesh_name,
     //
     // Use mfem's mesh coloring alog
     //
-    
-    //srandom(time(0)); don't seed, may have side effects for other parts of visit
-#ifdef _WIN32
+
+    // seed using domain id for predictable results
+    srand(domain);
+
     double a = double(rand()) / (double(RAND_MAX) + 1.);
-#else
-    double a = double(random()) / (double(RAND_MAX) + 1.);
-#endif
+
     int el0 = (int)floor(a * mesh->GetNE());
     mesh->GetElementColoring(coloring, el0);
     int ref_idx=0;

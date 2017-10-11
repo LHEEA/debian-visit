@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -115,7 +115,7 @@ avtTimeIteratorExpression::ProcessArguments(ArgsExpr *args,
 
     // get the argument list and # of arguments
     std::vector<ArgExpr*> *arguments = args->GetArgs();
-    int nargs = arguments->size();
+    size_t nargs = arguments->size();
 
     // check for call with no args
     if (nargs < NumberOfVariables())
@@ -210,7 +210,7 @@ avtTimeIteratorExpression::AddInputVariableName(const char *v)
             // Need to remove quotes around the variable (if any), since that 
             // won't be parsed well.
             std::string var_wo_quotes = std::string(v);
-            for (int j = var_wo_quotes.size()-1 ; j >= 0 ; j--)
+            for (int j = (int)var_wo_quotes.size()-1 ; j >= 0 ; j--)
                 if (var_wo_quotes[j] == '\'')
                     var_wo_quotes.replace(j,1,"");
             varnames.push_back(var_wo_quotes);
@@ -346,10 +346,11 @@ avtTimeIteratorExpression::Execute(void)
 void
 avtTimeIteratorExpression::UpdateExpressions(int ts)
 {
-    ParsingExprList *pel = ParsingExprList::Instance();
-    ExpressionList new_list = *(pel->GetList());
+    ExpressionList const *curExprList = ParsingExprList::Instance()->GetList();
+    ExpressionList exprsToAdd;
+    std::vector<std::pair<int, std::string> > exprsToRedefine;
 
-    int nvars = varnames.size();
+    int nvars = (int)varnames.size();
     if (cmfeType == POS_CMFE)
         nvars--;
     for (int i = 0 ; i < nvars ; i++)
@@ -368,7 +369,7 @@ avtTimeIteratorExpression::UpdateExpressions(int ts)
         }
         else
         {
-            int defVarIndex = varnames.size()-1;
+            int defVarIndex = (int)varnames.size()-1;
             SNPRINTF(expr_defn, 1024, "pos_cmfe(<[%d]i:%s>, <%s>, %s)", ts,
                                         varnames[i].c_str(), meshname.c_str(),
                                         varnames[defVarIndex].c_str());
@@ -376,26 +377,32 @@ avtTimeIteratorExpression::UpdateExpressions(int ts)
 
         std::string exp_name = GetInternalVarname(i);
         
-        bool alreadyInList = false;
-        for (int j = 0 ; j < new_list.GetNumExpressions() ; j++)
-        {
-            if (new_list[j].GetName() == exp_name)
-            {
-                alreadyInList = true;
-                new_list[j].SetDefinition(expr_defn);
-            }
-        }
-        if (!alreadyInList)
+        // These lookups on curExprList will be fast due to const
+        int eidx = curExprList->IndexOf(exp_name.c_str());
+        if (eidx == -1)
         {
             Expression exp;
             exp.SetName(exp_name);
             exp.SetDefinition(expr_defn);
             exp.SetType(Expression::Unknown);
-            new_list.AddExpressions(exp);
+            exprsToAdd.AddExpressions(exp);
+        }
+        else
+        {
+            exprsToRedefine.push_back(std::pair<int, std::string>(eidx, expr_defn));
         }
     }
 
-    *(pel->GetList()) = new_list;
+    // Handle the expressions to redefine
+    for (size_t i = 0; i < exprsToRedefine.size(); i++)
+    {
+        Expression &e = ParsingExprList::Instance()->GetList()->GetExpressions(exprsToRedefine[i].first);
+        e.SetDefinition(exprsToRedefine[i].second);
+    }
+
+    // Handle the expressions to add
+    for (int i = 0; i < exprsToAdd.GetNumExpressions(); i++)
+        ParsingExprList::Instance()->GetList()->AddExpressions(exprsToAdd.GetExpressions(i));
 }
 
 

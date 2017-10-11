@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,14 +62,15 @@ class IntegralCurveAttributes : public AttributeSubject
 public:
     enum SourceType
     {
-        Point,
+        SpecifiedPoint,
         PointList,
-        Line_,
+        SpecifiedLine,
         Circle,
-        Plane,
-        Sphere,
-        Box,
-        Selection
+        SpecifiedPlane,
+        SpecifiedSphere,
+        SpecifiedBox,
+        Selection,
+        FieldData
     };
     enum DataValue
     {
@@ -84,6 +85,13 @@ public:
         CorrelationDistance,
         Difference,
         Variable
+    };
+    enum CleanupMethod
+    {
+        NoCleanup,
+        Merge,
+        Before,
+        After
     };
     enum CropValue
     {
@@ -177,6 +185,7 @@ public:
     void SelectSphereOrigin();
     void SelectBoxExtents();
     void SelectPointList();
+    void SelectFieldData();
     void SelectDataVariable();
     void SelectVelocitySource();
     void SelectSelection();
@@ -194,6 +203,7 @@ public:
     void SetBoxExtents(const double *boxExtents_);
     void SetUseWholeBox(bool useWholeBox_);
     void SetPointList(const doubleVector &pointList_);
+    void SetFieldData(const doubleVector &fieldData_);
     void SetSampleDensity0(int sampleDensity0_);
     void SetSampleDensity1(int sampleDensity1_);
     void SetSampleDensity2(int sampleDensity2_);
@@ -226,6 +236,8 @@ public:
     void SetPathlinesPeriod(double pathlinesPeriod_);
     void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
     void SetDisplayGeometry(DisplayGeometry displayGeometry_);
+    void SetCleanupMethod(CleanupMethod cleanupMethod_);
+    void SetCleanupThreshold(double cleanupThreshold_);
     void SetCropBeginFlag(bool cropBeginFlag_);
     void SetCropBegin(double cropBegin_);
     void SetCropEndFlag(bool cropEndFlag_);
@@ -238,8 +250,10 @@ public:
     void SetRandomSamples(bool randomSamples_);
     void SetRandomSeed(int randomSeed_);
     void SetNumberOfRandomSamples(int numberOfRandomSamples_);
-    void SetForceNodeCenteredData(bool forceNodeCenteredData_);
+    void SetIssueAdvectionWarnings(bool issueAdvectionWarnings_);
+    void SetIssueBoundaryWarnings(bool issueBoundaryWarnings_);
     void SetIssueTerminationWarnings(bool issueTerminationWarnings_);
+    void SetIssueStepsizeWarnings(bool issueStepsizeWarnings_);
     void SetIssueStiffnessWarnings(bool issueStiffnessWarnings_);
     void SetIssueCriticalPointsWarnings(bool issueCriticalPointsWarnings_);
     void SetCriticalPointThreshold(double criticalPointThreshold_);
@@ -271,6 +285,8 @@ public:
     bool               GetUseWholeBox() const;
     const doubleVector &GetPointList() const;
           doubleVector &GetPointList();
+    const doubleVector &GetFieldData() const;
+          doubleVector &GetFieldData();
     int                GetSampleDensity0() const;
     int                GetSampleDensity1() const;
     int                GetSampleDensity2() const;
@@ -305,6 +321,8 @@ public:
     double             GetPathlinesPeriod() const;
     PathlinesCMFE      GetPathlinesCMFE() const;
     DisplayGeometry    GetDisplayGeometry() const;
+    CleanupMethod      GetCleanupMethod() const;
+    double             GetCleanupThreshold() const;
     bool               GetCropBeginFlag() const;
     double             GetCropBegin() const;
     bool               GetCropEndFlag() const;
@@ -317,8 +335,10 @@ public:
     bool               GetRandomSamples() const;
     int                GetRandomSeed() const;
     int                GetNumberOfRandomSamples() const;
-    bool               GetForceNodeCenteredData() const;
+    bool               GetIssueAdvectionWarnings() const;
+    bool               GetIssueBoundaryWarnings() const;
     bool               GetIssueTerminationWarnings() const;
+    bool               GetIssueStepsizeWarnings() const;
     bool               GetIssueStiffnessWarnings() const;
     bool               GetIssueCriticalPointsWarnings() const;
     double             GetCriticalPointThreshold() const;
@@ -343,6 +363,11 @@ public:
     static bool DataValue_FromString(const std::string &, DataValue &);
 protected:
     static std::string DataValue_ToString(int);
+public:
+    static std::string CleanupMethod_ToString(CleanupMethod);
+    static bool CleanupMethod_FromString(const std::string &, CleanupMethod &);
+protected:
+    static std::string CleanupMethod_ToString(int);
 public:
     static std::string CropValue_ToString(CropValue);
     static bool CropValue_FromString(const std::string &, CropValue &);
@@ -393,6 +418,7 @@ public:
 
     // User-defined methods
     bool ChangesRequireRecalculation(const IntegralCurveAttributes &) const;
+    virtual void ProcessOldVersions(DataNode *node, const char *configVersion);
 
     // IDs that can be used to identify fields in case statements
     enum {
@@ -408,6 +434,7 @@ public:
         ID_boxExtents,
         ID_useWholeBox,
         ID_pointList,
+        ID_fieldData,
         ID_sampleDensity0,
         ID_sampleDensity1,
         ID_sampleDensity2,
@@ -440,6 +467,8 @@ public:
         ID_pathlinesPeriod,
         ID_pathlinesCMFE,
         ID_displayGeometry,
+        ID_cleanupMethod,
+        ID_cleanupThreshold,
         ID_cropBeginFlag,
         ID_cropBegin,
         ID_cropEndFlag,
@@ -452,8 +481,10 @@ public:
         ID_randomSamples,
         ID_randomSeed,
         ID_numberOfRandomSamples,
-        ID_forceNodeCenteredData,
+        ID_issueAdvectionWarnings,
+        ID_issueBoundaryWarnings,
         ID_issueTerminationWarnings,
+        ID_issueStepsizeWarnings,
         ID_issueStiffnessWarnings,
         ID_issueCriticalPointsWarnings,
         ID_criticalPointThreshold,
@@ -478,6 +509,7 @@ private:
     double       boxExtents[6];
     bool         useWholeBox;
     doubleVector pointList;
+    doubleVector fieldData;
     int          sampleDensity0;
     int          sampleDensity1;
     int          sampleDensity2;
@@ -510,6 +542,8 @@ private:
     double       pathlinesPeriod;
     int          pathlinesCMFE;
     int          displayGeometry;
+    int          cleanupMethod;
+    double       cleanupThreshold;
     bool         cropBeginFlag;
     double       cropBegin;
     bool         cropEndFlag;
@@ -522,8 +556,10 @@ private:
     bool         randomSamples;
     int          randomSeed;
     int          numberOfRandomSamples;
-    bool         forceNodeCenteredData;
+    bool         issueAdvectionWarnings;
+    bool         issueBoundaryWarnings;
     bool         issueTerminationWarnings;
+    bool         issueStepsizeWarnings;
     bool         issueStiffnessWarnings;
     bool         issueCriticalPointsWarnings;
     double       criticalPointThreshold;
@@ -537,6 +573,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define INTEGRALCURVEATTRIBUTES_TMFS "iDDDDDDdDDbd*iiiisiibdbddbddiddidDiiiiibbddiibdbdidddbbiibbbbddddis"
+#define INTEGRALCURVEATTRIBUTES_TMFS "iDDDDDDdDDbd*d*iiiisiibdbddbddiddidDiiiiibbddiiidbdbdidddbbiibbbbbbddddis"
 
 #endif

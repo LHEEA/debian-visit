@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,12 +41,24 @@
 #include <vtkCommand.h>
 #include <vtkDataArray.h>
 
-// help that invokes callback passed through the simV2
-// api when a VTK data array is deleted. This allows us
-// to hold a reference to the data while VTK needs it,
-// and release that reference when VTK is finished. Note:
-// after the callback is invoked, this class un-register's
-// itself so one should not explicitly Delete it.
+// ****************************************************************************
+// Class: smV2_DeleteEventObserver
+//
+// Purpose:
+//  helper that invokes callback passed through the simV2
+//  api when a VTK data array is deleted. This allows us
+//  to hold a reference to the data while VTK needs it,
+//  and release that reference when VTK is finished. Note:
+//  after the callback is invoked, this class un-register's
+//  itself so one should not explicitly Delete it.
+//
+// Programmer: Burlen Loring
+// Creation:   2014-02-22 09:26:41
+//
+// Modifications:
+//
+// ****************************************************************************
+
 class simV2_DeleteEventObserver : public vtkCommand
 {
 public:
@@ -60,7 +72,7 @@ public:
         this->Callback = callback;
         this->CallbackData = callbackData;
     }
- 
+
     // invoke the callback, ignore the event, delete the observer
     virtual void Execute(vtkObject *object, unsigned long, void *)
     {

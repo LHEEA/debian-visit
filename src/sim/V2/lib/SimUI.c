@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "SimUI.h"
@@ -54,6 +55,7 @@ sim_ui_handle(const char *name, char *args)
 {
     int handled = 0;
     const sim_ui_element *ui = sim_ui_find(name);
+
     if(ui != NULL)
     {
         /* Get the arguments. */
@@ -86,11 +88,27 @@ sim_ui_handle(const char *name, char *args)
             ++handled;
         }
 
+        if(strcmp(signalName, "textChanged(char *)") == 0 &&
+           ui->slot_textChanged != NULL)
+        {
+            char *text = value;
+            (*ui->slot_textChanged)(text, ui->slot_textChanged_data);
+            ++handled;
+        }
+
         if(strcmp(signalName, "stateChanged(int)") == 0 &&
            ui->slot_stateChanged != NULL)
         {
             int ivalue = atoi(value);
             (*ui->slot_stateChanged)(ivalue, ui->slot_stateChanged_data);
+            ++handled;
+        }
+
+        if(strcmp(signalName, "cellChanged(int,int)") == 0 &&
+           ui->slot_cellChanged != NULL)
+        {
+            char *text = value;
+            (*ui->slot_cellChanged)(value, ui->slot_cellChanged_data);
             ++handled;
         }
     }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -64,6 +64,7 @@ public:
     enum SourceType
     {
         SpecifiedPoint,
+        PointList,
         SpecifiedLine
     };
     enum FieldType
@@ -200,6 +201,7 @@ public:
     // Property selection methods
     virtual void SelectAll();
     void SelectPointSource();
+    void SelectPointList();
     void SelectLineStart();
     void SelectLineEnd();
     void SelectVelocitySource();
@@ -220,6 +222,7 @@ public:
     void SetPuncturePlane(PuncturePlaneType puncturePlane_);
     void SetSourceType(SourceType sourceType_);
     void SetPointSource(const double *pointSource_);
+    void SetPointList(const doubleVector &pointList_);
     void SetLineStart(const double *lineStart_);
     void SetLineEnd(const double *lineEnd_);
     void SetPointDensity(int pointDensity_);
@@ -242,7 +245,6 @@ public:
     void SetOverridePoloidalWinding(int overridePoloidalWinding_);
     void SetWindingPairConfidence(double windingPairConfidence_);
     void SetRationalSurfaceFactor(double rationalSurfaceFactor_);
-    void SetAdjustPlane(int adjustPlane_);
     void SetOverlaps(OverlapType overlaps_);
     void SetMeshType(ShowMeshType meshType_);
     void SetNumberPlanes(int numberPlanes_);
@@ -281,6 +283,7 @@ public:
     void SetPathlinesPeriod(double pathlinesPeriod_);
     void SetPathlinesCMFE(PathlinesCMFE pathlinesCMFE_);
     void SetIssueTerminationWarnings(bool issueTerminationWarnings_);
+    void SetIssueStepsizeWarnings(bool issueStepsizeWarnings_);
     void SetIssueStiffnessWarnings(bool issueStiffnessWarnings_);
     void SetIssueCriticalPointsWarnings(bool issueCriticalPointsWarnings_);
     void SetCriticalPointThreshold(double criticalPointThreshold_);
@@ -299,6 +302,8 @@ public:
     SourceType           GetSourceType() const;
     const double         *GetPointSource() const;
           double         *GetPointSource();
+    const doubleVector   &GetPointList() const;
+          doubleVector   &GetPointList();
     const double         *GetLineStart() const;
           double         *GetLineStart();
     const double         *GetLineEnd() const;
@@ -324,7 +329,6 @@ public:
     int                  GetOverridePoloidalWinding() const;
     double               GetWindingPairConfidence() const;
     double               GetRationalSurfaceFactor() const;
-    int                  GetAdjustPlane() const;
     OverlapType          GetOverlaps() const;
     ShowMeshType         GetMeshType() const;
     int                  GetNumberPlanes() const;
@@ -366,6 +370,7 @@ public:
     double               GetPathlinesPeriod() const;
     PathlinesCMFE        GetPathlinesCMFE() const;
     bool                 GetIssueTerminationWarnings() const;
+    bool                 GetIssueStepsizeWarnings() const;
     bool                 GetIssueStiffnessWarnings() const;
     bool                 GetIssueCriticalPointsWarnings() const;
     double               GetCriticalPointThreshold() const;
@@ -464,7 +469,7 @@ public:
 
     // User-defined methods
     bool ChangesRequireRecalculation(const PoincareAttributes &obj) const;
-    bool StreamlineAttsRequireRecalculation(const PoincareAttributes &obj) const;
+    bool IntegralCurveAttsRequireRecalculation(const PoincareAttributes &obj) const;
     bool PoincareAttsRequireRecalculation(const PoincareAttributes &obj) const;
 
     // IDs that can be used to identify fields in case statements
@@ -481,6 +486,7 @@ public:
         ID_puncturePlane,
         ID_sourceType,
         ID_pointSource,
+        ID_pointList,
         ID_lineStart,
         ID_lineEnd,
         ID_pointDensity,
@@ -503,7 +509,6 @@ public:
         ID_overridePoloidalWinding,
         ID_windingPairConfidence,
         ID_rationalSurfaceFactor,
-        ID_adjustPlane,
         ID_overlaps,
         ID_meshType,
         ID_numberPlanes,
@@ -542,6 +547,7 @@ public:
         ID_pathlinesPeriod,
         ID_pathlinesCMFE,
         ID_issueTerminationWarnings,
+        ID_issueStepsizeWarnings,
         ID_issueStiffnessWarnings,
         ID_issueCriticalPointsWarnings,
         ID_criticalPointThreshold,
@@ -561,6 +567,7 @@ private:
     int            puncturePlane;
     int            sourceType;
     double         pointSource[3];
+    doubleVector   pointList;
     double         lineStart[3];
     double         lineEnd[3];
     int            pointDensity;
@@ -583,7 +590,6 @@ private:
     int            overridePoloidalWinding;
     double         windingPairConfidence;
     double         rationalSurfaceFactor;
-    int            adjustPlane;
     int            overlaps;
     int            meshType;
     int            numberPlanes;
@@ -622,6 +628,7 @@ private:
     double         pathlinesPeriod;
     int            pathlinesCMFE;
     bool           issueTerminationWarnings;
+    bool           issueStepsizeWarnings;
     bool           issueStiffnessWarnings;
     bool           issueCriticalPointsWarnings;
     double         criticalPointThreshold;
@@ -630,6 +637,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define POINCAREATTRIBUTES_TMFS "idiiiibddiiDDDiibdDiidbddiddiiiiddiiiidddbbiasibibibibisbbbbbbbiiiibbddibbbd"
+#define POINCAREATTRIBUTES_TMFS "idiiiibddiiDd*DDiibdDiidbddiddiiiiddiiidddbbiasibibibibisbbbbbbbiiiibbddibbbbd"
 
 #endif

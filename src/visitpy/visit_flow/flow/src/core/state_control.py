@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -56,6 +56,8 @@ class StateVector(object):
         self.vec = copy.deepcopy(vec)
     def __str__(self):
         return "[%d]:%s" % (self.idx, str(self.vec))
+    def index(self):
+        return self.idx
 
 class Dimension(object):
     """

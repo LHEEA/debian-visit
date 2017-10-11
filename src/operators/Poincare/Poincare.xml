@@ -9,6 +9,9 @@
       skelet.C
       dir_graph.C
     </Files>
+    <LDFLAGS>
+      ${NEKTAR++_LIBRARY_DIR} ${NEKTAR++_LIBRARY_DIRS} ${NEKTAR++_TP_LIBRARY_DIRS} ${ACCELERATE_FRAMEWORK_LINK_FLAGS}
+    </LDFLAGS>
     <LIBS components="ESer">
       avtivp_ser
     </LIBS>
@@ -18,6 +21,7 @@
     <Attribute name="PoincareAttributes" purpose="Attributes for the Poincare" persistent="true" keyframe="true" exportAPI="" exportInclude="" codefile="Poincare.code">
       <Enum name="SourceType">
         SpecifiedPoint
+        PointList
         SpecifiedLine
       </Enum>
       <Enum name="FieldType">
@@ -150,6 +154,17 @@
         0.000000
         0.000000
       </Field>
+      <Field name="pointList" label="List of Points" type="doubleVector" enabler="sourceType:PointList">
+        0.000000
+        0.000000
+        0.000000
+        1.000000
+        0.000000
+        0.000000
+        0.000000
+        1.000000
+        0.000000
+      </Field>
       <Field name="lineStart" label="Line Point Start" type="doubleArray" length="3" enabler="sourceType:SpecifiedLine">
         0.000000
         0.000000
@@ -221,9 +236,6 @@
       </Field>
       <Field name="rationalSurfaceFactor" label="Rational surface factor" type="double">
         0.100000
-      </Field>
-      <Field name="adjustPlane" label="Adjust plane" type="int">
-        -1
       </Field>
       <Field name="overlaps" label="Overlaps" type="enum" subtype="OverlapType">
         Remove
@@ -324,8 +336,6 @@
       <Field name="workGroupSize" label="Work group size" type="int">
         32
       </Field>
-
-
       <Field name="pathlines" label="Do pathlines" type="bool">
         false
       </Field>
@@ -345,6 +355,9 @@
       <Field name="issueTerminationWarnings" label="Issue Warning When Termination Criteria Is Not Met" type="bool">
         true
       </Field>
+      <Field name="issueStepsizeWarnings" label="Issue warnings when the stepsize is too small" type="bool">
+        true
+      </Field>
       <Field name="issueStiffnessWarnings" label="Issue warnings when stiffness is encountered" type="bool">
         true
       </Field>
@@ -360,7 +373,7 @@
       </Function>
       <Function name="ChangesRequireRecalculation" user="true" member="true">
       </Function>
-      <Function name="StreamlineAttsRequireRecalculation" user="true" member="true">
+      <Function name="IntegralCurveAttsRequireRecalculation" user="true" member="true">
       </Function>
       <Function name="PoincareAttsRequireRecalculation" user="true" member="true">
       </Function>

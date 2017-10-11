@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -124,6 +124,10 @@ public:
     const DBPluginInfoAttributes *GetDBPluginInfo(void);
     void                       SetDefaultFileOpenOptions(
                                                        const FileOpenOptions&);
+    void                       SaveSession(const std::string &filename,
+                                           const std::string &contents);
+    void                       RestoreSession(const std::string &filename,
+                                                    std::string &contents);
 
     std::string                GetPluginErrors();
 

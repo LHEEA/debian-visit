@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -74,7 +74,6 @@ public:
     // file.  These should only be defined if the file format knows what the
     // time and/or cycle is.
     //
-    virtual bool           ReturnsValidTime() const;
     virtual double         GetTime(void);
 
     virtual const char    *GetType(void)   { return "TFT"; };

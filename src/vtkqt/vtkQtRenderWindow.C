@@ -1,12 +1,19 @@
 #include "vtkOpenGL.h"
-#include "QVTKWidget2.h"
+
 #include <vtkQtRenderWindow.h>
 
-#if defined(Q_WS_X11) || defined(Q_OS_LINUX)
 #if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
-#include <QX11Info>
+  #include "QVTKWidget2.h"
+#else
+  #include "QVTKWidget.h"
 #endif
+
+#if defined(Q_WS_X11) || defined(Q_OS_LINUX)
+  #if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
+    #include <QX11Info>
+  #endif
 #endif
+
 #include "vtkGenericOpenGLRenderWindow.h"
 #include "QVTKInteractor.h"
 #include <vtkRenderWindow.h>
@@ -56,21 +63,45 @@ public:
         showEventCallback = NULL;
         showEventCallbackData = NULL;
 
-        // Create the VTK widget and force our custom render window into it.
-        if(stereo)
-            gl = new QVTKWidget2(QGLFormat(QGL::DepthBuffer | QGL::AlphaChannel | QGL::StereoBuffers), w);
-        else
-            gl = new QVTKWidget2(QGLFormat(QGL::DepthBuffer | QGL::AlphaChannel), w);
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
+        QGLFormat glFormat;
+
+        glFormat.setDepth(true);     // Enabled by default.
+        glFormat.setAlpha(true);     // Disabled by default.
+        glFormat.setStereo(stereo);  // Disabled by default.
+
+        // Create the VTK widget and force our custom render window
+        // into it.
+
+        // NOTE: vtkQtRenderWindow via the call to setCentralWidget()
+        // takes ownership of the gl widget pointer and deletes it at
+        // the appropriate time.
+        gl = new QVTKWidget2(glFormat, w);
+
         if (!gl->format().alpha())
             qWarning("Could not get alpha channel; results will be suboptimal");
+#else
+        // With Qt5 there an issue with QVTKWidget2 asking for an
+        // alpha channel (at least for OS X). However, not asking for
+        // the channel seems to be benign. In addition, the 2D view
+        // bounds and picking are off.
+        gl = new QVTKWidget(w);
+
+        gl->GetRenderWindow()->AlphaBitPlanesOn();
+        gl->GetRenderWindow()->SetStereoRender( stereo );
+#endif
     }
 
     virtual ~vtkQtRenderWindowPrivate()
     {
     }
 
+#if (QT_VERSION < QT_VERSION_CHECK(5, 0, 0))
     QVTKWidget2    *gl;
-
+#else
+    QVTKWidget     *gl;
+#endif
+    
     void          (*resizeEventCallback)(void *);
     void           *resizeEventData;
     void          (*closeEventCallback)(void *);
@@ -90,6 +121,9 @@ vtkQtRenderWindow::vtkQtRenderWindow(QWidget *parent, Qt::WindowFlags f) : QMain
     setAnimated(false);
 
     setWindowFlags(f);
+    // With the call to setCentralWidget() vtkQtRenderWindow takes
+    // ownership of the gl widget pointer and deletes it at the
+    // appropriate time.
     setCentralWidget(d->gl);
 }
 
@@ -101,6 +135,9 @@ vtkQtRenderWindow::vtkQtRenderWindow(bool stereo, QWidget *parent, Qt::WindowFla
     setAnimated(false);
 
     setWindowFlags(f);
+    // With the call to setCentralWidget() vtkQtRenderWindow takes
+    // ownership of the gl widget pointer and deletes it at the
+    // appropriate time.
     setCentralWidget(d->gl);
 }
 

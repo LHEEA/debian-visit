@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -156,9 +156,12 @@ avtImage::GetSize(int *width, int *height) const
 //    Mark C. Miller, Wed Nov  5 09:48:13 PST 2003
 //    Added option to count polygons only
 //
+//    Burlen Loring, Sun Sep  6 14:58:03 PDT 2015
+//    Changed the return type of GetNumberOfCells to long long
+//
 // ****************************************************************************
 
-int
+long long
 avtImage::GetNumberOfCells(bool polysOnly) const
 {
    return image.GetNumberOfCells(polysOnly);

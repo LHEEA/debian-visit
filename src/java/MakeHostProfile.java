@@ -1,6 +1,6 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -59,6 +59,8 @@ import java.util.Vector;
 //   Split host profile into machine profile and launch profile.
 //   Also, added directory argument.
 //
+//   Kathleen Biagas, Wed Nov  9 14:30:32 PST 2016
+//   Update host name to a machine that still exists.
 // ****************************************************************************
 
 public class MakeHostProfile extends RunViewer
@@ -71,8 +73,8 @@ public class MakeHostProfile extends RunViewer
     protected void work(String[] args)
     {
         // Change these for your remote system.
-        String host = new String("edge.llnl.gov");
-        String user = new String("whitlocb");
+        String host = new String("aztec.llnl.gov");
+        String user = new String("kbonnell");
         String remotevisitPath = new String("/usr/gapps/visit");
 
         // Basic, serial profile.

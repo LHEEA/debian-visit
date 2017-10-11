@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -158,6 +158,7 @@ SimulationUIValues.java
 SaveSubWindowAttributes.java
 SaveSubWindowsAttributes.java
 SaveWindowAttributes.java 
+SeedMeAttributes.java
 SelectionList.java
 SelectionProperties.java
 SelectionSummary.java

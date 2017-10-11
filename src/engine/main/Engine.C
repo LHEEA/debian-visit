@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -35,7 +35,7 @@
 * DAMAGE.
 *
 *****************************************************************************/
-    
+
 #include <Engine.h>
 #include <EngineState.h>
 #include <Executors.h>
@@ -124,11 +124,13 @@
 
 #include <string>
 using std::string;
+#include <vector>
+using std::vector;
 
 // We do this so that the strings command on the .o file
 // can tell us whether or not DEBUG_MEMORY_LEAKS was turned on
 #ifdef DEBUG_MEMORY_LEAKS
-const char *dummy_string1 = "DEBUG_MEMORY_LEAKS";
+static const char *dummy_string1 = "DEBUG_MEMORY_LEAKS";
 #endif
 
 #ifdef PARALLEL
@@ -209,6 +211,9 @@ const int INTERRUPT_MESSAGE_TAG = GetUniqueStaticMessageTag();
 //   ssh command to the gateway machine instead of to the ssh command to
 //   the remote machine.
 //
+//   Burlen Loring, Fri Sep 25 12:01:11 PDT 2015
+//   Cleanup some warnings
+//
 // ****************************************************************************
 
 class ViewerRemoteProcess : public RemoteProcess
@@ -227,6 +232,9 @@ protected:
     virtual void Launch(const std::string &rHost, bool createAsThoughLocal,
                         const stringVector &commandLine)
     {
+        (void)rHost;
+        (void)createAsThoughLocal;
+
         const char *mName = "ViewerRemoteProcess::Launch: ";
 
         // Convert the remote process arguments into arguments that the viewer
@@ -356,6 +364,9 @@ protected:
 //    Brad Whitlock, Fri Sep 28 09:21:38 PDT 2012
 //    Change intitialization to member-order. NULL out more member pointers.
 //
+//    Kevin Griffin, Tue Jan 26 17:45:52 PST 2016
+//    Enable IceT by default.
+//
 // ****************************************************************************
 
 Engine::Engine() : EngineBase(), viewerArgs(), destinationFormat(), rpcExecutors()
@@ -402,7 +413,7 @@ Engine::Engine() : EngineBase(), viewerArgs(), destinationFormat(), rpcExecutors
     procAtts = NULL;
 
 #if defined(PARALLEL) && defined(HAVE_ICET)
-    useIceT = false; //true;
+    useIceT = true;
 #else
     useIceT = false;
 #endif
@@ -559,7 +570,31 @@ Engine::~Engine()
 void
 Engine::Initialize(int *argc, char **argv[], bool sigs)
 {
+#ifdef DEBUG_MEMORY_LEAKS
+    // ensure dummy_string1 cannot optimized away
+    char const *dummy = dummy_string1; dummy++;
+#endif
+
     int initTimer = visitTimer->StartTimer();
+
+    int nthreads = 0;
+    for (int i = 0 ; i < *argc-1 ; i++)
+    {
+        if ((strcmp((*argv)[i], "-thread") == 0) ||
+            (strcmp((*argv)[i], "-threads") == 0))
+        {
+            nthreads = atoi((*argv)[i+1]);
+            if (nthreads > 0)
+            {
+                VisitSetNumberOfThreads(nthreads);
+            }
+            else
+            {
+                debug1 << "Invalid number of threads!  Ignoring argument" << endl;
+            }
+
+        }
+    }
 
 #ifdef PARALLEL
     // We fork/exec X servers in some cases.  Open MPI will yell at us about
@@ -591,8 +626,6 @@ Engine::Initialize(int *argc, char **argv[], bool sigs)
     // Configure external options.
     RuntimeSetting::parse_command_line(*argc, const_cast<const char**>(*argv));
     this->X_Args = RuntimeSetting::lookups("x-args");
-
-    VisitSetNumberOfThreads( RuntimeSetting::lookupi("threads") );
 
     //
     // Set a different new handler for the engine
@@ -764,6 +797,12 @@ public:
 //   Brad Whitlock, Wed Oct 22 11:46:24 PDT 2014
 //   Skip plugin broadcasters for parallel when we build statically.
 //
+//   Burlen Loring, Thu Oct  8 14:41:11 PDT 2015
+//   fix leak of NetworkManager
+//
+//   Alok Hota, Tue Feb 23 19:10:32 PST 2016
+//   Add support for OSPRay.
+//
 // ****************************************************************************
 
 void
@@ -793,7 +832,7 @@ Engine::InitializeCompute()
     {
         std::ostringstream s;
         s << mName << "Setting up " << this->nDisplays << " GPUs for HW rendering";
-        if (DebugStream::Level3()) 
+        if (DebugStream::Level3())
         {
             debug1 << mName << "Setting up X displays for " << this->nDisplays << " GPUs."
                << "  Using X arguments: '" << this->X_Args << "'" << std::endl;
@@ -806,6 +845,7 @@ Engine::InitializeCompute()
     // Create the network manager.  Note that this must be done *after* the
     // code to set the display and decide if we are using Mesa.
     //
+    delete netmgr;
 #if defined(PARALLEL) && defined(HAVE_ICET)
     if(this->useIceT)
     {
@@ -1092,11 +1132,17 @@ Engine::CreatePluginManagers()
 //    Cameron Christensen, Tuesday, June 10, 2014
 //    Added SetBackendTypeRPC.
 //
+//    Burlen Loring, Fri Sep 25 12:01:11 PDT 2015
+//    Cleanup some warnings
+//
 // ****************************************************************************
 
 void
 Engine::SetUpViewerInterface(int *argc, char **argv[])
 {
+    (void)argc;
+    (void)argv;
+
     StackTimer setupTimer("Setting up viewer interface");
     const char *exMsg = "SetUpViewerInterface must be called after ConnectViewer";
 
@@ -1373,11 +1419,17 @@ Engine::ExtractViewerArguments(int *argc, char **argv[])
 //    Brad Whitlock, Tue Jun  5 17:20:36 PDT 2012
 //    Pass default machine profile to Open.
 //
+//    Burlen Loring, Fri Sep 25 12:01:11 PDT 2015
+//    Cleanup some warnings
+//
 // ****************************************************************************
 
 bool
 Engine::ReverseLaunchViewer(int *argc, char **argv[])
 {
+    (void)argc;
+    (void)argv;
+
     // If we're reverse launching and we're the UI process then we can 
     // launch the viewer.
     viewer = new ViewerRemoteProcess(GetVisItLauncher());
@@ -1679,6 +1731,9 @@ Engine::PAR_EventLoop()
 //    Brad Whitlock, Tue Nov  3 10:58:23 PST 2009
 //    I changed the messaging style so libsim works again.
 //
+//    Kevin Griffin, Thu Sep 17 17:00:22 PDT 2015
+//    Changed buf type from char * to unsigned char *
+//
 // ****************************************************************************
 
 void
@@ -1694,11 +1749,11 @@ Engine::PAR_ProcessInput()
         MPIXfer::VisIt_MPI_Bcast((void *)&msgLength, 1, MPI_INT,
                                  0, VISIT_MPI_COMM);
 
-        char *buf = new char[msgLength];
+        unsigned char *buf = new unsigned char[msgLength];
         MPI_Bcast((void *)buf, msgLength, MPI_UNSIGNED_CHAR,
                   0, VISIT_MPI_COMM);
 
-        par_conn.Append((unsigned char *)buf, msgLength);
+        par_conn.Append(buf, msgLength);
         delete [] buf;
 
         xfer->Process();
@@ -2101,7 +2156,7 @@ Engine::ProcessCommandLine(int argc, char **argv)
                     }
                     else if (strcmp(argv[i], "-idle-timeout") == 0)
                         idleTimeoutMins = (int) to;
-                    else
+                    else //if (strcmp(argv[i], "-exec-timeout") == 0)
                         executionTimeoutMins = (int) to;
                 }
                 else
@@ -2292,6 +2347,12 @@ Engine::ProcessCommandLine(int argc, char **argv)
         {
             this->launchXServers = false;
         }
+        else if (strcmp(argv[i], "-ospray") == 0)
+        {
+            std::cout << "Engine found OSPRay flag" << std::endl;
+            debug5 << "Engine found OSPRay flag" << endl;
+            avtCallback::SetOSPRayMode(true);
+        }
     }
     avtCallback::SetSoftwareRendering(!haveHWAccel);
 }
@@ -2324,11 +2385,16 @@ Engine::ProcessCommandLine(int argc, char **argv)
 //   Dave Pugmire, Wed Apr 18 09:05:40 EDT 2012
 //   Add alarmEnabled flag. Setting alarm(0) is not disabling the alarm.
 //
+//    Burlen Loring, Fri Sep 25 12:01:11 PDT 2015
+//    Cleanup some warnings
+//
 // ****************************************************************************
 
 void
 Engine::AlarmHandler(int signal)
 {
+    (void)signal;
+
     Engine *e = Engine::GetEngine();
     if (!e->alarmEnabled)
         return;
@@ -2512,140 +2578,65 @@ Engine::WriteByteStreamToSocket(avtDataObjectString &do_str)
 //    Mark C. Miller, Wed Feb  9 09:42:57 PST 2011
 //    Handle possible overflow condition in memory usage computation. Added
 //    debug output. Protected the test with some additional checks.
+//
+//    Eric Brugger, Fri Mar 10 13:48:20 PST 2017
+//    I created a single implementation for deciding whether to go into
+//    scalable rendering mode or not to eliminate a bug where VisIt would
+//    go into scalable rendering mode and immediately go back out and
+//    a blank image would get displayed.
+//
 // ****************************************************************************
 
 static void
 SwapAndMergeClonedWriterOutputs(avtDataObject_p dob,
-    int *reducedCellCount, int scalableThreshold, bool sendDataAnyway,
     int swapWithProc, int mpiSwapLenTag, int mpiSwapStrTag)
 {
+    MPI_Status mpiStatus;
+    char *srcStr, *dstStr;
+    int   srcLen,  dstLen;
 
-   MPI_Status mpiStatus;
-   char *srcStr, *dstStr;
-   int   srcLen,  dstLen;
-   int   srcCnt = *reducedCellCount,  dstCnt;
+    // serialize the data object information into a string
+    avtDataObjectString srcDobStr;
+    avtDataObjectWriter *dobwrtr = dob->InstantiateWriter();
+    dobwrtr->SetInput(dob);
+    dobwrtr->Write(srcDobStr);
+    srcDobStr.GetWholeString(srcStr, srcLen);
 
-   // serialize the data object information into a string
-   avtDataObjectString srcDobStr;
-   avtDataObjectWriter *dobwrtr = dob->InstantiateWriter();
-   dobwrtr->SetInput(dob);
-   dobwrtr->Write(srcDobStr);
-   srcDobStr.GetWholeString(srcStr, srcLen);
+    // swap string lengths and cell counts
+    int srcTmp[1] = {srcLen};
+    int dstTmp[1];
+    MPI_Sendrecv(srcTmp, 1, MPI_INT, swapWithProc, mpiSwapLenTag,
+                 dstTmp, 1, MPI_INT, swapWithProc, mpiSwapLenTag,
+                 VISIT_MPI_COMM, &mpiStatus);
 
-   // swap string lengths and cell counts
-   int srcTmp[2] = {srcLen, srcCnt};
-   int dstTmp[2];
-   MPI_Sendrecv(&srcTmp, 2, MPI_INT, swapWithProc, mpiSwapLenTag,
-                &dstTmp, 2, MPI_INT, swapWithProc, mpiSwapLenTag,
-                VISIT_MPI_COMM, &mpiStatus);
+    dstLen = dstTmp[0];
 
-   dstLen = dstTmp[0];
-   dstCnt = dstTmp[1];
+    // Exchange the data.
+    dstStr = new char [dstLen];
 
-    // If dstCnt already at INT_MAX, it is the 'special' case I think for
-    // volume rendering. Set it in the output (srcCnt) 
-    if (dstCnt == INT_MAX)
-        srcCnt = INT_MAX;
+    // swap strings
+    MPI_Sendrecv(srcStr, srcLen, MPI_CHAR, swapWithProc, mpiSwapStrTag,
+                 dstStr, dstLen, MPI_CHAR, swapWithProc, mpiSwapStrTag,
+                 VISIT_MPI_COMM, &mpiStatus);
 
-    // If dstCnt is at INT_MAX-1, it is an 'ordinary' overflow condition.
-    // Again, set it in the output (srcCnt)
-    if (dstCnt == INT_MAX-1)
-    {
-        if (srcCnt != INT_MAX)
-            srcCnt = INT_MAX-1;
-    }
+    avtDataObjectReader *avtreader = new avtDataObjectReader;
+    avtreader->Read(dstLen, dstStr);
+    avtDataObject_p destdob = avtreader->GetOutput();
 
-    //
-    // If we get here, we have real cell count summation work to do.
-    //
-    if (srcCnt < INT_MAX-1)
-    {
-        // First check for possible 'ordinary' overflow in that both inputs could
-        // be valid (e.g. non-INT_MAX) integers but their sum is out of range. If
-        // that is the case, we use the value 'INT_MAX-1' to represent it because
-        // the value INT_MAX is used for some special purpose for volume rendering.
-        double tmp = (double) srcCnt + (double) dstCnt;
-        if (tmp >= INT_MAX-1)
-            srcCnt = INT_MAX-1;
-        else
-            srcCnt = srcCnt + dstCnt;
+    // We can't tell the reader to read (Update) unless we tell it
+    // what we want it to read.  Fortunately, we can just ask it
+    // for a general specification.
+    avtOriginatingSource *src = destdob->GetOriginatingSource();
+    avtContract_p spec = src->GetGeneralContract();
+    destdob->Update(spec);
 
-        //
-        // MANAGE POSSIBLE MEMORY OVER-USAGE
-        // ---------------------------------
-        //
-        // Its concievable that polygon count does not correlate well with memory
-        // usage such that polygon count could be well below threshold but
-        // memory usage, nonetheless, is going to drive us into a condition where
-        // we run into 'virtual' memory and thrash horribly or run out of memory
-        // entirely and crash. To avert this possibility, we also check for possible
-        // memory OVERusage and will kick into SR mode if we determine we are going
-        // to use too much memory. The trick is to guesstimate the amount of memory
-        // a 'scalableThreshold' number of triangles (polygons reall) should require.
-        // If we consider JUST TRIANGLES and assume that for each triangle, we
-        // represent the x, y and z coordinates of each vertex in double precision,
-        // then a 'scalableThreshold' number of triangles will require
-        // scalableThreshold * 3 (coords) * 3 (vertices) * 8 (bytes).
-        // Although we have here the length of the data-object-string equivalent of
-        // the datasets, that is ok, because the data-object-string equivalent is still
-        // a 'binary' representation of the data, as opposed to ASCII representation.
-        // Now, we don't really know if indeed after the dob->Merge() operation the
-        // resultant merged dataset will be of size srcLen + dstLen. In theory,
-        // I think it could be smaller. I don't think it could be larger. Regardless,
-        // our condition of possible OVERusage of memory involves testing
-        // srcLen+dstLen against our guesstimate of what it should take. For our
-        // default SR threshold of 2e+6 triangles, this equates to 144 Mbytes.
-        //
-        if (srcCnt < INT_MAX-1 && scalableThreshold > 0)
-        {
-            tmp = (double) srcLen + (double) dstLen;
-            if (tmp >= (double) scalableThreshold*72.0)
-            {
-                debug3 << "Triggering transition into SR due to memory usage of " 
-                       << tmp << " bytes." << endl;
-                srcCnt = INT_MAX-1;
-            }
-        }
-    }
+    // Do what we came here for.
+    dob->Merge(*destdob);
 
-    //
-    // At this point, srcCnt contains either a valid summation of the cell counts
-    // from both the src and dst processors OR one of the special values, INT_MAX
-    // or INT_MAX-1. We only need to do the data exchange if the cell count is
-    // below threshold OR we're being asked to send data regardless (the metadata
-    // case where we send basically the data tree--labels and domain ids--without
-    // the actual data).
-    //
-    if ((srcCnt < scalableThreshold) || sendDataAnyway)
-    {
-        dstStr = new char [dstLen];
+    // The data object reader will delete the dstStr string we allocated above.
+    delete avtreader;
 
-        // swap strings
-        MPI_Sendrecv(srcStr, srcLen, MPI_CHAR, swapWithProc, mpiSwapStrTag,
-                     dstStr, dstLen, MPI_CHAR, swapWithProc, mpiSwapStrTag,
-                     VISIT_MPI_COMM, &mpiStatus);
-
-        avtDataObjectReader *avtreader = new avtDataObjectReader;
-        avtreader->Read(dstLen, dstStr);
-        avtDataObject_p destdob = avtreader->GetOutput();
-
-        // We can't tell the reader to read (Update) unless we tell it
-        // what we want it to read.  Fortunately, we can just ask it
-        // for a general specification.
-        avtOriginatingSource *src = destdob->GetOriginatingSource();
-        avtContract_p spec = src->GetGeneralContract();
-        destdob->Update(spec);
-
-        // Do what we came here for.
-        dob->Merge(*destdob);
-
-        // The data object reader will delete the dstStr string we allocated above.
-        delete avtreader;
-    }
-
-   delete dobwrtr;
-   *reducedCellCount = srcCnt;
-
+    delete dobwrtr;
 }
 
 // ****************************************************************************
@@ -2680,13 +2671,17 @@ SwapAndMergeClonedWriterOutputs(avtDataObject_p dob,
 //    Brad Whitlock, Mon Sep 22 21:24:14 PDT 2014
 //    Pass in status callback instead of an RPC.
 //
+//    Eric Brugger, Fri Mar 10 13:48:20 PST 2017
+//    I created a single implementation for deciding whether to go into
+//    scalable rendering mode or not to eliminate a bug where VisIt would
+//    go into scalable rendering mode and immediately go back out and
+//    a blank image would get displayed.
+//
 // ****************************************************************************
 
 static void
 ParallelMergeClonedWriterOutputs(avtDataObject_p dob,
     int lenTag, int strTag,
-    int *reducedCellCount, int scalableThreshold,
-    bool sendDataAnyway, 
     void (*statusCB)(int,const char*,void*), void *statusCBData)
 {
     int groupSize = 1;
@@ -2724,8 +2719,7 @@ ParallelMergeClonedWriterOutputs(avtDataObject_p dob,
         // if the processor to swap with is in range of communicator
         if ((myGroupIdx == 0) && (0 <= swapWithProc) && (swapWithProc < commSize))
         {
-            SwapAndMergeClonedWriterOutputs(dob, reducedCellCount,
-                scalableThreshold, sendDataAnyway, swapWithProc, lenTag, strTag);
+            SwapAndMergeClonedWriterOutputs(dob, swapWithProc, lenTag, strTag);
         }
 
         //
@@ -2931,6 +2925,27 @@ ParallelMergeClonedWriterOutputs(avtDataObject_p dob,
 //    write. We don't pass back the data object string because in parallel, its
 //    source data will go out of scope and cause the write to be invalid.
 //
+//    Eric Brugger, Fri Mar 10 13:48:20 PST 2017
+//    I created a single implementation for deciding whether to go into
+//    scalable rendering mode or not to eliminate a bug where VisIt would
+//    go into scalable rendering mode and immediately go back out and
+//    a blank image would get displayed.
+//
+//    Eric Brugger, Fri Mar 24 13:00:28 PDT 2017
+//    I corrected a bug in the counting of cells where the cell count was
+//    multiplied by cell count multiplier twice.
+//
+//    Cyrus Harrison, Wed May 24 11:04:49 PDT 2017
+//    Fixed a bug in Engine::GatherData() where the number of global cells 
+//    returned from a network was incorrect when SR is triggered. This broke
+//    SR triggering logic for subsequent plots. For example: in one instance, 
+//    b/c the various tasks have different global cell counts for the 
+//    networks, (including some with 0), when the next plot was drawn the 
+//    tasks would make different SR decisions -- some thinking SR had not been 
+//    triggered, some thinking it had -- which lead to a cascade mistmatched
+//    MPI calls. 
+//
+//
 // ****************************************************************************
 
 bool
@@ -2964,8 +2979,10 @@ Engine::GatherData(avtDataObjectWriter_p &writer,
 #ifdef PARALLEL
 
     static const bool polysOnly = true;
-    int mpiSwapLenTag   = GetUniqueMessageTag();
-    int mpiSwapStrTag   = GetUniqueMessageTag();
+    int tags[2];
+    GetUniqueMessageTags(tags, 2);
+    int mpiSwapLenTag = tags[0];
+    int mpiSwapStrTag = tags[1];
 
     //
     // When respond with null is true, this routine still has an obligation
@@ -3002,24 +3019,25 @@ Engine::GatherData(avtDataObjectWriter_p &writer,
             (currentTotalGlobalCellCount + currentCellCount 
                   > scalableThreshold))
         {
-            if (DebugStream::Level5()) 
-            {
-                debug5 << "exceeded scalable threshold of " << scalableThreshold 
-                       << endl;
-            }
+            debug5 << "exceeded scalable threshold of " << scalableThreshold
+                   << endl;
             thresholdExceeded = true; 
         }
 
         if (writer->MustMergeParallelStreams())
         {
-            // we clone here to preserve this processor's orig network output
-            // while we merge other proc's output into the cloned dob
-            ui_dob = ui_dob->Clone();
-
-            int reducedCurrentCellCount = currentCellCount;
-            ParallelMergeClonedWriterOutputs(ui_dob, mpiSwapLenTag, mpiSwapStrTag,
-                &reducedCurrentCellCount, scalableThreshold, sendDataAnyway, 
-                statusCB, statusCBData);
+            // Determine the cell counts.
+            vector<long long> cellCounts;
+            cellCounts.push_back(currentCellCount);
+            // We set the cellCountMultiplier to 1 since the
+            // currentCellCount already has that factored into it.
+            vector<float> cellCountMultipliers;
+            cellCountMultipliers.push_back(1.);
+            vector<long long> globalCellCounts(1);
+            long long cellCountTotal;
+            netmgr->CalculateCellCountTotal(cellCounts, cellCountMultipliers,
+                globalCellCounts, cellCountTotal);
+            int reducedCurrentCellCount = (int) cellCountTotal;
 
             if (currentTotalGlobalCellCount == INT_MAX ||
                 currentCellCount == INT_MAX ||
@@ -3029,20 +3047,31 @@ Engine::GatherData(avtDataObjectWriter_p &writer,
             {
                 if (!thresholdExceeded)
                 {
-                    if (DebugStream::Level5())
-                    {
-                        debug5 << "Exceeded scalable threshold of " << scalableThreshold << endl;
-                        if (reducedCurrentCellCount == INT_MAX-1) 
-                        {
-                            debug5 << "This was due to 'oridinary' overflow in summing cell counts" << endl;
-                        }
-                    }
+                    debug5 << "Exceeded scalable threshold of "
+                           << scalableThreshold << endl;
+                    if (reducedCurrentCellCount == INT_MAX-1) 
+                        debug5 << "This was due to 'oridinary' overflow in summing cell counts" << endl;
                 }
                 thresholdExceeded = true;
             }
-            else
+
+            // current cell count is used to set the output value, so always update it
+            currentCellCount = reducedCurrentCellCount;
+
+
+            // We only need to do the data exchange if we are below the
+            // threshold or we're being asked to send data regardless
+            // (the metadata case where we send basically the data
+            // tree--labels and domain ids without the actual data).
+            if (!thresholdExceeded || sendDataAnyway)
             {
-                currentCellCount = reducedCurrentCellCount;
+                // We clone here to preserve this processor's original
+                // network output while we merge other proc's output
+                // into the cloned dob.
+                ui_dob = ui_dob->Clone();
+
+                ParallelMergeClonedWriterOutputs(ui_dob, mpiSwapLenTag,
+                    mpiSwapStrTag, statusCB, statusCBData);
             }
         }
         visitTimer->StopTimer(collectData, "Collecting data");
@@ -3105,49 +3134,68 @@ Engine::GatherData(avtDataObjectWriter_p &writer,
     {
         if (writer->MustMergeParallelStreams())
         {
-            // send the "num cells I have" message to proc 0
-            int numCells;
-            if (cellCountMultiplier > INT_MAX/2.)
-                numCells = INT_MAX;
-            else
-                numCells = (int) 
-                             (writer->GetInput()->GetNumberOfCells(polysOnly) *
-                                                      cellCountMultiplier);
-
-            int reducedCurrentCellCount = numCells;
             avtDataObject_p dob = writer->GetInput();
-            dob = dob->Clone();
-            ParallelMergeClonedWriterOutputs(dob, mpiSwapLenTag, mpiSwapStrTag,
-                &reducedCurrentCellCount, scalableThreshold, sendDataAnyway, 
-                NULL, NULL);
+
+            if (cellCountMultiplier > INT_MAX/2.)
+                currentCellCount = INT_MAX;
+            else
+                currentCellCount = (int) 
+                          (dob->GetNumberOfCells(polysOnly) * cellCountMultiplier);
+
+            // Determine the cell counts.
+            vector<long long> cellCounts;
+            cellCounts.push_back(currentCellCount);
+            // We set the cellCountMultiplier to 1 since the
+            // currentCellCount already has that factored into it.
+            vector<float> cellCountMultipliers;
+            cellCountMultipliers.push_back(1.);
+            vector<long long> globalCellCounts(1);
+            long long cellCountTotal;
+            netmgr->CalculateCellCountTotal(cellCounts, cellCountMultipliers,
+                globalCellCounts, cellCountTotal);
+            int reducedCurrentCellCount = (int) cellCountTotal;
 
             if (currentTotalGlobalCellCount == INT_MAX ||
-                numCells == INT_MAX ||
+                currentCellCount == INT_MAX ||
                 reducedCurrentCellCount == INT_MAX ||
                 reducedCurrentCellCount == INT_MAX-1 || // 'ordinary' overflow
                 currentTotalGlobalCellCount + reducedCurrentCellCount > scalableThreshold)
             {
+                if (!thresholdExceeded)
+                {
+                    debug5 << "Exceeded scalable threshold of "
+                           << scalableThreshold << endl;
+                    if (reducedCurrentCellCount == INT_MAX-1) 
+                        debug5 << "This was due to 'oridinary' overflow in summing cell counts" << endl;
+                }
                 thresholdExceeded = true;
             }
-            else
+
+            // current cell count is used to set the output value, so always update it
+            currentCellCount = reducedCurrentCellCount;
+
+
+            // We only need to do the data exchange if we are below the
+            // threshold or we're being asked to send data regardless
+            // (the metadata case where we send basically the data
+            // tree--labels and domain ids without the actual data).
+            if (!thresholdExceeded || sendDataAnyway)
             {
-                currentCellCount = reducedCurrentCellCount;
+                // We clone here to preserve this processor's original
+                // network output while we merge other proc's output
+                // into the cloned dob.
+                dob = dob->Clone();
+
+                ParallelMergeClonedWriterOutputs(dob, mpiSwapLenTag,
+                    mpiSwapStrTag, NULL, NULL);
             }
         }
         else
         {
-            if (DebugStream::Level5()) 
-            {
-                debug5 << "not sending data to proc 0 because the data object "
-                       << "does not require parallel streams." << endl;
-            }
+            debug5 << "not sending data to proc 0 because the data object "
+                   << "does not require parallel streams." << endl;
         }
     }
-
-    int tmp[2] = {currentCellCount, thresholdExceeded?1:0};
-    MPI_Bcast(tmp, 2, MPI_INT, 0, VISIT_MPI_COMM);
-    currentCellCount  = tmp[0];
-    thresholdExceeded = tmp[1]==1;
 
     // return requested arguments
     if (currentNetworkGlobalCellCount != 0)
@@ -3276,11 +3324,16 @@ Engine::SendKeepAliveReply()
 //    Brad Whitlock, Fri Sep 28 11:17:24 PDT 2012
 //    Return early when the viewer is not connected.
 //
+//    Burlen Loring, Thu Oct  8 20:18:42 PDT 2015
+//    clean up a warning
+//
 // ****************************************************************************
 
 bool
 Engine::EngineAbortCallbackParallel(void *data, bool informSlaves)
 {
+    (void)informSlaves;
+
     // If the viewer is not connected, return.
     if(data == NULL)
         return false;
@@ -3951,7 +4004,7 @@ Engine::GetProcessAttributes()
                    allPids, 1, MPI_INT, 0, VISIT_MPI_COMM);
         MPI_Gather(&myPpid, 1, MPI_INT,
                    allPpids, 1, MPI_INT, 0, VISIT_MPI_COMM);
-        MPI_Gather(&myHost, sizeof(myHost), MPI_CHAR,
+        MPI_Gather(myHost, sizeof(myHost), MPI_CHAR,
                    allHosts, sizeof(myHost), MPI_CHAR, 0, VISIT_MPI_COMM);
         int m_size_mb_tmp = (int)m_size_mb;
         MPI_Gather(&m_size_mb_tmp, 1, MPI_INT,

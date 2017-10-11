@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,8 +44,11 @@
 #include <avtDatabaseMetaData.h>
 #include <avtExpressionTypeConversions.h>
 #include <DebugStream.h>
+#include <Environment.h>
 #include <ExpressionList.h>
 #include <Expression.h>
+#include <OperatorPluginInfo.h>
+#include <OperatorPluginManager.h>
 #include <ParsingExprList.h>
 #include <VisItException.h>
 
@@ -131,7 +134,7 @@ ViewerVariableMethods::DetermineVarType(const std::string &host,
     // Check if the variable is an expression.
     ExpressionList expressionList;
     GetAllExpressions(expressionList, host, db, state);
-    Expression *exp = expressionList[var.c_str()];
+    Expression const *exp = expressionList[var.c_str()];
 
     if (exp != NULL)
     {
@@ -204,7 +207,7 @@ ViewerVariableMethods::DetermineRealVarType(const std::string &host,
     // Check if the variable is an expression.
     ExpressionList expressionList;
     GetAllExpressions(expressionList, host, db, state);
-    Expression *exp = expressionList[var.c_str()];
+    Expression const *exp = expressionList[var.c_str()];
     std::string realVar = var;
     if (exp != NULL)
     {
@@ -269,7 +272,7 @@ ViewerVariableMethods::DetermineRealVarType(const std::string &host,
 void
 ViewerVariableMethods::GetUserExpressions(ExpressionList &newList)
 {
-    ExpressionList *exprList = ParsingExprList::Instance()->GetList();
+    ExpressionList const *exprList = ParsingExprList::Instance()->GetList();
 
     //
     // Create a new expression list that contains all of the expressions
@@ -279,7 +282,7 @@ ViewerVariableMethods::GetUserExpressions(ExpressionList &newList)
     for(int i = 0; i < exprList->GetNumExpressions(); ++i)
     {
         const Expression &expr = exprList->GetExpressions(i);
-        if(!expr.GetFromDB())
+        if(!expr.GetFromDB() && !expr.GetFromOperator())
             newList.AddExpressions(expr);
     }
 }
@@ -316,7 +319,7 @@ ViewerVariableMethods::GetDatabaseExpressions(ExpressionList &newList,
 {
     // Store all of the specified database's expressions in the 
     // new list.
-    if(host.size() > 0 && db.size() > 0)
+    if(!host.empty() && !db.empty())
     {
         const avtDatabaseMetaData *md = 0;
         if(state == ViewerFileServerInterface::ANY_STATE)
@@ -333,11 +336,80 @@ ViewerVariableMethods::GetDatabaseExpressions(ExpressionList &newList,
 }
 
 // ****************************************************************************
+// Method: ViewerVariableMethods::GetOperatorCreatedExpressions
+//
+// Purpose: 
+//   Gets the operator-created expressions for the specified database.
+//
+// Arguments:
+//   newList : The return list for the database expressions.
+//   host    : The host where the database is located.
+//   db      : The database name.
+//   state   : The database time state.
+//
+// Returns:    The list of database expressions.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Feb 18 09:45:27 PDT 2005
+//
+// Modifications:
+//
+//   Mark C. Miller, Thu Jun  8 15:03:27 PDT 2017
+//   Disable if speculative expression generation (SEG) is disabled.
+// ****************************************************************************
+
+void
+ViewerVariableMethods::GetOperatorCreatedExpressions(ExpressionList &newList,
+    const std::string &host, const std::string &db, int state)
+{
+    // Store all of the specified database's expressions in the 
+    // new list.
+    if(!host.empty() && !db.empty())
+    {
+        const avtDatabaseMetaData *md = 0;
+        if(state == ViewerFileServerInterface::ANY_STATE)
+            md = GetViewerFileServer()->GetMetaData(host, db);
+        else
+            md = GetViewerFileServer()->GetMetaDataForState(host, db, state);
+
+        if (!md) return;
+
+        if (md->ShouldDisableSEG(Environment::exists(md->GetSEGEnvVarName())))
+            return;
+
+        // Start with the user's expressions and this database's expressions.
+        ExpressionList userAndDB;
+        GetUserExpressions(userAndDB);
+        for (int i = 0 ; i < md->GetNumberOfExpressions(); ++i)
+            userAndDB.AddExpressions(*(md->GetExpression(i)));
+
+        // We'll make operator-created expressions for all user and db expressions.
+        // Note that we only append the operator-created expressions to the return.
+        avtDatabaseMetaData md2 = *md;
+        md2.GetExprList() = userAndDB;
+        for(int j = 0; j < GetOperatorPluginManager()->GetNEnabledPlugins(); j++)
+        {
+            std::string id(GetOperatorPluginManager()->GetEnabledID(j));
+            CommonOperatorPluginInfo *ComInfo = GetOperatorPluginManager()->GetCommonPluginInfo(id);
+            ExpressionList const *fromOperators = ComInfo->GetCreatedExpressions(&md2);
+            if(fromOperators != NULL)
+            {
+                for(int k = 0; k < fromOperators->GetNumExpressions(); k++)
+                    newList.AddExpressions(fromOperators->GetExpressions(k));
+                delete fromOperators;
+            }
+        }
+    }
+}
+
+// ****************************************************************************
 // Method: ViewerVariableMethods::GetAllExpressions
 //
 // Purpose: 
-//   Gets user-defined expressions and the expressions for the specified
-//   database.
+//   Gets user-defined expressions, the expressions for the specified
+//   database, and the operator-created expressions .
 //
 // Arguments:
 //   newList : The return list for the database expressions.
@@ -358,8 +430,8 @@ void
 ViewerVariableMethods::GetAllExpressions(ExpressionList &newList,
     const std::string &host, const std::string &db, int state)
 {
-    // Store all of the expressions that are not database expressions
-    // in the new list.
+    // Store all of the expressions in the new list.
     GetUserExpressions(newList);
     GetDatabaseExpressions(newList, host, db, state);
+    GetOperatorCreatedExpressions(newList, host, db, state);
 }

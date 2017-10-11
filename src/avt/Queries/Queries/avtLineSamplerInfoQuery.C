@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -210,7 +210,7 @@ avtLineSamplerInfoQuery::PostExecute()
     
     std::string msg;
     char str[128];
-    int i = 0, sz = lsData.size();
+    size_t i = 0, sz = lsData.size();
     
     int lsIdx = 0;
     while (i < sz)

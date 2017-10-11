@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2795,8 +2795,8 @@ vtkCSGGrid::ExtractRegionBounds(int specificZone, int &nRegionBounds,
                << regionBounds2[i*11+10] << endl;
     }
     zoneMap2 = new int[numBoundaries];
-    for (size_t i = 0; i < nRegionBounds; i++)
-        zoneMap2[(int)fabs(regionBounds2[i*11])] = (int)i;
+    for (int i = 0; i < nRegionBounds; i++)
+        zoneMap2[(int)fabs(regionBounds2[i*11])] = i;
 
     int nRegionBounds3 = 0;
     double *regionBounds3 = new double[nRegionBounds*10];

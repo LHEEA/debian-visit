@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -122,8 +122,7 @@ GetSILRPCExecutor::Update(Subject *s)
     int t1 = visitTimer->StartTimer();
     GetSILRPC *rpc = (GetSILRPC *)s;
 
-    debug2 << "GetSILRPCExecutor::Update - file="<<rpc->GetFile().c_str()<<"\n";
-    debug2.flush();
+    debug2 << "GetSILRPCExecutor::Update - file="<<rpc->GetFile().c_str()<<"\n" << std::flush;
 
     TRY
     {

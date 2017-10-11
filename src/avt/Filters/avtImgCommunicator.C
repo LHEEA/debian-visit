@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -781,11 +781,14 @@ void avtImgCommunicator::patchAllocationLogic(){
 //
 // ****************************************************************************
 
-void avtImgCommunicator::scatterNumDataToCompose(int &totalSendData, int &totalRecvData, int &numDivisions, int &totalPatchesToCompositeLocally){
-  int totalSendRecvData[4];
-  #ifdef PARALLEL
+void
+avtImgCommunicator::scatterNumDataToCompose(int &totalSendData, int &totalRecvData,
+    int &numDivisions, int &totalPatchesToCompositeLocally)
+{
+  int totalSendRecvData[4] = {0,0,0,0};
+#ifdef PARALLEL
     MPI_Scatter(numPatchesToSendRecvArray, 4, MPI_INT, totalSendRecvData, 4, MPI_INT, 0, MPI_COMM_WORLD);
-  #endif
+#endif
 
   totalSendData = totalSendRecvData[0];
   totalRecvData = totalSendRecvData[1];

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,9 +58,10 @@
 //
 // Enum for array type definitions.
 //
-typedef enum {NO_TYPE, CHAR_TYPE, INTEGER_TYPE, FLOAT_TYPE, DOUBLE_TYPE,
-              LONG_TYPE, CHARARRAY_TYPE, INTEGERARRAY_TYPE, FLOATARRAY_TYPE,
-              DOUBLEARRAY_TYPE, LONGARRAY_TYPE, OBJECT_TYPE} TypeEnum;
+typedef enum {NO_TYPE, CHAR_TYPE, SHORT_TYPE, INTEGER_TYPE, FLOAT_TYPE,
+              DOUBLE_TYPE, LONG_TYPE, CHARARRAY_TYPE, SHORTARRAY_TYPE,
+              INTEGERARRAY_TYPE, FLOATARRAY_TYPE, DOUBLEARRAY_TYPE,
+              LONGARRAY_TYPE, OBJECT_TYPE} TypeEnum;
 
 // ****************************************************************************
 // Class: PDBFileObject
@@ -77,6 +78,9 @@ typedef enum {NO_TYPE, CHAR_TYPE, INTEGER_TYPE, FLOAT_TYPE, DOUBLE_TYPE,
 // Modifications:
 //   Brad Whitlock, Mon Jul 12 10:24:09 PDT 2004
 //   Added a static Destruct function.
+//
+//   Eric Brugger, Tue Oct 13 19:30:46 PDT 2015
+//   Added support for short.
 //
 // ****************************************************************************
 

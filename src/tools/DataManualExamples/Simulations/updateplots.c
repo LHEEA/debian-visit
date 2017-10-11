@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,8 @@
 #define VISIT_COMMAND_SUCCESS 1
 #define VISIT_COMMAND_FAILURE 2
 
+/*#define TEST_FIELDVIEW_XDB_OPTIONS*/
+
 void read_input_deck(void) { }
 /* Data Access Function prototypes */
 visit_handle SimGetMetaData(void *);
@@ -77,10 +79,13 @@ typedef struct
     int      par_rank;
     int      par_size;
     int      cycle;
+    int      max_cycles;
     double   time;
     int      runMode;
     int      done;
     int      savingFiles;
+    int      width;
+    int      height;
     int      saveCounter;
     int      batch;
     int      export;
@@ -95,10 +100,13 @@ simulation_data_ctor(simulation_data *sim)
     sim->par_rank = 0;
     sim->par_size = 1;
     sim->cycle = 0;
+    sim->max_cycles = -1;
     sim->time = 0.;
     sim->runMode = SIM_STOPPED;
     sim->done = 0;
     sim->savingFiles = 0;
+    sim->width = 800;
+    sim->height = 800;
     sim->saveCounter = 0;
     sim->batch = 0;
     sim->export = 0;
@@ -159,8 +167,8 @@ void simulate_one_timestep(simulation_data *sim)
     if(sim->savingFiles)
     {
         char filename[100];
-        sprintf(filename, "updateplots%04d.jpg", sim->saveCounter);
-        if(VisItSaveWindow(filename, 800, 800, VISIT_IMAGEFORMAT_JPEG) == VISIT_OKAY)
+        sprintf(filename, "updateplots%04d.png", sim->saveCounter);
+        if(VisItSaveWindow(filename, sim->width, sim->height, VISIT_IMAGEFORMAT_PNG) == VISIT_OKAY)
         {
             savedFile = 1;
             if(sim->par_rank == 0)
@@ -176,14 +184,36 @@ void simulate_one_timestep(simulation_data *sim)
         visit_handle vars = VISIT_INVALID_HANDLE;
         VisIt_NameList_alloc(&vars);
         VisIt_NameList_addName(vars, "default");
-        
+#ifdef TEST_FIELDVIEW_XDB_OPTIONS
+        /* Add another export variable. */
+        VisIt_NameList_addName(vars, "mesh2d/nodeid");
+
+        {
+            /* Create an option list that tells the FieldView XDB export to
+             * strip "mesh" from variable names like "mesh/var".
+             */
+            visit_handle options = VISIT_INVALID_HANDLE;
+            VisIt_OptionList_alloc(&options);
+            VisIt_OptionList_setValueB(options, "Strip mesh name prefix", 1);
+
+            sprintf(filename, "updateplots_export%04d", sim->saveCounter);
+            if(VisItExportDatabaseWithOptions(filename, "FieldViewXDB_1.0", 
+                                              vars, options) &&
+               sim->par_rank == 0)
+            {
+                 printf("Exported %s\n", filename);
+            }
+
+            VisIt_OptionList_free(options);
+        }
+#else
         sprintf(filename, "updateplots_export%04d", sim->saveCounter);
         if(VisItExportDatabase(filename, "FieldViewXDB_1.0", vars) &&
            sim->par_rank == 0)
         {
             printf("Exported %s\n", filename);
         }
-
+#endif
         VisIt_NameList_free(vars);
 
         exportedFile = 1;
@@ -253,7 +283,7 @@ void SlaveProcessCallback(void *cbdata)
 /* Process commands from viewer on all processors. */
 int ProcessVisItCommand(simulation_data *sim)
 {
-    int command;
+    int command = VISIT_COMMAND_PROCESS;
     if (sim->par_rank==0)
     {  
         int success = VisItProcessEngineCommand();
@@ -412,8 +442,21 @@ void mainloop_batch(simulation_data *sim)
     sim->savingFiles = 1;
 
     /* Iterate over time. */
-    while(!sim->done)
-        simulate_one_timestep(sim);
+    if(sim->max_cycles != -1)
+    {
+        int ids[] = {0,1,2,3,4,5,6,7,8,9}, nids = 10;
+
+        while(sim->cycle < sim->max_cycles)
+            simulate_one_timestep(sim);
+
+        VisItSetActivePlots(ids, nids);
+        VisItDeleteActivePlots();
+    }
+    else
+    {
+        while(!sim->done)
+            simulate_one_timestep(sim);
+    }
 }
 
 /******************************************************************************
@@ -432,7 +475,7 @@ void mainloop_batch(simulation_data *sim)
 
 void mainloop_interactive(simulation_data *sim)
 {
-    int blocking, visitstate, err = 0;
+    int blocking, visitstate = 0, err = 0;
 
     /* If we're not running by default then simulate once there's something
      * once VisIt connects.
@@ -560,6 +603,21 @@ int main(int argc, char **argv)
         {
             sim.sessionfile = strdup(argv[i+1]);
             ++i;
+        }
+        else if(strcmp(argv[i], "-maxcycles") == 0)
+        {
+            sscanf(argv[i+1], "%d", &sim.max_cycles);
+            i++;
+        }
+        else if(strcmp(argv[i], "-width") == 0)
+        {
+            sscanf(argv[i+1], "%d", &sim.width);
+            i++;
+        }
+        else if(strcmp(argv[i], "-height") == 0)
+        {
+            sscanf(argv[i+1], "%d", &sim.height);
+            i++;
         }
     }
 
@@ -693,6 +751,19 @@ SimGetMetaData(void *cbdata)
 
             VisIt_SimulationMetaData_addVariable(md, vmd);
         }
+
+#ifdef TEST_FIELDVIEW_XDB_OPTIONS
+        /* Add a variable. */
+        if(VisIt_VariableMetaData_alloc(&vmd) == VISIT_OKAY)
+        {
+            VisIt_VariableMetaData_setName(vmd, "mesh2d/nodeid");
+            VisIt_VariableMetaData_setMeshName(vmd, "mesh2d");
+            VisIt_VariableMetaData_setType(vmd, VISIT_VARTYPE_SCALAR);
+            VisIt_VariableMetaData_setCentering(vmd, VISIT_VARCENTERING_NODE);
+
+            VisIt_SimulationMetaData_addVariable(md, vmd);
+        }
+#endif
 
         /* Add a curve variable. */
         if(VisIt_CurveMetaData_alloc(&cmd) == VISIT_OKAY)
@@ -838,6 +909,21 @@ SimGetVariable(int domain, const char *name, void *cbdata)
         VisIt_VariableData_setDataD(h, VISIT_OWNER_VISIT, 1,
             nTuples, rmesh_zonal);
     }
+#ifdef TEST_FIELDVIEW_XDB_OPTIONS
+    else if(strcmp(name, "mesh2d/nodeid") == 0)
+    {
+        float *nodeid = NULL;
+        int i, nTuples;
+        nTuples = rmesh_dims[0] * rmesh_dims[1];
+
+        nodeid = (float*)malloc(sizeof(float) * nTuples);
+        VisIt_VariableData_alloc(&h);
+        for(i = 0; i < nTuples; ++i)
+            nodeid[i] = i;
+        VisIt_VariableData_setDataF(h, VISIT_OWNER_VISIT, 1,
+            nTuples, nodeid);
+    }
+#endif
 
     return h;
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -568,6 +568,27 @@ QvisGaussianOpacityBar::removeGaussian(int n)
     for (int i=n; i<ngaussian-1; i++)
         gaussian[i] = gaussian[i+1];
     ngaussian--;
+}
+
+
+
+// ****************************************************************************
+//  Method:  QvisGaussianOpacityBar::removeAllGaussian
+//
+//  Purpose:
+//    
+//
+//  Programmer:  Pascal Grosset
+//  Creation:    September 15, 2015
+//
+// ****************************************************************************
+void
+QvisGaussianOpacityBar::removeAllGaussians()
+{
+    ngaussian=0;
+
+    imageDirty();
+    update();
 }
 
 

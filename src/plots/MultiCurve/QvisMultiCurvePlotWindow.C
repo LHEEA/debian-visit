@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,20 +48,13 @@
 #include <QLayout>
 #include <QLineEdit>
 #include <QRadioButton>
-#include <QSpinBox>
 
 #include <QvisColorButton.h>
 #include <QvisColorManagerWidget.h>
-#include <QvisColorTableButton.h>
 #include <QvisLineStyleWidget.h>
 #include <QvisLineWidthWidget.h>
 #include <QvisOpacitySlider.h>
-#include <QvisVariableButton.h>
 
-#include <stdio.h>
-#include <string>
-
-using std::string;
 
 // ****************************************************************************
 // Method: QvisMultiCurvePlotWindow::QvisMultiCurvePlotWindow

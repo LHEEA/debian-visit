@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,15 +49,51 @@
 #include <vtkRectilinearGrid.h>
 #include <vtkStructuredGrid.h>
 #include <vtkUnstructuredGrid.h>
+#include <vtkFieldData.h>
 
+#include <avtDatabase.h>
 #include <avtDatabaseMetaData.h>
 #include <avtIntervalTree.h>
+#include <avtStructuredDomainBoundaries.h>
+#include <avtVariableCache.h>
+
+#include <avtParallel.h>
 
 #include <DBOptionsAttributes.h>
 #include <Expression.h>
 
 #include <DebugStream.h>
 #include <InvalidVariableException.h>
+
+// ****************************************************************************
+//  Method: PrintVec
+//
+//  Purpose:
+//      Convenience function.  Print a vector. 
+//
+//  Programmer: Dave Bremer
+//  Creation:   Fri Jun 13 15:54:11 PDT 2008
+//
+// ****************************************************************************
+template <class T>
+std::string Vec2String(std::string name, T *vec, int numelems) {
+  std::string s = name + " = [" ;
+  int elem = 0;
+  char buf[32];
+  
+  while (elem < numelems ) {
+    float value = vec[elem];
+    SNPRINTF(buf,31,"%f",value); 
+    s += buf ;
+    if (elem == numelems - 1) {
+      s+= "]"; 
+    } else {
+      s+= ", "; 
+    }
+    elem ++; 
+  }
+  return s;
+} 
 
 
 // ****************************************************************************
@@ -147,13 +183,13 @@ avtPICS_TesterFileFormat::ReadHeader(const char *filename)
         double magnitude;
         bool validScan = false;
         
-        global_bounds[0] = 1.0;
-        global_bounds[1] = 1.0;
+        global_extents[0] = 1.0;
+        global_extents[1] = 1.0;
 
         if (rank == 2)
-          global_bounds[2] = 0.0;
+          global_extents[2] = 0.0;
         else
-          global_bounds[2] = 1.0;
+          global_extents[2] = 1.0;
           
         if (rank == 3)
         {
@@ -201,15 +237,15 @@ avtPICS_TesterFileFormat::ReadHeader(const char *filename)
       }
       else if( flowType == DOUBLE_GYRE )
       {
-        int nTimes, nx, ny, nz;
-        double time, bx, by, bz;
+        int nTimes, nb, nx, ny, nz;
+        double startTime, endTime, simulationTime, dt, bx, by, bz;
         
-        bool validScan = (sscanf(line,
-                                "%d %lf %d %d %d %lf %lf %lf %lf %lf %lf",
-                                &nTimes, &time,
-                                &nx, &ny, &nz,
-                                &bx, &by, &bz,
-                                &dg_A, &dg_epsilon, &dg_period) == 11);
+        bool validScan =
+          (sscanf(line, "%d %lf %lf %d %d %d %d %lf %lf %lf %lf %lf %lf",
+                  &nTimes, &startTime, &simulationTime,
+                  &nb, &nx, &ny, &nz,
+                  &bx, &by, &bz,
+                  &dg_A, &dg_epsilon, &dg_period) == 13);
  
         if( validScan )
         {
@@ -229,26 +265,40 @@ avtPICS_TesterFileFormat::ReadHeader(const char *filename)
           else
             rank = 3;
               
-          global_bounds[0] = bx;
-          global_bounds[1] = by;
-          global_bounds[2] = bz;
-          
+          global_extents[0] = bx;
+          global_extents[1] = by;
+          global_extents[2] = bz;
+
+          if( simulationTime > 0 )
+            endTime = startTime + simulationTime;
+          else
+          {
+            endTime = startTime;
+            startTime = endTime + simulationTime;
+          }
+
+          dt = (endTime - startTime) / (double) nTimes;
+
           for( int i=0; i<nTimes+1; ++i )
           {
-            if( nTimes > 1 )
-              times.push_back((double) i * time / (double) nTimes);
-            else
-              times.push_back(0);
-            
+            times.push_back( startTime + (double) i * dt );
             cycles.push_back(i);
             
-            numBlocks[0].push_back(1);
-            numBlocks[1].push_back(1);
-            numBlocks[2].push_back(1);
-            
+            numBlocks[0].push_back(nb);
+            numBlocks[1].push_back(nb);
+
+            if (rank == 2)
+              numBlocks[2].push_back(1);
+            else
+              numBlocks[2].push_back(nb);
+         
             numCells[0].push_back(nx);
             numCells[1].push_back(ny);
-            numCells[2].push_back(nz);
+
+            if (rank == 2)
+              numCells[2].push_back(1);
+            else
+              numCells[2].push_back(nz);
           }
         }
         else
@@ -256,9 +306,10 @@ avtPICS_TesterFileFormat::ReadHeader(const char *filename)
       }
       else if( flowType == ABC_FLOW_STEADY_STATE )
       {
-        int nx, ny, nz;
+        int nb, nx, ny, nz;
 
-        bool validScan = (sscanf(line, "%d %d %d", &nx, &ny, &nz ) == 3);
+        bool validScan = (sscanf(line, "%d %d %d %d",
+                                 &nb, &nx, &ny, &nz ) == 4);
  
         if( validScan )
         {
@@ -273,17 +324,17 @@ avtPICS_TesterFileFormat::ReadHeader(const char *filename)
           numCells[1].clear();
           numCells[2].clear();
 
-          global_bounds[0] = 2.0 * M_PI;
-          global_bounds[1] = 2.0 * M_PI;
-          global_bounds[2] = 2.0 * M_PI;
+          global_extents[0] = 2.0 * M_PI;
+          global_extents[1] = 2.0 * M_PI;
+          global_extents[2] = 2.0 * M_PI;
           
           times.push_back(0);       
           cycles.push_back(0);
             
-          numBlocks[0].push_back(1);
-          numBlocks[1].push_back(1);
-          numBlocks[2].push_back(1);
-          
+          numBlocks[0].push_back(nb);
+          numBlocks[1].push_back(nb);
+          numBlocks[2].push_back(nb);
+         
           numCells[0].push_back(nx);
           numCells[1].push_back(ny);
           numCells[2].push_back(nz);
@@ -293,15 +344,15 @@ avtPICS_TesterFileFormat::ReadHeader(const char *filename)
       }
       else if( flowType == ABC_FLOW_APERIODIC )
       {
-        double nTimes, time;
-        int nx, ny, nz;
-
-        bool validScan = (sscanf(line,
-                                 "%lf %lf %d %d %d %lf %lf %lf %d %d %d",
-                                 &nTimes, &time,
-                                 &nx, &ny, &nz,
-                                 &abc_c0, &abc_c1, &abc_c2,
-                                 &abc_signalA, &abc_signalB, &abc_signalC) == 11);
+        int nTimes, nb, nx, ny, nz;
+        double startTime, endTime, simulationTime, dt;
+        
+        bool validScan =
+          (sscanf(line, "%d %lf %lf %d %d %d %d %lf %lf %lf %d %d %d",
+                  &nTimes, &startTime, &simulationTime,
+                  &nb, &nx, &ny, &nz,
+                  &abc_c0, &abc_c1, &abc_c2,
+                  &abc_signalA, &abc_signalB, &abc_signalC) == 13);
  
         if( validScan )
         {
@@ -316,17 +367,23 @@ avtPICS_TesterFileFormat::ReadHeader(const char *filename)
           numCells[1].clear();
           numCells[2].clear();
 
-          global_bounds[0] = 2.0 * M_PI;
-          global_bounds[1] = 2.0 * M_PI;
-          global_bounds[2] = 2.0 * M_PI;
+          global_extents[0] = 2.0 * M_PI;
+          global_extents[1] = 2.0 * M_PI;
+          global_extents[2] = 2.0 * M_PI;
           
+          if( simulationTime > 0 )
+            endTime = startTime + simulationTime;
+          else
+          {
+            endTime = startTime;
+            startTime = endTime + simulationTime;
+          }
+
+          dt = (endTime - startTime) / (double) nTimes;
+
           for( int i=0; i<nTimes+1; ++i )
           {
-            if( nTimes > 1 )
-              times.push_back((double) i * time / (double) nTimes);
-            else
-              times.push_back(0);
-            
+            times.push_back( startTime + (double) i * dt );
             cycles.push_back(i);
             
             numBlocks[0].push_back(1);
@@ -397,39 +454,55 @@ avtPICS_TesterFileFormat::FreeUpResources(void)
 // ****************************************************************************
 
 void
-avtPICS_TesterFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeState)
+avtPICS_TesterFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timestate)
 {
     std::string meshname = "mesh";
-    avtMeshType mt = AVT_RECTILINEAR_MESH;
+    avtMeshType meshtype = AVT_RECTILINEAR_MESH;
     if (! isRectilinear)
-        mt = AVT_UNSTRUCTURED_MESH;
+        meshtype = AVT_UNSTRUCTURED_MESH;
 
-    double bounds[6];
-    bounds[0] = 0;
-    bounds[1] = global_bounds[0];
-    bounds[2] = 0;
-    bounds[3] = global_bounds[1];
-    bounds[4] = 0;
-    bounds[5] = global_bounds[2];
+    double extents[6];
+    extents[0] = 0;
+    extents[1] = global_extents[0];
+    extents[2] = 0;
+    extents[3] = global_extents[1];
+    extents[4] = 0;
+    extents[5] = global_extents[2];
 
     int nblocks = 1;
 
     for( int i=0; i<rank; ++i )
-      nblocks *= numBlocks[i][timeState];
+      nblocks *= numBlocks[i][timestate];
 
     int block_origin = 0;
     int spatial_dimension = rank;
     int topological_dimension = rank;
 
-    int nnodes[3] = {numCells[0][timeState]+1,
-                     numCells[1][timeState]+1,
-                     numCells[2][timeState]+1};
+    int bounds[3] = {numCells[0][timestate]+1,
+                     numCells[1][timestate]+1,
+                     numCells[2][timestate]+1};
 
     if (rank == 2)
-      nnodes[2] = 1;
+      bounds[2] = 1;
 
-    AddMeshToMetaData(md, meshname, mt, bounds, nblocks, block_origin,
-                      spatial_dimension, topological_dimension, nnodes);
+    avtMeshMetaData *mesh = new avtMeshMetaData;
+    mesh->name = meshname;
+    mesh->meshType = meshtype;
+    mesh->numBlocks = nblocks;
+    mesh->blockOrigin = block_origin;
+    mesh->cellOrigin = 0;
+    mesh->spatialDimension = spatial_dimension;
+    mesh->topologicalDimension = topological_dimension;
+    mesh->blockTitle = "blocks";
+    mesh->blockPieceName = "block";
+    mesh->SetBounds(bounds);
+    mesh->hasLogicalBounds = true;
+    mesh->SetExtents(extents);
+    mesh->hasSpatialExtents = true;
+    mesh->containsGhostZones = AVT_NO_GHOSTS;
+
+    md->Add(mesh);
+
 
     std::string varname = "velocity";
     int vector_dim = spatial_dimension;
@@ -441,8 +514,54 @@ avtPICS_TesterFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int 
     md->SetCycles(cycles);
     md->SetCyclesAreAccurate(true);
 
-    md->SetTemporalExtents(0, times[times.size()-1]);
+    md->SetTemporalExtents(times[0], times[times.size()-1]);
     md->SetHasTemporalExtents(true);
+
+    // Find logical domain boundaries
+    if (!avtDatabase::OnlyServeUpMetaData() && nblocks > 1)
+    {
+        avtRectilinearDomainBoundaries *rdb =
+          new avtRectilinearDomainBoundaries(true);
+
+        rdb->SetNumDomains(nblocks);
+        int bbox[6];
+
+        for (int domain = 0; domain < (size_t)nblocks ; ++domain)
+        {
+            int xOff = domain % numBlocks[0][timestate];
+            int yOff = (domain/numBlocks[0][timestate]) % numBlocks[1][timestate];
+            int zOff = domain/(numBlocks[0][timestate]*numBlocks[1][timestate]);
+
+            bbox[0] = (xOff    ) * numCells[0][timestate];
+            bbox[1] = (xOff + 1) * numCells[0][timestate];
+
+            bbox[2] = (yOff    ) * numCells[1][timestate];
+            bbox[3] = (yOff + 1) * numCells[1][timestate];
+
+            // VisIt expects the 2d case to have flat logical z extent (0,0).
+            if(rank == 2)
+            {
+                bbox[4] = 0;
+                bbox[5] = 0;
+            }
+            else // if(rank == 3)
+            {
+              bbox[4] = (zOff    ) * numCells[2][timestate];
+              bbox[5] = (zOff + 1) * numCells[2][timestate];
+            }
+
+            rdb->SetIndicesForRectGrid(domain, bbox);
+        }
+
+        rdb->CalculateBoundaries();
+
+        void_ref_ptr vr =
+          void_ref_ptr(rdb, avtRectilinearDomainBoundaries::Destruct);
+
+        cache->CacheVoidRef("any_mesh",
+                            AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
+                            timestate, -1, vr);
+    }
 }
 
 
@@ -500,9 +619,9 @@ avtPICS_TesterFileFormat::GetMesh(int timestate, int domain, const char *meshnam
         EXCEPTION1(VisItException, "Invalid mesh requested!");
     }
 
-    double xSizePerBlock = global_bounds[0]/numBlocks[0][timestate];
-    double ySizePerBlock = global_bounds[1]/numBlocks[1][timestate];
-    double zSizePerBlock = global_bounds[2]/numBlocks[2][timestate];
+    double xSizePerBlock = global_extents[0]/numBlocks[0][timestate];
+    double ySizePerBlock = global_extents[1]/numBlocks[1][timestate];
+    double zSizePerBlock = global_extents[2]/numBlocks[2][timestate];
 
     int xOff = domain % numBlocks[0][timestate];
     int yOff = (domain/numBlocks[0][timestate]) % numBlocks[1][timestate];
@@ -542,7 +661,7 @@ avtPICS_TesterFileFormat::GetMesh(int timestate, int domain, const char *meshnam
                 z->SetTuple1(i, zSizePerBlock*zOff + i*zSizePerBlock/numCells[2][timestate]);
             rgrid->SetZCoordinates(z);
             z->Delete();
-        }
+        } //if (rank == 2)
         else
         {
             vtkDoubleArray *z = vtkDoubleArray::New();
@@ -550,6 +669,27 @@ avtPICS_TesterFileFormat::GetMesh(int timestate, int domain, const char *meshnam
             z->SetTuple1(0, 0.0);
             rgrid->SetZCoordinates(z);
             z->Delete();
+        }
+
+        // Sneak in periodic boundaries for the avtIVPsolver.
+        if( flowType == ABC_FLOW_STEADY_STATE ||
+            flowType == ABC_FLOW_APERIODIC )
+        {
+            vtkDoubleArray *bounds = vtkDoubleArray::New();
+            bounds->SetName("Periodic Boundaries");
+
+            // Set the number of components before setting the number of tuples
+            // for proper memory allocation.
+            bounds->SetNumberOfComponents( 1 );
+            bounds->SetNumberOfTuples( 3 );
+
+            bounds->SetTuple1(0, global_extents[0] );
+            bounds->SetTuple1(1, global_extents[1] );
+            bounds->SetTuple1(2, global_extents[2] );
+  
+            rgrid->GetFieldData()->AddArray(bounds);
+
+            bounds->Delete();
         }
     
         return rgrid;
@@ -773,6 +913,28 @@ avtPICS_TesterFileFormat::GetVectorVar(int timestate, int domain, const char *va
     return rv;
 }
 
+
+// ****************************************************************************
+//  Method: avtPICS_TesterFileFormat::GetAuxiliaryData
+//
+//  Purpose:
+//      Gets the auxiliary data from a Silo file.
+//
+//  Arguments:
+//      var        The variable of interest.
+//      domain     The domain of interest.
+//      type       The type of auxiliary data.
+//      <unnamed>  The arguments for that -- not used for any PICS types.
+//      df         The interval tree destructor function.
+//
+//  Returns:    The auxiliary data.  Throws an exception if this is not a
+//              supported data type.
+//
+//  Programmer: hchilds -- generated by xml2avt
+//  Creation:   Tue Mar 6 07:45:19 PDT 2012
+//
+// ****************************************************************************
+
 void *
 avtPICS_TesterFileFormat::GetAuxiliaryData(const char *var, int ts, int dom,
                                            const char * type, void *,
@@ -788,9 +950,9 @@ avtPICS_TesterFileFormat::GetAuxiliaryData(const char *var, int ts, int dom,
         int dimension = rank;
         avtIntervalTree *itree = new avtIntervalTree(nblocks, dimension);
 
-        double xSizePerBlock = global_bounds[0]/numBlocks[0][ts];
-        double ySizePerBlock = global_bounds[1]/numBlocks[1][ts];
-        double zSizePerBlock = global_bounds[2]/numBlocks[2][ts];
+        double xSizePerBlock = global_extents[0]/numBlocks[0][ts];
+        double ySizePerBlock = global_extents[1]/numBlocks[1][ts];
+        double zSizePerBlock = global_extents[2]/numBlocks[2][ts];
 
         for (int domain = 0 ; domain < nblocks ; domain++)
         {
@@ -798,26 +960,26 @@ avtPICS_TesterFileFormat::GetAuxiliaryData(const char *var, int ts, int dom,
             int yOff = (domain/numBlocks[0][ts]) % numBlocks[1][ts];
             int zOff = domain/(numBlocks[0][ts]*numBlocks[1][ts]);
 
-            double bounds[6];
-            bounds[0] = xOff*xSizePerBlock;
-            bounds[1] = (xOff+1)*xSizePerBlock;
-            bounds[2] = yOff*ySizePerBlock;
-            bounds[3] = (yOff+1)*ySizePerBlock;
+            double extents[6];
+            extents[0] = xOff*xSizePerBlock;
+            extents[1] = (xOff+1)*xSizePerBlock;
+            extents[2] = yOff*ySizePerBlock;
+            extents[3] = (yOff+1)*ySizePerBlock;
 
             if (rank == 3)
             {
-                bounds[4] = zOff*zSizePerBlock;
-                bounds[5] = (zOff+1)*zSizePerBlock;
+                extents[4] = zOff*zSizePerBlock;
+                extents[5] = (zOff+1)*zSizePerBlock;
             }
             else
             {
-                bounds[4] = 0.0;
-                bounds[5] = 0.0;
+                extents[4] = 0.0;
+                extents[5] = 0.0;
             }
             if (! isRectilinear)
             {
                 int i;
-                double b[6] = { 10, -10, 10, -10, 10, -10 };
+                double b[6] = { 1.0e6, -.10e6, 1.0e6, -1.0e6, 1.0e6, -1.0e6 };
 
                 if (rank == 2)
                    b[4] = b[5] = 0.0;
@@ -825,9 +987,9 @@ avtPICS_TesterFileFormat::GetAuxiliaryData(const char *var, int ts, int dom,
                 for (i = 0 ; i < 8 ; i++)
                 {
                     double pt[3];
-                    pt[0] = (i%2 ? bounds[0] : bounds[1]);
-                    pt[1] = (((i/2)%2) ? bounds[2] : bounds[3]);
-                    pt[2] = (i/2 ? bounds[4] : bounds[5]);
+                    pt[0] = (i%2 ? extents[0] : extents[1]);
+                    pt[1] = (((i/2)%2) ? extents[2] : extents[3]);
+                    pt[2] = (i/2 ? extents[4] : extents[5]);
                     double pt2[3];
                     RotatePoint(pt, pt2);
                     b[0] = (b[0] < pt2[0] ? b[0] : pt2[0]);
@@ -838,9 +1000,9 @@ avtPICS_TesterFileFormat::GetAuxiliaryData(const char *var, int ts, int dom,
                     b[5] = (b[5] > pt2[2] ? b[5] : pt2[2]);
                 }
                 for (i = 0 ; i < 6 ; i++)
-                    bounds[i] = b[i];
+                    extents[i] = b[i];
             }
-            itree->AddElement(domain, bounds);
+            itree->AddElement(domain, extents);
         }
         itree->Calculate(true);
 

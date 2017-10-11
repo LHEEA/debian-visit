@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -117,25 +117,27 @@ BufferConnection::Append(const unsigned char *buf, int count)
 // Creation:   Mon Mar 25 14:21:35 PST 2002
 //
 // Modifications:
-//   
+//
+//     Burlen Loring, Mon Aug  3 13:29:43 PDT 2015
+//     Fix a bug where this method did nothing.
+//
 // ****************************************************************************
 
 long
 BufferConnection::DirectRead(unsigned char *buf, long len)
 {
-    long retval = 0;
+    if (!buf)
+        return 0;
 
-    if(buffer.size() > 0 && buf != 0)
+    long n = 0;
+    while (buffer.size() && (n < len))
     {
-        for(int i = 0; i < retval && i < len; ++i)
-        {
-            buf[i] = buffer.front();
-            buffer.pop_front();
-            ++retval;
-        }
+        buf[n] = buffer.front();
+        buffer.pop_front();
+        ++n;
     }
 
-    return retval;
+    return n;
 }
 
 // ****************************************************************************

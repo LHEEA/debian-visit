@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,8 +39,6 @@
 #include "QvisLCSWindow.h"
 
 #include <LCSAttributes.h>
-#include <ViewerProxy.h>
-#include <DataNode.h>
 
 #include <QCheckBox>
 #include <QComboBox>
@@ -48,24 +46,13 @@
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
+#include <QSlider>
 #include <QSpinBox>
-#include <QPushButton>
 #include <QTabWidget>
-#include <QToolTip>
 #include <QButtonGroup>
 #include <QRadioButton>
-#include <QvisColorTableButton.h>
-#include <QvisColorButton.h>
-#include <QvisLineWidthWidget.h>
-#include <QvisVariableButton.h>
-#include <QListWidget>
-#include <QFileDialog>
 #include <SelectionProperties.h>
 
-#include <stdio.h>
-
-#include <string>
-#include <vector>
 
 static void
 TurnOn(QWidget *w0, QWidget *w1=NULL);
@@ -261,6 +248,36 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
             this, SLOT(EndPositionProcessText()));
     rgridLayout->addWidget(EndPosition, 2,3);
 
+
+    // Create the auxiliary grid group box.
+    QGroupBox *auxiliaryGridGroup = new QGroupBox(central);
+    auxiliaryGridGroup->setTitle(tr("Auxiliary Grid"));
+    sourceLayout->addWidget(auxiliaryGridGroup, 5, 0, 1, 4);
+
+    QGridLayout *auxiliaryGridLayout = new QGridLayout(auxiliaryGridGroup);
+    auxiliaryGridLayout->setMargin(5);
+    auxiliaryGridLayout->setSpacing(10);
+
+    // Auxiliary grid label and combo box
+    auxiliaryGridLayout->addWidget( new QLabel(tr("Auxiliary Grid"), auxiliaryGridGroup), 0,0);
+
+    auxiliaryGrid = new QComboBox(auxiliaryGridGroup);
+    auxiliaryGrid->addItem(tr("None"));
+    auxiliaryGrid->addItem(tr("2D"));
+    auxiliaryGrid->addItem(tr("3D"));
+    connect(auxiliaryGrid, SIGNAL(activated(int)),
+            this, SLOT(auxiliaryGridChanged(int)));
+    auxiliaryGridLayout->addWidget(auxiliaryGrid, 0,1);
+    
+    // Create the auxiliary grid spacing
+    auxiliaryGridSpacingLabel = new QLabel(tr("Spacing"), auxiliaryGridGroup);
+    auxiliaryGridSpacing = new QLineEdit(auxiliaryGridGroup);
+    connect(auxiliaryGridSpacing, SIGNAL(returnPressed()), this,
+            SLOT(auxiliaryGridSpacingProcessText()));
+    auxiliaryGridLayout->addWidget(auxiliaryGridSpacingLabel, 0,2);
+    auxiliaryGridLayout->addWidget(auxiliaryGridSpacing, 0,3);
+
+
     // Create the field group box.
     QGroupBox *fieldGroup = new QGroupBox(central);
     fieldGroup->setTitle(tr("Field"));
@@ -289,7 +306,7 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
     fieldConstantLabel = new QLabel(tr("Constant"), fieldGroup);
     fieldConstant = new QLineEdit(fieldGroup);
     connect(fieldConstant, SIGNAL(returnPressed()), this,
-            SLOT(fieldConstantProccessText()));
+            SLOT(fieldConstantProcessText()));
     fieldLayout->addWidget(fieldConstantLabel, 0,2);
     fieldLayout->addWidget(fieldConstant, 0,3);
 
@@ -416,15 +433,31 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
             this, SLOT(operationTypeChanged(int)));
     terminationLayout->addWidget(operationType, 0, 1);
 
-    // Create the eigenComponent of integration.
+    // Create the cauchyGreenTensor of integration.
+    cauchyGreenTensorLabel = new QLabel(tr("Tensor"), central);
+    cauchyGreenTensorLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
+    terminationLayout->addWidget(cauchyGreenTensorLabel, 0, 2);
 
-    eigenComponentLabel = new QLabel(tr("Eigen component"), central);
+    cauchyGreenTensor = new QComboBox(central);
+    cauchyGreenTensor->addItem(tr("Left Cauchy Green"));
+    cauchyGreenTensor->addItem(tr("Right Cauchy Green"));
+    connect(cauchyGreenTensor, SIGNAL(activated(int)),
+            this, SLOT(cauchyGreenTensorChanged(int)));
+    terminationLayout->addWidget(cauchyGreenTensor, 0, 3);
+
+    // Create the eigenComponent of integration.
+    eigenComponentLabel = new QLabel(tr("Eigen value"), central);
     terminationLayout->addWidget(eigenComponentLabel, 1, 0);
 
     eigenComponent = new QComboBox(central);
-    eigenComponent->addItem(tr("First"));
-    eigenComponent->addItem(tr("Second"));
-    eigenComponent->addItem(tr("Third"));
+    eigenComponent->addItem(tr("Smallest"));
+    eigenComponent->addItem(tr("Intermediate (3D only)"));
+    eigenComponent->addItem(tr("Largest"));
+    eigenComponent->addItem(tr("Shear Pos."));
+    eigenComponent->addItem(tr("Shear Neg."));
+    eigenComponent->addItem(tr("Shear Pos. linear combination"));
+    eigenComponent->addItem(tr("Shear Neg. linear combination"));
+    eigenComponent->setMaxCount(7);
     connect(eigenComponent, SIGNAL(activated(int)),
             this, SLOT(eigenComponentChanged(int)));
     terminationLayout->addWidget(eigenComponent, 1, 1);
@@ -439,7 +472,30 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
 
     clampLogValues = new QCheckBox(tr("Clamp exponent values"), central);
     connect(clampLogValues, SIGNAL(toggled(bool)), this, SLOT(clampLogValuesChanged(bool)));
-    terminationLayout->addWidget(clampLogValues, 0, 3);
+    terminationLayout->addWidget(clampLogValues, 1, 3);
+
+    // Create the eigen weight text field.
+//    eigenWeightLabel = new QLabel(tr("Weight"), central);
+//    eigenWeightLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
+    eigenWeightEdit = new QLineEdit(terminationGroup);
+    connect(eigenWeightEdit, SIGNAL(returnPressed()), this, SLOT(eigenWeightEditProcessText()));
+
+    eigenWeightSlider = new QSlider(Qt::Horizontal, central);
+    eigenWeightSlider->setRange(-100,+100);
+    eigenWeightSlider->setSingleStep(10);
+    eigenWeightSlider->setValue(0);
+
+    connect(eigenWeightSlider, SIGNAL(valueChanged(int)),
+            this, SLOT(eigenWeightSliderChanged(int)));
+    connect(eigenWeightSlider, SIGNAL(sliderPressed()),
+            this, SLOT(eigenWeightSliderPressed()));
+    connect(eigenWeightSlider, SIGNAL(sliderReleased()),
+            this, SLOT(eigenWeightSliderReleased()));
+
+//    terminationLayout->addWidget(eigenWeightLabel,  2, 3);
+    terminationLayout->addWidget(eigenWeightEdit,   1, 2);
+    terminationLayout->addWidget(eigenWeightSlider, 1, 3);
+
 
     // Radio button termination type
     rb = new QRadioButton(tr("Limit maximum advection time i.e. FTLE"), terminationGroup);
@@ -493,7 +549,7 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
 
 
 // ****************************************************************************
-// Method: QvisLCSWindow::CreateAdvancedTab
+// Method: QvisLCSWindow::CreateAppearanceTab
 //
 // Purpose: 
 //   Populates the appearance tab.
@@ -502,6 +558,9 @@ QvisLCSWindow::CreateIntegrationTab(QWidget *pageIntegration)
 // Creation:   Tue Dec 29 14:37:53 EST 2009
 //
 // Modifications:
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
 //
 // ****************************************************************************
 
@@ -511,6 +570,52 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
     QGridLayout *mainLayout = new QGridLayout(pageAppearance);
     mainLayout->setMargin(5);
     mainLayout->setSpacing(10);
+
+    // Seed generation group.
+    QGroupBox *seedGroup = new QGroupBox(pageAppearance);
+    seedGroup->setTitle(tr("Seed generation"));
+    mainLayout->addWidget(seedGroup, 0, 0);
+
+    QGridLayout *seedGroupLayout = new QGridLayout(seedGroup);
+    seedGroupLayout->setSpacing(10);
+    seedGroupLayout->setColumnStretch(1,10);
+
+    QLabel *thresholdLimitLabel = new QLabel(tr("Threshold limit"), seedGroup);
+    thresholdLimitLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
+    seedGroupLayout->addWidget(thresholdLimitLabel, 0, 0);
+    thresholdLimit = new QLineEdit(seedGroup);
+    connect(thresholdLimit, SIGNAL(returnPressed()),
+            this, SLOT(thresholdLimitProcessText()));
+    seedGroupLayout->addWidget(thresholdLimit, 0, 1);
+
+
+    QLabel *radialLimitLabel = new QLabel(tr("Radial limit"), seedGroup);
+    radialLimitLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
+    seedGroupLayout->addWidget(radialLimitLabel, 1, 0);
+    radialLimit = new QLineEdit(seedGroup);
+    connect(radialLimit, SIGNAL(returnPressed()),
+            this, SLOT(radialLimitProcessText()));
+    seedGroupLayout->addWidget(radialLimit, 1, 1);
+
+
+    QLabel *boundaryLimitLabel = new QLabel(tr("Boundary limit"), seedGroup);
+    boundaryLimitLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
+    seedGroupLayout->addWidget(boundaryLimitLabel, 2, 0);
+    boundaryLimit = new QLineEdit(seedGroup);
+    connect(boundaryLimit, SIGNAL(returnPressed()),
+            this, SLOT(boundaryLimitProcessText()));
+    seedGroupLayout->addWidget(boundaryLimit, 2, 1);
+
+    QLabel *seedLimitLabel = new QLabel(tr("Maximum number of seeds"), seedGroup);
+    seedLimitLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
+    seedGroupLayout->addWidget( seedLimitLabel, 3, 0);
+    seedLimit = new QSpinBox(seedGroup);
+    seedLimit->setKeyboardTracking(false);
+    seedLimit->setMinimum(1);
+    seedLimit->setMaximum(100);
+    connect(seedLimit, SIGNAL(valueChanged(int)),
+            this, SLOT(seedLimitChanged(int)));
+    seedGroupLayout->addWidget( seedLimit, 3, 1);
 
     // Streamlines/Pathline Group.
     QGroupBox *icGrp = new QGroupBox(pageAppearance);
@@ -533,7 +638,7 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
 
     // Pathline Options
     QGroupBox *pathlineOptionsGrp = new QGroupBox(icGrp);
-    pathlineOptionsGrp->setTitle(tr("Pathlines Options"));
+    pathlineOptionsGrp->setTitle(tr("Pathline Options"));
     icGrpLayout->addWidget(pathlineOptionsGrp, 3, 0);
 
     QGridLayout *pathlineOptionsGrpLayout = new QGridLayout(pathlineOptionsGrp);
@@ -601,6 +706,10 @@ QvisLCSWindow::CreateAppearanceTab(QWidget *pageAppearance)
 //   Hank Childs, Sun Dec  5 05:31:57 PST 2010
 //   Add additional warning controls.
 //
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
+//
 // ****************************************************************************
 
 void
@@ -632,6 +741,7 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
     
     maxSLCountLabel = new QLabel(tr("Communication threshold"), algoGrp);
     maxSLCount = new QSpinBox(algoGrp);
+    maxSLCount->setKeyboardTracking(false);
     maxSLCount->setMinimum(1);
     maxSLCount->setMaximum(100000);
     connect(maxSLCount, SIGNAL(valueChanged(int)), 
@@ -641,6 +751,7 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 
     maxDomainCacheLabel = new QLabel(tr("Domain cache size"), algoGrp);
     maxDomainCache = new QSpinBox(algoGrp);
+    maxDomainCache->setKeyboardTracking(false);
     maxDomainCache->setMinimum(1);
     maxDomainCache->setMaximum(100000);
     connect(maxDomainCache, SIGNAL(valueChanged(int)),
@@ -650,6 +761,7 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 
     workGroupSizeLabel = new QLabel(tr("Work group size"), algoGrp);
     workGroupSize = new QSpinBox(algoGrp);
+    workGroupSize->setKeyboardTracking(false);
     workGroupSize->setMinimum(2);
     workGroupSize->setMaximum(1000000);
     connect(workGroupSize, SIGNAL(valueChanged(int)),
@@ -666,40 +778,61 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
     warningsGLayout->setSpacing(10);
     warningsGLayout->setColumnStretch(1,10);
 
+    issueWarningForAdvection = new QCheckBox(central);
+    connect(issueWarningForAdvection, SIGNAL(toggled(bool)),
+            this, SLOT(issueWarningForAdvectionChanged(bool)));
+    warningsGLayout->addWidget(issueWarningForAdvection, 0, 0);
+    QLabel *advectionLabel = new QLabel(tr("Issue warning if the advection limit is not reached."), warningsGrp);
+    warningsGLayout->addWidget(advectionLabel, 0, 1, 1, 2);
+
+    issueWarningForBoundary = new QCheckBox(central);
+    connect(issueWarningForBoundary, SIGNAL(toggled(bool)),
+            this, SLOT(issueWarningForBoundaryChanged(bool)));
+    warningsGLayout->addWidget(issueWarningForBoundary, 1, 0);
+    QLabel *boundaryLabel = new QLabel(tr("Issue warning if the spatial boundary is reached."), warningsGrp);
+    warningsGLayout->addWidget(boundaryLabel, 1, 1, 1, 2);
+
     issueWarningForMaxSteps = new QCheckBox(central);
     connect(issueWarningForMaxSteps, SIGNAL(toggled(bool)),
             this, SLOT(issueWarningForMaxStepsChanged(bool)));
-    warningsGLayout->addWidget(issueWarningForMaxSteps, 0, 0);
+    warningsGLayout->addWidget(issueWarningForMaxSteps, 2, 0);
     QLabel *maxStepsLabel = new QLabel(tr("Issue warning when the maximum number of steps is reached."), warningsGrp);
-    warningsGLayout->addWidget(maxStepsLabel, 0, 1, 1, 2);
+    warningsGLayout->addWidget(maxStepsLabel, 2, 1, 1, 2);
 
+    issueWarningForStepsize = new QCheckBox(central);
+    connect(issueWarningForStepsize, SIGNAL(toggled(bool)),
+            this, SLOT(issueWarningForStepsizeChanged(bool)));
+    warningsGLayout->addWidget(issueWarningForStepsize, 3, 0);
+    QLabel *stepsizeLabel = new QLabel(tr("Issue warning when a step size underflow is detected."), warningsGrp);
+    warningsGLayout->addWidget(stepsizeLabel, 3, 1, 1, 2);
+ 
     issueWarningForStiffness = new QCheckBox(central);
     connect(issueWarningForStiffness, SIGNAL(toggled(bool)),
             this, SLOT(issueWarningForStiffnessChanged(bool)));
-    warningsGLayout->addWidget(issueWarningForStiffness, 1, 0);
-    QLabel *stiffnessLabel = new QLabel(tr("Issue warning when stiffness is detected."), warningsGrp);
-    warningsGLayout->addWidget(stiffnessLabel, 1, 1, 1, 2);
+    warningsGLayout->addWidget(issueWarningForStiffness, 4, 0);
+    QLabel *stiffnessLabel = new QLabel(tr("Issue warning when a stiffness condition is detected."), warningsGrp);
+    warningsGLayout->addWidget(stiffnessLabel, 4, 1, 1, 2);
     QLabel *stiffnessDescLabel1 = new QLabel(tr("(Stiffness refers to one vector component being so much "), warningsGrp);
-    warningsGLayout->addWidget(stiffnessDescLabel1, 2, 1, 1, 2);
+    warningsGLayout->addWidget(stiffnessDescLabel1, 5, 1, 1, 2);
     QLabel *stiffnessDescLabel2 = new QLabel(tr("larger than another that tolerances can't be met.)"), warningsGrp);
-    warningsGLayout->addWidget(stiffnessDescLabel2, 3, 1, 1, 2);
+    warningsGLayout->addWidget(stiffnessDescLabel2, 6, 1, 1, 2);
     
     issueWarningForCriticalPoints = new QCheckBox(central);
     connect(issueWarningForCriticalPoints, SIGNAL(toggled(bool)),
             this, SLOT(issueWarningForCriticalPointsChanged(bool)));
-    warningsGLayout->addWidget(issueWarningForCriticalPoints, 4, 0);
+    warningsGLayout->addWidget(issueWarningForCriticalPoints, 7, 0);
     QLabel *critPointLabel = new QLabel(tr("Issue warning when a curve doesn't terminate at a critical point."), warningsGrp);
-    warningsGLayout->addWidget(critPointLabel, 4, 1, 1, 2);
+    warningsGLayout->addWidget(critPointLabel, 7, 1, 1, 2);
     QLabel *critPointDescLabel = new QLabel(tr("(I.e. the curve circles around the critical point without stopping.)"), warningsGrp);
-    warningsGLayout->addWidget(critPointDescLabel, 5, 1, 1, 2);
+    warningsGLayout->addWidget(critPointDescLabel, 8, 1, 1, 2);
     criticalPointThresholdLabel = new QLabel(tr("Speed cutoff for critical points"), warningsGrp);
     criticalPointThresholdLabel->setAlignment(Qt::AlignRight | Qt::AlignCenter);
-    warningsGLayout->addWidget(criticalPointThresholdLabel, 6, 1);
+    warningsGLayout->addWidget(criticalPointThresholdLabel, 9, 1);
     criticalPointThreshold = new QLineEdit(warningsGrp);
     criticalPointThreshold->setAlignment(Qt::AlignLeft);
     connect(criticalPointThreshold, SIGNAL(returnPressed()),
             this, SLOT(criticalPointThresholdProcessText()));
-    warningsGLayout->addWidget(criticalPointThreshold, 6, 2);
+    warningsGLayout->addWidget(criticalPointThreshold, 9, 2);
 }
 
 
@@ -722,6 +855,9 @@ QvisLCSWindow::CreateAdvancedTab(QWidget *pageAdvanced)
 void
 QvisLCSWindow::UpdateWindow(bool doAll)
 {
+    bool bval;
+    int ival;
+
     for(int i = 0; i < atts->NumAttributes(); ++i)
     {
         if(!doAll)
@@ -844,6 +980,12 @@ QvisLCSWindow::UpdateWindow(bool doAll)
               terminationTypeButtonGroup->button(0)->show();
               terminationTypeButtonGroup->button(1)->show();
               terminationTypeButtonGroup->button(2)->show();
+              cauchyGreenTensorLabel->show();
+              cauchyGreenTensor->show();
+              eigenComponent->removeItem(6);
+              eigenComponent->removeItem(5);
+              eigenComponent->removeItem(4);
+              eigenComponent->removeItem(3);
               eigenComponentLabel->show();
               eigenComponent->show();
               maxSize->show();
@@ -854,8 +996,11 @@ QvisLCSWindow::UpdateWindow(bool doAll)
               atts->SetTerminateByDistance( atts->GetTerminationType() == LCSAttributes::Distance);
               atts->SetTerminateBySize(     atts->GetTerminationType() == LCSAttributes::Size);
 
-              clampLogValues->show();
+//              eigenWeightLabel->hide();
+              eigenWeightEdit->hide();
+              eigenWeightSlider->hide();
               operatorType->hide();
+              clampLogValues->show();
 
               terminationTypeButtonGroup->blockSignals(false);
             }
@@ -865,15 +1010,67 @@ QvisLCSWindow::UpdateWindow(bool doAll)
               terminationTypeButtonGroup->button(1)->hide();
               terminationTypeButtonGroup->button(2)->hide();
 
+              if( atts->GetOperationType() == LCSAttributes::EigenVector )
+              {
+                if( eigenComponent->itemText(3).isNull() ||
+                    eigenComponent->itemText(3).isEmpty() )
+                {
+                  eigenComponent->addItem(tr("Shear Pos."));
+                  eigenComponent->addItem(tr("Shear Neg."));
+                  eigenComponent->addItem(tr("Lambda Shear Pos."));
+                  eigenComponent->addItem(tr("Lambda Shear Neg."));
+                }
+                
+                bval = (atts->GetEigenComponent() ==
+                        LCSAttributes::PosLambdaShearVector ||
+                        atts->GetEigenComponent() ==
+                        LCSAttributes::NegLambdaShearVector);
+            
+                if( bval )
+                {
+//                  eigenWeightLabel->show();
+                    eigenWeightEdit->show();
+                    eigenWeightSlider->show();
+                }
+                else
+                {
+//                  eigenWeightLabel->hide();
+                    eigenWeightEdit->hide();
+                    eigenWeightSlider->hide();
+                }
+
+//              eigenWeightLabel->setEnabled( bval );   
+                eigenWeightEdit->setEnabled( bval );
+                eigenWeightSlider->setEnabled( bval );
+              }
+              else
+              {
+                if( !(eigenComponent->itemText(3).isNull()) &&
+                    !(eigenComponent->itemText(3).isEmpty()) )
+                  {
+                    eigenComponent->removeItem(6);
+                    eigenComponent->removeItem(5);
+                    eigenComponent->removeItem(4);
+                    eigenComponent->removeItem(3);
+                  }
+//                eigenWeightLabel->hide();
+                eigenWeightEdit->hide();
+                eigenWeightSlider->hide();
+              }
+
               if( atts->GetOperationType() == LCSAttributes::EigenValue ||
                   atts->GetOperationType() == LCSAttributes::EigenVector )
               {
+                cauchyGreenTensorLabel->show();
+                cauchyGreenTensor->show();
                 eigenComponentLabel->show();
                 eigenComponent->show();
                 operatorType->hide();
               }
               else
               {
+                cauchyGreenTensorLabel->hide();
+                cauchyGreenTensor->hide();
                 eigenComponentLabel->hide();
                 eigenComponent->hide();
                 operatorType->show();
@@ -889,6 +1086,40 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             }
             break;
 
+        case LCSAttributes::ID_cauchyGreenTensor:
+            cauchyGreenTensor->blockSignals(true);
+            cauchyGreenTensor->setCurrentIndex(int(atts->GetCauchyGreenTensor()) );
+            cauchyGreenTensor->blockSignals(false);
+            break;
+
+        case LCSAttributes::ID_eigenComponent:
+            eigenComponent->blockSignals(true);
+            eigenComponent->setCurrentIndex(int(atts->GetEigenComponent()) );
+            eigenComponent->blockSignals(false);
+
+            bval = (atts->GetEigenComponent() ==
+                    LCSAttributes::PosLambdaShearVector ||
+                    atts->GetEigenComponent() ==
+                    LCSAttributes::NegLambdaShearVector);
+            
+            if( bval )
+            {
+//            eigenWeightLabel->show();
+              eigenWeightEdit->show();
+              eigenWeightSlider->show();
+            }
+            else
+            {
+//            eigenWeightLabel->hide();
+              eigenWeightEdit->hide();
+              eigenWeightSlider->hide();
+            }
+
+//          eigenWeightLabel->setEnabled( bval );   
+            eigenWeightEdit->setEnabled( bval );
+            eigenWeightSlider->setEnabled( bval );
+            break;
+
         case LCSAttributes::ID_operatorType:
             operatorType->blockSignals(true);
             operatorType->setCurrentIndex(int(atts->GetOperatorType()) );
@@ -899,6 +1130,17 @@ QvisLCSWindow::UpdateWindow(bool doAll)
               clampLogValues->show();
             else
               clampLogValues->hide();
+            break;
+
+        case LCSAttributes::ID_eigenWeight:
+            eigenWeightEdit->setText(DoubleToQString(atts->GetEigenWeight()));
+
+            ival =
+              int(qMin(qMax(-100.0,1000.0*(atts->GetEigenWeight()-1.0)),100.0));
+
+            eigenWeightSlider->blockSignals(true);
+            eigenWeightSlider->setValue(ival);
+            eigenWeightSlider->blockSignals(false);
             break;
 
         case LCSAttributes::ID_clampLogValues:
@@ -912,9 +1154,9 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             terminationTypeButtonGroup->button(atts->GetTerminationType())->setChecked(true);
             terminationTypeButtonGroup->blockSignals(false);
 
-            maxTime->setEnabled(atts->GetTerminationType()==0);
-            maxDistance->setEnabled(atts->GetTerminationType()==1);
-            maxSize->setEnabled(atts->GetTerminationType()==2);
+            maxTime->setEnabled(atts->GetTerminationType() == LCSAttributes::Time);
+            maxDistance->setEnabled(atts->GetTerminationType() == LCSAttributes::Distance);
+            maxSize->setEnabled(atts->GetTerminationType() == LCSAttributes::Size);
             break;
         case LCSAttributes::ID_termSize:
             maxSize->setText(DoubleToQString(atts->GetTermSize()));
@@ -962,6 +1204,21 @@ QvisLCSWindow::UpdateWindow(bool doAll)
                 absTol->setText(DoubleToQString(atts->GetAbsTolAbsolute()));
             }
             break;
+        case LCSAttributes::ID_auxiliaryGrid:
+            auxiliaryGrid->blockSignals(true);
+            auxiliaryGrid->setCurrentIndex(atts->GetAuxiliaryGrid());
+            auxiliaryGrid->blockSignals(false);
+
+            auxiliaryGridSpacingLabel->setEnabled(!(atts->GetAuxiliaryGrid() ==
+                                                    LCSAttributes::None));
+            auxiliaryGridSpacing->setEnabled(!(atts->GetAuxiliaryGrid() ==
+                                               LCSAttributes::None));
+            break;
+
+        case LCSAttributes::ID_auxiliaryGridSpacing:
+            auxiliaryGridSpacing->setText(DoubleToQString(atts->GetAuxiliaryGridSpacing()));
+            break;
+
         case LCSAttributes::ID_fieldType:
             // Update lots of widget visibility and enabled states.
             UpdateFieldAttributes();
@@ -1019,6 +1276,22 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             fieldType->blockSignals(false);
 
             break;
+
+        case LCSAttributes::ID_thresholdLimit:
+            thresholdLimit->setText(DoubleToQString(atts->GetThresholdLimit()));
+            break;
+        case LCSAttributes::ID_radialLimit:
+            radialLimit->setText(DoubleToQString(atts->GetRadialLimit()));
+            break;
+        case LCSAttributes::ID_boundaryLimit:
+            boundaryLimit->setText(DoubleToQString(atts->GetBoundaryLimit()));
+            break;
+        case LCSAttributes::ID_seedLimit:
+            seedLimit->blockSignals(true);
+            seedLimit->setValue(atts->GetSeedLimit());
+            seedLimit->blockSignals(false);
+            break;
+
         case LCSAttributes::ID_parallelizationAlgorithmType:
             // Update lots of widget visibility and enabled states.
             UpdateAlgorithmAttributes();
@@ -1078,6 +1351,18 @@ QvisLCSWindow::UpdateWindow(bool doAll)
         //     forceNodal->blockSignals(false);
         //     break;
 
+        case LCSAttributes::ID_issueAdvectionWarnings:
+            issueWarningForAdvection->blockSignals(true);
+            issueWarningForAdvection->setChecked(atts->GetIssueAdvectionWarnings());
+            issueWarningForAdvection->blockSignals(false);
+            break;
+
+        case LCSAttributes::ID_issueBoundaryWarnings:
+            issueWarningForBoundary->blockSignals(true);
+            issueWarningForBoundary->setChecked(atts->GetIssueBoundaryWarnings());
+            issueWarningForBoundary->blockSignals(false);
+            break;
+
         case LCSAttributes::ID_issueTerminationWarnings:
             issueWarningForMaxSteps->blockSignals(true);
             issueWarningForMaxSteps->setChecked(atts->GetIssueTerminationWarnings());
@@ -1092,11 +1377,18 @@ QvisLCSWindow::UpdateWindow(bool doAll)
             issueWarningForCriticalPoints->blockSignals(false);
             break;
 
+        case LCSAttributes::ID_issueStepsizeWarnings:
+            issueWarningForStepsize->blockSignals(true);
+            issueWarningForStepsize->setChecked(atts->GetIssueStepsizeWarnings());
+            issueWarningForStepsize->blockSignals(false);
+            break;
+
         case LCSAttributes::ID_issueStiffnessWarnings:
             issueWarningForStiffness->blockSignals(true);
             issueWarningForStiffness->setChecked(atts->GetIssueStiffnessWarnings());
             issueWarningForStiffness->blockSignals(false);
             break;
+
         case LCSAttributes::ID_criticalPointThreshold:
             criticalPointThreshold->setText(DoubleToQString(atts->GetCriticalPointThreshold()));
             break;
@@ -1271,6 +1563,8 @@ QvisLCSWindow::UpdateAlgorithmAttributes()
 // Creation:   Mon Oct 21 14:19:00 PST 2002
 //
 // Modifications:
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Ensure values are retrieved from spin boxes.
 //
 // ****************************************************************************
 
@@ -1323,6 +1617,20 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     }
 
 
+    // Do auxiliaryGridSpacing
+    if(which_widget == LCSAttributes::ID_auxiliaryGridSpacing || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(auxiliaryGridSpacing, val))
+            atts->SetAuxiliaryGridSpacing(val);
+        else
+        {
+            ResettingError(tr("auxiliary grid spacing"),
+                DoubleToQString(atts->GetAuxiliaryGridSpacing()));
+            atts->SetAuxiliaryGridSpacing(atts->GetAuxiliaryGridSpacing());
+        }
+    }
+
     // Do fieldConstant
     if(which_widget == LCSAttributes::ID_fieldConstant || doAll)
     {
@@ -1366,6 +1674,19 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     }
 
     // Do termination
+    if(which_widget == LCSAttributes::ID_eigenWeight || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(eigenWeightEdit, val) && 0.9 <= val && val <= 1.1)
+            atts->SetEigenWeight(val);
+        else
+        {
+            ResettingError(tr("eigen weight"),
+                DoubleToQString(atts->GetEigenWeight()));
+            atts->SetEigenWeight(atts->GetEigenWeight());
+        }
+    }
+
     if(which_widget == LCSAttributes::ID_maxSteps || doAll)
     {
         int val;
@@ -1373,7 +1694,7 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
             atts->SetMaxSteps(val);
         else
         {
-            ResettingError(tr("maxsteps"),
+            ResettingError(tr("max steps"),
                 IntToQString(atts->GetMaxSteps()));
             atts->SetMaxSteps(atts->GetMaxSteps());
         }
@@ -1385,7 +1706,7 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
             atts->SetTermTime(val);
         else
         {
-            ResettingError(tr("maxtime"),
+            ResettingError(tr("max time"),
                 DoubleToQString(atts->GetTermTime()));
             atts->SetTermTime(atts->GetTermTime());
         }
@@ -1397,7 +1718,7 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
             atts->SetTermDistance(val);
         else
         {
-            ResettingError(tr("maxdistance"),
+            ResettingError(tr("max distance"),
                 DoubleToQString(atts->GetTermDistance()));
             atts->SetTermDistance(atts->GetTermDistance());
         }
@@ -1409,7 +1730,7 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
             atts->SetTermSize(val);
         else
         {
-            ResettingError(tr("maxsize"),
+            ResettingError(tr("max size"),
                 DoubleToQString(atts->GetTermSize()));
             atts->SetTermSize(atts->GetTermSize());
         }
@@ -1497,6 +1818,55 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
     }
 
 
+    if(which_widget == LCSAttributes::ID_thresholdLimit || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(thresholdLimit, val))
+            atts->SetThresholdLimit(val);
+        else
+        {
+            ResettingError(tr("Threshold Limit"),
+                DoubleToQString(atts->GetThresholdLimit()));
+            atts->SetThresholdLimit(atts->GetThresholdLimit());
+        }
+    }
+
+    if(which_widget == LCSAttributes::ID_radialLimit || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(radialLimit, val))
+            atts->SetRadialLimit(val);
+        else
+        {
+            ResettingError(tr("Radial Limit"),
+                DoubleToQString(atts->GetRadialLimit()));
+            atts->SetRadialLimit(atts->GetRadialLimit());
+        }
+    }
+
+    if(which_widget == LCSAttributes::ID_boundaryLimit || doAll)
+    {
+        double val;
+        if(LineEditGetDouble(boundaryLimit, val))
+            atts->SetBoundaryLimit(val);
+        else
+        {
+            ResettingError(tr("Boundary Limit"),
+                DoubleToQString(atts->GetBoundaryLimit()));
+            atts->SetBoundaryLimit(atts->GetBoundaryLimit());
+        }
+    }
+
+    // seedLimit
+    if (which_widget == LCSAttributes::ID_seedLimit || doAll)
+    {
+        // This can only be an integer, so no error checking is needed.
+        int val = seedLimit->value();
+        if (val >= 0)
+            atts->SetSeedLimit(val);
+    }
+    
+
     // maxProcessCount
     if (which_widget == LCSAttributes::ID_maxProcessCount || doAll)
     {
@@ -1527,6 +1897,12 @@ QvisLCSWindow::GetCurrentValues(int which_widget)
                 DoubleToQString(atts->GetCriticalPointThreshold()));
             atts->SetCriticalPointThreshold(atts->GetCriticalPointThreshold());
         }
+    }
+    // maxDomainCache
+    if (which_widget == LCSAttributes::ID_maxDomainCacheSize || doAll)
+    {
+        if (maxDomainCache->value() != atts->GetMaxDomainCacheSize())
+            atts->SetMaxDomainCacheSize(maxDomainCache->value());
     }
 }
 
@@ -1603,9 +1979,26 @@ QvisLCSWindow::fieldTypeChanged(int val)
 }   
 
 void
-QvisLCSWindow::fieldConstantProccessText()
+QvisLCSWindow::fieldConstantProcessText()
 {
     GetCurrentValues(LCSAttributes::ID_fieldConstant);
+    Apply();
+}
+
+void
+QvisLCSWindow::auxiliaryGridChanged(int val)
+ {
+    if(val != atts->GetAuxiliaryGrid())
+    {
+        atts->SetAuxiliaryGrid(LCSAttributes::AuxiliaryGrid(val));
+        Apply();
+    }
+}   
+
+void
+QvisLCSWindow::auxiliaryGridSpacingProcessText()
+{
+    GetCurrentValues(LCSAttributes::ID_auxiliaryGridSpacing);
     Apply();
 }
 
@@ -1681,6 +2074,16 @@ QvisLCSWindow::operationTypeChanged(int val)
 }   
 
 void
+QvisLCSWindow::cauchyGreenTensorChanged(int val)
+ {
+    if(val != atts->GetCauchyGreenTensor())
+    {
+        atts->SetCauchyGreenTensor(LCSAttributes::CauchyGreenTensor(val));
+        Apply();
+    }
+}   
+
+void
 QvisLCSWindow::eigenComponentChanged(int val)
  {
     if(val != atts->GetEigenComponent())
@@ -1699,6 +2102,37 @@ QvisLCSWindow::operatorTypeChanged(int val)
         Apply();
     }
 }   
+
+void
+QvisLCSWindow::eigenWeightEditProcessText()
+{
+    GetCurrentValues(LCSAttributes::ID_eigenWeight);
+    Apply();
+}
+
+void
+QvisLCSWindow::eigenWeightSliderChanged(int val)
+{
+    atts->SetEigenWeight( 1.0 + (double) val/1000.0 );
+
+    eigenWeightEdit->setText(DoubleToQString( (double) 1.0 + val/1000.0 ) );
+
+    if (!sliderDragging)
+        Apply();
+}
+
+void
+QvisLCSWindow::eigenWeightSliderPressed()
+{
+    sliderDragging = true;
+}
+
+void
+QvisLCSWindow::eigenWeightSliderReleased()
+{
+    sliderDragging = false;
+    Apply();
+}
 
 void
 QvisLCSWindow::clampLogValuesChanged(bool val)
@@ -1744,6 +2178,35 @@ QvisLCSWindow::relTolProcessText()
     GetCurrentValues(LCSAttributes::ID_relTol);
     Apply();
 }
+
+void
+QvisLCSWindow::thresholdLimitProcessText()
+{
+    GetCurrentValues(LCSAttributes::ID_thresholdLimit);
+    Apply();
+}
+
+void
+QvisLCSWindow::radialLimitProcessText()
+{
+    GetCurrentValues(LCSAttributes::ID_radialLimit);
+    Apply();
+}
+
+void
+QvisLCSWindow::boundaryLimitProcessText()
+{
+    GetCurrentValues(LCSAttributes::ID_boundaryLimit);
+    Apply();
+}
+
+void
+QvisLCSWindow::seedLimitChanged(int val)
+{
+    atts->SetSeedLimit(val);
+    Apply();
+}
+
 
 void
 QvisLCSWindow::maxSLCountChanged(int val)
@@ -1846,9 +2309,30 @@ QvisLCSWindow::velocitySourceProcessText()
 }
 
 void
+QvisLCSWindow::issueWarningForAdvectionChanged(bool val)
+{
+    atts->SetIssueAdvectionWarnings(val);
+    Apply();
+}
+
+void
+QvisLCSWindow::issueWarningForBoundaryChanged(bool val)
+{
+    atts->SetIssueBoundaryWarnings(val);
+    Apply();
+}
+
+void
 QvisLCSWindow::issueWarningForMaxStepsChanged(bool val)
 {
     atts->SetIssueTerminationWarnings(val);
+    Apply();
+}
+
+void
+QvisLCSWindow::issueWarningForStepsizeChanged(bool val)
+{
+    atts->SetIssueStepsizeWarnings(val);
     Apply();
 }
 
@@ -1872,7 +2356,6 @@ QvisLCSWindow::criticalPointThresholdProcessText(void)
     GetCurrentValues(LCSAttributes::ID_criticalPointThreshold);
     Apply();
 }
-
 static void
 TurnOn(QWidget *w0, QWidget *w1)
 {

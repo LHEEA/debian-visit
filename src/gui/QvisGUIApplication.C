@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,6 +55,7 @@
 #include <QSocketNotifier>
 #include <QStatusBar>
 #include <QStyle>
+#include <QStyleFactory>
 #include <QTranslator>
 
 #if defined(Q_WS_MACX) || defined(Q_OS_MAC)
@@ -122,6 +123,7 @@
 #include <QvisFileInformationWindow.h>
 #include <QvisFileSelectionWindow.h>
 #include <QvisFileOpenWindow.h>
+#include <QvisSessionFileDialog.h>
 #include <QvisGlobalLineoutWindow.h>
 #include <QvisHelpWindow.h>
 #include <QvisHostProfileWindow.h>
@@ -144,6 +146,7 @@
 #include <QvisRenderingWindow.h>
 #include <QvisSaveMovieWizard.h>
 #include <QvisSaveWindow.h>
+#include <QvisSeedMeWindow.h>
 #include <QvisSelectionsWindow.h>
 #include <QvisSessionFileDatabaseLoader.h>
 #include <QvisSimulationWindow.h>
@@ -230,10 +233,17 @@
 #define WINDOW_MACRO            32
 #define WINDOW_SELECTIONS       33
 #define WINDOW_SETUP_CFG        34
+#define WINDOW_SEEDME           35
 
 #define BEGINSWITHQUOTE(A) (A[0] == '\'' || A[0] == '\"')
 #define ENDSWITHQUOTE(A) (A[strlen(A)-1] == '\'' || A[strlen(A)-1] == '\"')
 #define HASSPACE(A) (strstr(A, " ") != NULL)
+
+// We do this so that the strings command on the .o file
+// can tell us whether or not DEBUG_MEMORY_LEAKS was turned on
+#ifdef DEBUG_MEMORY_LEAKS
+static const char *dummy_string1 = "DEBUG_MEMORY_LEAKS";
+#endif
 
 // Some internal prototypes.
 static void QPrinterToPrinterAttributes(QPrinter *, PrinterAttributes *);
@@ -451,6 +461,9 @@ GUI_LogQtMessages(QtMsgType type, const QMessageLogContext &context, const QStri
 
     switch(type)
     {
+    case QtInfoMsg:
+        debug1 << "Qt: Info: " << msg.toStdString() << endl;
+        break;
     case QtDebugMsg:
         debug1 << "Qt: Debug: " << msg.toStdString() << endl;
         break;
@@ -668,6 +681,11 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
     applicationStyle(), applicationLocale("default"), loadFile(), sessionFile(), 
     sessionDir(), movieArguments()
 {
+#ifdef DEBUG_MEMORY_LEAKS
+    // ensure dummy_string1 cannot optimized away
+    char const *dummy = dummy_string1; dummy++;
+#endif
+
     completeInit = visitTimer->StartTimer();
     int total = visitTimer->StartTimer();
 
@@ -879,6 +897,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
     windowNames += tr("Macros");
     windowNames += tr("Selections");
     windowNames += tr("Setup Host Profiles and Configuration");
+    windowNames += tr("SeedMe");
 
     // If the geometry was not passed on the command line then the 
     // savedGUIGeometry flag will still be set to false. If we
@@ -981,6 +1000,105 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
 }
 
 // ****************************************************************************
+// Method: QvisGUIApplication::DestructorHelper
+//
+// Purpose: A function to refactor destructor logic and control fast exit
+//     behavior
+//
+// Programmer: Mark C. Miller, Thu Jun 22 14:01:25 PDT 2017
+// ****************************************************************************
+
+void
+QvisGUIApplication::DestructorHelper(bool fastExit)
+{
+#if !defined(_WIN32) && !defined(__APPLE__)
+    if (!fastExit)
+    {
+        // Delete the windows.
+        for(WindowBaseMap::iterator pos = otherWindows.begin();
+            pos != otherWindows.end(); ++pos)
+        {
+            delete pos->second;
+        }
+        for(size_t i = 0; i < plotWindows.size(); ++i)
+        {
+            if(plotWindows[i] != 0)
+                delete plotWindows[i];
+        }
+        for(size_t i = 0; i < operatorWindows.size(); ++i)
+        {
+            if(operatorWindows[i] != 0)
+                delete operatorWindows[i];
+        }
+    }
+#endif
+
+    // Delete the file server
+    if (!fastExit)
+    {
+        delete fileServer;
+        fileServer = 0;
+    }
+
+    // Close down the viewer and delete it.
+    if(viewerIsAlive)
+    {
+        if(viewerInitiatedQuit)
+        {
+            debug1 << "Quitting because viewer told us to." << endl;
+        }
+        else
+        {
+            if(closeAllClients)
+            {
+                debug1 << "Telling viewer to close." << endl;
+                GetViewerProxy()->Close();
+            }
+            else
+            {
+                debug1 << "Telling viewer to detach this GUI." << endl;
+                GetViewerProxy()->Detach();
+            }
+        }
+    }
+
+    if (!fastExit)
+    {
+        delete GetViewerProxy();
+
+        // Delete the status subject that is used for the status bar.
+        delete statusSubject;
+        statusSubject = 0;
+
+        // Delete the socket notifiers.
+        delete fromViewer;
+
+        // Delete the application
+        if(!inheritedGUI)
+            delete mainApp;
+
+        // Delete the args for QT
+        for (size_t i = 0 ; i < (size_t)qt_argc ; i++)
+        {
+            if (qt_argv[i])
+                free(qt_argv[i]);
+        }
+        delete [] qt_argv;
+
+        // Delete the printer object.
+        delete printer;
+        delete printerObserver;
+
+        delete syncObserver;
+        delete systemSettings;
+        delete localSettings;
+    }
+
+    if (fastExit)
+        exit(0); // HOOKS_IGNORE
+}
+
+// ****************************************************************************
 // Method: QvisGUIApplication::~QvisGUIApplication
 //
 // Purpose: 
@@ -1021,78 +1139,7 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
 
 QvisGUIApplication::~QvisGUIApplication()
 {
-#if !defined(_WIN32) && !defined(__APPLE__)
-    // Delete the windows.
-    for(WindowBaseMap::iterator pos = otherWindows.begin();
-        pos != otherWindows.end(); ++pos)
-    {
-        delete pos->second;
-    }
-    for(size_t i = 0; i < plotWindows.size(); ++i)
-    {
-        if(plotWindows[i] != 0)
-            delete plotWindows[i];
-    }
-    for(size_t i = 0; i < operatorWindows.size(); ++i)
-    {
-        if(operatorWindows[i] != 0)
-            delete operatorWindows[i];
-    }
-#endif
-
-    // Delete the file server
-    delete fileServer;
-    fileServer = 0;
-
-    // Close down the viewer and delete it.
-    if(viewerIsAlive)
-    {
-        if(viewerInitiatedQuit)
-        {
-            debug1 << "Quitting because viewer told us to." << endl;
-        }
-        else
-        {
-            if(closeAllClients)
-            {
-                debug1 << "Telling viewer to close." << endl;
-                GetViewerProxy()->Close();
-            }
-            else
-            {
-                debug1 << "Telling viewer to detach this GUI." << endl;
-                GetViewerProxy()->Detach();
-            }
-        }
-    }
-    delete GetViewerProxy();
-
-    // Delete the status subject that is used for the status bar.
-    delete statusSubject;
-    statusSubject = 0;
-
-    // Delete the socket notifiers.
-    delete fromViewer;
-
-    // Delete the application
-    if(!inheritedGUI)
-        delete mainApp;
-
-    // Delete the args for QT
-    for (size_t i = 0 ; i < (size_t)qt_argc ; i++)
-    {
-        if (qt_argv[i])
-            free(qt_argv[i]);
-    }
-    delete [] qt_argv;
-
-    // Delete the printer object.
-    delete printer;
-    delete printerObserver;
-
-    delete syncObserver;
-    delete systemSettings;
-    delete localSettings;
+    DestructorHelper();
 }
 
 // ****************************************************************************
@@ -1636,7 +1683,12 @@ QvisGUIApplication::ClientMethodCallback(Subject *s, void *data)
 //   work around a Qt/Glib init problem in linux.
 //
 //   David Camp, Thu Aug  8 08:50:06 PDT 2013
-//   Added the restore from last session feature. 
+//   Added the restore from last session feature.
+//
+//   Kevin Griffin, Fri Jun 5 11:49:34 PDT 2015
+//   No longer starting CLI on existence of visitrc file.
+//   CLI is started on-demand when needed by the user
+//   (i.e. user selects Macro... menuitem) - see Bug #2264
 //
 // ****************************************************************************
 
@@ -1709,10 +1761,7 @@ QvisGUIApplication::FinalInitialization()
         visitTimer->StopTimer(timeid, "stage 4 - Hiding splashscreen");
         break;
     case 5:
-        // If the visitrc file exists then make sure that we load the CLI.
-        if(QFile(GetSystemVisItRCFile().c_str()).exists() ||
-           QFile(GetUserVisItRCFile().c_str()).exists())
-            Interpret("");
+        // No longer starting the CLI on existence of visitrc - see Bug #2264ß
         visitTimer->StopTimer(timeid, "stage 5 - Check for visitrc file.");
         break;
     case 6:
@@ -1754,8 +1803,9 @@ QvisGUIApplication::FinalInitialization()
         }
 
         stringVector noFiles;
+        std::string host;
         // Load the initial session file.
-        RestoreSessionFile(sessionFile, noFiles);
+        RestoreSessionFile(sessionFile, noFiles, host);
         visitTimer->StopTimer(timeid, "stage 7 - RestoreSessionFile");
         }
         break;
@@ -2029,6 +2079,10 @@ QvisGUIApplication::Exec()
 //    David Camp, Thu Aug  8 08:50:06 PDT 2013
 //    Added the restore from last session feature. 
 //
+//    Mark C. Miller, Thu Jun  8 14:54:25 PDT 2017
+//    Just immediately exit(0) instead of trying to cleanup nicely. This
+//    can impact valgrind analysis so compile with DEBUG_MEMORY_LEAKS to
+//    turn off this behavior.
 // ****************************************************************************
 
 void
@@ -2088,12 +2142,18 @@ QvisGUIApplication::Quit()
     // Save default restore session file.
     if(GetViewerState()->GetGlobalAttributes()->GetUserRestoreSessionFile())
     {
+        std::string host;
         QString restoreFile = GetUserVisItDirectory().c_str();
         restoreFile += "default_restore.session";
-        SaveSessionFile(restoreFile);
+        SaveSessionFile(restoreFile, host);
     }
 
+#ifdef DEBUG_MEMORY_LEAKS
     mainApp->quit();
+#else
+    bool const fastExit = true;
+    DestructorHelper(fastExit); 
+#endif
 }
 
 // ****************************************************************************
@@ -2213,6 +2273,9 @@ QvisGUIApplication::Quit()
 //
 //    Brad Whitlock, Wed Oct  6 12:20:28 PDT 2010
 //    Detect whether the user wants -viewer_geometry.
+//
+//    Kathleen Biagas, Fri Jan 22 14:14:56 PST 2016
+//    Use QStyleFactory to determine list of available styles.
 //
 // ****************************************************************************
 
@@ -2464,23 +2527,19 @@ QvisGUIApplication::ProcessArguments(int &argc, char **argv)
                      << endl;
                 continue;
             }
-            std::string style(argv[i + 1]);
-            if(
-#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
-               style == "macintosh" ||
-#endif
-#if defined(Q_WS_WIN) || defined(Q_OS_WIN)
-               style == "windowsxp" ||
-               style == "windowsvista" ||
-#endif
-               style == "windows" || 
-               style == "motif" || 
-               style == "cde" ||
-               style == "plastique" || 
-               style == "cleanlooks"
-               )
+            QStringList availableStyles = QStyleFactory::keys();
+            QString style(argv[i+1]);
+            if (availableStyles.contains(style, Qt::CaseInsensitive))
             {
                 applicationStyle = argv[i + 1];
+            }
+            else
+            {
+                cerr << "Invalid style: " << style.toStdString() << endl;
+                cerr << "Available styles are: ";
+                for (int i = 0; i < availableStyles.size(); ++i)
+                    cerr << availableStyles.at(i).toStdString() << " ";
+                cerr << endl;
             }
             ++i;
         }
@@ -3149,8 +3208,7 @@ QvisGUIApplication::CreateMainWindow()
     connect(mainWin, SIGNAL(restoreSessionWithSources()), this, SLOT(RestoreSessionWithDifferentSources()));
     connect(mainWin, SIGNAL(saveSession()), this, SLOT(SaveSession()));
     connect(mainWin, SIGNAL(saveSessionAs()), this, SLOT(SaveSessionAs()));
-    connect(mainWin, SIGNAL(saveCrashRecoveryFile()), 
-           this, SLOT(SaveCrashRecoveryFile()));
+    connect(mainWin, SIGNAL(saveCrashRecoveryFile()), this, SLOT(SaveCrashRecoveryFile()));
     connect(mainWin, SIGNAL(updateVisIt()), this, SLOT(updateVisIt()));
 
     mainWin->ConnectMessageAttr(&message);
@@ -3362,7 +3420,8 @@ QvisGUIApplication::SetupWindows()
              this, SLOT(showSelectionsWindow2(const QString &)));
      connect(mainWin, SIGNAL(activateSetupHostProfilesAndConfig()),
              this, SLOT(setupHostProfilesAndConfig()));
-}
+     connect(mainWin, SIGNAL(activateSeedMeWindow()),
+             this, SLOT(showSeedMeWindow()));}
 
 // ****************************************************************************
 // Method: QvisGUIApplication::WindowFactory
@@ -3700,6 +3759,15 @@ QvisGUIApplication::WindowFactory(int i)
             win = new QvisSetupHostProfilesAndConfigWindow(windowNames[i]);
         }
         break;
+    case WINDOW_SEEDME:
+        {
+            win = new QvisSeedMeWindow(GetViewerState()->GetSeedMeAttributes(),
+                                       windowNames[i], windowNames[i], 
+                                       mainWin->GetNotepad());
+            connect(win, SIGNAL(runCommand(const QString &)),
+                    this, SLOT(Interpret(const QString &)));
+        }
+        break;
     }
 
     return win;
@@ -3718,6 +3786,10 @@ QvisGUIApplication::WindowFactory(int i)
 // Modifications:
 //   Brad Whitlock, Wed Apr  9 10:24:27 PDT 2008
 //   Changed windowNames to a string list.
+//
+//   Kevin Griffin, Fri Jun 5 11:49:34 PDT 2015
+//   Added logic to start the CLI if the Macro window is visible or posted
+//   and the CLI is not running.
 //
 // ****************************************************************************
 
@@ -3799,6 +3871,12 @@ QvisGUIApplication::CreateInitiallyVisibleWindows(DataNode *node)
                     //inherited interface don't need to show up, especially if
                     //it is embedded in another interface..
                     if(embeddedGUI) GetInitializedWindowPointer(i)->hide();
+                }
+                
+                // If the macro window is visible or posted start the CLI if not already running
+                if(WINDOW_MACRO == i)
+                {
+                    Interpret("");
                 }
             }
         }
@@ -4486,6 +4564,9 @@ QvisGUIApplication::SetSessionNameInWindowTitle(const QString &filename)
 //   Brad Whitlock, Fri Mar  2 15:35:51 PST 2012
 //   Set the session name in the window title.
 //
+//   David Camp, Tue Aug  4 11:04:14 PDT 2015
+//   Added new ablitiy to save session files on remote host.
+//
 // ****************************************************************************
 
 void
@@ -4496,7 +4577,7 @@ QvisGUIApplication::SaveSession()
     else
     {
         ++sessionCount;
-        SaveSessionFile(sessionFile);
+        SaveSessionFile(sessionFile, sessionHost);
         UpdateSessionDir(sessionFile.toStdString());
 
         // Set the name of the session file that we saved.
@@ -4537,32 +4618,38 @@ QvisGUIApplication::SaveSession()
 //   Brad Whitlock, Fri Mar  2 15:35:51 PST 2012
 //   Set the session name in the window title.
 //
+//   David Camp, Tue Aug  4 11:04:14 PDT 2015
+//   Added new dialog to be able to save session files on remote host.
+//
 // ****************************************************************************
 
 void
 QvisGUIApplication::SaveSessionAs()
 {
-    QString sessionExtension(".session");
-
     // Create the name of a VisIt session file to use.
     QString defaultFile;
-    defaultFile.sprintf("%svisit%04d", sessionDir.c_str(),
-                        sessionCount);
-    defaultFile += sessionExtension;
+    if(sessionHost.empty())
+        defaultFile.sprintf("%svisit%04d.session", sessionDir.c_str(), sessionCount);
+    else
+        defaultFile.sprintf("%s:%svisit%04d.session", sessionHost.c_str(), sessionDir.c_str(), sessionCount);
 
     // Get the name of the file that the user saved.
-    QString sFilter(tr("VisIt session") + QString(" (*") + sessionExtension + ")");
-    QString fileName = QFileDialog::getSaveFileName(mainWin,tr("Save Session File"), sessionDir.c_str(), sFilter);
+    QualifiedFilename qfilename;
+    QvisSessionFileDialog dlg("Save Session");
+    dlg.getFileName(QvisSessionFileDialog::SAVE_DLG, defaultFile, qfilename);
+
+    std::string filename = qfilename.PathAndFile();
 
     // If the user chose to save a file, tell the viewer to write its state
     // to that file.
-    if(!fileName.isNull())
+    if(!filename.empty())
     {
-        sessionFile = fileName;  // Save the name for saving later.
-
+        sessionFile = QString(filename.c_str());  // Save the name for saving later.
+        sessionHost = qfilename.host;
         ++sessionCount;
-        SaveSessionFile(fileName);
-        UpdateSessionDir(fileName.toStdString());
+
+        SaveSessionFile(sessionFile, qfilename.host);
+        UpdateSessionDir(filename);
 
         // Set the name of the session file that we saved.
         SetSessionNameInWindowTitle(sessionFile);
@@ -4585,10 +4672,13 @@ QvisGUIApplication::SaveSessionAs()
 //   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
 //   Use '.session' on windows, too. 
 //   
+//   David Camp, Tue Aug  4 11:04:14 PDT 2015
+//   Added new dialog to be able to save session files on remote host.
+//
 // ****************************************************************************
 
 QString
-QvisGUIApplication::SaveSessionFile(const QString &fileName)
+QvisGUIApplication::SaveSessionFile(const QString &fileName, const std::string &hostname)
 {
     QString sessionExtension(".session");
 
@@ -4598,12 +4688,23 @@ QvisGUIApplication::SaveSessionFile(const QString &fileName)
         sessionName += sessionExtension;
 
     // Tell the viewer to save a session file.
-    GetViewerMethods()->ExportEntireState(sessionName.toStdString());
+    GetViewerMethods()->ExportEntireState(sessionName.toStdString(), hostname);
 
     // Write the gui part of the session with a ".gui" extension.
     QString retval(sessionName);
     sessionName += ".gui";
-    WriteConfigFile(sessionName.toStdString().c_str());
+
+    if(hostname.empty() || hostname == "localhost")
+    {
+        WriteConfigFile(sessionName.toStdString().c_str());
+    }
+    else
+    {
+        // Create stream of session and send to mdserver to save on host.
+        std::ostringstream sessionGUI;
+        WriteConfigFile(sessionGUI);
+        fileServer->SaveSessionFile(hostname, sessionName.toStdString().c_str(), sessionGUI.str());
+    }
 
     return retval;
 }
@@ -4826,23 +4927,26 @@ QvisGUIApplication::ReadConfigFile(const char *filename)
 //   Kathleen Bonnell, Fri Jun 18 15:15:11 MST 2010 
 //   Search for '.session' on windows. Keep .vses for loading older sessions.
 //   
+//   David Camp, Tue Aug  4 11:04:14 PDT 2015
+//   Added new ablitiy to load session files from a remote host.
+//
 // ****************************************************************************
 
 void
 QvisGUIApplication::RestoreSession()
 {
+    QualifiedFilename qfilename;
+
     // Get the name of the session to load.
-    QString s(QFileDialog::getOpenFileName(mainWin,tr("Open VisIt Session File"),
-                                           sessionDir.c_str(),
-#if defined(_WIN32)
-              "VisIt session (*.session *.vses)"));
-#else
-              "VisIt session (*.session)"));
-#endif
+    QvisSessionFileDialog dlg(tr("Open VisIt Session File"));
+    dlg.getFileName(QvisSessionFileDialog::OPEN_DLG, sessionDir.c_str(), qfilename);
+
+    QString s = qfilename.PathAndFile().c_str();
+    sessionHost = qfilename.host;
 
     // Restore the session.
     stringVector noSources;
-    RestoreSessionFile(s, noSources);
+    RestoreSessionFile(s, noSources, qfilename.host);
     if ( !s.isNull() )
     {
         UpdateSessionDir(s.toStdString());
@@ -4882,19 +4986,22 @@ QvisGUIApplication::RestoreSession()
 //   Kathleen Bonnell, Fri May 13 14:05:11 PDT 2011
 //   Set fallbackPath of srcChanger to sessionDir.
 //
+//   David Camp, Tue Aug  4 11:04:14 PDT 2015
+//   Added new ablitiy to load session files from a remote host.
+//
 // ****************************************************************************
 
 void
 QvisGUIApplication::RestoreSessionWithDifferentSources()
 {
+    QualifiedFilename qfilename;
+
     // Get the name of the session to load.
-    QString s(QFileDialog::getOpenFileName(mainWin,tr("Open VisIt Session File"),
-                                           sessionDir.c_str(),
-#if defined(_WIN32)
-              "VisIt session (*.session *.vses)"));
-#else
-              "VisIt session (*.session)"));
-#endif
+    QvisSessionFileDialog dlg(tr("Open VisIt Session File"));
+    dlg.getFileName(QvisSessionFileDialog::OPEN_DLG, "", qfilename);
+
+    QString s = qfilename.PathAndFile().c_str();
+    sessionHost = qfilename.host;
 
     // If the user chose a valid filename then try to replace its sources.
     if(!s.isNull())
@@ -4919,7 +5026,7 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
                 // restore the session.
                 if(srcChanger->exec() == QDialog::Accepted)
                 {
-                    RestoreSessionFile(s, srcChanger->getSources());
+                    RestoreSessionFile(s, srcChanger->getSources(), qfilename.host);
                 }
 
                 delete srcChanger;
@@ -4934,7 +5041,7 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
                     "session with a newer version of VisIt.").arg(s);
                 Warning(warn);
                 stringVector noSources;
-                RestoreSessionFile(s, noSources);
+                RestoreSessionFile(s, noSources, qfilename.host);
             }
         }
         else
@@ -4942,7 +5049,7 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
             // We could not read the config file. Don't sweat it just yet.
             // Restore the session the normal way.
             stringVector noSources;
-            RestoreSessionFile(s, noSources);
+            RestoreSessionFile(s, noSources, qfilename.host);
         }
     }
 
@@ -5004,11 +5111,15 @@ QvisGUIApplication::RestoreSessionWithDifferentSources()
 //   Brad Whitlock, Fri Mar  2 15:31:41 PST 2012
 //   Add the name of the open session file in the main window's caption.
 //
+//   David Camp, Tue Aug  4 11:04:14 PDT 2015
+//   Added new ablitiy to load session files from a remote host.
+//
 // ****************************************************************************
 
 void
 QvisGUIApplication::RestoreSessionFile(const QString &s,
-                                       const stringVector &sources)
+                                       const stringVector &sources,
+                                       const std::string &host)
 {
     // If the user chose a file, tell the viewer to import that session file.
     if(!s.isEmpty())
@@ -5021,7 +5132,20 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
         // Make the gui read in its part of the config.
         std::string guifilename(filename);
         guifilename += ".gui";
-        DataNode *node = ReadConfigFile(guifilename.c_str());
+        DataNode *node;
+        if(host.empty() || host == "localhost")
+        {
+            node = ReadConfigFile(guifilename.c_str());
+        }
+        else
+        {
+            std::istringstream sessionGUI;
+            std::string sessionGUIStr;
+
+            fileServer->RestoreSessionFile(host, guifilename, sessionGUIStr);
+            sessionGUI.str( sessionGUIStr );
+            node = ReadConfigFile(sessionGUI);
+        }
 
         // If the file could not be opened then try and prepend the
         // VisIt directory to it.
@@ -5040,6 +5164,38 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
         }
 #endif
 
+        ProcessSessionNode(node, filename, sources, host);
+
+        // Set the name of the session file that we loaded.
+        SetSessionNameInWindowTitle(sessionFile);
+
+        restoringSession = false;
+    }
+}
+
+
+// ****************************************************************************
+// Method: QvisGUIApplication::ProcessSessionNode
+//
+// Purpose: 
+//   Process the Session xml node.
+//
+// Arguments:
+//   s       : The name of the session file to restore.
+//   sources : The list of sources to use when restoring the session. If this
+//             is an empty vector then the session file loader will use the
+//             list of sources in the GUI part of the session file.
+//
+// Programmer: David Camp
+// Creation:   Mon Jul 20 02:21:50 PDT 2015
+//
+// Modifications:
+// ****************************************************************************
+
+void
+QvisGUIApplication::ProcessSessionNode(DataNode *node, const std::string &filename, 
+                                       const stringVector &sources, const std::string &hostname)
+{
         if(node)
         {
             ProcessConfigSettings(node, false);
@@ -5124,7 +5280,7 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
                         else
                         {
                             // If there are no plots, we still need to restore
-                            GetViewerMethods()->ImportEntireState(filename, false);
+                            GetViewerMethods()->ImportEntireState(filename, false, hostname);
                         }
                     }
                 }
@@ -5138,14 +5294,8 @@ QvisGUIApplication::RestoreSessionFile(const QString &s,
             // pass the inVisItDir flag as false because we don't want to have
             // the viewer prepend the .visit directory to the file since it's
             // already part of the filename.
-            GetViewerMethods()->ImportEntireState(filename, false);
+            GetViewerMethods()->ImportEntireState(filename, false, hostname);
         }
-
-        // Set the name of the session file that we loaded.
-        SetSessionNameInWindowTitle(sessionFile);
-
-        restoringSession = false;
-    }
 }
 
 // ****************************************************************************
@@ -5199,7 +5349,7 @@ QvisGUIApplication::sessionFileHelper_LoadSession(const QString &filename)
     // pass the inVisItDir flag as false because we don't want to have
     // the viewer prepend the .visit directory to the file since it's
     // already part of the filename.
-    GetViewerMethods()->ImportEntireState(filename.toStdString(), false);
+    GetViewerMethods()->ImportEntireState(filename.toStdString(), false, sessionHost);
 }
 
 // ****************************************************************************
@@ -5231,7 +5381,7 @@ QvisGUIApplication::sessionFileHelper_LoadSessionWithDifferentSources(
     // the viewer prepend the .visit directory to the file since it's
     // already part of the filename.
     GetViewerMethods()->ImportEntireStateWithDifferentSources(filename.toStdString(),
-        false, sources);
+        false, sources, sessionHost);
 }
 
 // ****************************************************************************
@@ -6326,6 +6476,9 @@ QvisGUIApplication::LoadFile(QualifiedFilename &f, bool addDefaultPlots)
 //   Brad Whitlock, Tue Mar 10 09:25:27 PDT 2009
 //   Quit instead of rethrowing the exception into Qt.
 //
+//   Kathleen Biagas, Thu May  7 09:14:34 PDT 2015
+//   Update the link for the FAQ.
+//
 // ****************************************************************************
 
 void
@@ -6343,7 +6496,7 @@ QvisGUIApplication::ReadFromViewer(int)
             cerr << "VisIt's viewer exited abnormally! Aborting the Graphical "
                  << "User Interface. VisIt's developers may be reached via "
                  << "the visit-users mailing list.  Please see:" << std::endl
-                 << "        http://visit.llnl.gov/FAQ.html#1"
+                 << "        https://wci.llnl.gov/simulation/computer-codes/visit/faqs/faq01"
                  << endl;
             viewerIsAlive = false;
 
@@ -7210,13 +7363,38 @@ QvisGUIApplication::HandleMetaDataUpdate()
         GetViewerState()->GetDatabaseMetaData()->Print(DebugStream::Stream4());
     }
 
+    QualifiedFilename qf = fileServer->GetOpenFile();
+
+    // Because simulation meta data is pushed rather than pulled, the
+    // open file (active source) may not belong to the simulation. As
+    // such, find the meta data's QualifiedFilename from the
+    // fileserver.
+    if( GetViewerState()->GetDatabaseMetaData()->GetIsSimulation() )
+    {
+        const std::string mdf =
+          GetViewerState()->GetDatabaseMetaData()->GetDatabaseName();   
+
+        const QualifiedFilenameVector &qfv = fileServer->GetAppliedFileList();
+
+        // Find the qualified name based on the meta data database
+        // name which should be unique as it contains a time stamp.
+        for( unsigned int i=0; i<qfv.size(); ++i )
+        {
+            if( qfv[i].PathAndFile() == mdf )
+            {
+                qf = qfv[i];
+                break;
+            }
+        }
+    }
+
     // Poke the metadata into the file server
-    fileServer->SetOpenFileMetaData(GetViewerState()->GetDatabaseMetaData(),
-                                    GetStateForSource(fileServer->GetOpenFile()));
+    fileServer->SetFileMetaData(qf, GetViewerState()->GetDatabaseMetaData(),
+                                GetStateForSource(qf));
 
     // Poke the SIL into the file server
     avtSIL *sil = new avtSIL(*GetViewerState()->GetSILAttributes());
-    fileServer->SetOpenFileSIL(sil);
+    fileServer->SetFileSIL(qf, sil);
     delete sil;
 
     //
@@ -7234,8 +7412,8 @@ QvisGUIApplication::HandleMetaDataUpdate()
     QString fileInfoWinName(windowNames[WINDOW_FILE_INFORMATION]);
     if (otherWindows.count(fileInfoWinName))
     {
-        QvisFileInformationWindow *fileInfoWin = (QvisFileInformationWindow*)
-            otherWindows[fileInfoWinName];
+        QvisFileInformationWindow *fileInfoWin =
+            (QvisFileInformationWindow*) otherWindows[fileInfoWinName];
         fileInfoWin->Update(fileServer);
     }
 
@@ -7243,7 +7421,6 @@ QvisGUIApplication::HandleMetaDataUpdate()
     QString simWinName(windowNames[WINDOW_SIMULATION]);
     if (otherWindows.count(simWinName))
     {
-        const QualifiedFilename &qf = fileServer->GetOpenFile();
         QvisSimulationWindow *simWin =
             (QvisSimulationWindow*)otherWindows[simWinName];
         simWin->SetNewMetaData(qf, GetViewerState()->GetDatabaseMetaData());
@@ -7525,7 +7702,8 @@ QvisGUIApplication::updateVisItCompleted(const QString &program)
         fileName += ".session";
 
         // Tell the viewer to save a session file.
-        GetViewerMethods()->ExportEntireState(fileName.toStdString());
+        std::string hostname;
+        GetViewerMethods()->ExportEntireState(fileName.toStdString(), hostname);
 
         // Write the gui part of the session with a ".gui" extension.
         QString gfileName(fileName + ".gui");
@@ -8514,7 +8692,10 @@ QvisGUIApplication::SaveMovieMain()
             // Save the current session.
             QString msg, sessionFile;
             if(movieAtts->GetMovieType() == MovieAttributes::Simple)
-                sessionFile = SaveSessionFile(sessionName);
+            {
+                std::string host;
+                sessionFile = SaveSessionFile(sessionName, host);
+            }
             bool errFlag = false;
 
             // Get the command line arguments.
@@ -8722,9 +8903,10 @@ QvisGUIApplication::RestoreCrashRecoveryFile()
         if(btn == QMessageBox::Yes)
         {
             stringVector files;
+            std::string host;
             debug1 << "Restoring a crash recovery file: "
                    << filename.toStdString() << endl;
-            RestoreSessionFile(filename, files);
+            RestoreSessionFile(filename, files, host);
 
             sessionFile = QString(""); // Make sure the session file name is
             // null as it was used for the recovery which forces a
@@ -8798,12 +8980,13 @@ QvisGUIApplication::RemoveCrashRecoveryFile(bool removeViewerFile) const
 void
 QvisGUIApplication::SaveCrashRecoveryFile()
 {
+    std::string blank;
     debug1 << "Saving crash recovery file: "
           << CrashRecoveryFile().toStdString() << endl;
     // we dont want to bug the user with info about the crash recovery
     // session being created, so suppress viewer messages.
     GetViewerMethods()->SetSuppressMessages(true);
-    SaveSessionFile(CrashRecoveryFile());
+    SaveSessionFile(CrashRecoveryFile(), blank);
     Synchronize(CLEAR_STATUS_TAG);
     GetViewerMethods()->SetSuppressMessages(false);
 }
@@ -8893,7 +9076,7 @@ void QvisGUIApplication::showInteractorWindow()      { GetInitializedWindowPoint
 void QvisGUIApplication::showSimulationWindow()      { GetInitializedWindowPointer(WINDOW_SIMULATION)->show(); }
 void QvisGUIApplication::showExportDBWindow()        { GetInitializedWindowPointer(WINDOW_EXPORT_DB)->show(); }
 void QvisGUIApplication::showMeshManagementWindow()  { GetInitializedWindowPointer(WINDOW_MESH_MANAGEMENT)->show(); }
-void QvisGUIApplication::showMacroWindow()           { GetInitializedWindowPointer(WINDOW_MACRO)->show(); }
+void QvisGUIApplication::showMacroWindow()           { Interpret(""); GetInitializedWindowPointer(WINDOW_MACRO)->show(); }
 void QvisGUIApplication::showSelectionsWindow()      { GetInitializedWindowPointer(WINDOW_SELECTIONS)->show(); }
 
 void
@@ -8905,3 +9088,4 @@ QvisGUIApplication::showSelectionsWindow2(const QString &selName)
     selWindow->highlightSelection(selName);
 }
 void QvisGUIApplication::setupHostProfilesAndConfig() { GetInitializedWindowPointer(WINDOW_SETUP_CFG)->show(); }
+void QvisGUIApplication::showSeedMeWindow() { GetInitializedWindowPointer(WINDOW_SEEDME)->show(); }

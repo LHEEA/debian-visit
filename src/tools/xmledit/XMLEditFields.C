@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -588,6 +588,7 @@ XMLEditFields::UpdateTypeList()
     type->addItem("bool");
     type->addItem("float");
     type->addItem("floatArray");
+    type->addItem("floatVector");
     type->addItem("double");
     type->addItem("doubleArray");
     type->addItem("doubleVector");

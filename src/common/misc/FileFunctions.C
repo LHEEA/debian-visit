@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -36,6 +36,7 @@
 *
 *****************************************************************************/
 #include <FileFunctions.h>
+#include <Utility.h>
 
 #include <visitstream.h>
 #include <vectortypes.h>
@@ -70,13 +71,21 @@ static char StaticStringBuf[STATIC_BUF_SIZE];
 // Programmer: Mark C. Miller
 // Creation:   March 23, 2006
 //
+// Modifications:
+//   Kathleen Biagas, Wed Nov 24 16:25:13 MST 2015
+//   Use _stat64 if running 64 bit windows version.
+//
 // ****************************************************************************
 
 int
 FileFunctions::VisItStat(const std::string &filename, VisItStat_t *buf)
 {
 #if defined(_WIN32)
+  #if defined(_WIN64)
+    return _stat64(filename.c_str(), buf);
+  #else
    return _stat(filename.c_str(), buf);
+  #endif
 #else
 
 #if SIZEOF_OFF64_T > 4
@@ -97,13 +106,21 @@ FileFunctions::VisItStat(const std::string &filename, VisItStat_t *buf)
 // Programmer: Mark C. Miller 
 // Creation:   March 23, 2006 
 //
+// Modifications:
+//   Kathleen Biagas, Wed Nov 24 16:25:13 MST 2015
+//   Use _fstat64 if running 64 bit windows version.
+//
 // ****************************************************************************
 
 int
 FileFunctions::VisItFstat(int fd, VisItStat_t *buf)
 {
 #if defined(_WIN32)
-   return _fstat(fd, buf);
+  #if defined(_WIN64)
+    return _fstat64(fd, buf);
+  #else
+    return _fstat(fd, buf);
+  #endif
 #else
 
 #if SIZEOF_OFF64_T > 4
@@ -567,9 +584,12 @@ FileFunctions::FilteredPath(const std::string &path)
 //    When searching the string, look for either type of slash char, but still
 //    use the sys-dependent VISIT_SLASH_STRING when setting in the empty buf.
 //
+//    Mark C. Miller, Tue Sep 15 20:18:22 PDT 2015
+//    Added arg and logic to support an optional suffix string just like
+//    Unix basename command.
 // ****************************************************************************
-static const char *
-basename(const char *path, int& start)
+static char const *
+basename(char const *path, int& start, char const *suffix=0)
 {
    start = 0;
 
@@ -617,26 +637,36 @@ basename(const char *path, int& start)
        i++;
        start = i;
 
-       // build the return string
+       // build the candidate return string
        int k;
        for (k = 0; k < j - i + 1; k++)
            StaticStringBuf[k] = path[i+k];
        StaticStringBuf[k] = '\0';
+
+       // Handle optional suffix but only if its not equal to
+       // remaining string (as per man pages for dirname)
+       if (suffix)
+       {
+           int n = strlen(suffix);
+           if (n < k && !strncmp(&StaticStringBuf[k-n],suffix,n))
+               StaticStringBuf[k-n] = '\0';
+       }
+
        return StaticStringBuf;
    }
 }
 
-const char *
-FileFunctions::Basename(const char *path)
+char const *
+FileFunctions::Basename(char const *path, char const *suffix)
 {
    int dummy1;
-   return basename(path, dummy1);
+   return basename(path, dummy1, suffix);
 }
 
 std::string
-FileFunctions::Basename(const std::string &path)
+FileFunctions::Basename(const std::string &path, const std::string &suffix)
 {
-    return Basename(path.c_str());
+    return Basename(path.c_str(), suffix.c_str());
 }
 
 // ****************************************************************************
@@ -1112,4 +1142,47 @@ FileFunctions::ComposeDatabaseName(const std::string &host,
         h = "localhost";
 
     return h + ":" + db;
+}
+
+// ****************************************************************************
+//  Method: FileMatchesPatternCB
+//
+//  Purpose:
+//    This function is a callback to the method ReadAndProcessDirectory,
+//    located in Utility.h.  It is called for each file in a given directory.
+//    Once it receives a file, it feeds that file to caller which then
+//    determines if the filename matches the requested pattern.
+//
+//  Programmer: Kathleen Biagas
+//  Creation:   Jun 26, 2013
+//
+//  Modifications:
+//    Kathleen Biagas, Fri Jun 26 12:13:39 PDT 2015
+//    Moved from NetworkManager, and added the 'returnFullpath' callback data
+//    item.
+//
+// ****************************************************************************
+
+
+void
+FileFunctions::FileMatchesPatternCB(void *cbdata, const std::string &filename, bool isDir, bool canAccess, long size)
+{
+    if (!isDir)
+    {
+        void **arr = (void **)cbdata;
+        std::vector< std::string > *fl = (std::vector< std::string > *)arr[0];
+        std::string *pattern = (std::string*)arr[1];
+        int *returnFullPath = (int*)arr[2];
+        std::string name(filename);
+        size_t index  = filename.rfind(VISIT_SLASH_CHAR);
+        if(index != std::string::npos)
+            name = name.substr(index+1);
+        if (WildcardStringMatch(*pattern, name))
+        {
+           if (*returnFullPath)
+               fl->push_back(filename);
+           else 
+               fl->push_back(name);
+        }
+    }
 }

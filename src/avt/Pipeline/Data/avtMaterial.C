@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -832,7 +832,6 @@ avtMaterial::avtMaterial(int nTotMats, const int *mats, char **names,
     int timerHandle = visitTimer->StartTimer();
     const int notSet = INT_MAX;
     int i,m,z;
-    bool haveIssuedWarning = false;
 
     //
     // build material names vector

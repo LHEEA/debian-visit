@@ -1,6 +1,6 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -95,7 +95,6 @@ public class PlotTypes extends RunViewer
         namestovar.put("Pseudocolor", new Integer(SCALAR | SPECIES));
         namestovar.put("Scatter", new Integer(SCALAR));
         namestovar.put("Spreadsheet", new Integer(SCALAR));
-        namestovar.put("Streamline", new Integer(VECTOR));
         namestovar.put("Subset", new Integer(SUBSET | MESH));
         namestovar.put("Surface", new Integer(SCALAR | SPECIES));
         namestovar.put("Tensor", new Integer(TENSOR | SYMMETRICTENSOR));

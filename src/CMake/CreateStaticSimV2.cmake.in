@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -44,8 +44,10 @@
 
 
 set(VISIT_PARALLEL @VISIT_PARALLEL@)
+set(MESA_FOUND @MESA_FOUND@)
 set(VISIT_BINARY_DIR @VISIT_BINARY_DIR@)
 set(VISIT_FORTRAN @VISIT_FORTRAN@)
+set(VISIT_ENABLE_XDB @VISIT_ENABLE_XDB@)
 set(CMAKE_CURRENT_BINARY_DIR "@CMAKE_CURRENT_BINARY_DIR@")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "@CMAKE_ARCHIVE_OUTPUT_DIRECTORY@")
 set(CMAKE_AR "@CMAKE_AR@")
@@ -77,10 +79,13 @@ list(APPEND visit_libs_ser ${SIMV2_SER_LIBS} ${AVT_LIBS} ${AVT_SER_LIBS}
                            ${VISIT_LIBS} ${TP_LIBS} ${SLIVR_LIBS})
 if(VISIT_PARALLEL)
     list(APPEND visit_libs_par ${SIMV2_PAR_LIBS} ${AVT_LIBS} ${AVT_PAR_LIBS}
-                               ${VISIT_LIBS} ${TP_LIBS} ${DDTSIM_LIBS}
-                               ${VISIT_SLIVR})
+                               ${VISIT_LIBS} ${TP_LIBS} ${SLIVR_LIBS})
 endif()
 
+if(MESA_FOUND)
+    list(APPEND visit_libs_ser visit_vtk_osmesa)
+    list(APPEND visit_libs_par visit_vtk_osmesa)
+endif()
 
 macro(get_enabled_plugins fname type suffix plist)
    unset(lines)
@@ -98,24 +103,35 @@ get_enabled_plugins("${VISIT_BINARY_DIR}/include/enabled_plots.h"
                     "Plot" "_ser" visit_libs_ser)
 get_enabled_plugins("${VISIT_BINARY_DIR}/include/enabled_operators.h"
                     "Operator" "_ser" visit_libs_ser)
-list(APPEND visit_libs_ser "ISimV2Database" "ESimV2Database_ser")
+
+list(APPEND visit_libs_ser "ISimV2Database" "ESimV2Database_ser" "IVTKDatabase" "EVTKDatabase_ser")
+IF(VISIT_ENABLE_XDB)
+    message(STATUS "Adding XDB to SimV2 static library.")
+    list(APPEND visit_libs_ser "VXDB_ser" "IFieldViewXDBDatabase" "EFieldViewXDBDatabase_ser")
+ENDIF(VISIT_ENABLE_XDB)
 
 if(VISIT_PARALLEL)
     get_enabled_plugins("${VISIT_BINARY_DIR}/include/enabled_plots.h"
                         "Plot" "_par" visit_libs_par)
     get_enabled_plugins("${VISIT_BINARY_DIR}/include/enabled_operators.h"
                         "Operator" "_par" visit_libs_par)
-    list(APPEND visit_libs_par "ISimV2Database" "ESimV2Database_ser")
+    list(APPEND visit_libs_par "ISimV2Database" "ESimV2Database_par" "IVTKDatabase" "EVTKDatabase_par")
+    IF(VISIT_ENABLE_XDB)
+        message(STATUS "Adding XDB to parallel SimV2 static library.")
+        list(APPEND visit_libs_par "VXDB_par" "IFieldViewXDBDatabase" "EFieldViewXDBDatabase_par")
+    ENDIF(VISIT_ENABLE_XDB)
 endif()
 
 
 function(create_archive libname liblist)
     unset(ALL_OBJS)
     make_directory(${TMPDIR})
+    message("Creating ${libname}")
     # Extract every library in the list into a series of object files
     foreach(LIB ${${liblist}})
       if(EXISTS ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/lib${LIB}.a)
 	file(MAKE_DIRECTORY ${TMPDIR}/${LIB})
+        message("Extracting lib${LIB}.a")
 	execute_process(
             COMMAND ${CMAKE_AR} x ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/lib${LIB}.a
             WORKING_DIRECTORY ${TMPDIR}/${LIB}

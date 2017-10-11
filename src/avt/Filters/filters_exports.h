@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -60,78 +60,5 @@
 #   define AVTFILTERS_API /* hidden by default */
 # endif
 #endif
-
-#include <stdio.h>
-#include <string>
-#include <iostream>
-
-// ****************************************************************************
-//  Struct:  imgMetaData
-//
-//  Purpose:
-//    Holds information about patches but not the image 
-//
-//  Programmer:  
-//  Creation:   
-//
-// ****************************************************************************
-struct imgMetaData{
-  int procId;       // processor that produced the patch
-  int patchNumber;  // id of the patch on that processor - with procId, acts as a key
-
-  int destProcId;   // destination proc where this patch gets composited
-
-  int inUse;   // whether the patch is composed locally or not
-  int dims[2];      // height, width
-  int screen_ll[2]; // position in the final image
-  int screen_ur[2];
-  float avg_z;      // depth of the patch
-};
-
-
-// ****************************************************************************
-//  Struct:  imgData
-//
-//  Purpose:
-//    Holds the image data generated
-//
-//  Programmer:  
-//  Creation:    
-//
-// ****************************************************************************
-struct imgData{
-  int procId;         // processor that produced the patch
-  int patchNumber;    // id of the patch on that processor  - with procId, acts as a key
-
-  float *imagePatch;  // the image data - RGBA
-
-  bool operator==(const imgData &a){
-    return (patchNumber == a.patchNumber);// && (procId == a.procId);
- }   
-};
-
-
-// ****************************************************************************
-//  Struct:  iotaMeta
-//
-//  Purpose:
-//    Holds the image data generated
-//
-//  Programmer:  
-//  Creation:    
-//
-// ****************************************************************************
-struct iotaMeta{
-  int procId;  
-  int patchNumber; 
-  
-  int dims[2];      // height, width
-  int screen_ll[2]; // position in the final image
-  float avg_z;   
-
-  bool operator==(const iotaMeta &a){
-    return (patchNumber == a.patchNumber) && (procId == a.procId);
- }    
-};
 
 #endif

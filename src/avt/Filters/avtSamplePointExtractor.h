@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,6 +58,8 @@
 #include <utility>
 
 #include <avtImgCommunicator.h>
+#include <imgMetaData.h>
+
 class  vtkDataArray;
 class  vtkDataSet;
 class  vtkHexahedron;
@@ -69,6 +71,7 @@ class  vtkTetra;
 class  vtkTriangle;
 class  vtkVoxel;
 class  vtkWedge;
+class  vtkPolygon;
 
 class  avtHexahedronExtractor;
 class  avtHexahedron20Extractor;
@@ -137,6 +140,9 @@ class  avtRayFunction;
 //
 //    Hank Childs, Fri Jan  9 14:09:57 PST 2009
 //    Add support for jittering.
+//
+//    Kevin Griffin, Fri Apr 22 16:31:57 PDT 2016
+//    Added support for polygons.
 //
 // ****************************************************************************
 
@@ -274,14 +280,15 @@ class AVTFILTERS_API avtSamplePointExtractor
                                            LoadingInfo &);
     inline void               ExtractPixel(vtkPixel *, vtkDataSet *, int, 
                                            LoadingInfo &);
+    inline void               ExtractPolygon(vtkPolygon *, vtkDataSet *, int,
+                                             LoadingInfo &);
 
     void                      KernelBasedSample(vtkDataSet *);
     void                      RasterBasedSample(vtkDataSet *, int num = 0);
 
     virtual bool              FilterUnderstandsTransformedRectMesh();
 
-    void                      GetLoadingInfoForArrays(vtkDataSet *,
-                                                      LoadingInfo &);
+    void                      GetLoadingInfoForArrays(vtkDataSet *, LoadingInfo &);
 };
 
 

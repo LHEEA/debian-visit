@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -58,7 +58,9 @@
 // Creation:   Wed Feb 20 15:46:31 PST 2002
 //
 // Modifications:
-//   
+//   Burlen Loring, Thu Aug 13 10:13:23 PDT 2015
+//   delete the copy constructor and assignment operator
+//
 // ****************************************************************************
 
 class VTKQT_API vtkQtImagePrinter : public vtkImageWriter
@@ -71,8 +73,8 @@ public:
 protected:
   vtkQtImagePrinter();
   virtual ~vtkQtImagePrinter() {};
-  vtkQtImagePrinter(const vtkQtImagePrinter&) {};
-  void operator=(const vtkQtImagePrinter&) {};
+  vtkQtImagePrinter(const vtkQtImagePrinter&); // not implemented
+  void operator=(const vtkQtImagePrinter&); // not implemented
 
   virtual void WriteFile(ofstream *file, vtkImageData *data, int ext[6], int wext[6]);
   virtual void WriteFileHeader(ofstream *, vtkImageData *, int [6]) { };

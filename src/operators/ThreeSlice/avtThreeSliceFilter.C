@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -178,6 +178,11 @@ avtThreeSliceFilter::Equivalent(const AttributeGroup *a)
 //
 //    Eric Brugger, Tue Aug 19 09:30:56 PDT 2014
 //    Modified the class to work with avtDataRepresentation.
+//
+//    Eric Brugger, Tue Aug 25 09:12:36 PDT 2015
+//    Modified the routine to return NULL if the slice created a data set
+//    with no cells. This fixes a bug where an error would be generated if
+//    any of the domains being sliced resulted in no geometry.
 //
 // ****************************************************************************
 
@@ -392,17 +397,14 @@ avtThreeSliceFilter::ExecuteData(avtDataRepresentation *in_dr)
         }
     }    
     
-    if (rv->GetNumberOfCells() == 0)
+    avtDataRepresentation *out_dr = NULL;
+    if (rv->GetNumberOfCells() > 0)
     {
-        rv->Delete();
-        rv = NULL;
+        out_dr = new avtDataRepresentation(rv,
+            in_dr->GetDomain(), in_dr->GetLabel());
     }
 
-    avtDataRepresentation *out_dr = new avtDataRepresentation(rv,
-        in_dr->GetDomain(), in_dr->GetLabel());
-
-    if (rv != NULL)
-        rv->Delete();
+    rv->Delete();
 
     slicer->Delete();
     merger->Delete();

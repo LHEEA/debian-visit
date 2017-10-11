@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,15 +57,16 @@
 #include <map>
 #include <string>
 
+// FastBit
 #ifdef HAVE_LIBFASTBIT
-#include "hdf5_fastquery.h"
-#include "HistogramCache.h"
+  #include <fastbit-config.h>
 
-#include <fastbit-config.h>
-#if FASTBIT_IBIS_INT_VERSION < 1020000
-#error "The H5Part plugin requires FastBit 1.2.0 or newer."
-#endif
+  #if FASTBIT_IBIS_INT_VERSION < 1020000
+    #error "The H5Part plugin requires FastBit 1.2.0 or newer."
+  #endif
 
+  #include "hdf5_fastquery.h"
+  #include "HistogramCache.h"
 #endif
 
 class DBOptionsAttributes;
@@ -127,7 +128,7 @@ class avtH5PartFileFormat : public avtMTSDFileFormat
 
     virtual int            GetNTimesteps(void);
 
-    virtual const char    *GetType(void)   { return "H5Part"; };
+    virtual const char    *GetType(void) { return "H5Part"; };
     virtual void           FreeUpResources(void); 
 
 #ifdef HAVE_LIBFASTBIT 
@@ -158,6 +159,7 @@ class avtH5PartFileFormat : public avtMTSDFileFormat
     typedef std::map<std::string, h5part_int64_t>
                            VarNameToInt64Map_t;
     VarNameToInt64Map_t    particleVarNameToTypeMap;
+    VarNameToInt64Map_t    particleVarNameToFastBitMap;
     VarNameToInt64Map_t    fieldScalarVarNameToTypeMap;
     VarNameToInt64Map_t    fieldVectorVarNameToTypeMap;
     VarNameToInt64Map_t    fieldVectorVarNameToFieldRankMap;
@@ -167,12 +169,18 @@ class avtH5PartFileFormat : public avtMTSDFileFormat
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *, int);
 
   private:
-    void                   SelectParticlesToRead();
+    void                   SelectParticlesToRead( const char * = 0 );
     vtkDataSet            *GetParticleMesh(int);
     vtkDataSet            *GetFieldMesh(int, const char *);
     vtkDataArray          *GetFieldVar(int, const char*);
     void                   GetSubBlock(h5part_int64_t gridDims[3], h5part_int64_t subBlockDims[6]);
     std::string            DoubleToString(double x);
+
+    void GetDecomp( h5part_int64_t nObjects,
+                    h5part_int64_t &firstIndex,
+                    h5part_int64_t &lastIndex,
+                    h5part_int64_t &total );
+
 #ifdef HAVE_LIBFASTBIT
     void                   ConstructHistogram(avtHistogramSpecification *spec);
 
@@ -183,29 +191,35 @@ class avtH5PartFileFormat : public avtMTSDFileFormat
                                   const std::string &, std::string& );
     void                   PerformQuery();
     
-    // Is there an active query? If value is stringQuery, "queryString" contains
-    // the current query that needs to be run to get the data selection (queryResults).
-    // If value is idListQuery, "queryIdList" contains a list of particle ids (likely
-    // from a named selection).
-    enum { noQuery = 0, stringQuery, idListQuery }
-                           querySpecified;
-    // Are the query results (queryResults) valid? This variable is set to false
-    // by RegisterDataSelection to indicate that there is a new queryString or
-    // queryIdList and that PerformQuery needs to be called to update queryResults
+    // Is there an active query? If value is stringQuery,
+    // "queryString" contains the current query that needs to be run
+    // to get the data selection (queryResults).  If value is
+    // idListQuery, "queryIdList" contains a list of particle ids
+    // (likely from a named selection).
+    enum { noQuery = 0, stringQuery, idListQuery } querySpecified;
+  
+    // Are the query results (queryResults) valid? This variable is
+    // set to false by RegisterDataSelection to indicate that there is
+    // a new queryString or queryIdList and that PerformQuery needs to
+    // be called to update queryResults
     bool                   queryResultsValid;
-    // Is there an active data selection, i.e., does queryResults contain a valid
-    // list of particles indices to load for an active query?
+    // Is there an active data selection, i.e., does queryResults
+    // contain a valid list of particles indices to load for an active
+    // query?
     bool                   dataSelectionActive;
-    // The name of the variable which contains the particle id
+    // The name of the current variable which contains the particle id
     std::string            idVariableName;
+    // The name of the default variable which contains the particle id
+    std::string            defaultIdVariableName;
     // String of a possible active stringQuery
     std::string            queryString;
     // List of ids (values if "idVariableName") for a named selection query
     std::vector<double>    queryIdList;
     // Result from a current query
     std::vector<hsize_t>   queryResults;
-    // The HDF5_FastQuery reader. Used mainly to read index information from file.
-    HDF5_FQ                reader;
+    // The HDF5_FastQuery reader. Used mainly to read index
+    // information from file.
+    HDF5_FQ                fqReader;
     // Histogram cache for already computed histograms
     HistogramCache         histoCache;
 #endif

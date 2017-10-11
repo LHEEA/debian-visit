@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -378,7 +378,7 @@ VisWinLegends::UpdateDBInfo(vector<avtActor_p> &lst)
     // Determine if the plots have the same database information.
     //
     int    cycle = 0;
-    double dtime;
+    double dtime = 0.;
     string filename;
     bool   haveSetData = false;
     homogeneous = true;

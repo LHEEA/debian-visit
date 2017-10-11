@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,11 @@
 
 #include <avtCallback.h>
 #include <ImproperUseException.h>
+
+#include <FileFunctions.h>
+
+#include <cerrno>
+#include <cstring>
 
 // ****************************************************************************
 //  Method: avtFileWriter constructor
@@ -276,7 +281,7 @@ avtFileWriter::Write(const char *filename, avtDataObject_p dob, int quality,
         else
         {
             dsWriter->SetInput(dob);
-            dsWriter->Write(dsFormat, filename, binary);
+            dsWriter->Write(dsFormat, filename, quality, compression, binary);
         }
     }
 }
@@ -312,6 +317,7 @@ avtFileWriter::WriteImageDirectly(vtkImageWriter *wrtr, const char *filename,
 //      base      The base name for the file.
 //      family    Whether or not this file is part of a family of files to be
 //                saved.
+//      fileChecks Whether to check file permissions, etc.
 //
 //  Notes:        The memory returned by this routine must be freed by the
 //                calling function.
@@ -331,10 +337,13 @@ avtFileWriter::WriteImageDirectly(vtkImageWriter *wrtr, const char *filename,
 //    Jeremy Meredith, Wed Aug  6 18:03:45 EDT 2008
 //    Changed char* to const char* to fix warning.
 //
+//    Brad Whitlock, Tue Mar 22 19:35:40 PDT 2016
+//    Add check permissions flag to CreateFilename.
+//
 // ****************************************************************************
 
 char *
-avtFileWriter::CreateFilename(const char *base, bool family)
+avtFileWriter::CreateFilename(const char *base, bool family, bool fileChecks)
 {
     char *rv = NULL;
     const char *msg = NULL;
@@ -351,31 +360,55 @@ avtFileWriter::CreateFilename(const char *base, bool family)
             rv = dsWriter->CreateFilename(base, family, dsFormat);
         }
 
-        bool fileExists = false;
-        ifstream ifile(rv);
-        if (!ifile.fail())
+        if(fileChecks)
         {
-            fileExists = true;
-        }
-        if (fileExists && family)
-        {
-            //
-            // We are saving a family, so reject this one and keep going.
-            //
-            msg = "Although VisIt typically saves out files sequentially, "
-                  "some numbers are being skipped when saving out this "
-                  "file to avoid overwriting previous saves.";
-            keepGoing = true;
-        }
-        else
-        {
-            ofstream ofile(rv);
-            if (ofile.fail())
+            bool fileExists = true;
+            bool isWriteable = false;
+            FileFunctions::VisItStat_t statbuf;
+
+            if (FileFunctions::VisItStat(rv, &statbuf) != 0)
             {
-                rv = NULL;
-                msg = "VisIt cannot write a file in the directory specified.\n"
-                      "Note: If you are running client/server, VisIt can only "
-                      "save files onto the local client.";
+                int errnum = errno;
+
+                if (errno == ENOENT)
+                {
+                    fileExists = false;
+                }
+                else
+                {
+                    char statmsg[512];
+                    SNPRINTF(statmsg, sizeof(statmsg), 
+                        "VisIt encountered error \"%s\\n"
+                        "attempting to stat file \"%s\"\n"
+                        "prior to writing", strerror(errnum), rv);
+                    msg = statmsg;
+                }
+            }
+#if defined(_WIN32)
+            else if (statbuf.st_mode & _S_IWRITE)
+#else
+            else if (statbuf.st_mode & S_IWUSR)
+#endif
+            {
+                isWriteable = true;
+            }
+            else
+            {
+                char wrtmsg[512];
+                SNPRINTF(wrtmsg, sizeof(wrtmsg), 
+                        "The file \"%s\" is not writeable\n", rv);
+                msg = wrtmsg;
+            }
+
+            if (fileExists && isWriteable && family)
+            {
+                //
+                // We are saving a family, so reject this one and keep going.
+                //
+                msg = "Although VisIt typically saves out files sequentially, "
+                      "some numbers are being skipped when saving out this "
+                      "file to avoid overwriting previous saves.";
+                keepGoing = true;
             }
         }
     }

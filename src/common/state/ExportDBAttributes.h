@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -101,6 +101,8 @@ public:
     void SetFilename(const std::string &filename_);
     void SetDirname(const std::string &dirname_);
     void SetVariables(const stringVector &variables_);
+    void SetWriteUsingGroups(bool writeUsingGroups_);
+    void SetGroupSize(int groupSize_);
     void SetOpts(const DBOptionsAttributes &opts_);
 
     // Property getting methods
@@ -115,6 +117,8 @@ public:
           std::string         &GetDirname();
     const stringVector        &GetVariables() const;
           stringVector        &GetVariables();
+    bool                      GetWriteUsingGroups() const;
+    int                       GetGroupSize() const;
     const DBOptionsAttributes &GetOpts() const;
           DBOptionsAttributes &GetOpts();
 
@@ -138,6 +142,8 @@ public:
         ID_filename,
         ID_dirname,
         ID_variables,
+        ID_writeUsingGroups,
+        ID_groupSize,
         ID_opts,
         ID__LAST
     };
@@ -149,12 +155,14 @@ private:
     std::string         filename;
     std::string         dirname;
     stringVector        variables;
+    bool                writeUsingGroups;
+    int                 groupSize;
     DBOptionsAttributes opts;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define EXPORTDBATTRIBUTES_TMFS "bsssss*a"
+#define EXPORTDBATTRIBUTES_TMFS "bsssss*bia"
 
 #endif

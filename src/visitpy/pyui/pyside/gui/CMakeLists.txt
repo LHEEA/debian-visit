@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -86,6 +86,7 @@ set(pyside_gui_link_libs
     #${SHIBOKEN_LIBRARY}
     #${PYSIDE_LIBRARY}
     #${QT_QTCORE_LIBRARY}
+    ${QWT_LIBRARY}
     )
 
 set(pyside_gui_sources ${CMAKE_CURRENT_SOURCE_DIR}/pysidegui.C) 
@@ -97,14 +98,23 @@ ${CMAKE_CURRENT_BINARY_DIR}/pyside_gui/pyside_gui_module_wrapper.cpp)
 IF(WIN32)
   LINK_DIRECTORIES(${QT_SHAREDLIB_DIR} ${QT_LIBRARY_DIR})
 ENDIF(WIN32)
+LINK_DIRECTORIES(${QWT_LIBRARY_DIR})
 
 #
 # For dev build, we may need to link to mesa on Linux.
 #
 IF(MESA_FOUND)
     set(pyside_gui_link_libs ${pyside_gui_link_libs} ${MESA_LIB})
-    LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${MESA_LIBRARY_DIR} ${EAVL_LIBRARY_DIR})
+    LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${MESA_LIBRARY_DIR})
 ENDIF(MESA_FOUND)
+
+#
+# If we enable eavl, it will appear in the link line, so add ${EAVL_LIBRARY_DIR}
+#
+IF(EAVL_FOUND)
+    LINK_DIRECTORIES(${EAVL_LIBRARY_DIR})
+ENDIF()
+
 
 PYSIDE_ADD_MODULE(pyside_gui
                   site-packages/visit

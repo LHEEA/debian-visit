@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,6 +106,7 @@
 #include <InvalidVariableException.h>
 #include <InvalidFilesException.h>
 #include <InvalidDBTypeException.h>
+#include <ImproperUseException.h>
 
 // Map symbol names
 // Ugly hack, but fixes crash on Mac
@@ -270,7 +271,7 @@ AVTBOXLIBFILEFORMAT::AVTBOXLIBFILEFORMAT(const char *fname)
     timestepPath = t;
 
     initializedReader = false;
-    vf_names_for_materials = false;
+    varnames_for_materials = none;
     time = 0.;
     haveReadTimeAndCycle = false;
     nMaterials = 0;
@@ -371,7 +372,7 @@ AVTBOXLIBFILEFORMAT::InitializeReader(void)
     //
     int count = 0;
     int level = 0;
-    for (size_t i = 0; i < multifabFilenames.size(); ++i)
+    for (int i = 0; i < (int)multifabFilenames.size(); ++i)
     {
         VisMF *vmf = GetVisMF(i);
         int cnt = vmf->nComp();
@@ -383,8 +384,7 @@ AVTBOXLIBFILEFORMAT::InitializeReader(void)
         bool isNode = true;
         bool isCell = true;
 
-        int k;
-        for (k = 0; k < dimension; ++k)
+        for (int k = 0; k < dimension; ++k)
         {
             if (ix.test(k))
                 isCell = false;
@@ -396,8 +396,7 @@ AVTBOXLIBFILEFORMAT::InitializeReader(void)
                    isCell ? AVT_ZONECENT :
                             AVT_UNKNOWN_CENT;
 
-        int j;
-        for (j = 0; j < cnt; ++j)
+        for (int j = 0; j < cnt; ++j)
         {
             componentIds[level][j + count] = j;
             fabfileIndex[level][j + count] = i;
@@ -436,6 +435,7 @@ AVTBOXLIBFILEFORMAT::InitializeReader(void)
 
             if (val > nMaterials)
                 nMaterials = val;
+            varnames_for_materials = frac;
         }
     }
     if (nMaterials == 0)
@@ -449,7 +449,20 @@ AVTBOXLIBFILEFORMAT::InitializeReader(void)
 
                 if (val > nMaterials)
                     nMaterials = val;
-                vf_names_for_materials = true;
+                varnames_for_materials = vf;
+            }
+        }
+    }
+    if (nMaterials == 0)
+    {
+        for (int i = 0; i < nVars; ++i)
+        {
+            if (varNames[i] == std::string("vfrac"))
+            {
+                varUsedElsewhere[i] = true;
+                nMaterials = 2;
+                varnames_for_materials = vfrac;
+                break;
             }
         }
     }
@@ -486,7 +499,7 @@ AVTBOXLIBFILEFORMAT::InitializeReader(void)
             startsWithFirst = true;
             foundVector = true;
         }
-        int lastChar = strlen(needle.c_str())-1;
+        int lastChar = (int)strlen(needle.c_str())-1;
         if (!foundVector && (varNames[i][lastChar] == 'x'))
         {
             needle[lastChar] = 'y';
@@ -773,6 +786,9 @@ AVTBOXLIBFILEFORMAT::GetMesh(int patch, const char *mesh_name)
 //    Kathleen Bonnell, Thu Oct 16 14:29:35 PDT 2008
 //    Moved Broadcast of coordSys so that all procs can participate.
 //
+//    Gunther H. Weber, Wed Aug  5 17:42:31 PDT 2015
+//    Added support for "CartGrid" BoxLib Headers
+//
 // ****************************************************************************
 
 void
@@ -804,10 +820,16 @@ AVTBOXLIBFILEFORMAT::ReadHeader(void)
 
     int integer=0;
     char buf[1024];
+    bool isCartGrid = false;
     if (iDoReading)
     {
         // Read in version
         in.getline(buf, 1024);
+        if (strncmp(buf, "CartGrid", 8) == 0)
+        {
+            debug1 << "BoxLib file is of type CartGrid" << std::endl;
+            isCartGrid = true;
+        }
         // Read in nVars
         in >> integer;
 
@@ -828,8 +850,8 @@ AVTBOXLIBFILEFORMAT::ReadHeader(void)
             in.getline(buf, 1024); // Read in var names
 
             // Replace commas with underscores.
-            int len = strlen(buf);
-            for (int j = 0 ; j < len ; j++)
+            size_t len = strlen(buf);
+            for (size_t j = 0 ; j < len ; j++)
                 if (buf[j] == ',')
                     buf[j] = '_';
 
@@ -950,6 +972,13 @@ AVTBOXLIBFILEFORMAT::ReadHeader(void)
         int tmp = (int) (deltaX[levI-1] / (deltaX[levI]*1.01));
         tmp += 1;
         refinement_ratio.push_back(tmp);
+    }
+
+    if (iDoReading && isCartGrid)
+    {
+        EatUpWhiteSpace(in);
+        in.getline(buf, 1024);
+        debug5 << "Skipping line " << buf << " in CartGrid file." << std::endl;
     }
 
     // Read in coord system;
@@ -2093,14 +2122,31 @@ AVTBOXLIBFILEFORMAT::GetMaterial(const char *var, int patch,
     // Get the material fractions
     vector<vtkFloatArray *> floatArrays(nMaterials);
     vector<float *> mats(nMaterials);
-    for (i = 1; i <= nMaterials; ++i)
+    if (varnames_for_materials == none)
     {
-        if (vf_names_for_materials)
-            sprintf(str,"vf_%d", i);
-        else
-            sprintf(str,"frac%d", i);
-        floatArrays[i - 1] = (vtkFloatArray *)(GetVar(patch, str));
-        mats[i - 1] = floatArrays[i - 1]->GetPointer(0);
+        EXCEPTION1(ImproperUseException, "Trying to read materials from BoxLib file that does not have any");
+    }
+    else if (varnames_for_materials == vfrac)
+    {
+        floatArrays[0] = (vtkFloatArray*)(GetVar(patch, "vfrac"));
+        mats[0] = floatArrays[0]->GetPointer(0);
+        floatArrays[1] = vtkFloatArray::New();
+        floatArrays[1]->SetNumberOfTuples(floatArrays[0]->GetNumberOfTuples());
+        for (vtkIdType tuple = 0; tuple < floatArrays[1]->GetNumberOfTuples(); ++tuple)
+            floatArrays[1]->SetTuple1(tuple, 1.0 - floatArrays[0]->GetTuple1(tuple));
+        mats[1] = floatArrays[1]->GetPointer(0);
+    }
+    else
+    {
+        for (i = 1; i <= nMaterials; ++i)
+        {
+            if (varnames_for_materials == vf)
+                sprintf(str,"vf_%d", i);
+            else
+                sprintf(str,"frac%d", i);
+            floatArrays[i - 1] = (vtkFloatArray *)(GetVar(patch, str));
+            mats[i - 1] = floatArrays[i - 1]->GetPointer(0);
+        }
     }
 
     // Build the appropriate data structures
@@ -2150,7 +2196,7 @@ AVTBOXLIBFILEFORMAT::GetMaterial(const char *var, int patch,
             floatArrays[i - 1]->Delete();
     }
 
-    int mixed_size = mix_zone.size();
+    int mixed_size = (int)mix_zone.size();
 
     // get pointers to pass to avtMaterial
     int *ml = NULL, *mixm = NULL, *mixn = NULL, *mixz = NULL;
@@ -2249,7 +2295,7 @@ AVTBOXLIBFILEFORMAT::GetSpatialIntervalTree(DestructorFunction &df)
 // ****************************************************************************
 
 static void
-SwapEntries(std::vector<int> &clearlist, int t, int s)
+SwapEntries(std::vector<int> &clearlist, size_t t, size_t s)
 {
     int tmp;
     tmp = clearlist[3*t];
@@ -2349,7 +2395,7 @@ static string GetDirName(const char *path)
 {
     string dir = "";
 
-    int len = strlen(path);
+    int len = (int)strlen(path);
     const char *last = path + (len-1);
     while (*last != VISIT_SLASH_CHAR && last > path)
     {

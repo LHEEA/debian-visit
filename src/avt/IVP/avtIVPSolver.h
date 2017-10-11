@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -67,7 +67,7 @@ struct avtIVPStateHelper;
 //      an avtIVPStep instance can be queried for any point of the solution on 
 //      its corresponding parameter interval, and also supports evaluation of 
 //      derivatives. This enables advanced applications such as direct 
-//      intersection of solutions with a plane, or the Illuminated Streamlines 
+//      intersection of solutions with a plane, or the Illuminated Integral Curves 
 //      technique, which all require solution derivatives for efficient 
 //      implementation.
 //
@@ -187,27 +187,31 @@ public:
         return tmp[size()-1];
     }
 
-    avtVector GetV( double param ) const
-    {
-        if( param == t0 )
-            return (size()-1) / (t1 - t0) * ((*this)[1] - (*this)[0]);
-        if( param == t1 )
-            return (size()-1) / (t1 - t0) * ((*this)[size()-1] - (*this)[size()-2]);
+    // Do not call as it can give inaccurate results. Use the
+    // field directly.
 
-        param -= t0;
-        param /= (t1 - t0);
+    // avtVector GetV( double param ) const
+    // {
+    //     if( param == t0 )
+    //         return (size()-1) / (t1 - t0) * ((*this)[1] - (*this)[0]);
+    //     if( param == t1 )
+    //         return (size()-1) / (t1 - t0) * ((*this)[size()-1] - (*this)[size()-2]);
 
-        std::vector<avtVector> tmp(size()-1);
+    //     param -= t0;
+    //     param /= (t1 - t0);
 
-        for( size_t i=0; i<size()-1; ++i )
-            tmp[i] = (*this)[i+1] - (*this)[i];
+    //     // BezierSegment evaluation using deCasteljau's scheme
+    //     std::vector<avtVector> tmp(size()-1);
 
-        for( size_t l=1; l<size()-1; ++l )
-            for( size_t i=size()-2; i>=l; --i )
-                tmp[i] = (1.0-param)*tmp[i-1] + param*tmp[i];
+    //     for( size_t i=0; i<size()-1; ++i )
+    //         tmp[i] = (*this)[i+1] - (*this)[i];
+
+    //     for( size_t l=1; l<size()-1; ++l )
+    //         for( size_t i=size()-2; i>=l; --i )
+    //             tmp[i] = (1.0-param)*tmp[i-1] + param*tmp[i];
                 
-        return (size() - 1) / (t1 - t0) * tmp[size()-2];
-    }
+    //     return (size() - 1) / (t1 - t0) * tmp[size()-2];
+    // }
 
     void ClampToLength( double L )
     {
@@ -369,7 +373,7 @@ class avtIVPState
 //  Purpose:
 //      avtIVPSolver is an abstract type. It embodies the low-level interface 
 //      and represents a specific numerical scheme used for the solution of an 
-//      Initial Value Problem (IVP) corresponding to a streamline. Any 
+//      Initial Value Problem (IVP) corresponding to a integral curve. Any 
 //      numerical scheme derives from avtIVPSolver and adheres to a basic 
 //      common interface.
 //
@@ -458,6 +462,9 @@ class IVP_API avtIVPSolver
     virtual void      SetCurrentY(const avtVector &newY);
     virtual avtVector GetCurrentY() const;
 
+    virtual void      SetCurrentV(const avtVector &newV);
+    virtual avtVector GetCurrentV() const;
+
     virtual void   SetNextStepSize(const double& h);
     virtual double GetNextStepSize() const;
 
@@ -479,6 +486,13 @@ class IVP_API avtIVPSolver
     virtual void   SetPeriod(const double& p);
     virtual double GetPeriod() const;
 
+    virtual void   SetBoundaries( const double& x,
+                                  const double& y,
+                                  const double& z );
+    virtual void   GetBoundaries( double& x,
+                                  double& y,
+                                  double& z ) const;
+
     virtual void   SetBaseTime(const double& t);
     virtual double GetBaseTime() const;
 
@@ -488,24 +502,27 @@ class IVP_API avtIVPSolver
     // state management
     virtual void    GetState(avtIVPState&);
     virtual void    PutState(const avtIVPState&);
-            
+
     virtual avtIVPSolver* Clone() const = 0;
 
 protected:
 
-    bool convertToCartesian;
-    bool convertToCylindrical;
-
     unsigned int order;
 
     avtVector yCur;
+    avtVector vCur;
     double h, h_max;
     double tol;
     double t;
 
+    Direction direction;
+
+    double periodic_boundary_x, periodic_boundary_y, periodic_boundary_z;
     double period;
     double baseTime, maxTime;
-    Direction direction;
+
+    bool convertToCartesian;
+    bool convertToCylindrical;
 
 protected:
     inline virtual double GetLocalTime()
@@ -523,7 +540,7 @@ protected:
       return t_local;
     };
 
-    virtual void   AcceptStateVisitor(avtIVPStateHelper& sv) = 0;
+    virtual void   AcceptStateVisitor(avtIVPStateHelper& sv);
     virtual Result ConvertResult(const avtIVPField::Result &res) const;
 };
 
@@ -551,4 +568,5 @@ inline std::ostream& operator<<( std::ostream& out,
         return out<<"UNKNOWN";
     }
 }
+
 #endif

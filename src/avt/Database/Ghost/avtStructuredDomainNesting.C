@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -261,7 +261,7 @@ avtStructuredDomainNesting::GetSelectedDescendents(
     const vector<int>& allDomainList, int dom,
     vector<int>& selectedDescendents, const vector<bool> &lookup) const
 {
-    int maxDom = lookup.size()-1;
+    int maxDom = (int)lookup.size()-1;
     vector<int> domQueue;
     domQueue.push_back(dom);
 
@@ -1024,7 +1024,7 @@ int avtStructuredDomainNesting::GetNumberOfChildren(int domain)
         EXCEPTION2(BadIndexException, domain, (int)domainNesting.size());
     }
 
-    return domainNesting[domain].childDomains.size();
+    return (int)domainNesting[domain].childDomains.size();
 }
 
 // ****************************************************************************

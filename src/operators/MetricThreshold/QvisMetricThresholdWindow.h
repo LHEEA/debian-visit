@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,18 +43,9 @@
 #include <AttributeSubject.h>
 
 class MetricThresholdAttributes;
-class QLabel;
 class QCheckBox;
 class QLineEdit;
-class QSpinBox;
-class QVBox;
 class QComboBox;
-class QvisColorTableButton;
-class QvisOpacitySlider;
-class QvisColorButton;
-class QvisLineStyleWidget;
-class QvisLineWidthWidget;
-class QvisVariableButton;
 
 // ****************************************************************************
 // Class: QvisMetricThresholdWindow

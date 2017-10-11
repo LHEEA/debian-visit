@@ -1,6 +1,6 @@
  /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -53,7 +53,7 @@
 //  Purpose:
 //      avtIVPField is a base class for all manners of vector fields. 
 //      Deriving from it should allow an adaptation of many different vector 
-//      field types for the use of streamlines/IVP solutions by wrapping 
+//      field types for the use of integral curves/IVP solutions by wrapping 
 //      existing interpolation facilities.
 //
 //      The IVP right-hand side is made accessible to an IVP solver by means of 
@@ -103,7 +103,10 @@ class IVP_API avtIVPField
         FAIL
     };
 
-    avtIVPField() : order(1), directionless(false) {}
+    avtIVPField() : order(1), directionless(false),
+      hasPeriodicBoundaries(false),
+      periodic_boundary_x(0), periodic_boundary_y(0), periodic_boundary_z(0) {}
+
     virtual             ~avtIVPField() {}
 
     virtual Result       operator()(const double& t, 
@@ -138,12 +141,16 @@ class IVP_API avtIVPField
 
     virtual void         SetDirectionless( bool val ) { directionless = val; }
     virtual bool         GetDirectionless() { return directionless; }
-    virtual Result       SetLastVelocity(const double &t,
-                                         const avtVector &p) { return OK; }
+
+    virtual bool         HasPeriodicBoundaries() const { return false; }
+    virtual void         GetBoundaries( double& x,
+                                        double& y,
+                                        double& z) const { x = y = z = 0; }
 
  protected:
     unsigned int order;
-    bool directionless;
+    bool directionless, hasPeriodicBoundaries;
+    double periodic_boundary_x, periodic_boundary_y, periodic_boundary_z;
 };
 
 // ostream operators for avtICStatus

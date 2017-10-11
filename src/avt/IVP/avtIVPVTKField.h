@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -55,7 +55,7 @@ class vtkDataArray;
 //
 //  Purpose:
 //    A wrapper class to allow the use of vtkDataSets as IVP fields for 
-//    streamline integration. Uses vtkInterpolatedVelocityField on top of 
+//    integral curve integration. Uses vtkInterpolatedVelocityField on top of 
 //    the supplied vtkDataSet. 
 //
 //  Programmer:  Christoph Garth
@@ -110,7 +110,7 @@ class IVP_API avtIVPVTKField: public avtIVPField
                                        avtVector &retV) const
     { return FAIL; }
 
-    virtual bool      FindValue(vtkDataArray* vectorData, avtVector &vel) const;
+    virtual bool      FindValue(vtkDataArray *vectorData, avtVector &vel) const;
     virtual bool      FindValue(vtkDataArray *vectorData, avtVector &vel,
                                 double t, const avtVector &p) const 
                                 { return FindValue(vectorData, vel); }
@@ -131,12 +131,12 @@ class IVP_API avtIVPVTKField: public avtIVPField
     virtual void      GetExtents( double extents[6] ) const;
     virtual void      GetTimeRange( double range[2] ) const;
 
+    virtual bool      HasPeriodicBoundaries() const;
+    virtual void      GetBoundaries( double& x, double& y, double& z) const;
+
   protected:
 
     Result             FindCell( const double& t, const avtVector& p ) const;
-
-    Result             SetLastVelocity(const double &t,
-                                       const avtVector &p);
 
     vtkDataSet*        ds;
     avtCellLocator*    loc;
@@ -147,7 +147,6 @@ class IVP_API avtIVPVTKField: public avtIVPField
     bool               sclCellBased[256];
 
     mutable avtVector               lastPos;
-    mutable avtVector               lastVel;
     mutable vtkIdType               lastCell;
     mutable avtInterpolationWeights lastWeights;
 

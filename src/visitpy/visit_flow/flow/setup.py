@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -67,13 +67,13 @@ try:
 except:
     pass
 
-setup(name='flow',
+setup(name='visit_flow',
       version      ='0.1',
       author       = 'Cyrus Harrison',
       author_email = 'cyrush@llnl.gov',
-      description  ='flow: A small, flexible python data flow framework.',
-      package_dir  = {'flow':'src'},
-      packages=['flow','flow.core','flow.parser','flow.filters'],
+      description  ='visit_flow: A small, flexible python data flow framework.',
+      package_dir  = {'visit_flow':'src'},
+      packages=['visit_flow','visit_flow.core','visit_flow.parser','visit_flow.filters'],
       cmdclass = { 'test': setup_tests.ExecuteTests})
 
 if using_visit:

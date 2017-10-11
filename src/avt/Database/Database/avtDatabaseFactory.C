@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -78,6 +78,11 @@
 #include <unistd.h>
 #endif
 #include <snprintf.h>
+
+#ifdef PARALLEL
+#include <mpi.h>
+#include <avtParallel.h>
+#endif
 
 using std::string;
 using std::vector;
@@ -608,7 +613,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
             // but another one could, then report a warning.
             if (rv != NULL && noncompliantPlugins.size() > 0)
             {
-                int n = noncompliantPlugins.size();
+                int n = (int)noncompliantPlugins.size();
                 string warning = "While we were able to open the file "
                     "with the " + string(info ? info->GetName() : "") + " reader, "+
                     (n==1?"an":"") + "other file format "+Plural(n,"reader")+
@@ -727,7 +732,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
         if (succeeded.size() > 0 && noncompliantPlugins.size() > 0)
         {
 
-            int n = noncompliantPlugins.size();
+            int n = (int)noncompliantPlugins.size();
             string warning = "While we were able to open the file "
                 "with the " + succeeded[0] + " reader, " + 
                 (n==1?"an":"") + "other file format "+Plural(n,"reader")+
@@ -836,7 +841,7 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
             // but another one could, then report a warning.
             if (rv != NULL && noncompliantPlugins.size() > 0)
             {
-                int n = noncompliantPlugins.size();
+                int n = (int)noncompliantPlugins.size();
                 string warning = "While we were able to open the file "
                     "with the " + string(info ? info->GetName() : "") + " reader, "+
                     (n==1?"an":"") + "other file format "+Plural(n,"reader")+
@@ -872,14 +877,14 @@ avtDatabaseFactory::FileList(DatabasePluginManager *dbmgr,
     // from any NonCompliant exceptions.
     if (rv == NULL && noncompliantPlugins.size() > 0)
     {
-        int nNonCompl = noncompliantPlugins.size();
+        size_t nNonCompl = noncompliantPlugins.size();
         string error;
         if (nNonCompl > 1)
         {
             error += "At least one file format reader claimed this file, "
                      " but could not open it:\n";
         }
-        for (int i=0; i<nNonCompl; i++)
+        for (size_t i=0; i<nNonCompl; i++)
             error += noncompliantErrors[i] + "\n";
         EXCEPTION2(InvalidFilesException,"the file",error);
     }
@@ -1109,7 +1114,7 @@ avtDatabaseFactory::VisitFile(DatabasePluginManager *dbmgr,
     {
         visitPath = visitPath.substr(0, sepIndex + 1);
 
-        int s = visitPath.size();
+        size_t s = visitPath.size();
         string curDir("./");
         for(int j = 0; j < listcount; ++j)
         {
@@ -1127,7 +1132,7 @@ avtDatabaseFactory::VisitFile(DatabasePluginManager *dbmgr,
                 fileName = fileName.substr(2, fileName.size() - 2);
 
             // Create a new filename that has the path prepended to it.
-            int len = fileName.size() + s + 2;
+            size_t len = fileName.size() + s + 2;
             char *name = new char[len];
             SNPRINTF(name, len, "%s%s", visitPath.c_str(), fileName.c_str());
             delete [] reallist[j];
@@ -1191,13 +1196,26 @@ avtDatabaseFactory::VisitFile(DatabasePluginManager *dbmgr,
 //    Brad Whitlock, Mon Sep  8 14:25:23 PDT 2014
 //    Moved code to FileFunctions.
 //
+//    Burlen Loring, Thu Jul 30 11:18:12 PDT 2015
+//    For parallel runs let one proc check perms and share
+//    the result to avoid mds scalability issues on lustre
+//
 // ****************************************************************************
 
 static void
 CheckPermissions(const char *filename)
 {
-    FileFunctions::PermissionsResult result = 
-        FileFunctions::CheckPermissions(filename);
+    int rank = 0;
+#ifdef PARALLEL
+    MPI_Comm_rank(VISIT_MPI_COMM, &rank);
+#endif
+    int result = FileFunctions::PERMISSION_RESULT_READABLE;
+    if (rank == 0)
+        result = FileFunctions::CheckPermissions(filename);
+#ifdef PARALLEL
+    MPI_Bcast(&result, 1, MPI_INT, 0, VISIT_MPI_COMM);
+#endif
+
     if (result == FileFunctions::PERMISSION_RESULT_NOFILE)
     {
         EXCEPTION1(FileDoesNotExistException, filename);
@@ -1207,4 +1225,3 @@ CheckPermissions(const char *filename)
         EXCEPTION1(BadPermissionException, filename);
     }
 }
-

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -109,6 +109,9 @@ avtNamedSelectionFilter::~avtNamedSelectionFilter()
 //    Eric Brugger, Mon Jul 21 16:42:08 PDT 2014
 //    Modified the class to work with avtDataRepresentation.
 //
+//    Eric Brugger, Tue Aug 25 10:32:57 PDT 2015
+//    Modified the routine to return NULL if the output data set was NULL.
+//
 // ****************************************************************************
 
 avtDataRepresentation *
@@ -140,11 +143,13 @@ avtNamedSelectionFilter::ExecuteData(avtDataRepresentation *in_dr)
         out_ds = SelectedData(in_ds, ids);
     }
 
-    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
-        in_dr->GetDomain(), in_dr->GetLabel());
-
+    avtDataRepresentation *out_dr = NULL;
     if (out_ds != NULL)
+    {
+        out_dr = new avtDataRepresentation(out_ds,
+            in_dr->GetDomain(), in_dr->GetLabel());
         out_ds->Delete();
+    }
 
     return out_dr;
 }
@@ -249,4 +254,26 @@ avtNamedSelectionFilter::ModifyContract(avtContract_p contract)
     return rv;
 }
 
+// ****************************************************************************
+//  Method: avtNamedSelectionFilter::UpdateDataObjectInfo
+//
+//  Purpose:
+//      Changes to the output.
+//
+//  Programmer: Hank Childs
+//  Creation:   February 2, 2009
+//
+//  Modifications:
+//
 
+void
+avtNamedSelectionFilter::UpdateDataObjectInfo(void)
+{
+    avtDataValidity &outValidity = GetOutput()->GetInfo().GetValidity();
+   
+    // We need to set these as invalid, or else caching could
+    // kick in and we might end up using acceleration structures
+    // across pipeline executions that were no longer valid.
+    outValidity.InvalidateNodes();
+    outValidity.InvalidateZones();
+}

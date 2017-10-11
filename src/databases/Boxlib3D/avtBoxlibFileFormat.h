@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -191,7 +191,7 @@ class AVTBOXLIBFILEFORMAT : public avtSTMDFileFormat
     int                                     cycle;
     std::string                             timestepPath;
     bool                                    initializedReader;
-    bool                                    vf_names_for_materials;
+    enum { none, vf, frac, vfrac }          varnames_for_materials;
 
     // Scalar vars listed in header.
     int                                     nVars;

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -49,7 +49,11 @@ import encoding
 import status
 import ult
 
+import moab
+import slurm
+
 import qannote
+import qplot
 
 from query import query, python_query
 from windows import Window, WindowManager

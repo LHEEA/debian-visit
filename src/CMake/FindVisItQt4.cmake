@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -60,6 +60,18 @@
 #   Kathleen Biagas, Tues Oct 1 09:33:47 MST 2013
 #   Removed VISIT_MSVC_VERSION from windows handling.
 #
+#   Kevin Griffin, Fri Oct 23 15:55:28 PDT 2015
+#   For OSX not all the directories in QT_INCLUDES satisfied the match 
+#   "/include/Qt" and/or weren't directories. Used the QT_HEADERS_DIR
+#   variable that listed all of the directories correctly. Also, for OSX, 
+#   added the lib*.a files in the QT_LIBRARY_DIR directory to 
+#   VISIT_INSTALLED_VERSION_ARCHIVES.
+#
+#   Kathleen Biagas, Thu Mar 24 16:18:19 PDT 2016
+#   Create a qt.conf file to be installed in the bin dir that prevents
+#   from loading plugins from other Qt installs. Used to be stored in
+#   VisIt's src/bin directory, but Qt5 requires a different qt.conf.
+#
 #****************************************************************************/
 
 #
@@ -104,7 +116,6 @@ IF(NOT "${QT_BIN}" MATCHES "OFF")
       MESSAGE(FATAL_ERROR "Qt4 is required to build VisIt.")
     ENDIF(NOT QT_FOUND)
   ELSE (USE_CMAKE_FIND)
-    # MESSAGE("QT_DIR = ${QT_DIR}")
     SET(QT_INCLUDE_DIR ${QT_DIR}/include)
     SET(QT_LIBRARY_DIR ${QT_DIR}/lib
         CACHE PATH "Qt library dir" FORCE )
@@ -194,36 +205,66 @@ IF(NOT "${QT_BIN}" MATCHES "OFF")
     ENDFOREACH(QTLIB)
 
     # Add install targets for Qt headers too
-    FOREACH(H ${QT_INCLUDES})
-        IF(${H} MATCHES "/include/Qt")
-        INSTALL(DIRECTORY ${H}
-                DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/qt/include
-                FILE_PERMISSIONS OWNER_WRITE OWNER_READ
-                                   GROUP_WRITE GROUP_READ
-                                   WORLD_READ
-                DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
-                                        GROUP_WRITE GROUP_READ GROUP_EXECUTE
-                                        WORLD_READ WORLD_EXECUTE
-                PATTERN ".svn" EXCLUDE
-        )
-        ENDIF(${H} MATCHES "/include/Qt")
-    ENDFOREACH(H)
+    IF(APPLE)
+      file(GLOB QT_INCLUDES "${QT_HEADERS_DIR}/Qt*")
+      FOREACH(H ${QT_INCLUDES})
+          INSTALL(DIRECTORY ${H}
+                  DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/qt/include
+                  FILE_PERMISSIONS OWNER_WRITE OWNER_READ
+                                     GROUP_WRITE GROUP_READ
+                                     WORLD_READ
+                  DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
+                                          GROUP_WRITE GROUP_READ GROUP_EXECUTE
+                                          WORLD_READ WORLD_EXECUTE
+                  PATTERN ".svn" EXCLUDE
+          )
+      ENDFOREACH(H)
+
+      # Add Qt archives (lib*.a)
+      file(GLOB QT_ARCHIVES "${QT_LIBRARY_DIR}/*.a")
+      FOREACH(T ${QT_ARCHIVES})
+          INSTALL(FILES ${T}
+              DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}
+              PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                  GROUP_READ GROUP_WRITE GROUP_EXECUTE
+                  WORLD_READ             WORLD_EXECUTE
+              CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
+          )
+      ENDFOREACH(T)
+    ELSE(APPLE)
+      FOREACH(H ${QT_INCLUDES})
+          IF(${H} MATCHES "/include/Qt")
+          INSTALL(DIRECTORY ${H}
+                  DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/qt/include
+                  FILE_PERMISSIONS OWNER_WRITE OWNER_READ
+                                     GROUP_WRITE GROUP_READ
+                                     WORLD_READ
+                  DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
+                                          GROUP_WRITE GROUP_READ GROUP_EXECUTE
+                                          WORLD_READ WORLD_EXECUTE
+                  PATTERN ".svn" EXCLUDE
+          )
+          ENDIF(${H} MATCHES "/include/Qt")
+      ENDFOREACH(H)
+    ENDIF(APPLE)
 
     # Install moc, too
-    IF(NOT WIN32)
-        INSTALL(PROGRAMS ${QT_MOC_EXECUTABLE} #${QT_BIN}/moc
-                DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-                PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
-                            GROUP_WRITE GROUP_READ GROUP_EXECUTE
-                            WORLD_READ WORLD_EXECUTE
-        )
-    ELSE(NOT WIN32)
-        INSTALL(PROGRAMS ${QT_MOC_EXECUTABLE}
-                DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
-                PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
-                            GROUP_WRITE GROUP_READ GROUP_EXECUTE
-                            WORLD_READ WORLD_EXECUTE
-        )
-    ENDIF(NOT WIN32)
+    INSTALL(PROGRAMS ${QT_MOC_EXECUTABLE}
+            DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
+            PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
+                        GROUP_WRITE GROUP_READ GROUP_EXECUTE
+                                    WORLD_READ WORLD_EXECUTE
+    )
+
+    # We need a qt.conf that prevents qt from loading plugins from other
+    # qt installs
+    file(WRITE ${VISIT_BINARY_DIR}/qt.conf "[Paths]\nplugins=/dev/null\n")
+    install(FILES ${VISIT_BINARY_DIR}/qt.conf
+            DESTINATION ${VISIT_INSTALLED_VERSION_BIN}
+            PERMISSIONS OWNER_READ OWNER_WRITE
+                        GROUP_READ GROUP_WRITE
+                        WORLD_READ
+    )
+
   ENDIF(VISIT_QT_SKIP_INSTALL)
 ENDIF(NOT "${QT_BIN}" MATCHES "OFF")

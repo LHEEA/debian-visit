@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,17 +56,20 @@ class AttributeGroup;
 PIPELINE_API extern void *VISIT_MPI_COMM_PTR;
 #endif
 
-PIPELINE_API void    Barrier(void);
-PIPELINE_API bool    Collect(float *, int);
-PIPELINE_API bool    Collect(double *, int);
-PIPELINE_API bool    Collect(int *, int);
 PIPELINE_API void    PAR_Exit(void);
 PIPELINE_API void    PAR_Init(int &argc, char **&argv);
 PIPELINE_API int     PAR_Rank(void);
 PIPELINE_API int     PAR_Size(void);
 PIPELINE_API bool    PAR_UIProcess(void);
 PIPELINE_API void    PAR_WaitForDebugger(void);
-PIPELINE_API bool    PAR_SetComm(void *);     
+PIPELINE_API bool    PAR_SetComm(void *);
+PIPELINE_API void    PullInMPI_IOSymbols();
+
+// NOTE: Think about deprecating these in favor of avtParallelContext.
+PIPELINE_API void    Barrier(void);
+PIPELINE_API bool    Collect(float *, int);
+PIPELINE_API bool    Collect(double *, int);
+PIPELINE_API bool    Collect(int *, int);
 PIPELINE_API void    SumIntAcrossAllProcessors(int&);
 PIPELINE_API void    SumLongAcrossAllProcessors(long&);
 PIPELINE_API void    SumFloatAcrossAllProcessors(float&);
@@ -75,6 +78,7 @@ PIPELINE_API void    SumFloatArray(float *, float *, int);
 PIPELINE_API void    SumDoubleAcrossAllProcessors(double&);
 PIPELINE_API void    SumDoubleArrayAcrossAllProcessors(double *, double *,int);
 PIPELINE_API void    SumDoubleArray(double *, double *,int);
+PIPELINE_API void    SumDoubleArrayInPlace(double *, int);
 PIPELINE_API void    SumIntArrayAcrossAllProcessors(int *, int *, int);
 PIPELINE_API void    SumLongLongArrayAcrossAllProcessors(VISIT_LONG_LONG*, VISIT_LONG_LONG*, int);
 PIPELINE_API bool    ThisProcessorHasMinimumValue(double);
@@ -94,11 +98,14 @@ PIPELINE_API void    BroadcastInt(int &i);
 PIPELINE_API void    BroadcastLongLong(VISIT_LONG_LONG &i);
 PIPELINE_API void    BroadcastIntArray(int *array, int nArray);
 PIPELINE_API void    BroadcastIntVector(std::vector<int>&, int myrank);
+PIPELINE_API void    BroadcastIntVectorFromAny(std::vector<int> &, int, int);
 PIPELINE_API void    BroadcastBool(bool &b);
 PIPELINE_API void    BroadcastBoolVector(std::vector<bool> &b, int myrank);
 PIPELINE_API void    BroadcastDouble(double &i);
 PIPELINE_API void    BroadcastDoubleArray(double *array, int nArray);
+PIPELINE_API void    BroadcastDoubleArrayFromAny(double *, int, int);
 PIPELINE_API void    BroadcastDoubleVector(std::vector<double>&, int myrank);
+PIPELINE_API void    BroadcastDoubleVectorFromAny(std::vector<double> &, int, int);
 PIPELINE_API void    BroadcastString(std::string &s, int myrank);
 PIPELINE_API void    BroadcastStringVector(std::vector<std::string>&,
                                            int myrank);
@@ -110,6 +117,7 @@ PIPELINE_API void    CollectIntArraysOnRootProc(int *&, int *&, int *, int);
 PIPELINE_API void    CollectDoubleArraysOnRootProc(double *&, int *&, double *, int);
 
 PIPELINE_API int     GetUniqueMessageTag();
+PIPELINE_API void    GetUniqueMessageTags(int *tags, int ntags);
 PIPELINE_API int     GetUniqueStaticMessageTag();
 
 PIPELINE_API void    GetAttToRootProc(AttributeGroup &, int);
@@ -120,5 +128,4 @@ PIPELINE_API void    WaitSome(std::vector<int> &reqs, std::vector<int> &done, st
 PIPELINE_API void    TestSome(std::vector<int> &reqs, std::vector<int> &done, std::vector<int> &status );
 PIPELINE_API void    CancelRequest(void *req);
 
-PIPELINE_API void    PullInMPI_IOSymbols();
 #endif

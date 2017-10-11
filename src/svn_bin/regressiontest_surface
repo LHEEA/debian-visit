@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/sh -x
 #
 # Modifications:
 #   Mark C. Miller, Thu Jul 29 23:35:19 PDT 2010
@@ -60,6 +60,14 @@
 #
 #   Eric Brugger, Thu Feb 12 08:17:18 PST 2015
 #   I modified the script to use cmake 3.0.2 to configure visit.
+#
+#   Eric Brugger, Fri Sep 11 14:05:18 PDT 2015
+#   I added the command line option "-branch", which takes a branch name.
+#   While I was at it I also modified the script to use 16 cores instead of
+#   12 since it is grabbing an entire node of surface, which has 16 cores.
+#
+#   Eric Brugger, Wed Sep  7 09:17:29 PDT 2016
+#   I updated the script to build using the newly built 2.12 libraries.
 #
 
 
@@ -132,7 +140,7 @@ serial="false"
 testHost="surface"
 testDir="/nfs/tmp2/"
 post="true"
-nerscHost="hopper.nersc.gov"
+nerscHost="edison.nersc.gov"
 
 for abc
 do
@@ -141,9 +149,9 @@ do
             branch="trunk"
             shift
             ;;
-        -2.3RC)
-            branch="2.3RC"
-            shift
+        -branch)
+            branch=$2
+            shift 2
             ;;
         -serial)
             serial="true"
@@ -175,7 +183,7 @@ done
 if test "$branch" = "trunk" ; then
     workingDir="test_trunk"
 else
-    workingDir="test_rc"
+    workingDir="test_branch"
 fi
 
 #
@@ -188,9 +196,9 @@ cat <<EOF > $testHost
 dateTag=\`date +%Y-%m-%d-%H:%M\`
 
 if test "$serial" = "true" ; then
-    modes="$testHost,serial"
+    modes="$testHost,$branch,serial"
 else
-    modes="$testHost,serial $testHost,parallel $testHost,scalable,parallel,icet"
+    modes="$testHost,$branch,serial $testHost,$branch,parallel $testHost,$branch,scalable,parallel,icet"
 fi
 
 # Check out the source
@@ -217,23 +225,23 @@ echo "Checkout of $branch started at: \`date\`"
 
 if test "$branch" = "trunk" ; then
     if test "$revision" = "latest" ; then
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/trunk/src > buildlog 2>&1
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/trunk/data >> buildlog 2>&1
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/trunk/test >> buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/trunk/src > buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/trunk/data >> buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/trunk/test >> buildlog 2>&1
     else
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/trunk/src -r $revision > buildlog 2>&1
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/trunk/data -r $revision >> buildlog 2>&1
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/trunk/test -r $revision >> buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/trunk/src -r $revision > buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/trunk/data -r $revision >> buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/trunk/test -r $revision >> buildlog 2>&1
     fi
 else
     if test "$revision" = "latest" ; then
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/branches/2.5RC/src > buildlog 2>&1
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/branches/2.5RC/data >> buildlog 2>&1
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/branches/2.5RC/test >> buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/branches/$branch/src > buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/branches/$branch/data >> buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/branches/$branch/test >> buildlog 2>&1
     else
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/branches/2.5RC/src -r $revision > buildlog 2>&1
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/branches/2.5RC/data -r $revision >> buildlog 2>&1
-        svn co svn+ssh://$userNersc@portal-auth.nersc.gov/project/projectdirs/visit/svn/visit/branches/2.5RC/test -r $revision >> buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/branches/$branch/src -r $revision > buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/branches/$branch/data -r $revision >> buildlog 2>&1
+        svn co svn+ssh://$userNersc@edison.nersc.gov/project/projectdirs/visit/svn/visit/branches/$branch/test -r $revision >> buildlog 2>&1
     fi
 fi
 if test "$debug" = "true" ; then
@@ -257,7 +265,7 @@ export OPENGLLIB=-L/opt/cudatoolkit-6.0/lib64 -lcudart -lcuda
 if test "$serial" = "true" ; then
     sed -i "s/VISIT_PARALLEL ON/VISIT_PARALLEL OFF/" config-site/surface86.cmake
 fi
-/usr/gapps/visit/thirdparty_shared/2.9.0/cmake/3.0.2/linux-x86_64_gcc-4.4/bin/cmake \
+/usr/gapps/visit/thirdparty_shared/2.12.0/cmake/3.0.2/linux-x86_64_gcc-4.4/bin/cmake \
     -DVISIT_CONFIG_SITE=config-site/surface86.cmake \
     -DCMAKE_BUILD_TYPE=Release \
     -DVISIT_BUILD_ALL_PLUGINS=1 \
@@ -268,7 +276,7 @@ fi
     -DCMAKE_MAKE_PROGRAM:FILEPATH="/usr/gapps/visit/gmake/4.0/chaos_5_x86_64_ib/bin/make" \
     . >> ../buildlog 2>&1
 rm -rf ../make.out ../make.err
-/usr/gapps/visit/gmake/4.0/chaos_5_x86_64_ib/bin/make --output-sync=line -k -j 12 1>../make.out 2>../make.err
+make -k -j 16 1>../make.out 2>../make.err
 if test $? -ne 0; then
     echo "Source build FAILED at: \`date\`" | mail -s "Source build FAILED" $userEmail
     exit 1
@@ -355,7 +363,7 @@ if test "$post" = "true" ; then
     tar -czvf  html.tar.gz \$dateTag
 
     # Copy the results to nersc
-    scp html.tar.gz $userNersc@$nerscHost:
+    scp html.tar.gz $userNersc@$nerscHost:${branch}_html.tar.gz
     if test "$debug" = "true" ; then
         echo "Results copied to $nerscHost at: `date`" | mail -s "Results copied" $userEmail
     fi
@@ -364,8 +372,8 @@ if test "$post" = "true" ; then
 
     # Post the results.
     cd ..
-    scp src/svn_bin/visit-update-test-website $userNersc@$nerscHost:
-    ssh $userNersc@$nerscHost "./visit-update-test-website"
+    scp src/svn_bin/visit-copy-test-results $userNersc@$nerscHost:
+    ssh $userNersc@$nerscHost "./visit-copy-test-results ${branch}_html.tar.gz"
     if test "$debug" = "true" ; then
         echo "Results posted at: `date`" | mail -s "Results posted" $userEmail
     fi
@@ -377,6 +385,12 @@ if test "$post" = "true" ; then
         src/svn_bin/visit-notify-test-failure -pass -host $testHost
     else
         src/svn_bin/visit-notify-test-failure -host $testHost
+    fi
+
+    # If its a sunday, purge old test results
+    if test "$(date +%A)" = "Sunday" ; then
+        scp src/svn_bin/purge_old_test_results.sh $userNersc@$nerscHost:
+        ssh $userNersc@$nerscHost "./purge_old_test_results.sh"
     fi
 
     # Set the permissions so that others may access the test directory.
@@ -393,5 +407,5 @@ chmod 750 $testHost
 if test "$testHost" = "surface" ; then
     scp surface surface:surface_testit
     subTag=`date +%Y-%m-%d-%H:%M`
-    ssh surface "msub -l nodes=1:ppn=12 -l gres=ignore -l walltime=12:00:00 -o surface_testit_$subTag.out -q pbatch -A views -z ./surface_testit"
+    ssh cab "msub -l nodes=1:ppn=16 -l gres=ignore -l walltime=7:00:00 -o surface_testit_$subTag.out -q pbatch -A wbronze -z ./surface_testit"
 fi

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,7 +107,7 @@ ChangeDirectoryRPCExecutor::Update(Subject *s)
     ChangeDirectoryRPC *rpc = (ChangeDirectoryRPC *)s;
 #ifdef DEBUG
     debug2 << "ChangeDirectoryRPCExecutor::Update: dir="
-           << rpc->GetDirectory().c_str() << "\n"; debug2.flush();
+           << rpc->GetDirectory().c_str() << "\n" << std::flush;
 #endif
     // Either send a successful reply or send an error.
     if(parent->ChangeDirectory(rpc->GetDirectory()) == 0)

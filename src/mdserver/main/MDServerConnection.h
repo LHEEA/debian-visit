@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,6 +84,8 @@ class QuitRPC;
 class QuitRPCExecutor;
 class SetMFileOpenOptionsRPC;
 class SetMFileOpenOptionsRPCExecutor;
+class SaveSessionRPCExecutor;
+class RestoreSessionRPCExecutor;
 class Xfer;
 
 // ****************************************************************************
@@ -201,6 +203,9 @@ class Xfer;
 //    Jeremy Meredith, Wed Jan 23 16:18:17 EST 2008
 //    Added ability to set default file open options.
 //
+//    David Camp, Thu Aug 27 09:25:33 PDT 2015
+//    Added ability to save sessions remotely.
+//
 // ****************************************************************************
 
 class MDServerConnection
@@ -317,6 +322,8 @@ private:
     GetPluginErrorsRPCExecutor *getPluginErrorsRPCExecutor;
     GetDBPluginInfoRPCExecutor *getDBPluginInfoRPCExecutor;
     SetMFileOpenOptionsRPCExecutor *setMFileOpenOptionsRPCExecutor;
+    SaveSessionRPCExecutor     *saveSessionRPCExecutor;
+    RestoreSessionRPCExecutor  *restoreSessionRPCExecutor;
 
     // State information for the program using this MDServer.
     avtDatabaseMetaData        *currentMetaData;

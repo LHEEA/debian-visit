@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -61,6 +61,7 @@
 #include <avtCompactTreeFilter.h>
 #include <avtDatabaseMetaData.h>
 #include <avtParallel.h>
+#include <avtParallelContext.h>
 #include <avtOriginatingSource.h>
 
 #include <DebugStream.h>
@@ -95,6 +96,8 @@
 //    Hank Childs, Fri Sep  7 17:54:21 PDT 2012
 //    Initialize shouldOutputZonal.
 //
+//    Mark C. Miller, Tue Jun 14 10:39:39 PDT 2016
+//    Added writeContextHasNoDataProcs.
 // ****************************************************************************
 
 avtDatabaseWriter::avtDatabaseWriter()
@@ -111,6 +114,8 @@ avtDatabaseWriter::avtDatabaseWriter()
     nTargetChunks = 1;
     targetTotalZones = 1;
     savedContract = NULL;
+
+    writeContextHasNoDataProcs = false;
 }
 
 
@@ -188,25 +193,6 @@ avtDatabaseWriter::SetOutputZonal(bool val)
 {
     shouldOutputZonal = val;
     return (shouldOutputZonal ? SupportsOutputZonal() : true);
-}
-
-// ****************************************************************************
-//  Method: avtDatabaseWriter::Write
-//
-//  Purpose:
-//      Writes out a database making use of virtual function calls.
-//
-//  Programmer: Hank Childs
-//  Creation:   September 11, 2004
-//
-// ****************************************************************************
-
-void
-avtDatabaseWriter::Write(const std::string &filename,
-                         const avtDatabaseMetaData *md)
-{
-    std::vector<std::string> varlist;
-    Write("", filename, md, varlist);
 }
 
 // ****************************************************************************
@@ -396,6 +382,46 @@ avtDatabaseWriter::GetMeshName(const avtDatabaseMetaData *md) const
         EXCEPTION1(ImproperUseException,
                    "No meshes or curves appear to exist");
     return meshname;
+}
+
+// ****************************************************************************
+// Method: avtDatabaseWriter::GetTime
+//
+// Purpose:
+//   Get the time of the pipeline.
+//
+// Returns:    The time of the pipetime.
+//
+// Programmer: Allen Sanderson
+// Creation:   April 4 2015
+//
+// ****************************************************************************
+
+double
+avtDatabaseWriter::GetTime() const
+{
+    const avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
+    return atts.GetTime(); 
+}
+
+// ****************************************************************************
+// Method: avtDatabaseWriter::GetCycle
+//
+// Purpose:
+//   Get the cycle of the pipeline
+//
+// Returns:    The cycle of the pipeline.
+//
+// Programmer: Allen Sanderson
+// Creation:   April 4 2015
+//
+// ****************************************************************************
+
+int
+avtDatabaseWriter::GetCycle() const
+{
+    const avtDataAttributes &atts = GetInput()->GetInfo().GetAttributes();
+    return atts.GetCycle();
 }
 
 // ****************************************************************************
@@ -679,6 +705,48 @@ avtDatabaseWriter::GetVariables(const std::string &meshname,
 //  Purpose:
 //      Writes out a database making use of virtual function calls.
 //
+//  Note: This method is used in visitconvert.
+//
+//  Programmer: Hank Childs
+//  Creation:   September 11, 2004
+//
+// ****************************************************************************
+
+void
+avtDatabaseWriter::Write(const std::string &filename,
+                         const avtDatabaseMetaData *md)
+{
+    std::vector<std::string> varlist;
+    Write("", filename, md, varlist, true, false, 1);
+}
+
+void
+avtDatabaseWriter::Write(const std::string &plotName,
+                         const std::string &filename,
+                         const avtDatabaseMetaData *md,
+                         std::vector<std::string> &varlist, bool allVars)
+{
+    Write(plotName, filename, md, varlist, allVars, false, 1);
+}
+
+void
+avtDatabaseWriter::SetWriteContext(avtParallelContext &ctx)
+{
+    writeContext = ctx;
+}
+
+avtParallelContext &
+avtDatabaseWriter::GetWriteContext()
+{
+    return writeContext;
+}
+
+// ****************************************************************************
+//  Method: avtDatabaseWriter::Write
+//
+//  Purpose:
+//      Writes out a database making use of virtual function calls.
+//
 //  Programmer: Hank Childs
 //  Creation:   September 10, 2003
 //
@@ -739,20 +807,31 @@ avtDatabaseWriter::GetVariables(const std::string &meshname,
 //    Brad Whitlock, Mon Jun 16 18:06:06 PDT 2014
 //    Add some more debugging output.
 //
+//    Brad Whitlock, Thu Aug  6 16:55:50 PDT 2015
+//    Added support for writing data in parallel as groups.
+//    
+//    Mark C. Miller, Tue Jun 14 10:40:00 PDT 2016
+//    Added logic to set writeContextHasNoDataProcs
 // ****************************************************************************
 
 void
 avtDatabaseWriter::Write(const std::string &plotName,
                          const std::string &filename,
                          const avtDatabaseMetaData *md,
-                         std::vector<std::string> &varlist, bool allVars)
+                         std::vector<std::string> &varlist, bool allVars,
+                         bool writeUsingGroups, int groupSize)
 {
+    const char *line = 
+"=============================================================================";
     const char *mName = "avtDatabaseWriter::Write: ";
     avtDataObject_p dob = GetInput();
     if (*dob == NULL)
         EXCEPTION0(NoInputException);
 
     // Print the input options.
+    debug5 << line << endl;
+    debug5 << "EXPORT START" << endl;
+    debug5 << line << endl;
     debug5 << mName << "plotName=" << plotName
            << ", filename=" << filename
            << ", varlist={";
@@ -850,7 +929,9 @@ avtDatabaseWriter::Write(const std::string &plotName,
     // If the contract changed, re-execute.
     if(needsExecute)
     {
-        debug5 << endl << mName << "THE PIPELINE MUST REEXECUTE" << endl << endl;
+        debug5 << endl;
+        debug5 << "THE PIPELINE MUST REEXECUTE" << endl;
+        debug5 << line << endl << endl;
 
         //
         // Actually force the read of the data.
@@ -863,55 +944,173 @@ avtDatabaseWriter::Write(const std::string &plotName,
         dob->Update(spec);
     }
 
+    debug5 << endl;
+    debug5 << "DETERMINE WRITE PARTITIONS" << endl;
+    debug5 << line << endl << endl;
+
+    //
+    // We need to know which ranks have data.
+    //
+    int *nDatasetsInput = new int[PAR_Size()];
+    memset(nDatasetsInput, 0, sizeof(int) * PAR_Size());
+    int nMyDatasets = GetInputDataTree()->GetNumberOfLeaves();
+    nDatasetsInput[PAR_Rank()] = nMyDatasets;
+    int *nDatasets = new int[PAR_Size()];
+    SumIntArrayAcrossAllProcessors(nDatasetsInput, nDatasets, PAR_Size());
+    // Reuse the buffer as "group".
+    int *group = nDatasetsInput;
+
+    // Sum up the total number of dataset chunks.
+    int numTotalChunks = 0;
+    for(int i = 0; i < PAR_Size(); ++i)
+        numTotalChunks += nDatasets[i];
+
+    // If there is no data across the entire set of ranks, we can't export.
+    if(numTotalChunks == 0)
+    {
+        delete [] group;
+        delete [] nDatasets;
+        EXCEPTION1(ImproperUseException, "Dataset to export was empty. "
+                   "It is possible an invalid variable was requested.");
+    }
+
+    // Get the sum of the number of datasets up to this processor.
+    int startIndex = 0;
+    for(int i = 0; i < PAR_Rank(); ++i)
+        startIndex += nDatasets[i];
+
+    // Save the current parallel write context. This just makes it available to 
+    // derived classes via the GetWriteContext() method.
+    avtParallelContext oldContext(writeContext);
+    int oldWriteContextHasNoDataProcs(writeContextHasNoDataProcs);
+
+    // Make a message that that we might use to coordinate some writing. We
+    // call this on all ranks to stay in sync.
+    int tag = writeContext.GetUniqueMessageTag();
+
+    //
+    // Scan through the number of datasets and assign a color for each 
+    // MPI rank. We "color" them in groups of groupSize, starting with 1.
+    // Ranks that have no data get color 0.
+    //
+    if(writeUsingGroups && groupSize > 0)
+    {
+        debug5 << "Grouping ranks into write groups:" << endl;
+        int nGroups = 1, count = 0;
+        std::set<int> unique;
+        bool someProcsHaveNoData = false;
+        for(int i = 0; i < writeContext.Size(); ++i)
+        {
+            if(nDatasets[i] > 0)
+            {
+                if(count >= groupSize)
+                {
+                    count = 0;
+                    ++nGroups;
+                }
+
+                group[i] = nGroups;
+                ++count;
+            }
+            else
+            {
+                group[i] = 0;
+                someProcsHaveNoData = true;
+            }
+
+            unique.insert(group[i]);
+            debug5 << "\trank[" << i << "] nds=" << nDatasets[i] << ", group=" << group[i] << endl;
+        }
+
+        // Create a new communicator for the write group based on the colors.
+        writeContext = oldContext.Split(group[writeContext.Rank()], unique.size());
+        writeContextHasNoDataProcs = someProcsHaveNoData;
+    }
+
+    TRY
+    {
+        debug5 << endl;
+        debug5 << "WRITING TO FILES" << endl;
+        debug5 << line << endl << endl;
+
+        if((writeUsingGroups && groupSize > 0) && nMyDatasets == 0)
+        {
+            // If we're doing write grouping then we want to skip the write step
+            // for ranks with 0 datasets so they don't write junk empty files.
+            debug5 << "This rank is in a group with no data and can skip export." << endl;
+        }
+        else
+        {
+            // Write the data out using the parallel context we create for writing.
+            // That parallel context may represent several groups of MPI ranks, with
+            // each group writing their own data file.
+            GroupWrite(plotName, filename, 
+                       md, scalarList, vectorList, materialList,
+                       numTotalChunks, startIndex,
+                       tag, writeUsingGroups, groupSize);
+        }
+
+        delete [] group;
+        delete [] nDatasets;
+
+        // Restore the old parallel write context.
+        SetWriteContext(oldContext);
+
+        // Writer root file
+        WriteRootFile();
+    }
+    CATCHALL
+    {
+        delete [] group;
+        delete [] nDatasets;
+
+        // Restore the old parallel write context.
+        writeContext = oldContext;
+        writeContextHasNoDataProcs = oldWriteContextHasNoDataProcs;
+
+        RETHROW;
+    }
+    ENDTRY
+
+    debug5 << line << endl;
+    debug5 << "EXPORT END" << endl;
+    debug5 << line << endl << endl;
+}
+
+// ****************************************************************************
+// Method: avtDatabaseWriter::GroupWrite
+//
+// Purpose:
+//   Invokes the methods that enable derived classes to write the datasets.
+//
+// Arguments:
+//
+// Returns:    
+//
+// Note:       I moved this from the Write method.
+//
+// Programmer: Brad Whitlock
+// Creation:   Thu Aug  6 16:34:16 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+avtDatabaseWriter::GroupWrite(const std::string &plotName,
+    const std::string &filename,
+    const avtDatabaseMetaData *md,
+    const std::vector<std::string> &scalarList,
+    const std::vector<std::string> &vectorList,
+    const std::vector<std::string> &materialList,
+    int numTotalChunks, int startIndex,
+    int tag, bool writeUsingGroups, int groupSize)
+{
+    const char *mName = "avtDatabaseWriter::GroupWrite: ";
+
     //
     // Determine the method of data combination.
     //
     CombineMode mode = GetCombineMode(plotName);
-
-    // Get the data tree.
-    avtDataTree_p rootnode;
-    if(mode == CombineLike || mode == CombineNoneGather)
-    {
-        bool skipCompact = mode == CombineNoneGather;
-
-        // Use the compact tree filter logic to combine like datasets.
-        rootnode = avtCompactTreeFilter::Execute(
-            GetInput(),
-            false, // executionDependsOnDLB
-            true,  // parallelMerge
-            skipCompact,
-            false, // createCleanPolyData,
-            0.,    // tolerance,
-            avtCompactTreeFilter::Never, // compactDomainMode,
-            0      // compactDomainThreshold
-            );
-    }
-    else
-    {
-        rootnode = GetInputDataTree();
-    }
-
-    //
-    // In parallel, we need to find a start chunk ID for this processor
-    // to guarantee that chunk IDs go from 0..n-1 across all processors.
-    // 
-    int  numMyChunks = rootnode->GetNumberOfLeaves();
-    int  arrlen = PAR_Size()+1;
-    int *startIndexArrayTmp = new int[arrlen];
-    int *startIndexArray = new int[arrlen];
-    for (int i=0; i<arrlen; i++)
-        startIndexArrayTmp[i] = (i>PAR_Rank()) ? numMyChunks : 0;
-    SumIntArrayAcrossAllProcessors(startIndexArrayTmp,startIndexArray,arrlen);
-    int numTotalChunks = startIndexArray[arrlen-1];
-    int startIndex = startIndexArray[PAR_Rank()];
-    delete[] startIndexArrayTmp;
-    delete[] startIndexArray;
-
-    if (numTotalChunks == 0)
-    {
-        EXCEPTION1(ImproperUseException, "Dataset to export was empty. "
-                   "It is possible an invalid variable was requested.");
-    }
 
     //
     // Call virtual function that the derived type re-defines to do the
@@ -920,27 +1119,27 @@ avtDatabaseWriter::Write(const std::string &plotName,
     //
     if(mode == CombineAll)
     {
-#ifdef PARALLEL
-        if(PAR_Rank() == 0)
+        debug5 << mName << "Write mode: CombineAll" << endl;
+
+        if(writeContext.Rank() == 0)
         {
-#endif
             OpenFile(filename, 1);
             WriteHeaders(md, scalarList, vectorList, materialList);
             BeginPlot(plotName);
-#ifdef PARALLEL
         }
-#endif
-        // We turn all datasets to polydata and collect them all in a
-        // single dataset on rank 0.
-        vtkPolyData *pd = CreateSinglePolyData(rootnode);
 
-#ifdef PARALLEL
-        if(PAR_Rank() == 0)
+        // We turn all datasets to polydata and collect them all in a
+        // single dataset on rank 0 of the write group.
+        vtkPolyData *pd = CreateSinglePolyData(writeContext, GetInputDataTree());
+
+        if(writeContext.Rank() == 0)
         {
-#endif
             TRY
             {
-                WriteChunk(pd, 0);
+                // There is only ever 1 chunk to write using this combination mode.
+                int domain = 0;
+                std::string label("combined");
+                WriteChunk(pd, 0, domain, label);
             }
             CATCH(VisItException)
             {
@@ -952,22 +1151,63 @@ avtDatabaseWriter::Write(const std::string &plotName,
 
             EndPlot(plotName);
             CloseFile();
-#ifdef PARALLEL
         }
-#endif
 
         if(pd != NULL)
             pd->Delete();
     }
     else if(mode == CombineLike || mode == CombineNoneGather)
     {
-#ifdef PARALLEL
-        if(PAR_Rank() == 0)
-        {
-#endif
-            int nds = 0;
-            vtkDataSet **ds = rootnode->GetAllLeaves(nds);
+        debug5 << mName << "Write mode: "
+               << (mode == CombineLike ? "CombineLike" : "CombineNoneGather") << endl;
 
+        bool skipCompact = mode == CombineNoneGather;
+
+        // Use the compact tree filter logic to combine like datasets.
+        // If we take this path then data are being aggregated onto
+        // rank 0 of the ranks that are part of the parallel writeContext.
+        avtDataTree_p combined = avtCompactTreeFilter::Execute(
+            writeContext,
+            GetInput(),
+            false, // executionDependsOnDLB
+            true,  // parallelMerge
+            skipCompact,
+            false, // createCleanPolyData,
+            0.,    // tolerance,
+            avtCompactTreeFilter::Never, // compactDomainMode,
+            0      // compactDomainThreshold
+            );
+
+        // At this point, all data is on rank0 of the write group.
+
+        // We just write on rank 0 of the write group. The data was already
+        // gathered to rank 0 of the write group when we called 
+        // avtCompactTreeFilter::Execute.
+        if(writeContext.Rank() == 0)
+        {
+            int nds = 0;
+            vtkDataSet **ds = combined->GetAllLeaves(nds);
+
+            // Get some more information about the datasets.
+            std::vector<std::string> labels;
+            combined->GetAllLabels(labels);
+            std::vector<int> domainIds;
+            combined->GetAllDomainIds(domainIds);
+
+            if(nds != static_cast<int>(labels.size()))
+            {
+                EXCEPTION1(ImproperUseException, "The number of labels does not match the number of domains.");
+            }
+            if(nds != static_cast<int>(domainIds.size()))
+            {
+                EXCEPTION1(ImproperUseException, "The number of domainIds does not match the number of domains.");
+            }
+#if 1
+            debug5 << "CombinedData: number of datasets = " << nds << endl;
+            debug5 << "CombinedData: numLabels = " << labels.size() << endl;
+            for(size_t i = 0; i < labels.size(); ++i)
+                debug5 << "\tlabels[" << i << "] = " << labels[i] << endl;
+#endif
             OpenFile(filename, nds);
             WriteHeaders(md, scalarList, vectorList, materialList);
             BeginPlot(plotName);
@@ -979,7 +1219,7 @@ avtDatabaseWriter::Write(const std::string &plotName,
                 {
                     // If ds is not polydata, convert.
                     pds = ConvertDatasetsIntoPolyData(&ds[i], 1);
-                    WriteChunk(pds[0], i);
+                    WriteChunk(pds[0], i, domainIds[i], labels[i]);
                     pds[0]->Delete();
                 }
                 CATCHALL
@@ -994,12 +1234,23 @@ avtDatabaseWriter::Write(const std::string &plotName,
             delete [] ds;
             EndPlot(plotName);
             CloseFile();
-#ifdef PARALLEL
         }
-#endif
     }
     else // CombineNone
     {
+        debug5 << mName << "Write mode: CombineNone" << endl;
+        int nWritten = 0;
+
+        // NOTE: Plugins are not allowed to use collective communication in
+        //       the methods coming up.
+
+        // If we're using write groups or the format appends data from each
+        // rank into the output file, then we iterate over the ranks in
+        // the group so they do their I/O one after the next. All write
+        // groups do this at the same time.
+        if((writeUsingGroups && groupSize > 0) || SequentialOutput())
+            WaitForTurn(tag, nWritten);
+
         OpenFile(filename, numTotalChunks);
         WriteHeaders(md, scalarList, vectorList, materialList);
         BeginPlot(plotName);
@@ -1009,7 +1260,7 @@ avtDatabaseWriter::Write(const std::string &plotName,
         // go, so nodelist.size() keeps going.  This is in lieu of recursion.
         //
         std::vector<avtDataTree_p> nodelist;
-        nodelist.push_back(rootnode);
+        nodelist.push_back(GetInputDataTree());
         int chunkID = startIndex;
         for (size_t cur_index = 0 ; cur_index < nodelist.size() ; cur_index++)
         {
@@ -1024,14 +1275,119 @@ avtDatabaseWriter::Write(const std::string &plotName,
             else
             {
                 vtkDataSet *in_ds = dt->GetDataRepresentation().GetDataVTK();
-                WriteChunk(in_ds, chunkID);
+                int domainId = dt->GetDataRepresentation().GetDomain();
+                std::string label(dt->GetDataRepresentation().GetLabel());
+                WriteChunk(in_ds, chunkID, domainId, label);
                 chunkID++;
+                ++nWritten;
             }
         }
 
         EndPlot(plotName);
         CloseFile();
+
+        // The current rank has written its data. Message the next rank
+        // in the group so it can write its data...
+        if((writeUsingGroups && groupSize > 0) || SequentialOutput())
+            GrantTurn(tag, nWritten);
     }
+}
+
+// ****************************************************************************
+// Method: avtDatabaseWriter::WriteChunk
+//
+// Purpose:
+//   Write a chunk of data to the file format.
+//
+// Arguments:
+//   ds      : The data to write.
+//   chunkId : The chunk id of the data (will be 0..N-1 over all chunks 
+//             across all ranks.)
+//   domainId : The original domain id that generated the data.
+//   label    : The label of the data.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 21 13:17:30 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtDatabaseWriter::WriteChunk(vtkDataSet *ds, int chunkId, 
+    int /*domainId*/, const std::string &/*label*/)
+{
+    // Call the old method signature so we can use readers that have not 
+    // been changed.
+    debug5 << "Calling DEPRECATED WriteChunk method." << endl;
+    WriteChunk(ds, chunkId);
+}
+
+// ****************************************************************************
+// Method: avtDatabaseWriter::WaitForTurn
+//
+// Purpose:
+//   This method is called when we need to wait for our turn to do I/O.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Feb 10 12:20:24 PST 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtDatabaseWriter::WaitForTurn(int tag, int &nWritten)
+{
+#ifdef PARALLEL
+    // Wait for a turn.
+    if(writeContext.Rank() > 0)
+    {
+        MPI_Status status;
+        MPI_Recv((void*)&nWritten, 1, MPI_INT, writeContext.Rank()-1, tag, 
+                 writeContext.GetCommunicator(), &status);
+        debug5 << "avtDatabaseWriter::WaitForTurn: It is rank " << writeContext.Rank() << "'s turn now. We've written "
+               << nWritten << " chunks." << endl;
+    }
+#endif
+}
+
+// ****************************************************************************
+// Method: avtDatabaseWriter::GrantTurn
+//
+// Purpose:
+//   This method is called when we want to tell the next rank that its turn
+//   has come.
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Feb 10 12:20:24 PST 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtDatabaseWriter::GrantTurn(int tag, int &nWritten)
+{
+#ifdef PARALLEL
+    // All ranks except the last rank send a message to the next rank in the 
+    // communicator when it is time for that rank's turn.
+    int nextRank = writeContext.Rank()+1;
+    if(nextRank < writeContext.Size())
+    {
+        debug5 << "avtDatabaseWriter::GrantTurn: messaging rank " << nextRank << endl;
+        MPI_Send((void*)&nWritten, 1, MPI_INT, nextRank,
+                 tag, writeContext.GetCommunicator());
+    }
+    else
+    {
+        debug5 << "avtDatabaseWriter::GrantTurn: " << nWritten << " chunks written." << endl;
+    }
+#endif
 }
 
 //****************************************************************************
@@ -1062,7 +1418,7 @@ avtDatabaseWriter::GetCombineMode(const std::string &) const
 // Method:  avtDatabaseWriter::CreateTrianglePolyData
 //
 // Purpose:
-//   Tells the reader whether we're creating triangle polydata.
+//   Tells the writer whether we're creating triangle polydata.
 //
 // Returns: A flag indicating whether we're creating triangle polydata.
 //
@@ -1085,7 +1441,7 @@ avtDatabaseWriter::CreateTrianglePolyData() const
 // Method: avtDatabaseWriter::CreateNormals
 //
 // Purpose:
-//   Tell the reader to create normals if they do not exist prior to writing
+//   Tell the writer to create normals if they do not exist prior to writing
 //   out the data.
 //
 // Returns:    True if we want normals to be created for polydata.
@@ -1107,6 +1463,31 @@ avtDatabaseWriter::CreateNormals() const
     return false;
 }
 
+// ****************************************************************************
+// Method: avtDatabaseWriter::SequentialOutput
+//
+// Purpose:
+//   Tell the writer whether the format needs MPI-rank sequential access to
+//   write the output file.
+//
+// Returns:    True if we want to allow just one domain in a write group to
+//             write its data at any one time.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Wed Mar  5 15:45:09 PST 2014
+//
+// Modifications:
+//
+// ****************************************************************************
+
+bool
+avtDatabaseWriter::SequentialOutput() const
+{
+    return false;
+}
+
 //****************************************************************************
 // Method:  avtDatabaseWriter::CreateSinglePolyData
 //
@@ -1115,6 +1496,7 @@ avtDatabaseWriter::CreateNormals() const
 //   of data from other ranks to rank 0.
 //
 // Arguments:
+//   context  : The parallel context to use.
 //   rootnode : The data tree that we're converting/combining.
 //
 // Returns: A single polydata object.  Caller must "Delete".
@@ -1129,7 +1511,7 @@ avtDatabaseWriter::CreateNormals() const
 //****************************************************************************
 
 vtkPolyData *
-avtDatabaseWriter::CreateSinglePolyData(avtDataTree_p root)
+avtDatabaseWriter::CreateSinglePolyData(avtParallelContext &context, avtDataTree_p root)
 {
     // Get all of the leaves.
     int nds = 0;
@@ -1137,9 +1519,11 @@ avtDatabaseWriter::CreateSinglePolyData(avtDataTree_p root)
 
     // Convert all datasets into polydata.
     std::vector<vtkPolyData *> pds = ConvertDatasetsIntoPolyData(ds, nds);
+    if(ds != NULL)
+        delete [] ds;
 
     // Send the polydatas to rank 0.
-    std::vector<vtkPolyData *> allpds = SendPolyDataToRank0(pds);
+    std::vector<vtkPolyData *> allpds = SendPolyDataToRank0(context, pds);
 
     // We do not need pds anymore.
     for(size_t i = 0; i < pds.size(); ++i)
@@ -1294,16 +1678,20 @@ avtDatabaseWriter::CombinePolyData(const std::vector<vtkPolyData *> &pds)
 //****************************************************************************
 
 std::vector<vtkPolyData *>
-avtDatabaseWriter::SendPolyDataToRank0(const std::vector<vtkPolyData *> &pds)
+avtDatabaseWriter::SendPolyDataToRank0(avtParallelContext &context,
+    const std::vector<vtkPolyData *> &pds)
 {
     std::vector<vtkPolyData *> outputpds;
 
 #ifdef PARALLEL
-    int *inA = new int[PAR_Size()], *outA = new int[PAR_Size()];
-    for (int i = 0; i < PAR_Size(); i++)
+    int par_size = context.Size();
+    int par_rank = context.Rank();
+
+    int *inA = new int[par_size], *outA = new int[par_size];
+    for (int i = 0; i < par_size; i++)
         inA[i] = outA[i] = 0;
 
-    if (PAR_Rank() != 0)
+    if (par_rank != 0)
     {
         vtkPolyDataWriter *writer = NULL;
         int len = 0;
@@ -1333,14 +1721,14 @@ avtDatabaseWriter::SendPolyDataToRank0(const std::vector<vtkPolyData *> &pds)
         }
 
         // Send the lengths to rank 0.
-        inA[PAR_Rank()] = len;
-        MPI_Reduce(inA, outA, PAR_Size(), MPI_INT, MPI_SUM, 0, VISIT_MPI_COMM);
+        inA[par_rank] = len;
+        MPI_Reduce(inA, outA, par_size, MPI_INT, MPI_SUM, 0, context.GetCommunicator());
 
         // Send the string to rank 0.
         if (len > 0)
         {
             char *data = writer->GetOutputString();
-            MPI_Send(data, len, MPI_CHAR, 0, 0, VISIT_MPI_COMM);
+            MPI_Send(data, len, MPI_CHAR, 0, 0, context.GetCommunicator());
             writer->Delete();
         }
     }
@@ -1354,16 +1742,16 @@ avtDatabaseWriter::SendPolyDataToRank0(const std::vector<vtkPolyData *> &pds)
         }
 
         // Get the string lengths from other ranks.
-        MPI_Reduce(inA, outA, PAR_Size(), MPI_INT, MPI_SUM, 0, VISIT_MPI_COMM);
+        MPI_Reduce(inA, outA, par_size, MPI_INT, MPI_SUM, 0, context.GetCommunicator());
 
         // Get the strings from other ranks.
-        for (int i = 1; i < PAR_Size(); i++)
+        for (int i = 1; i < par_size; i++)
         {
             if (outA[i] > 0)
             {
                 char *data = new char[outA[i]];
                 MPI_Status stat;
-                MPI_Recv(data, outA[i], MPI_CHAR, i, 0, VISIT_MPI_COMM, &stat);
+                MPI_Recv(data, outA[i], MPI_CHAR, i, 0, context.GetCommunicator(), &stat);
 
                 vtkPolyDataReader *rdr = vtkPolyDataReader::New();
                 rdr->ReadFromInputStringOn();
@@ -1492,6 +1880,30 @@ avtDatabaseWriter::BeginPlot(const std::string &)
 
 void
 avtDatabaseWriter::EndPlot(const std::string &)
+{
+}
+
+// ****************************************************************************
+// Method: avtDatabaseWriter::WriteRootFile
+//
+// Purpose:
+//   This method writes out a root file to collect a bunch of chunk files into
+//   something more convenient for VisIt to read.
+//
+// Arguments:
+//
+// Note: This is called after all chunks have been written and the write
+//       context has been restored to the global context.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 21 10:23:31 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+avtDatabaseWriter::WriteRootFile()
 {
 }
 

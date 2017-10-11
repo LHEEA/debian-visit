@@ -18,6 +18,10 @@ import time
 #   I modified the script so that all the arguments are passed to subsequent
 #   components before the "-s script_file" argument.
 #
+#   David Camp, Mon Oct 26 10:13:49 PDT 2015
+#   I added a function to return the correct argument for the process per node
+#   flag for Open MPI and MPICH.
+#
 ###############################################################################
 
 class JobSubmitter(object):
@@ -65,6 +69,19 @@ class JobSubmitter(object):
     def PPN(self):
         return str(int(math.ceil(float(self.parallel.np) / float(self.parallel.nn))))
 
+    # Open MPI and MPICH have different arguments for the process per node flag.
+    # This function trys to decide with flag to use. It defaults to MPICH.
+    def PPNArgument(self):
+        p = subprocess.Popen(["mpirun", "--version"], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
+        output = p.communicate()
+        new = ' '.join(output)
+        if new.find("Open MPI") == -1:
+            # MPICH
+            return "-ppn"
+        else:
+            # Open MPI
+            return "-npernode"
+
     def CreateCommand(self, args, debugger):
         parcmd = self.Executable()
         parcmd = debugger.CreateCommand(parcmd + self.VisItExecutable() + args)
@@ -84,12 +101,19 @@ class JobSubmitter(object):
 #   By default it is set to 0, so it would need to be overridden in a custom
 #   launcher to be added.
 #
+#   David Camp, Mon Jul 27 13:10:15 PDT 2015
+#   Make adding of -ppn to mpirun dependent on "self.parallel.nn".
+#   Removed useppnmpirun.
+#
+#   David Camp, Mon Oct 26 10:13:49 PDT 2015
+#   Call the new PPNArgument function to get the correct MPI argument for 
+#   the "process per node" flag.
+#
 ###############################################################################
 
 class JobSubmitter_mpirun(JobSubmitter):
     def __init__(self, launcher):
         super(JobSubmitter_mpirun,self).__init__(launcher)
-        self.useppnmpirun = 0
 
     def Executable(self):
         return ["mpirun"]
@@ -100,10 +124,8 @@ class JobSubmitter_mpirun(JobSubmitter):
             parcmd = parcmd + self.parallel.launchargs
         if self.parallel.np != None:
             parcmd = parcmd + ["-np", self.parallel.np]
-            nodes = self.parallel.nn
-            if self.useppnmpirun == 1 and nodes != None:
-                ppn = str(int(math.ceil(float(self.parallel.np) / float(nodes))))
-                parcmd = parcmd + ["-ppn", ppn]
+        if self.parallel.nn != None:
+            parcmd = parcmd + [self.PPNArgument(), self.PPN()]
         if self.parallel.partition != None:
             parcmd = parcmd + ["-p", self.parallel.partition]
         if self.parallel.machinefile != None:
@@ -139,12 +161,19 @@ class JobSubmitter_mpirun(JobSubmitter):
 #   By default it is set to 0, so it would need to be overridden in a custom
 #   launcher to be added.
 #
+#   David Camp, Mon Jul 27 13:10:15 PDT 2015
+#   Make adding of -ppn to mpiexec dependent on "self.parallel.nn".
+#   Removed useppnmpiexec.
+#
+#   David Camp, Mon Oct 26 10:13:49 PDT 2015
+#   Call the new PPNArgument function to get the correct MPI argument for 
+#   the "process per node" flag.
+#
 ################################################################################
 
 class JobSubmitter_mpiexec(JobSubmitter):
     def __init__(self, launcher):
         super(JobSubmitter_mpiexec,self).__init__(launcher)
-        self.useppnmpiexec = 0
 
     def Executable(self):
         # If we're running on MacOS X 10.7 or later, use our own mpich
@@ -163,10 +192,8 @@ class JobSubmitter_mpiexec(JobSubmitter):
             parcmd = parcmd + self.parallel.launchargs
         if self.parallel.np != None:
             parcmd = parcmd + ["-n", self.parallel.np]
-            nodes = self.parallel.nn
-            if self.useppnmpiexec == 1 and nodes != None:
-                ppn = str(int(math.ceil(float(self.parallel.np) / float(nodes))))
-                parcmd = parcmd + ["-ppn", ppn]
+        if self.parallel.nn != None:
+            parcmd = parcmd + [self.PPNArgument(), self.PPN()]
         if self.parallel.partition != None:
             parcmd = parcmd + ["-p", self.parallel.partition]
         if self.parallel.machinefile != None:
@@ -191,6 +218,9 @@ class JobSubmitter_mpiexec(JobSubmitter):
 #   I added a fix from Jean Favre that corrected the setting of the -N option
 #   for aprun.
 #
+#   David Camp, Mon Jul 27 08:31:12 PDT 2015
+#   Make adding of -N to aprun dependent on "self.parallel.nn".
+#
 ###############################################################################
 
 class JobSubmitter_aprun(JobSubmitter):
@@ -206,7 +236,8 @@ class JobSubmitter_aprun(JobSubmitter):
             parcmd = parcmd + self.parallel.launchargs
         if self.parallel.np != None:
             parcmd = parcmd + ["-n", self.parallel.np]
-        parcmd = parcmd + ["-N", self.PPN()]
+        if self.parallel.nn != None:
+            parcmd = parcmd + ["-N", self.PPN()]
         parcmd = parcmd + self.VisItExecutable()
         parcmd = parcmd + ["-plugindir", GETENV("VISITPLUGINDIR")]
         parcmd = parcmd + ["-visithome", GETENV("VISITHOME")]
@@ -464,6 +495,8 @@ class JobSubmitter_salloc(JobSubmitter):
         parcmd = self.Executable()
         if self.parallel.partition != None:
             parcmd = parcmd + ["-p", self.parallel.partition]
+        if self.parallel.bank != None:
+            parcmd = parcmd + ["-A", self.parallel.bank]
         if self.parallel.time != None:
             parcmd = parcmd + ["-t", self.parallel.time]
         if self.parallel.nn != None:
@@ -502,6 +535,10 @@ class JobSubmitter_salloc(JobSubmitter):
 #   I added a fix from Jean Favre that corrected the setting of the -N option
 #   for aprun.
 #
+#   David Camp, Thu Oct  1 11:37:53 PDT 2015
+#   Update sbatch to be more like qsub to support new NERSC system, Cori.
+#   Also added the srun mpi launcher option.
+#
 ###############################################################################
 
 class JobSubmitter_sbatch(JobSubmitter):
@@ -511,8 +548,10 @@ class JobSubmitter_sbatch(JobSubmitter):
     def Executable(self):
         return ["sbatch"]
 
-    def PPNArguments(self, ppn):
-        return ["--npernode", ppn, "numa_wrapper", "--ppn", ppn]
+    def CreateFilename(self):
+        tdate = time.asctime()[11:19]
+        tuser = self.launcher.username()
+        return os.path.join("/tmp", "visit.%s.%s" % (tuser, tdate))
 
     def HandledHardwareArguments(self):
         return 1
@@ -520,52 +559,140 @@ class JobSubmitter_sbatch(JobSubmitter):
     def TFileLoadModules(self, tfile):
         return
 
-    def CreateFilename(self):
-        tdate = time.asctime()[11:19]
-        tuser = self.launcher.username()
-        return os.path.join("/tmp", "visit.%s.%s" % (tuser, tdate))
+    def TFileSetup(self, tfile):
+        tfile.write("cd %s\n" % os.path.abspath(os.curdir))
+        tfile.write("ulimit -c 0\n")
+        #tfile.write("# Submitted on host %s\n" % self.launcher.hostname())
+        #for v in ("LIBPATH", "LD_LIBRARY_PATH", "VISITHOME", "VISITARCHHOME", "VISITPLUGINDIR"):
+        #    tfile.write('echo "%s=$%s"\n' % (v,v))
+
+    def Writable(self, d):
+        return self.launcher.writepermission(d)
+
+    def HandleCWDPermissions(self):
+        args = []
+        if not self.Writable(os.path.abspath(os.curdir)):
+            msg = """
+The directory you started VisIt in does not have write permission.
+Using /dev/null for the batch job standard error and standard
+output streams.
+"""
+            self.launcher.warning(msg)
+            args = args + ["-e", "/dev/null", "-o", "/dev/null"]
+        return args
+
+    def AddEnvironment(self):
+        env = "--export="
+        env = env + "HOME=" + GETENV("HOME")
+        env = env + ",LIBPATH=" + GETENV("LIBPATH")
+        env = env + ",LD_LIBRARY_PATH=" + GETENV("LD_LIBRARY_PATH")
+        env = env + ",VISITHOME=" + GETENV("VISITHOME")
+        env = env + ",VISITARCHHOME=" + GETENV("VISITARCHHOME")
+        env = env + ",VISITPLUGINDIR=" + GETENV("VISITPLUGINDIR")
+        return [env]
+
+    def mpiexec(self):
+        return ["mpiexec"]
+
+    def mpiexec_args(self, args):
+        mpicmd = self.mpiexec()
+        if self.parallel.sublaunchargs != None:
+            mpicmd = mpicmd + self.parallel.sublaunchargs
+        if self.parallel.np != None:
+            mpicmd = mpicmd + ["-n", self.parallel.np]
+        if self.parallel.nn != None:
+            mpicmd = mpicmd + [self.PPNArgument(), self.PPN()]
+        if self.parallel.machinefile != None:
+            mpicmd = mpicmd + ["-machinefile", self.parallel.machinefile]
+        mpicmd = mpicmd + self.VisItExecutable() + args
+        return mpicmd
+
+    def aprun(self):
+        return ["aprun"]
+
+    def aprun_args(self, args):
+        mpicmd = self.aprun()
+        if self.parallel.sublaunchargs != None:
+            mpicmd = mpicmd + self.parallel.sublaunchargs
+        if self.parallel.np != None:
+            mpicmd = mpicmd + ["-n", self.parallel.np]
+        if self.parallel.nn != None:
+            mpicmd = mpicmd + ["-N", self.PPN()]
+        mpicmd = mpicmd + self.VisItExecutable() + args
+        return mpicmd
+
+    def mpirun(self):
+        return ["mpirun"]
+
+    def mpirun_args(self, args):
+        mpicmd = self.mpirun()
+        if self.parallel.sublaunchargs != None:
+            mpicmd = mpicmd + self.parallel.sublaunchargs
+        if self.parallel.np != None:
+            mpicmd = mpicmd + ["-np", self.parallel.np]
+        if self.parallel.nn != None:
+            mpicmd = mpicmd + [self.PPNArgument(), self.PPN()]
+        if self.parallel.machinefile != None:
+            mpicmd = mpicmd + ["-machinefile", self.parallel.machinefile]
+        mpicmd = mpicmd + self.VisItExecutable() + args
+        return mpicmd
+
+    def ibrun(self):
+        return ["ibrun"]
+
+    def ibrun_args(self, args):
+        mpicmd = self.ibrun()
+        if self.parallel.sublaunchargs != None:
+            mpicmd = mpicmd + self.parallel.sublaunchargs
+        mpicmd = mpicmd + self.VisItExecutable() + args
+        return mpicmd
+
+    def srun(self):
+        return ["srun"]
+
+    def srun_args(self, args):
+        mpicmd = self.srun()
+        if self.parallel.sublaunchargs != None:
+            mpicmd = mpicmd + self.parallel.sublaunchargs
+        if self.parallel.np != None:
+            mpicmd = mpicmd + ["--ntasks=%s" % self.parallel.np]
+        if self.parallel.nn != None:
+            mpicmd = mpicmd + ["--nodes=%s" % self.parallel.nn]
+            mpicmd = mpicmd + ["--tasks-per-node=%s" % self.PPN()]
+        mpicmd = mpicmd + self.VisItExecutable() + args
+        return mpicmd
 
     def CreateCommand(self, args, debugger):
         parcmd = self.Executable()
+        parcmd = parcmd + self.HandleCWDPermissions()
+        parcmd = parcmd + self.AddEnvironment()
         if self.parallel.launchargs != None:
-           parcmd = parcmd + self.parallel.launchargs
+            parcmd = parcmd + self.parallel.launchargs
         if self.parallel.partition != None:
-           parcmd = parcmd + ["--partition=%s" % self.parallel.partition]
+            parcmd = parcmd + ["--partition=%s" % self.parallel.partition]
         if self.parallel.bank != None:
-           parcmd = parcmd + ["--account=%s" % self.parallel.bank]
+            parcmd = parcmd + ["--account=%s" % self.parallel.bank]
         if self.parallel.time != None:
-           parcmd = parcmd + ["--time=%s" % self.parallel.time]
-        if self.parallel.nn != None:
-           parcmd = parcmd + ["--nodes=%s" % self.parallel.nn]
+            parcmd = parcmd + ["--time=%s" % self.parallel.time]
         if self.parallel.np != None:
-           parcmd = parcmd + ["--ntasks=%s" % self.parallel.np]
+            parcmd = parcmd + ["--ntasks=%s" % self.parallel.np]
+        if self.parallel.nn != None:
+            parcmd = parcmd + ["--nodes=%s" % self.parallel.nn]
+            parcmd = parcmd + ["--tasks-per-node=%s" % self.PPN()]
         if self.parallel.name != None:
             parcmd = parcmd + ["--job-name=%s" % self.parallel.name]
-        ppn = "8"
-        if self.parallel.nn != None:
-            ppn = self.PPN()
 
         sbatch,sublauncher = self.LauncherAndSubLauncher()
-        if sublauncher == "mpiexec":
-            mpicmd = ["mpiexec"]
-            if self.parallel.sublaunchargs != None:
-                mpicmd = mpicmd + self.parallel.sublaunchargs
-            mpicmd = mpicmd + self.PPNArguments(ppn)
-            mpicmd = mpicmd + self.VisItExecutable() + args
+        if sublauncher == "srun":
+            mpicmd = self.srun_args(args)
+        elif sublauncher == "mpiexec":
+            mpicmd = self.mpiexec_args(args)
         elif sublauncher == "aprun":
-            mpicmd = ["aprun", "-n", self.parallel.np]
-            mpicmd = mpicmd + ["-N", self.PPN()]
-            if self.parallel.sublaunchargs != None:
-                mpicmd = mpicmd + self.parallel.sublaunchargs
-            mpicmd = mpicmd + self.VisItExecutable() + args
+            mpicmd = self.aprun_args(args)
         elif sublauncher == "mpirun":
-            mpicmd = ["mpirun"]
-            if self.parallel.sublaunchargs != None:
-                mpicmd = mpicmd + self.parallel.sublaunchargs
-            if self.parallel.np != None:
-                mpicmd = mpicmd + ["-np", self.parallel.np]
-            mpicmd = mpicmd + ["--ppn", str(ppn)] 
-            mpicmd = mpicmd + self.VisItExecutable() + args
+            mpicmd = self.mpirun_args(args)
+        elif sublauncher == "ibrun":
+            mpicmd = self.ibrun_args(args)
         else:
             mpicmd = self.VisItExecutable() + args
 
@@ -577,8 +704,8 @@ class JobSubmitter_sbatch(JobSubmitter):
             tfile = open(tfilename, "wt")
             tfile.write("#!/bin/sh\n")
             self.TFileLoadModules(tfile)
-            tfile.write("cd %s\n" % os.path.abspath(os.curdir))
-            tfile.write("ulimit -c 0\n")
+            self.TFileSetup(tfile)
+
             if self.parallel.hw_precmd != None:
                 tfile.write(self.parallel.hw_precmd + "\n")
             if self.parallel.sublaunchprecmd != None:
@@ -588,7 +715,9 @@ class JobSubmitter_sbatch(JobSubmitter):
                 tfile.write(string.join(self.parallel.sublaunchpostcmd, " ") + "\n")
             if self.parallel.hw_postcmd != None:
                 tfile.write(self.parallel.hw_postcmd + "\n")
+
             tfile.close()
+            os.chmod(tfilename, 0775)
         except (OSError, IOError):
             exit("Could not create script file to launch %s job." % self.parallel.launcher, 0)
 
@@ -683,6 +812,14 @@ class JobSubmitter_yod(JobSubmitter):
 #   useppnmpirun being set to 1. By default they are set to 0, so they would
 #   need to be overridden in a custom launcher to be added.
 #
+#   David Camp, Mon Jul 27 13:10:15 PDT 2015
+#   Make adding of -ppn to mpirun and mpiexec dependent on "self.parallel.nn".
+#   Removed useppnmpiexec and useppnmpirun.
+#
+#   David Camp, Mon Oct 26 10:13:49 PDT 2015
+#   Call the new PPNArgument function to get the correct MPI argument for 
+#   the "process per node" flag.
+#
 ###############################################################################
 
 class JobSubmitter_qsub(JobSubmitter):
@@ -691,8 +828,6 @@ class JobSubmitter_qsub(JobSubmitter):
         self.tfilename = ""
         self.useppn = 1
         self.usettc = 0
-        self.useppnmpiexec = 0
-        self.useppnmpirun = 0
 
     def Executable(self):
         plauncher,sublauncher = self.LauncherAndSubLauncher()
@@ -725,10 +860,8 @@ class JobSubmitter_qsub(JobSubmitter):
             mpicmd = mpicmd + self.parallel.sublaunchargs
         if self.parallel.np != None:
             mpicmd = mpicmd + ["-n", self.parallel.np]
-            nodes = self.parallel.nn
-            if self.useppnmpiexec == 1 and nodes != None:
-                ppn = str(int(math.ceil(float(self.parallel.np) / float(nodes))))
-                mpicmd = mpicmd + ["-ppn", ppn]
+        if self.parallel.nn != None:
+            mpicmd = mpicmd + [self.PPNArgument(), self.PPN()]
         if self.parallel.machinefile != None:
             mpicmd = mpicmd + ["-machinefile", self.parallel.machinefile]
         mpicmd = mpicmd + self.VisItExecutable() + args
@@ -743,10 +876,8 @@ class JobSubmitter_qsub(JobSubmitter):
             mpicmd = mpicmd + self.parallel.sublaunchargs
         if self.parallel.np != None:
             mpicmd = mpicmd + ["-np", self.parallel.np]
-            nodes = self.parallel.nn
-            if self.useppnmpirun == 1 and nodes != None:
-                ppn = str(int(math.ceil(float(self.parallel.np) / float(nodes))))
-                mpicmd = mpicmd + ["-ppn", ppn]
+        if self.parallel.nn != None:
+            mpicmd = mpicmd + [self.PPNArgument(), self.PPN()]
         if self.parallel.machinefile != None:
             mpicmd = mpicmd + ["-machinefile", self.parallel.machinefile]
         mpicmd = mpicmd + self.VisItExecutable()
@@ -763,6 +894,9 @@ class JobSubmitter_qsub(JobSubmitter):
             mpicmd = mpicmd + self.parallel.sublaunchargs
         if self.parallel.np != None:
             mpicmd = mpicmd + ["-n", self.parallel.np]
+        if self.parallel.nn != None:
+            mpicmd = mpicmd + ["--nodes=%s" % self.parallel.nn]
+            mpicmd = mpicmd + ["--tasks-per-node=%s" % self.PPN()]
         mpicmd = mpicmd + self.VisItExecutable() + args
         return mpicmd
 
@@ -775,7 +909,7 @@ class JobSubmitter_qsub(JobSubmitter):
             mpicmd = mpicmd + self.parallel.sublaunchargs
         if self.parallel.np != None:
             mpicmd = mpicmd + ["-n", self.parallel.np]
-        if self.parallel.np != None and self.parallel.nn != None:
+        if self.parallel.nn != None:
             mpicmd = mpicmd + ["-N", self.PPN()]
         mpicmd = mpicmd + self.VisItExecutable() + args
         return mpicmd
@@ -1010,6 +1144,11 @@ class Debugger(object):
 # Date:       Thu May 31 13:07:04 PDT 2012
 #
 # Modifications:
+#   Burlen Loring, Thu Jun 25 13:31:56 PDT 2015
+#   Added basic mpi support
+#
+#   Burlen Loring, Thu Oct  8 16:10:51 PDT 2015
+#   remove warning message now that it's been tested for a while
 #
 ###############################################################################
 
@@ -1058,14 +1197,22 @@ class GDBDebugger(Debugger):
 
     def CreateCommand(self, args):
         launcherargs, visitargs = self.SeparateArguments(args)
-        if len(launcherargs) > 0:
-            self.launcher.error("GDB debugging is not compatible with running in parallel at present.")
-            return args
 
-        if self.CreateCommandFile(args):
-            args = self.Executable() + self.DebuggerArguments() + ["-q", "-x", self.filename]
-        else:
+        if not self.CreateCommandFile(visitargs):
             self.launcher.error("Could not create GDB command file: %s. Running VisIt normally." % self.filename)
+
+        # parallel launch
+        elif len(launcherargs) > 0:
+            have_xterm = self.launcher.generalArgs.newconsole
+
+            args = launcherargs \
+                + (['xterm', '-geometry', '150x50', '-e'] if have_xterm else []) \
+                + self.Executable() + self.DebuggerArguments() + ["-q", "-x", self.filename]
+
+        # serial launch
+        else:
+            args = self.Executable() + self.DebuggerArguments() + ["-q", "-x", self.filename]
+
         return args
 
 ###############################################################################
@@ -1151,6 +1298,134 @@ class DDTDebugger(Debugger):
         ddt_cmd = self.Executable() + ddt_args + args
         return ddt_cmd
 
+###############################################################################
+# Class: CudaDebugger
+#
+# Purpose:  Launch a CUDA-enabled VisIt component under the NVIDIA command-line
+#           profiler  
+#
+# Programmer: Kevin Griffin 
+# Date:       Wed May 20 18:33:04 PDT 2015
+#
+# Modifications:
+#
+###############################################################################
+
+class CudaDebugger(Debugger):
+    def __init__(self, launcher):
+        super(CudaDebugger, self).__init__(launcher)
+
+    def Executable(self):
+        return ["nvprof"]
+
+    def CreateCommand(self, args):
+        launcherargs, visitargs = self.SeparateArguments(args)
+        vgargs = self.DebuggerArguments()
+        if len(vgargs) == 0:
+            vgargs = ["--output-profile", "timeline_%h_%p.nvprof"]
+        return launcherargs + self.Executable() + vgargs + visitargs
+
+
+###############################################################################
+# Class: VTuneProfiler
+#
+# Purpose:    Launch a VisIt component under vtune
+#
+# Programmer: Mark C. Miller
+# Date:       Tue May 16 16:30:02 PDT 2017
+#
+###############################################################################
+
+class VTuneProfiler(Debugger):
+    def __init__(self, launcher):
+        super(VTuneProfiler, self).__init__(launcher)
+
+    def Executable(self):
+        return ["amplxe-cl"]
+
+    def CreateCommand(self, args):
+
+        launcherargs, visitargs = self.SeparateArguments(args)
+
+        vtargs = self.DebuggerArguments()
+
+        if len(vtargs) == 0:
+            try:
+                os.mkdir("./vtune_%s"%self.launcher.generalArgs.exe_name)
+            except OSError:
+                pass
+            vtargs = ["-collect", "hotspots", "-quiet", "-user-data-dir",
+                "./vtune_%s"%self.launcher.generalArgs.exe_name]
+            if self.launcher.generalArgs.exe_name == "engine_par":
+                vtargs += ["-trace-mpi", "-r", "%d"%os.getpid()]
+
+        if len(launcherargs) > 0:
+            # parallel launch
+            args = launcherargs + self.Executable() + vtargs + visitargs
+        else:
+            # serial launch
+            args = self.Executable() + vtargs + visitargs
+
+        return args
+
+###############################################################################
+# Class: InstrumentsProfiler
+#
+# Purpose:    Launch a VisIt component under the instruments (osx) profiler
+#
+# Programmer: Mark C. Miller
+# Date:       Tue May 21 16:30:02 PDT 2017
+#
+###############################################################################
+
+class InstrumentsProfiler(Debugger):
+    def __init__(self, launcher):
+        super(InstrumentsProfiler, self).__init__(launcher)
+
+    def Executable(self):
+        return ["instruments"]
+
+    def CreateCommand(self, args):
+        launcherargs, visitargs = self.SeparateArguments(args)
+        instargs = self.DebuggerArguments()
+
+        if len(instargs) == 0:
+
+            instargs = ["-t", "Time Profiler", "-D",
+                "./instruments_%s"%self.launcher.generalArgs.exe_name]
+
+        if len(launcherargs) > 0:
+            # parallel launch
+            args = launcherargs + self.Executable() + instargs + visitargs
+        else:
+            # serial launch
+            args = self.Executable() + instargs + visitargs
+
+        return args
+
+###############################################################################
+# Class: CudaMemcheck
+#
+# Purpose:  Launch a CUDA-enabled VisIt component under NVIDIA's cuda-memcheck
+# 
+# Programmer: Kevin Griffin 
+# Date:       Mon Mar 21 16:34:52 PDT 2016 
+#
+# Modifications:
+#
+###############################################################################
+
+class CudaMemcheck(Debugger):
+    def __init__(self, launcher):
+        super(CudaMemcheck, self).__init__(launcher)
+
+    def Executable(self):
+        return ["cuda-memcheck"]
+
+    def CreateCommand(self, args):
+        launcherargs, visitargs = self.SeparateArguments(args)
+        vgargs = self.DebuggerArguments()
+        return launcherargs + self.Executable() + visitargs
 
 ###############################################################################
 # Class: ValgrindDebugger
@@ -1161,6 +1436,9 @@ class DDTDebugger(Debugger):
 # Date:       Thu May 31 13:07:04 PDT 2012
 #
 # Modifications:
+#
+#   Burlen Loring, Thu Oct  8 14:28:39 PDT 2015
+#   refine valgrind options
 #
 ###############################################################################
 
@@ -1179,9 +1457,57 @@ class ValgrindDebugger(Debugger):
             SETENV("GLIBCXX_FORCE_NEW", "1")
 
         launcherargs, visitargs = self.SeparateArguments(args)
+
+        have_xterm = self.launcher.generalArgs.newconsole
+        xterm_args = (['xterm', '-geometry', '150x50', '-e'] if have_xterm else [])
+
+        vgargs = self.DebuggerArguments()
+
+        if len(vgargs) == 0:
+            vgargs = ["--tool=memcheck", "--error-limit=no", "--num-callers=50", \
+                    "--leak-check=full", "--track-origins=yes", \
+                    "--show-reachable=yes"] #, "--vgdb=full", "--vgdb-error=0"]
+            if not have_xterm:
+                # if you're not in an xterm then you probably want to send the output
+                # to a file.
+                vgargs.append("--log-file=vg_%s_%%p.log"%(visitargs[0].split('/')[-1]))
+
+        if len(launcherargs) > 0:
+            # parallel launch
+            args = launcherargs + xterm_args \
+                + self.Executable() + vgargs + visitargs
+        else:
+            # serial launch
+            args = xterm_args + self.Executable() + vgargs + visitargs
+
+        return args
+
+###############################################################################
+# Class: CallgrindDebugger
+#
+# Purpose:    Launch a VisIt component under valgrind.
+#
+# Programmer: Burlen Loring
+# Date:       Wed Aug 19 09:34:26 PDT 2015
+#
+# Modifications:
+#
+###############################################################################
+
+class CallgrindDebugger(Debugger):
+    def __init__(self, launcher):
+        super(CallgrindDebugger, self).__init__(launcher)
+
+    def Executable(self):
+        return ["valgrind"]
+
+    def CreateCommand(self, args):
+        launcherargs, visitargs = self.SeparateArguments(args)
         vgargs = self.DebuggerArguments()
         if len(vgargs) == 0:
-            vgargs = ["--tool=memcheck", "--error-limit=no", "--num-callers=50"]
+            # here is an example of how you profile a specific method:
+            # "--collect-atstart=no", "--toggle-collect=NetworkManager::RenderInternal*",
+            vgargs = ["--tool=callgrind"]
         return launcherargs + self.Executable() + vgargs + visitargs
 
 ###############################################################################
@@ -1280,6 +1606,11 @@ class DebugMallocDebugger(Debugger):
 #   Capture if -hw-accel is passed here so we can use it when we determine
 #   if we should enable mesa for the engine.
 #
+#   Eric Brugger, Wed Aug 26 12:25:27 PDT 2015
+#   I modified ProduceArguments so that unknown arguments get added before
+#   the "-s script_name" argument and not between the script name and the
+#   script arguments.
+#
 ###############################################################################
 
 class GeneralArguments(object):
@@ -1318,6 +1649,8 @@ class GeneralArguments(object):
         self.threads = 0
         self.hw_accel = False
         self.osmesa   = False
+        self.hosttoip = False
+
     def ParseArguments(self, i, args):
         if i >= len(args):
             return 0
@@ -1327,6 +1660,9 @@ class GeneralArguments(object):
         elif args[i] == "-movie":
             self.exe_name = "cli"
             self.add_movie_args = 1
+            for j in range(i+1, len(args)):
+                self.scriptarguments = self.scriptarguments + [args[j]]
+            n = len(args) - i
         elif args[i] == "-s":
             self.scriptfile = args[i+1]
             for j in range(i+2, len(args)):
@@ -1404,7 +1740,6 @@ class GeneralArguments(object):
             self.osmesa = True
         return n
 
-
     def ProduceArguments(self, parallel):
         args = []
         if self.dv:
@@ -1423,11 +1758,10 @@ class GeneralArguments(object):
             args = args + ["-nowin"]
             nowin_not_added = 0
 
+        args = args + self.arguments
+
         if self.scriptfile != None:
-            if self.add_movie_args:
-                args = args + ["-scriptfile", self.scriptfile]
-            else:
-                args = args + ["-s", self.scriptfile]
+            args = args + ["-s", self.scriptfile]
 
         if self.diffmode > 0:
             d = ["-s", os.path.join(self.launcher.visitscriptdir, "visitdiff.py"), "-vdiff"]
@@ -1443,9 +1777,19 @@ class GeneralArguments(object):
                 args = args + ["-nowin"]
             args = args + ["-s", os.path.join(self.launcher.visitscriptdir, "makemoviemain.py")]
 
-        args = args + self.arguments + self.scriptarguments
+        args = args + self.scriptarguments
 
         return args
+
+    def GetIPAddress(self, hostname):
+        if not self.hosttoip:
+            return hostname
+        try:
+            IP = socket.gethostbyname(hostname)
+        except socket.gaierror, err:
+            print "cannot resolve hostname: ", hostname, err
+            IP = hostname
+        return IP
 
     def ConnectionArguments(self, parallel):
         # Localhost override to loopback.  The default behavior is that we
@@ -1504,9 +1848,9 @@ name.""", 1)
 
         if self.noloopback or self.sshtunneling or self.guesshost or self.host != None:
             if remotehost_set:
-                args = args + ["-host", remotehost]
+                args = args + ["-host", self.GetIPAddress(remotehost)]
             elif self.host != None:
-                args = args + ["-host", self.host]
+                args = args + ["-host", self.GetIPAddress(self.host)]
 
         if self.port != None:
             args = args + ["-port", self.port]
@@ -1754,6 +2098,7 @@ class MainLauncher(object):
         self.clientPrograms = ("gui", "cli", "viewer")
         self.componentNames = ("gui", "cli", "viewer", "mdserver", "vcl", "engine_ser", "engine_par", "xmledit")
         self.xterm = ["xterm"]
+        self.hosttoip = False
 
     def username(self):
         try:
@@ -1816,16 +2161,18 @@ class MainLauncher(object):
         st = os.stat(path)
         return bool(st.st_mode & stat.S_IWUSR)
 
-    def call(self, args, stdinpipe=0):
+    def call(self, args, stdinpipe=0, env=None):
         #print args
+        if env is None:
+            env = os.environ.copy()
         self.Logging(args)
         ret = 0
         try:
              if stdinpipe:
                   # Launchers like msub need this in order to work.
-                  p = subprocess.Popen(args, stdin=subprocess.PIPE)
+                  p = subprocess.Popen(args, stdin=subprocess.PIPE, env=env)
              else:
-                  p = subprocess.Popen(args)
+                  p = subprocess.Popen(args, env=env)
              p.communicate()
              ret = p.returncode
         except KeyboardInterrupt:
@@ -1872,6 +2219,8 @@ class MainLauncher(object):
         self.visitver = visitver
         self.visitpluginver = visitpluginver
         self.generalArgs = GeneralArguments(self)
+        if self.hosttoip:
+            self.generalArgs.hosttoip = True
         self.parallelArgs = ParallelArguments()
         self.debugArgs = DebugArguments(self)
         self.os = self.uname("-s")
@@ -2371,6 +2720,10 @@ class MainLauncher(object):
     #   end of the LD_LIBRARY_PATH and the code would load the system version. 
     #   So I moved the osmesa path to the first path and everything works.
     #
+    #   Cyrus Harrison, Thu Nov 10 22:38:22 PST 2016
+    #   Make sure to set PYTHONHOME for engine_ser and engine_par if we
+    #   are using VisIt's python. It's needed to properly init the
+    #   python filter env.
     ############################################################################
 
     def SetupEnvironment(self):
@@ -2439,7 +2792,10 @@ class MainLauncher(object):
 
         # If we're using VisIt's Python, set PYTHONHOME
         visitlibdir_python = os.path.join(self.visitlibdir, "python")
-        if (self.generalArgs.exe_name == "cli") and os.path.isdir(visitlibdir_python):
+        if os.path.isdir(visitlibdir_python) and  \
+           (self.generalArgs.exe_name == "cli" or \
+            self.generalArgs.exe_name == "engine_ser" or \
+            self.generalArgs.exe_name == "engine_par" ):
             SETENV("PYTHONHOME", visitlibdir_python)
 
         # Unset QT_PLUGIN_PATH
@@ -2670,16 +3026,30 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
     #   Cyrus Harrison, Fri Jul 25 15:59:02 PDT 2014
     #   Added lldb.
     #
+    #   Kevin Griffin, Wed May 20 18:33:04 PDT 2015
+    #   Added nvprof.
+    #
+    #   Burlen Loring, Wed Aug 19 09:48:07 PDT 2015
+    #   Added callgrind
+    #
+    #   Kevin Griffin, Mon Mar 21 16:34:52 PDT 2016 
+    #   Added cuda-memcheck.
+    #
     ############################################################################
     def Debuggers(self):
         return ["gdb",
                 "totalview",
                 "valgrind",
+                "callgrind",
                 "strace",
                 "apitrace",
                 "debug-malloc",
                 "ddt",
-                "lldb"]
+                "lldb",
+                "nvprof",
+                "cuda-memcheck",
+                "vtune",
+                "instruments"]
 
     ############################################################################
     # Method: DebuggerFactory
@@ -2699,6 +3069,12 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
     #   Cyrus Harrison, Fri Jul 25 15:59:02 PDT 2014
     #   Added lldb.
     #
+    #   Kevin Griffin,
+    #   Added nvprof.
+    #
+    #   Kevin Griffin Mon Mar 21 16:34:52 PDT 2016
+    #   Added cuda-memcheck.
+    #
     ############################################################################
 
     def DebuggerFactory(self, debugger):
@@ -2708,6 +3084,8 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
             return TotalviewDebugger(self)
         elif debugger == "valgrind":
             return ValgrindDebugger(self)
+        elif debugger == "callgrind":
+            return CallgrindDebugger(self)
         elif debugger == "strace":
             return StraceDebugger(self)
         elif debugger == "apitrace":
@@ -2718,6 +3096,14 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
             return DDTDebugger(self)
         elif debugger == "lldb":
             return LLDBDebugger(self)
+        elif debugger == "nvprof":
+            return CudaDebugger(self)
+        elif debugger == "cuda-memcheck":
+            return CudaMemcheck(self)
+        elif debugger == "vtune":
+            return VTuneProfiler(self)
+        elif debugger == "instruments":
+            return InstrumentsProfiler(self)
         # Return a debugger that does not do anything.
         return Debugger(self)
 
@@ -2907,10 +3293,24 @@ VisIt does not recognize your terminal application so it will ignore the -newcon
                         if self.parallelArgs.hw_precmd != None:
                             r = self.call([self.parallelArgs.hw_precmd])
 
-                    # Execute the command created by the job submitter. Note that
-                    # we pass 1 for stdinpipe so the process we make will get a new
-                    # pipe. This makes msub work, for example.
-                    ret = self.call(args, stdinpipe=1)
+                    # Execute the command created by the job submitter.
+                    # Note that we pass 1 for stdinpipe so the process we
+                    # make will get a new pipe. This makes msub work, for
+                    # example. We also remove python path information in
+                    # the case of qsub or msub so that we don't get the
+                    # system python and our python intermingled in case
+                    # the job submitter is written in python (e.g. msub on
+                    # Trinity).
+                    #
+                    env = os.environ.copy()
+                    if self.parallelArgs.launch[:4] == "msub":
+                        if "PYTHONHOME" in os.environ.keys():
+                            del env["PYTHONHOME"]
+                        if "PYTHONPATH" in os.environ.keys():
+                            del env["PYTHONPATH"]
+                        if "LD_LIBRARY_PATH" in os.environ.keys():
+                            del env["LD_LIBRARY_PATH"]
+                    ret = self.call(args, stdinpipe=1, env=env)
 
                     # If the job submitter did not handle a hardware-related 
                     # post-command then execute it now.

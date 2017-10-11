@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1795,7 +1795,7 @@ printf("\n");
             VisIt_DomainList_setDomains(h, ndoms, hdl);
         }
     }
-    else if(strcmp(name, "mesh") == 0)
+    else if(strcmp(name, "mesh") == 0 || strcmp(name, "tetmesh") == 0)
     {
         if(VisIt_DomainList_alloc(&h) != VISIT_ERROR)
         {

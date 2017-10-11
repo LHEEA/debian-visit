@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -189,7 +189,7 @@ avtArrayComposeWithBinsExpression::ProcessArguments(ArgsExpr *args,
     std::vector<ArgExpr*> *arguments = args->GetArgs();
     nvars = (int)arguments->size()-1;
 
-    int idx_of_list = arguments->size()-1;
+    int idx_of_list = nvars;
     ArgExpr *listarg = (*arguments)[idx_of_list];
     ExprParseTreeNode *listTree = listarg->GetExpr();
     if (listTree->GetTypeName() != "List")

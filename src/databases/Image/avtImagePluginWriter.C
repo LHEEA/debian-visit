@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -117,8 +117,9 @@ avtImagePluginWriter::OpenFile(const string &fname, int nb)
 
 void
 avtImagePluginWriter::WriteHeaders(const avtDatabaseMetaData *md,
-                           vector<string> &scalars, vector<string> &vectors,
-                           vector<string> &materials)
+                           const vector<string> &scalars, 
+                           const vector<string> &vectors,
+                           const vector<string> &materials)
 {
     //
     // We can only handle single block files.

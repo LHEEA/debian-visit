@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,17 +45,16 @@
 // Forward declarations
 class PoincareAttributes;
 
-class QTabWidget;
 class QLabel;
 class QCheckBox;
 class QLineEdit;
 class QSpinBox;
-class QVBox;
 class QButtonGroup;
-class QRadioButton;
 class QComboBox;
 class QGroupBox;
 class QPushButton;
+class QListWidget;
+class QListWidgetItem;
 
 // ****************************************************************************
 // Class: QvisPoincareWindow
@@ -108,11 +107,20 @@ class QvisPoincareWindow : public QvisOperatorWindow
     // Fieldlines
     void sourceTypeChanged(int val);
     void pointSourceProcessText();
+    void pointListProcessText();
     void lineStartProcessText();
     void lineEndProcessText();
     void pointDensityChanged(int val);
 
-    void fieldTypeChanged(int val);
+    void pointListClicked(QListWidgetItem*);
+    void pointListDoubleClicked(QListWidgetItem*);
+    void addPoint();
+    void deletePoint();
+    void deletePoints();
+    void readPoints();
+    void textChanged(const QString &currentText);
+
+  void fieldTypeChanged(int val);
     void fieldConstantProccessText();
     void velocitySourceProcessText();
 
@@ -169,7 +177,6 @@ class QvisPoincareWindow : public QvisOperatorWindow
     void showPointsChanged(bool val);
     void numberPlanesChanged(int val);
     void singlePlaneProcessText();
-    void adjustPlaneChanged(int val);
     void overlapsChanged(int val);
 
     // Advanced
@@ -185,6 +192,7 @@ class QvisPoincareWindow : public QvisOperatorWindow
     void pathlineCMFEButtonGroupChanged(int val);
 
     void issueWarningForMaxStepsChanged(bool);
+    void issueWarningForStepsizeChanged(bool);
     void issueWarningForStiffnessChanged(bool);
     void issueWarningForCriticalPointsChanged(bool);
     void criticalPointThresholdProcessText();
@@ -202,6 +210,8 @@ class QvisPoincareWindow : public QvisOperatorWindow
     QLabel    *velocitySourceLabel;
     QLineEdit *pointSource;
     QLabel    *pointSourceLabel;
+    QListWidget *pointList;
+    QPushButton *pointListDelPoint, *pointListDelAllPoints, *pointListAddPoint, *pointListReadPoints;
     QLineEdit *lineStart;
     QLabel    *lineStartLabel;
     QLineEdit *lineEnd;
@@ -237,6 +247,7 @@ class QvisPoincareWindow : public QvisOperatorWindow
     QLineEdit *puncturePeriodTolerance;
     QLabel    *puncturePeriodToleranceLabel;
     QLineEdit *maxSteps;
+    QLabel    *maxStepsLabel;
     QCheckBox *limitMaxTime;
     QLineEdit *maxTime;
 
@@ -294,8 +305,6 @@ class QvisPoincareWindow : public QvisOperatorWindow
     QSpinBox     *numberPlanes;
     QLabel       *singlePlaneLabel;
     QLineEdit    *singlePlane;
-    QLabel       *adjustPlaneLabel;
-    QSpinBox     *adjustPlane;
     QWidget      *overlaps;
     QLabel       *overlapsLabel;
     QButtonGroup *overlapsButtonGroup;
@@ -317,6 +326,7 @@ class QvisPoincareWindow : public QvisOperatorWindow
     QButtonGroup *pathlineCMFEButtonGroup;
 
     QCheckBox *issueWarningForMaxSteps;
+    QCheckBox *issueWarningForStepsize;
     QCheckBox *issueWarningForStiffness;
     QCheckBox *issueWarningForCriticalPoints;
     QLineEdit *criticalPointThreshold;

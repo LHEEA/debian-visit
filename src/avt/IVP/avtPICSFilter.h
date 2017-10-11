@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,7 +62,7 @@
 class BlockIDType;
 class avtICAlgorithm;
 
-// Must match the streamline (poincare) attributes!!
+// Must match the integral curve (poincare) attributes!!
 #define PICS_FIELD_DEFAULT   0
 #define PICS_FIELD_FLASH     1
 #define PICS_FIELD_M3D_C1_2D 2
@@ -102,16 +102,12 @@ class avtICAlgorithm;
 //    of this filter is to define an AVT filter that can do parallel
 //    particle advection.  How to analyze those particles, termination 
 //    criteria, etc, are left to the derived types.  Examples of derived
-//    types are for streamlines and poincare analysis.
+//    types are for integral curves and poincare analysis.
 //
-// Programmer: Hank Childs (extracted base class from avtStreamlineFilter)
+// Programmer: Hank Childs
 // Creation:   June 5, 2010
 //
 // Modifications:
-//
-//   Hank Childs, Sun Jun  6 15:26:15 CDT 2010
-//   Rename all methods and data members to reflect integral curves, not 
-//   streamlines.
 //
 //   Hank Childs, Tue Jun  8 09:11:36 CDT 2010
 //   Added communication pattern enum and virtual method.
@@ -186,10 +182,12 @@ class IVP_API avtPICSFilter :
                                         const avtVector &v_start,
                                         long ID) = 0;
 
+    virtual bool                    GetAllSeedsSentToAllProcs() = 0;
+
     virtual std::vector<avtVector>  GetInitialLocations() = 0;
     virtual std::vector<avtVector>  GetInitialVelocities() = 0;
     virtual CommunicationPattern    GetCommunicationPattern() = 0;
-    std::vector<std::pair<int,int> > GetFwdBwdICPairs() { return fwdBwdICPairs; }
+    std::vector<std::pair<int,int> > GetICPairs() { return ICPairs; }
     
     // Methods to set the filter's attributes.
     void SetFieldType(int val);
@@ -204,6 +202,7 @@ class IVP_API avtPICSFilter :
     void SetTolerances(double reltol, double abstol, bool isFraction);
 
     void SetIntegrationDirection(int dir);
+    int  GetIntegrationDirection() { return integrationDirection; };
 
     void InitializeLocators(void);
     void UpdateProgress(int amt, int total)
@@ -257,7 +256,7 @@ class IVP_API avtPICSFilter :
     std::vector<int> domainToRank;
     std::vector<vtkDataSet*>dataSets;
     std::map<BlockIDType, avtCellLocator_p> domainToCellLocatorMap;
-    std::vector<std::pair<int,int> > fwdBwdICPairs;
+    std::vector<std::pair<int,int> > ICPairs;
 
     std::vector<double> pointList;
 
@@ -269,7 +268,7 @@ class IVP_API avtPICSFilter :
 
     // Timings helpers.
     int                       MaxID;
-    int                       method;
+    int                       selectedAlgo;
     int                       maxCount, workGroupSz;
     double                    InitialIOTime;
     int                       InitialDomLoads;
@@ -290,19 +289,12 @@ class IVP_API avtPICSFilter :
     bool                      ICInRectilinearBlock(const avtIntegralCurve *ic, 
                                                    const BlockIDType &block,
                                                    vtkDataSet *ds);
-    bool                      OnFaceAndPushedOut(const avtIntegralCurve *ic,
-                                                 const BlockIDType &block,
-                                                 vtkDataSet *ds,
-                                                 double *bbox);
-    bool                      OnFaceAndPushedIn(const avtIntegralCurve *ic,
-                                                const BlockIDType &block,
-                                                vtkDataSet *ds,
-                                                double *bbox);
+    int                       OnFace(const avtIntegralCurve *ic, double *bbox);
     int                       GetNextCurveID(){ int id = MaxID; MaxID++; return id;}
     void                      CreateIntegralCurvesFromSeeds(std::vector<avtVector> &pts,
-                                                         std::vector<avtVector> &vels,
-                                                         std::vector<avtIntegralCurve *> &ics,
-                                                         std::vector<std::vector<int> > &ids);
+                                                            std::vector<avtVector> &vels,
+                                                            std::vector<avtIntegralCurve *> &ics,
+                                                            std::vector<std::vector<int> > &ids);
     void                      GetIntegralCurvesFromInitialSeeds(std::vector<avtIntegralCurve *> &ics);
     void                      AddSeedPoint(avtVector &pt,
                                            avtVector &vel,
@@ -323,7 +315,6 @@ class IVP_API avtPICSFilter :
     int                       DomainToRank(BlockIDType &domain);
     void                      ComputeDomainToRankMapping();
     bool                      OwnDomain(BlockIDType &domain);
-    void                      Initialize();
     void                      InitializeTimeInformation(int);
     void                      ComputeRankList(const std::vector<int> &domList,
                                               std::vector<int> &ranks,
@@ -335,6 +326,9 @@ class IVP_API avtPICSFilter :
     void                      ClearDomainToCellLocatorMap();
     virtual avtIVPField      *GetFieldForDomain(const BlockIDType&, vtkDataSet*);
 
+    void                      SetICAlgorithm();
+
+    void                      InitializeIntervalTree();
     void                      UpdateIntervalTree(int timeSlice);
 
     // Use this to be able to save the ICs for restart.

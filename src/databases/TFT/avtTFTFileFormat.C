@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -92,26 +92,6 @@ avtTFTFileFormat::avtTFTFileFormat(const char *filename)
 avtTFTFileFormat::~avtTFTFileFormat()
 {
     FreeUpResources();
-}
-
-// ****************************************************************************
-// Method: avtTFTFileFormat::ReturnsValidTime
-//
-// Purpose: 
-//   Returns whether this format returns valid times.
-//
-// Programmer: Brad Whitlock
-// Creation:   Tue Feb 22 17:50:15 PST 2005
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-bool
-avtTFTFileFormat::ReturnsValidTime() const
-{
-    debug4 << "avtTFTFileFormat::ReturnsValidTime" << endl;
-    return hasValidTime;
 }
 
 // ****************************************************************************

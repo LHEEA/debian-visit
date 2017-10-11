@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,7 +46,7 @@
 #include <DebugStream.h>
 #include <VisItStreamUtil.h>
 
-using namespace std;
+#include <vtkStreamer.h>
 
 // ****************************************************************************
 //  Method: avtSerialICAlgorithm::avtSerialICAlgorithm
@@ -58,9 +58,6 @@ using namespace std;
 //  Creation:   January 27, 2009
 //
 //  Modifications:
-//
-//    Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//    Remove reference to avtStreamlineFilter, add reference to avtPICSFilter.
 //
 // ****************************************************************************
 
@@ -108,7 +105,7 @@ avtSerialICAlgorithm::~avtSerialICAlgorithm()
 // ****************************************************************************
 
 void
-avtSerialICAlgorithm::Initialize(vector<avtIntegralCurve *> &seedPts)
+avtSerialICAlgorithm::Initialize(std::vector<avtIntegralCurve *> &seedPts)
 {
     avtICAlgorithm::Initialize(seedPts);
 
@@ -136,7 +133,8 @@ avtSerialICAlgorithm::RestoreInitialize(std::vector<avtIntegralCurve *> &ics, in
     {
         avtIntegralCurve *s = ics[i];
 
-        if (s->blockList.front().timeStep == curTimeSlice)
+        if (!s->blockList.empty() &&
+            s->blockList.front().timeStep == curTimeSlice)
         {
             s->status.ClearAtTemporalBoundary();
             SetDomain(s);
@@ -153,7 +151,7 @@ avtSerialICAlgorithm::RestoreInitialize(std::vector<avtIntegralCurve *> &ics, in
 //  Method: avtSerialICAlgorithm::AddIntegralCurves
 //
 //  Purpose:
-//      Add streamlines
+//      Add integral curves
 //
 //  Programmer: Dave Pugmire
 //  Creation:   December 3, 2009
@@ -163,43 +161,56 @@ avtSerialICAlgorithm::RestoreInitialize(std::vector<avtIntegralCurve *> &ics, in
 //   Hank Childs, Thu Jun  3 10:22:16 PDT 2010
 //   Use new name "GetCurrentLocation".
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename method to AddIntegralCurves.
-//
 // ****************************************************************************
 
 void
-avtSerialICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve *> &ics)
+avtSerialICAlgorithm::AddIntegralCurves(std::vector<avtIntegralCurve *> &ics)
 {
     int nSeeds = ics.size();
     int i0 = 0, i1 = nSeeds;
 
  #ifdef PARALLEL
-    int rank = PAR_Rank();
-    int nProcs = PAR_Size();
+    if( allSeedsSentToAllProcs )
+    {
+        int rank = PAR_Rank();
+        int nProcs = PAR_Size();
 
-    int nSeedsPerProc = (nSeeds / nProcs);
-    int oneExtraUntil = (nSeeds % nProcs);
+        int nSeedsPerProc = (nSeeds / nProcs);
+        int oneExtraUntil = (nSeeds % nProcs);
     
-    if (rank < oneExtraUntil)
-    {
-        i0 = (rank)*(nSeedsPerProc+1);
-        i1 = (rank+1)*(nSeedsPerProc+1);
-    }
-    else
-    {
-        i0 = (rank)*(nSeedsPerProc) + oneExtraUntil;
-        i1 = (rank+1)*(nSeedsPerProc) + oneExtraUntil;
-    }
+        if (rank < oneExtraUntil)
+        {
+            i0 = (rank)*(nSeedsPerProc+1);
+            i1 = (rank+1)*(nSeedsPerProc+1);
+        }
+        else
+        {
+            i0 = (rank)*(nSeedsPerProc) + oneExtraUntil;
+            i1 = (rank+1)*(nSeedsPerProc) + oneExtraUntil;
+        }
+
+        // When integrating in both directions make sure the forward
+        // and backwards seed are on the same rank. If the number of
+        // seeds for this rank is odd then adjust the seed count.
+        if (picsFilter->GetIntegrationDirection() ==
+            VTK_INTEGRATE_BOTH_DIRECTIONS &&
+            (i1-i0) % 2)
+        {
+          // Odd rank so give up a seed to make the seed count even.
+          if( rank % 2 == 1 )
+            i0 += 1;
+          
+          // Even rank so add a seed to make the seed count even.
+          else if( rank % 2 == 0 )
+            i1 += 1;
+        }
     
-    //Delete the seeds I don't need.
-    for (int i = 0; i < i0; i++)
-        delete ics[i];
-    for (int i = i1; i < nSeeds; i++)
-        delete ics[i];
+        // Delete the seeds not needed.
+        for (int i = 0; i < i0; i++)
+            delete ics[i];
+        for (int i = i1; i < nSeeds; i++)
+            delete ics[i];
+    }
 #endif
     
     for (int i = i0; i < i1; i++)
@@ -211,7 +222,19 @@ avtSerialICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve *> &ics)
 #endif
     }
 
-    debug1 << "I have seeds: "<<i0<<" to "<<i1<<" of "<<nSeeds<<endl;
+    if (DebugStream::Level1()) 
+    {
+      if( i0 < i1 )
+      {
+        debug1 << "Proc " << PAR_Rank() << " has " << (i1-i0) << " seeds: "
+               << i0 << " to " << (i1-1) << " of " << nSeeds << " total seeds"
+               << std::endl;
+      }
+      else
+      {
+        debug1 << "Proc " << PAR_Rank() << " has no seeds " << std::endl;
+      }
+    }
 }
 
 // ****************************************************************************
@@ -228,7 +251,8 @@ avtSerialICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve *> &ics)
 void
 avtSerialICAlgorithm::ActivateICs()
 {
-    list<avtIntegralCurve *>::iterator it = inactiveICs.begin();
+    std::list<avtIntegralCurve *>::iterator it = inactiveICs.begin();
+
     while (it != inactiveICs.end())
     {
         if (!(*it)->status.EncounteredTemporalBoundary())
@@ -247,7 +271,7 @@ avtSerialICAlgorithm::ActivateICs()
 //  Method: avtSerialICAlgorithm::RunAlgorithm
 //
 //  Purpose:
-//      Execute the serial streamline algorithm.
+//      Execute the serial integral curve algorithm.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   January 27, 2009
@@ -269,13 +293,6 @@ avtSerialICAlgorithm::ActivateICs()
 //
 //   Dave Pugmire, Thu Dec  3 13:28:08 EST 2009
 //   Move some initialization into RunAlgorithm.
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename several methods that reflect the new emphasis in particle 
-//   advection, as opposed to streamlines.
 //
 //   Hank Childs, Sat Nov 27 16:52:12 PST 2010
 //   Add progress reporting.
@@ -305,10 +322,15 @@ avtSerialICAlgorithm::RunAlgorithm()
                 AdvectParticle(ic);
             }
             while (ic->status.Integrateable() &&
+                   !ic->blockList.empty() &&
                    DomainLoaded(ic->blockList.front()));
             
-            if (ic->status.EncounteredSpatialBoundary())
+            // If the user termination criteria was reached so terminate the IC.
+            if( ic->status.TerminationMet() )
+                terminatedICs.push_back(ic);
+            else if (ic->status.EncounteredSpatialBoundary())
                 inactiveICs.push_back(ic);
+            // Some other termination criteria was reached so terminate the IC.
             else
                 terminatedICs.push_back(ic);
 

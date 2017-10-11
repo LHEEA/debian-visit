@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -38,16 +38,23 @@
 #include <SimEngine.h>
 
 #include <ObserverToCallback.h>
-
+#include <DBOptionsAttributes.h>
 #include <DebugStream.h>
 #include <DatabasePluginManager.h>
+#include <DatabasePluginInfo.h>
+#include <ExpressionList.h>
+#include <Expression.h>
+#include <ParsingExprList.h>
 #include <SimPlotPluginManager.h>
 #include <SimOperatorPluginManager.h>
+#include <OperatorPluginInfo.h>
 #include <PlotPluginInfo.h>
 #include <LoadBalancer.h>
 #include <NetworkManager.h>
 #include <Netnodes.h>
 #include <avtDatabaseFactory.h>
+#include <SingleAttributeConfigManager.h>
+#include <StackTimer.h>
 #include <TimingsManager.h>
 #include <FileFunctions.h>
 
@@ -82,7 +89,15 @@
 #include <SimPlotPluginManager.h>
 #include <SimOperatorPluginManager.h>
 
+#include <VisItParser.h>
+#include <avtExprNodeFactory.h>
+#include <ExprParser.h>
+
+#include <avtDatabaseMetaData.h>
+
 #include <avtParallel.h>
+#include <cstring>
+#include <sstream>
 
 // ****************************************************************************
 // Class: SimViewerFactory
@@ -153,6 +168,13 @@ SimEngine::SimEngine() : Engine()
 #endif
     , viewerInitialized(false), simsource(), rpcNotifier(NULL)
 {
+    // Install an avtExprNodeFactory object in the parser. This is critical for
+    // making the parser create avt versions of the parse objects, which is needed
+    // for the various dynamic_cast calls in the expression library to convert
+    // the avt*Expr objects.
+    Parser *p = new ExprParser(new avtExprNodeFactory());
+    // This saves the instance in ParsingExprList::Instance(). Don't free.
+    ParsingExprList *l = new ParsingExprList(p);
 }
 
 // ****************************************************************************
@@ -170,6 +192,21 @@ SimEngine::SimEngine() : Engine()
 
 SimEngine::~SimEngine()
 {
+#ifdef SIMV2_VIEWER_INTEGRATION
+    if(viewerInitialized)
+    {
+        delete ViewerBase::GetPlotFactory();
+        delete ViewerBase::GetOperatorFactory();
+
+        delete ViewerBase::GetViewerProperties();
+        delete ViewerBase::GetViewerState();
+        delete ViewerBase::GetViewerMethods();
+        delete ViewerBase::GetViewerStateManager();
+        delete ViewerBase::GetViewerMessaging();
+        delete ViewerBase::GetViewerFileServer();
+        delete ViewerBase::GetViewerEngineManager();
+    }
+#endif
 }
 
 // ****************************************************************************
@@ -179,7 +216,9 @@ SimEngine::~SimEngine()
 //   Initializes the viewer.
 //
 // Arguments:
-//   
+//   plotPlugins     : The list of plot plugins we wanted loaded.
+//   operatorPlugins : The list of operator plugins we want loaded.
+//   noconfig        : Whether we're running in -noconfig mode.
 //
 // Returns:    
 //
@@ -194,8 +233,11 @@ SimEngine::~SimEngine()
 // ****************************************************************************
 
 void
-SimEngine::InitializeViewer()
+SimEngine::InitializeViewer(const std::vector<std::string> &plotPlugins,
+                            const std::vector<std::string> &operatorPlugins,
+                            bool noconfig)
 {
+    StackTimer t0("SimEngine::InitializeViewer");
 #ifdef SIMV2_VIEWER_INTEGRATION
     if(!viewerInitialized)
     {
@@ -209,7 +251,9 @@ SimEngine::InitializeViewer()
         SetViewerFactory(new SimViewerFactory(this));
 
         GetViewerProperties()->SetNowin(true);
+        GetViewerProperties()->SetNoConfig(noconfig);
         GetViewerProperties()->SetMasterProcess(PAR_UIProcess());
+        GetViewerProperties()->SetInSitu(true);
         GetViewerStateManager()->CreateState();
 
         // Install a callback to schedule execution of internal commands.
@@ -224,7 +268,7 @@ SimEngine::InitializeViewer()
         GetViewerStateManager()->ConnectDefaultState();
 
         // Finish initialization.
-        HeavyInitialization();
+        HeavyInitialization(plotPlugins, operatorPlugins);
 
         // Force scalable rendering.
         GetViewerState()->GetRenderingAttributes()->
@@ -264,6 +308,70 @@ SimEngine::CreatePluginManagers()
     GetNetMgr()->SetOperatorPluginManager(new SimOperatorPluginManager());
 
     GetNetMgr()->SetDatabasePluginManager(new DatabasePluginManager());
+}
+
+// ****************************************************************************
+// Method: SimEngine::SimulationTimeStepChanged
+//
+// Purpose:
+//   This method is called when we change timesteps.
+//
+// Note:       We need this for in situ.
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Oct 14 15:02:36 PDT 2016
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+SimEngine::SimulationTimeStepChanged()
+{
+    // Get the new metadata from the simulation, save it.
+    Engine::SimulationTimeStepChanged();
+
+    // Let's the use new metadata to make sure that expressions are up to date.
+    ExpressionList newList;
+
+    //
+    // Create a new expression list that contains all of the expressions
+    // from the main expression list that are not expressions that come
+    // from databases.
+    //
+    ExpressionList *exprList = ParsingExprList::Instance()->GetList();
+    for(int i = 0; i < exprList->GetNumExpressions(); ++i)
+    {
+        const Expression &expr = exprList->GetExpressions(i);
+        if(!expr.GetFromDB() && !expr.GetFromOperator())
+            newList.AddExpressions(expr);
+    }
+    // Add the expressions for the database.
+    for (int i = 0 ; i < metaData->GetNumberOfExpressions(); ++i)
+        newList.AddExpressions(*(metaData->GetExpression(i)));
+
+    // NOTE: adapted from VariableMenuPopulator::GetOperatorCreatedExpressions
+
+    // Iterate over the meshes in the metadata and add operator-created expressions
+    // for each relevant mesh.
+    avtDatabaseMetaData md2 = *metaData;
+    md2.GetExprList() = newList;
+    for(int j = 0; j < GetOperatorPluginManager()->GetNEnabledPlugins(); j++)
+    {
+        std::string id(GetOperatorPluginManager()->GetEnabledID(j));
+        CommonOperatorPluginInfo *ComInfo = GetOperatorPluginManager()->GetCommonPluginInfo(id);
+        ExpressionList *fromOperators = ComInfo->GetCreatedExpressions(&md2);
+        if(fromOperators != NULL)
+        {
+            for(int k = 0; k < fromOperators->GetNumExpressions(); k++)
+                newList.AddExpressions(fromOperators->GetExpressions(k));
+            delete fromOperators;
+        }
+    }
+
+    // Stash the expressions.
+    if(newList != *exprList)
+        *exprList = newList;
 }
 
 // ****************************************************************************
@@ -354,6 +462,8 @@ SimEngine::SimulationInitiateCommand(const std::string &command)
 bool
 SimEngine::OpenDatabase()
 {
+    StackTimer t0("SimEngine::OpenDatabase");
+
     std::string format("SimV2_1.0");
     GetNetMgr()->GetDatabasePluginManager()->PluginAvailable(format);
    
@@ -401,7 +511,8 @@ SimEngine::GetMetaDataForState(const std::string &/*filename*/, int /*timeState*
                                                     "SimV2_1.0");
     if(dbNode != NULL)
         md = dbNode->GetMetaData(timeState);
-    else
+
+    if(md == NULL)
     {
         debug1 << mName << "Could not get metadata for " << this->simsource << endl;
     }
@@ -418,7 +529,7 @@ SimEngine::GetSIL(const std::string &/*filename*/)
 const avtSIL *
 SimEngine::GetSILForState(const std::string &/*filename*/, int /*timeState*/)
 {
-    const char *mName = "SimEngine::GetMetaData: ";
+    const char *mName = "SimEngine::GetSILForState: ";
     const avtSIL *sil = NULL;
 
     OpenDatabase();
@@ -456,47 +567,115 @@ SimEngine::GetSILForState(const std::string &/*filename*/, int /*timeState*/)
 // Creation:   Thu Sep 18 11:29:09 PDT 2014
 //
 // Modifications:
+//    Brad Whitlock, Fri Aug 14 11:51:02 PDT 2015
+//    Added support for an option list and for setting the write group size.
+//    Make sure the requested plugin is loaded.
 //
 // ****************************************************************************
 
 bool
 SimEngine::ExportDatabase(const std::string &filename, const std::string &format,
-                          const stringVector &vars)
+                          const stringVector &vars, const DBOptionsAttributes &opt)
 {
     bool retval = false;
+
+    // Get the plugin id from the input format, which could be an id or a name.
+    std::string id, name;
+    for(int i = 0; i < GetNetMgr()->GetDatabasePluginManager()->GetNAllPlugins(); ++i)
+    {
+        std::string thisID(GetNetMgr()->GetDatabasePluginManager()->GetAllID(i));
+        if(thisID == format)
+            id = thisID;
+        if(GetNetMgr()->GetDatabasePluginManager()->GetPluginName(thisID) == format)
+            id = thisID;
+    }
+    if(id.empty())
+        return false;
+    name = GetNetMgr()->GetDatabasePluginManager()->GetPluginName(id);
+
+    // Make sure the plugin is loaded.
+    GetNetMgr()->GetDatabasePluginManager()->LoadSinglePluginNow(id);
+
+    std::string dName(FileFunctions::Dirname(filename));
+    std::string fName(FileFunctions::Basename(filename));
+    if(dName.empty() || dName == ".")
+        dName = FileFunctions::GetCurrentWorkingDirectory();
+
+    // Get some values for the export from the option list.
+    int writeUsingGroups = 0;
+    int groupSize = PAR_Size();
+    TRY
+    {
+        if(opt.FindIndex("EXPORT_WRITE_USING_GROUPS") != -1)
+            writeUsingGroups = opt.GetInt("EXPORT_WRITE_USING_GROUPS");
+        if(opt.FindIndex("EXPORT_GROUP_SIZE") != -1)
+            groupSize = opt.GetInt("EXPORT_GROUP_SIZE");
+    }
+    CATCHALL
+    {
+    }
+    ENDTRY
+
+    // The database options we'll put into the export.
+    DBOptionsAttributes exportOptions;
+
+    // Get the plugin's default write attributes and store them in exportOptions.
+    EngineDatabasePluginInfo *info = GetNetMgr()->GetDatabasePluginManager()->
+        GetEnginePluginInfo(id);
+    if (info != NULL)
+    {
+        DBOptionsAttributes *writeOptions = info->GetWriteOptions();
+        if(writeOptions != NULL)
+        {
+            exportOptions = *writeOptions;
+            delete writeOptions;
+        }
+    }
+    else
+    {
+        debug5 << "Could not get write options for " << id << endl;
+    }
+
+    // Merge the user-specified options into the exportOptions. Values that
+    // have the same keys as the options already there will override the
+    // default options.
+    exportOptions.Merge(opt);
+    debug5 << "exportOptions = " << exportOptions << endl;
+
+    // Fill in the export db attributes.
+    ExportDBAttributes atts;
+    atts.SetAllTimes(false);
+    atts.SetDb_type(name);
+    atts.SetDb_type_fullname(id);
+    atts.SetDirname(dName);
+    atts.SetFilename(fName);
+    atts.SetVariables(vars);
+    atts.SetWriteUsingGroups(writeUsingGroups > 0);
+    atts.SetGroupSize(groupSize);
+    atts.SetOpts(exportOptions);
+
 #ifdef SIMV2_VIEWER_INTEGRATION
     if(viewerInitialized)
     {
-        // Get the plugin id from the input format, which could be an id or a name.
-        std::string id, name;
-        for(int i = 0; i < GetNetMgr()->GetDatabasePluginManager()->GetNAllPlugins(); ++i)
-        {
-            std::string thisID(GetNetMgr()->GetDatabasePluginManager()->GetAllID(i));
-            if(thisID == format)
-                id = thisID;
-            if(GetNetMgr()->GetDatabasePluginManager()->GetPluginName(thisID) == format)
-                id = thisID;
-        }
-        if(id.empty())
-            return false;
-        name = GetNetMgr()->GetDatabasePluginManager()->GetPluginName(id);
-
-        std::string dName(FileFunctions::Dirname(filename));
-        std::string fName(FileFunctions::Basename(filename));
-        if(dName.empty() || dName == ".")
-            dName = FileFunctions::GetCurrentWorkingDirectory();
-
-        ExportDBAttributes *atts = GetViewerState()->GetExportDBAttributes();
-        atts->SetAllTimes(false);
-        atts->SetDb_type(name);
-        atts->SetDb_type_fullname(id);
-        atts->SetDirname(dName);
-        atts->SetFilename(fName);
-        atts->SetVariables(vars);
-        atts->Notify();
-
+        // Set the export db attributes into the state and export the database.
+        ExportDBAttributes *eAtts = GetViewerState()->GetExportDBAttributes();
+        *eAtts = atts;
+        eAtts->Notify();
         GetViewerMethods()->ExportDatabase();
         retval = true;
+    }
+    else
+    {
+#endif
+        // Serialize the export db attributes using the XML form so we can 
+        // send them to the viewer as a string command.
+        std::stringstream cmd;
+        cmd << "ExportDatabase:";
+        SingleAttributeConfigManager mgr(&atts);
+        mgr.Export(cmd);
+        SimulationInitiateCommand(cmd.str());
+        retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
     }
 #endif
     return retval;
@@ -535,8 +714,9 @@ SimEngine::RestoreSession(const std::string &filename)
 
         TRY
         {
+            std::string hostname;
             GetViewerMethods()->
-                ImportEntireStateWithDifferentSources(filename, false, sources);
+                ImportEntireStateWithDifferentSources(filename, false, sources, hostname);
             retval = true;
         }
         CATCHALL
@@ -544,6 +724,15 @@ SimEngine::RestoreSession(const std::string &filename)
             retval = false;
         }
         ENDTRY
+    }
+    else
+    {
+#endif
+        std::string cmd("RestoreSession:");
+        cmd.append(filename);
+        SimulationInitiateCommand(cmd);
+        retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
     }
 #endif
     return retval;
@@ -569,6 +758,11 @@ SimEngine::RestoreSession(const std::string &filename)
 // Creation:   Thu Sep 18 16:42:38 PDT 2014
 //
 // Modifications:
+//   Brad Whitlock, Wed Sep 30 12:12:48 PDT 2015
+//   Don't get the current working directory. Instead, pass a basically empty
+//   working directory and set the "output to current directory" flag accordingly.
+//   This lets simulations save client-side for interactive connections when
+//   they do not specify an output path.
 //
 // ****************************************************************************
 
@@ -595,18 +789,17 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
         else
             fmt = SaveWindowAttributes::TIFF;
 
+        std::string dName(FileFunctions::Dirname(filename));
+        std::string fName(FileFunctions::Basename(filename));
+        bool outputCurrentDirectory = (dName.empty() || dName == ".");
+
 #ifdef SIMV2_VIEWER_INTEGRATION
         // Viewer based method.
         if(viewerInitialized)
         {
-            std::string dName(FileFunctions::Dirname(filename));
-            std::string fName(FileFunctions::Basename(filename));
-            if(dName.empty() || dName == ".")
-                dName = FileFunctions::GetCurrentWorkingDirectory();
-
             SaveWindowAttributes *swa = GetViewerState()->GetSaveWindowAttributes();
             swa->SetFileName(fName);
-            swa->SetOutputToCurrentDirectory(false);
+            swa->SetOutputToCurrentDirectory(outputCurrentDirectory);
             swa->SetOutputDirectory(dName);
             swa->SetFamily(false);
             swa->SetFormat(fmt);
@@ -614,11 +807,32 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
             swa->SetHeight(h);
             swa->SetSaveTiled(false);
             swa->SetScreenCapture(false);
+            swa->SetResConstraint(SaveWindowAttributes::NoConstraint);
             swa->Notify();
 
             GetViewerMethods()->SaveWindow();
 
             retval = true;
+        }
+        else
+        {
+#endif
+            // Send a message to the viewer indicating we want it to save an image.
+            std::string f(SaveWindowAttributes::FileFormat_ToString(fmt));
+            char cmd[2048];
+            SNPRINTF(cmd, 2048, "SaveWindow:%s:%s:%d:%d:%s",
+                dName.c_str(), fName.c_str(), w, h, f.c_str());
+
+            debug5 << "SaveWindow" << endl;
+            debug5 << "\toutputDirectory = " << dName << endl;
+            debug5 << "\tfilename = " << fName << endl;
+            debug5 << "\twidth = " << w << endl;
+            debug5 << "\theight = " << h << endl;
+            debug5 << "\tformat = " << f << endl;
+
+            SimulationInitiateCommand(cmd);
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
         }
 #endif
     }
@@ -649,12 +863,17 @@ SimEngine::SaveWindow(const std::string &filename, int w, int h, int format)
 // Creation:   Thu Sep 18 17:26:58 PDT 2014
 //
 // Modifications:
+//    Brad Whitlock, Thu Jul 30 13:33:55 PDT 2015
+//    Execute AddPlot through the viewer plot list directly so we can better
+//    know whether the plot was successfully added.
 //
 // ****************************************************************************
 
 bool
 SimEngine::AddPlot(const std::string &plotType, const std::string &var)
 {
+    StackTimer t0("SimEngine::AddPlot");
+
     // Get the plugin id from the input plotType, which could be an id or a name.
     std::string id;
     for(int i = 0; i < GetNetMgr()->GetPlotPluginManager()->GetNEnabledPlugins(); ++i)
@@ -677,9 +896,26 @@ SimEngine::AddPlot(const std::string &plotType, const std::string &var)
         {
             int plotIndex = GetNetMgr()->GetPlotPluginManager()->GetEnabledIndex(id);
 
-// cout << "Viewer-based AddPlot(" << plotIndex << "=" << id << ", " << var << ")" << endl;
-            GetViewerMethods()->AddPlot(plotIndex, var);
+            // Go directly through the plot list so we can know if there was an error.
+            bool replacePlots = GetViewerState()->GetGlobalAttributes()->GetReplacePlots();
+            bool applyOperator = false;
+            bool applySelection = GetViewerState()->GetGlobalAttributes()->GetApplySelection();
+            bool inheritSILRestriction = GetViewerState()->GetGlobalAttributes()->
+                                         GetNewPlotsInheritSILRestriction();
+
+            ViewerPlotList *pL = ViewerWindowManager::Instance()->GetActiveWindow()->GetPlotList();
+            retval = pL->AddPlot(plotIndex, var.c_str(), replacePlots, applyOperator,
+                        inheritSILRestriction, applySelection) >= 0;
+        }
+        else
+        {
+#endif
+            // Send the viewer a message to add  plot.
+            char cmd[200];
+            SNPRINTF(cmd, 200, "AddPlot:%s:%s", plotType.c_str(), var.c_str());
+            SimulationInitiateCommand(cmd);
             retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
         }
 #endif
     }
@@ -732,20 +968,30 @@ SimEngine::AddOperator(const std::string &operatorType, bool applyToAll)
     bool retval = false;
     TRY
     {
+        int operatorIndex = GetNetMgr()->GetOperatorPluginManager()->GetEnabledIndex(id);
+
 #ifdef SIMV2_VIEWER_INTEGRATION
         // Viewer based method.
         if(viewerInitialized)
         {
-            int operatorIndex = GetNetMgr()->GetOperatorPluginManager()->GetEnabledIndex(id);
-
             bool applyOperatorSave = GetViewerState()->GetGlobalAttributes()->GetApplyOperator();
-            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyToAll != 0);
+            GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyToAll);
 
 // cout << "Viewer-based AddOperator(" << operatorIndex << "=" << id << ", " << var << ")" << endl;
             GetViewerMethods()->AddOperator(operatorIndex);
 
             GetViewerState()->GetGlobalAttributes()->SetApplyOperator(applyOperatorSave);
             retval = true;
+        }
+        else
+        {
+#endif
+            // Send the viewer a message to add an operator.
+            char cmd[200];
+            SNPRINTF(cmd, 200, "AddOperator:%s:%d", operatorType.c_str(), applyToAll?1:0);
+            SimulationInitiateCommand(cmd);
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
         }
 #endif
     }
@@ -792,6 +1038,13 @@ SimEngine::DrawPlots()
             GetViewerMethods()->DrawPlots();
             retval = true;
         }
+        else
+        {
+#endif
+            SimulationInitiateCommand("DrawPlots");
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
+        }
 #endif
     }
     CATCHALL
@@ -835,6 +1088,13 @@ SimEngine::DeleteActivePlots()
         {
             GetViewerMethods()->DeleteActivePlots();
             retval = true;
+        }
+        else
+        {
+#endif
+            SimulationInitiateCommand("DeleteActivePlots");
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
         }
 #endif
     }
@@ -888,6 +1148,20 @@ SimEngine::SetActivePlots(const int *ids, int nids)
             }
             retval = true;
         }
+        else
+        {
+#endif
+            std::string cmd("SetActivePlots");
+            char tmp[10];
+            for(int i = 0; i < nids; ++i)
+            {
+                SNPRINTF(tmp, 10, ":%d", ids[i]);
+                cmd.append(tmp);
+            }
+            SimulationInitiateCommand(cmd);
+            retval = true;
+#ifdef SIMV2_VIEWER_INTEGRATION
+        }
 #endif
     }
     CATCHALL
@@ -933,10 +1207,14 @@ static bool
 SetAttributeSubjectValues(AttributeSubject *atts, 
     const std::string &name, int fieldType, void *fieldVal, int fieldLen)
 {
+    const char *mName = "SetAttributeSubjectValues: ";
     bool retval = true;
     int fIndex = atts->FieldNameToIndex(name);
     if(fIndex < 0 || fieldVal == NULL)
+    {
+        debug5 << mName << "Failed to look up field name: " << name << endl;
         return false;
+    }
     AttributeGroup::FieldType ft = atts->GetFieldType(fIndex);
 
     if(fieldType == VISIT_FIELDTYPE_CHAR)
@@ -958,7 +1236,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_double)
             retval = atts->SetValue(name, (double)*val);
         else
+        {
+            debug5 << mName << "Could not set array or vector types from char: " << name << "=" << *val << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_UNSIGNED_CHAR)
     {
@@ -979,7 +1260,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_double)
             retval = atts->SetValue(name, (double)*val);
         else
+        {
+            debug5 << mName << "Could not set array or vector types from unsigned char: " << name << "=" << *val << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_INT)
     {
@@ -1002,7 +1286,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_double)
             retval = atts->SetValue(name, (double)*val);
         else
+        {
+            debug5 << mName << "Could not set array or vector types from int: " << name << "=" << *val << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_LONG)
     {
@@ -1023,7 +1310,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_double)
             retval = atts->SetValue(name, (double)*val);
         else
+        {
+            debug5 << mName << "Could not set array or vector types from long: " << name << "=" << *val << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_FLOAT)
     {
@@ -1044,7 +1334,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_double)
             retval = atts->SetValue(name, (double)*val);
         else
+        {
+            debug5 << mName << "Could not set array or vector types from float: " << name << "=" << *val << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_DOUBLE)
     {
@@ -1066,7 +1359,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_float)
             retval = atts->SetValue(name, (float)*val);
         else
+        {
+            debug5 << mName << "Could not set array or vector types from double: " << name << "=" << *val << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_STRING)
     {
@@ -1075,6 +1371,7 @@ SetAttributeSubjectValues(AttributeSubject *atts,
     }
     else if(fieldLen <= 0)
     {
+        debug5 << mName << "Array or vector with fieldLen=" << fieldLen << endl;
         retval = false;
     }
     // Array and vector
@@ -1086,7 +1383,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_charVector)
             retval = atts->SetValue(name, makevector(val, fieldLen));
         else
+        {
+            debug5 << mName << "Could not set " << name << " using char array or vector." << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_UNSIGNED_CHAR_ARRAY)
     {
@@ -1096,7 +1396,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_ucharVector)
             retval = atts->SetValue(name, makevector(val, fieldLen));
         else
+        {
+            debug5 << mName << "Could not set " << name << " using unsigned char array or vector." << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_INT_ARRAY)
     {
@@ -1106,7 +1409,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_intVector)
             retval = atts->SetValue(name, makevector(val, fieldLen));
         else
+        {
+            debug5 << mName << "Could not set " << name << " using int array or vector." << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_LONG_ARRAY)
     {
@@ -1116,7 +1422,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_longVector)
             retval = atts->SetValue(name, makevector(val, fieldLen));
         else
+        {
+            debug5 << mName << "Could not set " << name << " using long array or vector." << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_FLOAT_ARRAY)
     {
@@ -1126,7 +1435,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_floatVector)
             retval = atts->SetValue(name, makevector(val, fieldLen));
         else
+        {
+            debug5 << mName << "Could not set " << name << " using float array or vector." << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_DOUBLE_ARRAY)
     {
@@ -1136,7 +1448,10 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_doubleVector)
             retval = atts->SetValue(name, makevector(val, fieldLen));
         else
+        {
+            debug5 << mName << "Could not set " << name << " using double array or vector." << endl;
             retval = false;
+        }
     }
     else if(fieldType == VISIT_FIELDTYPE_STRING_ARRAY)
     {
@@ -1150,10 +1465,16 @@ SetAttributeSubjectValues(AttributeSubject *atts,
         else if(ft == AttributeGroup::FieldType_stringVector)
             retval = atts->SetValue(name, s);
         else
-            retval = false;        
+        {
+            debug5 << mName << "Could not set " << name << " using string array or vector." << endl;
+            retval = false;
+        }
     }
     else
+    {
+        debug5 << mName << "Unsuppored field type." << endl;
         retval = false;
+    }
 
     return retval;
 }
@@ -1224,6 +1545,12 @@ bool SimEngine::SetPlotOptions(const std::string &fieldName,
                     }
                 }
             }
+        }
+        else
+        {
+#endif
+            debug5 << "SimEngine::SetPlotOptions is just implemented for batch mode." << endl;
+#ifdef SIMV2_VIEWER_INTEGRATION
         }
 #endif
     }
@@ -1331,6 +1658,12 @@ bool SimEngine::SetOperatorOptions(const std::string &fieldName,
                 }
             }
         }
+        else
+        {
+#endif
+            debug5 << "SimEngine::SetOperatorOptions is just implemented for batch mode." << endl;
+#ifdef SIMV2_VIEWER_INTEGRATION
+        }
 #endif
     }
     CATCHALL
@@ -1354,7 +1687,8 @@ bool SimEngine::SetOperatorOptions(const std::string &fieldName,
 //   Sets up several of the viewer systems.
 //
 // Arguments:
-//   
+//   plotPlugins     : The list of plot plugins that we want to load.
+//   operatorPlugins : The list of operator plugins that we want to load.
 //
 // Returns:    
 //
@@ -1368,12 +1702,13 @@ bool SimEngine::SetOperatorOptions(const std::string &fieldName,
 // ****************************************************************************
 
 void
-SimEngine::HeavyInitialization()
+SimEngine::HeavyInitialization(const std::vector<std::string> &plotPlugins,
+    const std::vector<std::string> &operatorPlugins)
 {
     // The viewer likes to have its plugins loaded... I'd like to not have to
     // do this...
-    LoadPlotPlugins();
-    LoadOperatorPlugins();
+    LoadPlotPlugins(plotPlugins);
+    LoadOperatorPlugins(operatorPlugins);
 
     ViewerQueryManager::Instance()->InitializeQueryList();
 
@@ -1383,6 +1718,80 @@ SimEngine::HeavyInitialization()
 
     // Process settings. This also does stuff like read in external color tables.
     GetViewerStateManager()->ProcessSettings();
+}
+
+// ****************************************************************************
+// Method: SimEngine::RestrictPlugins
+//
+// Purpose:
+//   Restrict the plugins that we'll load to a specific list to speed startup.
+//
+//
+// Arguments:
+//   mgr : A plugin manager.
+//   ids : The list of ids or names of the plugins that we want to keep on.
+//
+// Returns:    
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Aug 17 17:04:50 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+SimEngine::RestrictPlugins(PluginManager *mgr,
+    const std::vector<std::string> &idsOrNames)
+{
+    // If we passed a 1-element vector with "None" then let's disable all plugins.
+    bool none = idsOrNames.size() == 1 && 
+#if defined(_WIN32)
+                (stricmp(idsOrNames[0].c_str(), "None") == 0);
+#else
+                (strcasecmp(idsOrNames[0].c_str(), "None") == 0);
+#endif
+
+    if(none)
+    {
+        // Disable all plugins.
+        for(int i =0; i < mgr->GetNAllPlugins(); ++i) 
+        {
+            std::string thisId = mgr->GetAllID(i);
+            mgr->DisablePlugin(thisId);
+        }
+    }
+    else if(!idsOrNames.empty())
+    {
+        // Make the list of plugins we want to enable.
+        std::vector<std::string> ids;
+        for(size_t i = 0; i < idsOrNames.size(); ++i)
+        {
+            std::string id;
+            for(int j =0; j < mgr->GetNAllPlugins(); ++j) 
+            {
+                std::string thisId = mgr->GetAllID(j);
+                if(idsOrNames[i] == thisId)
+                    ids.push_back(thisId);
+                // or, do we have a matching name?
+                else if(idsOrNames[i] == mgr->GetPluginName(thisId))
+                    ids.push_back(thisId);
+            }
+        }
+
+        // Disable all plugins.
+        for(int i =0; i < mgr->GetNAllPlugins(); ++i) 
+        {
+            std::string thisId = mgr->GetAllID(i);
+            mgr->DisablePlugin(thisId);
+        }
+
+        // Re-enable the plugins that we do want to load.
+        for(size_t i = 0; i < ids.size(); ++i)
+            mgr->EnablePlugin(ids[i]);
+    }
 }
 
 // ****************************************************************************
@@ -1401,7 +1810,7 @@ SimEngine::HeavyInitialization()
 // ****************************************************************************
 
 void
-SimEngine::LoadPlotPlugins()
+SimEngine::LoadPlotPlugins(const std::vector<std::string> &plotPlugins)
 {
     int total  = visitTimer->StartTimer();
     int timeid = visitTimer->StartTimer();
@@ -1411,6 +1820,8 @@ SimEngine::LoadPlotPlugins()
     //
     TRY
     {
+        RestrictPlugins(GetPlotPluginManager(), plotPlugins);
+
         GetPlotPluginManager()->LoadPluginsNow();
     }
     CATCH2(VisItException, e)
@@ -1452,7 +1863,7 @@ SimEngine::LoadPlotPlugins()
 // ****************************************************************************
 
 void
-SimEngine::LoadOperatorPlugins()
+SimEngine::LoadOperatorPlugins(const std::vector<std::string> &operatorPlugins)
 {
     int total = visitTimer->StartTimer();
     int timeid = visitTimer->StartTimer();
@@ -1462,6 +1873,8 @@ SimEngine::LoadOperatorPlugins()
     //
     TRY
     {
+        RestrictPlugins(GetOperatorPluginManager(), operatorPlugins);
+
         GetOperatorPluginManager()->LoadPluginsNow();
     }
     CATCH2(VisItException, e)
@@ -1510,6 +1923,8 @@ SimEngine::LoadOperatorPlugins()
 void
 SimEngine::AddInitialWindows()
 {
+    StackTimer t0("SimEngine::AddInitialWindows");
+
     // Make sure the viewer properties have good values for windows and decorations.
     if (GetViewerProperties()->GetWindowBorders().empty())
     {
@@ -1599,6 +2014,10 @@ SimEngine::HandleViewerRPCCallback(Subject *, void *)
 {
     if(GetViewerState()->GetViewerRPC()->GetRPCType() != ViewerRPC::CloseRPC)
     {
+        std::string name = ViewerRPC::ViewerRPCType_ToString(
+            GetViewerState()->GetViewerRPC()->GetRPCType());
+        StackTimer t0(name);
+
         ViewerWindowManager::Instance()->GetActiveWindow()->GetActionManager()->
             HandleAction(*GetViewerState()->GetViewerRPC());
     }

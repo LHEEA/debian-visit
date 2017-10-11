@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -308,6 +308,9 @@ avtLabelPlot::ApplyOperators(avtDataObject_p input)
 //   Jeremy Meredith, Tue Oct 14 14:00:06 EDT 2008
 //   Changed interface to SetMustCreatePolyData to allow either setting.
 //
+//   Kathleen Biagas, Wed Jun  3 10:26:59 PDT 2015
+//   Send information to avtLabelFilter so it can create logical indices.
+//
 // ****************************************************************************
 
 avtDataObject_p
@@ -409,6 +412,11 @@ avtLabelPlot::ApplyRenderingTransformation(avtDataObject_p input)
     if(labelFilter != NULL)
         delete labelFilter;
     labelFilter = new avtLabelFilter;
+    labelFilter->SetMayBeLogical(
+        atts.GetLabelDisplayFormat() == LabelAttributes::Natural || 
+        atts.GetLabelDisplayFormat() == LabelAttributes::LogicalIndex);
+    labelFilter->SetCellOrigin(dob->GetInfo().GetAttributes().GetCellOrigin());
+    labelFilter->SetNodeOrigin(dob->GetInfo().GetAttributes().GetNodeOrigin());
     labelFilter->SetInput(dob);
     dob = labelFilter->GetOutput();
     visitTimer->StopTimer(onefilter, "avtLabelFilter");

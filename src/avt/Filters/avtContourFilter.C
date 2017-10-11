@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,29 @@
 #include <float.h>
 #include <vector>
 
+#ifdef HAVE_LIBEAVL
+
+#include <eavlDataSet.h>
+#include <eavlTimer.h>
+#include <eavlExecutor.h>
+#include <eavlIsosurfaceFilter.h>
+#include <eavlCellToNodeRecenterMutator.h>
+
+#ifdef PARALLEL
+#include <mpi.h>
+#endif
+
+#ifdef VISIT_OMP
+#include <omp.h>
+#endif
+
+#endif
+
+#ifdef HAVE_LIBVTKM
+#include <vtkmContourFilter.h>
+#include <vtkmDataSet.h>
+#endif
+
 #include <vtkCellData.h>
 #include <vtkVisItCellDataToPointData.h>
 #include <vtkDataSet.h>
@@ -68,24 +91,6 @@
 #include <InvalidLimitsException.h>
 #include <NoDefaultVariableException.h>
 #include <TimingsManager.h>
-
-#ifdef HAVE_LIBEAVL
-
-#include <eavlDataSet.h>
-#include <eavlTimer.h>
-#include <eavlExecutor.h>
-#include <eavlIsosurfaceFilter.h>
-#include <eavlCellToNodeRecenterMutator.h>
-
-#ifdef PARALLEL
-#include <mpi.h>
-#endif
-
-#ifdef VISIT_OMP
-#include <omp.h>
-#endif
-
-#endif
 
 using std::vector;
 using std::string;
@@ -152,13 +157,13 @@ avtContourFilter::avtContourFilter(const ContourOpAttributes &a)
     else if (atts.GetContourMethod() == ContourOpAttributes::Value)
     {
         isoValues = atts.GetContourValue();
-        nLevels = isoValues.size();
+        nLevels = (int)isoValues.size();
         stillNeedExtents = false;
     }
     else // Percent
     {
         isoValues = atts.GetContourPercent();
-        nLevels = isoValues.size();
+        nLevels = (int)isoValues.size();
     }
  
     // We need to specify that we want a secondary variable as soon as
@@ -352,10 +357,15 @@ avtContourFilter::ModifyContract(avtContract_p in_contract)
     // in case it can limit its reads to only the domains/elements that
     // cross the isolevel.
     //
-    avtIsolevelsSelection *sel = new avtIsolevelsSelection;
-    sel->SetVariable(varname);
-    sel->SetIsolevels(isoValues);
-    contract->GetDataRequest()->AddDataSelection(sel);
+
+    if (!isoValues.empty())
+    {
+       avtIsolevelsSelection *sel = new avtIsolevelsSelection;
+       sel->SetVariable(varname);
+       sel->SetIsolevels(isoValues);
+       contract->GetDataRequest()->AddDataSelection(sel);
+    }
+
 
     if (it == NULL)
     {
@@ -525,6 +535,8 @@ avtContourFilter::PreExecute(void)
 //  Creation:   June 10, 2014
 //
 //  Modifications:
+//    Eric Brugger, Thu Jan 14 08:48:41 PST 2016
+//    I modified the class to work VTKM.
 //
 // ****************************************************************************
 
@@ -541,6 +553,11 @@ avtContourFilter::ExecuteDataTree(avtDataRepresentation *in_dr)
         avtCallback::GetBackendType() == GlobalAttributes::EAVL)
     {
         outDT = this->ExecuteDataTree_EAVL(in_dr);
+    }
+    else if (in_dr->GetDataRepType() == DATA_REP_TYPE_VTKM ||
+        avtCallback::GetBackendType() == GlobalAttributes::VTKM)
+    {
+        outDT = this->ExecuteDataTree_VTKM(in_dr);
     }
     else
     {
@@ -737,7 +754,6 @@ avtContourFilter::ExecuteDataTree_EAVL(avtDataRepresentation *in_dr)
     visitTimer->StopTimer(timerHandle, "avtContourFilter::ExecuteDataTree_EAVL");
 
     return outtree;
-
 #endif
 }
 
@@ -941,7 +957,7 @@ avtContourFilter::ExecuteDataTree_VTK(avtDataRepresentation *in_dr)
     // business is to account for a case where there are 0 isolevels,
     // which could lead to a divide-by-0 when calculating progress.
     //
-    int nLevels = isoValues.size();
+    int nLevels = (int)isoValues.size();
     int total = 4*nLevels+2;
 
     #ifndef VISIT_THREADS
@@ -985,7 +1001,7 @@ avtContourFilter::ExecuteDataTree_VTK(avtDataRepresentation *in_dr)
     vtkVisItContourFilter *cf = vtkVisItContourFilter::New();
     cf->SetInputData(toBeContoured);
     vtkPolyData *output = cf->GetOutput();
-    for (size_t i = 0 ; i < isoValues.size() ; i++)
+    for (int i = 0 ; i < (int)isoValues.size() ; i++)
     {
         std::vector<vtkIdType> list;
         if (useScalarTree)
@@ -1064,6 +1080,84 @@ avtContourFilter::ExecuteDataTree_VTK(avtDataRepresentation *in_dr)
     #endif // VISIT_THREADS
 
     return outDT;
+}
+
+
+// ****************************************************************************
+//  Method: avtContourFilter::ExecuteDataTree_VTKM
+//
+//  Purpose:
+//      Sends the specified input and output through the VTKM contour filter.
+//
+//  Arguments:
+//      in_dr      The input data representation.
+//
+//  Returns:       The output data tree.
+//
+//  Programmer: Eric Brugger
+//  Creation:   Thu Jan 14 08:48:41 PST 2016
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+avtDataTree_p
+avtContourFilter::ExecuteDataTree_VTKM(avtDataRepresentation *in_dr)
+{
+#ifndef HAVE_LIBVTKM
+    return NULL;
+#else
+    //
+    // Get the VTKM data set, the domain number, and the label.
+    //
+    vtkmDataSet *in_ds = in_dr->GetDataVTKm();
+    int domain = in_dr->GetDomain();
+    std::string label = in_dr->GetLabel();
+
+    int timerHandle = visitTimer->StartTimer();
+
+    if (!in_ds)
+    {
+        return NULL;
+    }
+
+    std::string contourVar(activeVariable != NULL ? activeVariable
+                                                  : pipelineVariable);
+
+    if (isoValues.empty())
+    {
+        debug3 << "No levels to calculate! " << endl;
+        GetOutput()->GetInfo().GetValidity().InvalidateOperation();
+        return NULL;
+    }
+
+    //execute once per isovalue
+    avtDataRepresentation **output = new avtDataRepresentation*[isoValues.size()];
+    for (int i=0; i<isoValues.size(); i++)
+    {
+        vtkmDataSet *isoOut = new vtkmDataSet;
+
+        vtkmContourFilter(in_ds->ds, isoOut->ds, contourVar, isoValues[i]);
+
+        if (shouldCreateLabels)
+        {   
+            output[i] = new avtDataRepresentation(isoOut,
+                domain, isoLabels[i]);
+        }
+        else
+        {   
+            output[i] = new avtDataRepresentation(isoOut,
+                domain, label);
+        }
+    }
+
+    //create the output data tree
+    avtDataTree_p outtree = new avtDataTree(isoValues.size(), output);
+
+    visitTimer->StopTimer(timerHandle, "avtContourFilter::ExecuteDataTree_VTKM");
+
+    return outtree;
+#endif
 }
 
 
@@ -1155,6 +1249,10 @@ avtContourFilter::UpdateDataObjectInfo(void)
 //    Hank Childs, Sun Jun 24 19:48:46 PDT 2001
 //    When there is an error, clear the isoValues if they are *not* empty.
 //
+//    Kathleen Biagas, Wed May 24 17:15:11 PDT 2017
+//    Clear out isoValues when ContourMethod is Level.  Ensures the values
+//    are correct for this min and max.
+
 // ****************************************************************************
 
 void
@@ -1171,6 +1269,13 @@ avtContourFilter::SetIsoValues(double min, double max)
         if (!isoValues.empty())
             isoValues.clear();
         return;
+    }
+
+    if (atts.GetContourMethod() == ContourOpAttributes::Level)
+    {
+        // Make sure the iso values are in sync with this min/max
+        // by clearing them out and recreating.
+        isoValues.clear();
     }
 
     if (isoValues.empty())

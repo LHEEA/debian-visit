@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,9 +79,9 @@ class EXPRESSION_API avtCurveExpression : public avtMacroExpressionFilter
     virtual void              ProcessArguments(ArgsExpr *args, 
                                                ExprPipelineState *state);
   private:
-    const int                 IsYFunc(const char *var) const;
-    const int                 IsXFunc(const char *var) const;
-    const bool                ValidFunctionName(const char *func);
+    int                       IsYFunc(const char *var) const;
+    int                       IsXFunc(const char *var) const;
+    bool                      ValidFunctionName(const char *func);
     int                       xvar;
     std::string               function;
 };

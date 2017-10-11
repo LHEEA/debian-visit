@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,16 +108,16 @@ avtCellLocatorRectEdge::FindCell(const double pos[3],
         else
         {
             // binary search
-            std::vector<float>::const_iterator ci;
+            std::vector<double>::const_iterator ci;
             if (ascending[d])
             {
                 ci = std::lower_bound( coord[d].begin(), coord[d].end(), 
-                                  pos[d], std::less<float>() );
+                                       pos[d], std::less<double>() );
             }
             else
             {
                 ci = std::lower_bound( coord[d].begin(), coord[d].end(), 
-                                  pos[d], std::greater<float>() );
+                                       pos[d], std::greater<double>() );
             }
             
             if( ci == coord[d].end() )
@@ -162,13 +162,13 @@ avtCellLocatorRectEdge::FindCell(const double pos[3],
 
     if( weights )
     {
-        const float k[3] = { 1.0f-l[0], 1.0f-l[1], 1.0f-l[2] };
+        double k[3] = { 1.0-l[0], 1.0-l[1], 1.0-l[2] };
 
         vtkIdType base = (i[2]*coord[1].size() + i[1])*coord[0].size() + i[0];
 
-        vtkIdType dx = i[0] ? 1 : 0;
-        vtkIdType dy = i[1] ? coord[0].size() : 0;
-        vtkIdType dz = i[2] ? coord[1].size()*coord[0].size() : 0;
+        vtkIdType dx = (coord[0].size() > 1) ? 1 : 0;
+        vtkIdType dy = (coord[1].size() > 1) ? coord[0].size() : 0;
+        vtkIdType dz = (coord[2].size() > 1) ? coord[1].size()*coord[0].size() : 0;
         vtkIdType deltas[] = {dx, dy, dz};
         size_t dir1 = (this->direction + 1) % 3;
         size_t dir2 = (this->direction + 2) % 3;
@@ -188,7 +188,6 @@ avtCellLocatorRectEdge::FindCell(const double pos[3],
         
         (*weights)[3].i = base + indxOffset2;
         (*weights)[3].w = k[dir1] * l[dir2];
-
     }
 
     return cell;

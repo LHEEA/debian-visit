@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -144,7 +144,7 @@ avtStrainRateExpression::DeriveVariable(vtkDataSet *in_ds, int currentDomainsInd
     out->SetNumberOfTuples(nCells);
     for (size_t j = 0; j < 9; j++) 
         avgTensor[j] = 0.0;
-    for (size_t i = 0; i < nCells; i++)
+    for (int i = 0; i < nCells; i++)
     {   // Check Voxel format
         int cellType = in_usg->GetCellType(i);
         // ignore everything but hexes

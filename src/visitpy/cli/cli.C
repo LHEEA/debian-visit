@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,6 +63,7 @@
 #include <InstallationFunctions.h>
 #include <StringHelpers.h>
 #include <VisItException.h>
+#include <DebugStream.h>
 
 #include <string>
 #include <vector>
@@ -230,6 +231,9 @@ main(int argc, char *argv[])
     char* uifile = 0;
     const char* pyuiembedded_str = "-pyuiembedded"; //pass it along to client
 
+    bool sleep_mode = false;
+    std::string run_code = "";
+
 #ifdef WIN32
     char tmpArg[512];
 #endif
@@ -265,9 +269,11 @@ main(int argc, char *argv[])
         }
 #ifdef WIN32
         else if((strcmp(argv[i], "-s") == 0 && (i+1 < argc)) ||
-                (strcmp(argv[i], "-o") == 0 && (i+1 < argc)))
+                (strcmp(argv[i], "-o") == 0 && (i+1 < argc)) ||
+                (strcmp(argv[i], "-runcode") == 0 && (i+1 < argc)))
         {
             bool runF = (strcmp(argv[i], "-s") == 0);
+            bool runO = (strcmp(argv[i], "-o") == 0);
             ++i;
             // append all parts of this arg back into one string
             if (BEGINSWITHQUOTE(argv[i]) && !ENDSWITHQUOTE(argv[i]))
@@ -300,10 +306,14 @@ main(int argc, char *argv[])
                 sprintf(runFile, "%s", tmpArg);
                 s_found = true;
             }
-            else
+            else if(runO)
             {
                 loadFile = new char [strlen(tmpArg)+1];
                 sprintf(loadFile, "%s", tmpArg);
+            }
+            else
+            {
+                run_code = tmpArg; 
             }
         }
 #else
@@ -319,10 +329,19 @@ main(int argc, char *argv[])
             loadFile = argv[i+1];
             ++i;
         }
+        else if(strcmp(argv[i], "-runcode") == 0 && (i+1 < argc))
+        {
+            run_code = argv[i+1];
+            ++i;
+        }
 #endif
         else if(strcmp(argv[i], "-verbose") == 0)
         {
             verbose = true;
+        }
+        else if(strcmp(argv[i], "-sleepmode") == 0)
+        {
+            sleep_mode = true;
         }
         else if(strcmp(argv[i], "-forceinteractivecli") == 0)
         {
@@ -407,6 +426,14 @@ main(int argc, char *argv[])
                 ShowWindow(console, SW_MINIMIZE);
 #endif
         }
+        else if(strcmp(argv[i], "-hide_window") == 0)
+        {
+#ifdef WIN32
+            HWND console = GetConsoleWindow();
+            if(console != NULL)
+                ShowWindow(console, SW_HIDE);
+#endif
+        }
         else
         {
             // Pass the array along to the visitmodule.
@@ -448,10 +475,48 @@ main(int argc, char *argv[])
                       << std::endl;
             return (0);
         }
+        if(run_code.length() > 0 && tmp == "-reverse_launch") {
+           run_code = ""; //don't execute scripts during reverse launches..
+        }
+        if(sleep_mode == true && tmp == "-reverse_launch") {
+           sleep_mode = false; //don't execute scripts during reverse launches..
+        }
     }
 
     TRY
     {
+
+        // 
+        // If there is a file named "visit.py" in the current working directory,
+        // this will be imported instead of the actual visit python module.
+        // This is the expected  python interpreter behavior, but it is very 
+        // confusing when users stumble upon this. 
+        //
+        // We decided to provide an error message to let users identify this case.
+        //
+        
+        FileFunctions::VisItStat_t vstat_info;
+        if(FileFunctions::VisItStat("visit.py", &vstat_info) != -1)
+        {
+            std::ostringstream oss;
+            oss <<"!!!! - WARNING - !!!!" 
+                << std::endl
+                <<"You have a file named 'visit.py' in your current working "
+                <<"directory. Python's standard module import logic will use "
+                <<"this 'visit.py' file instead of the VisIt python module "
+                <<"that implements VisIt's python client interface."
+                << std::endl
+                <<"This will most likely disable all VisIt python client "
+                <<"features!"
+                << std::endl
+                <<"To avoid this please run in a directory without a file "
+                <<"named 'visit.py'."
+                << std::endl;
+
+            std::cout << oss.str() << std::endl;
+            debug1    << oss.str() << std::endl;
+        }
+        
         // Initialize python
         Py_Initialize();
         PyEval_InitThreads();
@@ -644,8 +709,15 @@ main(int argc, char *argv[])
              delete [] runFile;
 #endif
         }
+        ///run the commandline script..
+        if(run_code.length() > 0) {
+            PyRun_SimpleString(run_code.c_str());
+        }
 
-        if(!scriptOnly)
+        if(sleep_mode == true) {
+            PyRun_SimpleString("import time\nwhile 1: time.sleep(5)");
+        }
+        else if(!scriptOnly)
         {
             PyObject *rl_module = PyImport_ImportModule("readline");
             if (rl_module == NULL)

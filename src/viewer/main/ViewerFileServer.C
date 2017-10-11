@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -154,6 +154,18 @@ stringVector
 ViewerFileServer::GetOpenDatabases()
 {
     return IMPL()->GetOpenDatabases();
+}
+
+void
+ViewerFileServer::SaveSession(const std::string &host, const std::string &filename, const std::string &sessionFile)
+{
+    IMPL()->SaveSession(host, filename, sessionFile);
+}
+
+void
+ViewerFileServer::RestoreSession(const std::string &host, const std::string &filename, std::string &sessionFile)
+{
+    IMPL()->RestoreSession(host, filename, sessionFile);
 }
 
 void

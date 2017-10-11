@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -51,6 +51,9 @@
 #
 #   Kathleen Biagas, Tues Oct 1 09:33:47 MST 2013
 #   Removed VISIT_MSVC_VERSION from windows handling.
+#
+#   Kathleen Biagas, Fri Mar 17 09:14:34 PDT 2017
+#   Set HAVE_OSMESA flag when MESA_FOUND.
 #
 #****************************************************************************/
 
@@ -110,6 +113,7 @@ ENDIF (CMAKE_THREAD_LIBS)
 
 
 IF(MESA_FOUND)
+  SET(HAVE_OSMESA true CACHE BOOL "Have OSMesa library")
   SET(MSG "Check for osmesa size limit")
   MESSAGE(STATUS ${MSG})
   SET(TRY_RUN_DIR ${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_FILES_DIRECTORY}/CMakeTmp)

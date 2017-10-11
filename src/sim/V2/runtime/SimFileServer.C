@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -233,6 +233,18 @@ stringVector
 SimFileServer::GetOpenDatabases()
 {
     return engine->GetNetMgr()->GetOpenDatabases();
+}
+
+void
+SimFileServer::SaveSession(const std::string &host, const std::string &filename, const std::string &sessionFile)
+{
+    // Does nothing.
+}
+
+void
+SimFileServer::RestoreSession(const std::string &host, const std::string &filename, std::string &sessionFile)
+{
+    // Does nothing.
 }
 
 void

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -71,9 +71,9 @@ public:
 
   // Description:
   // Boolean controls whether to test for Co-Planar condition.
-  vtkSetMacro(TestCoPlanar,int);
-  vtkGetMacro(TestCoPlanar,int);
-  vtkBooleanMacro(TestCoPlanar,int);
+  vtkSetMacro(TestCoPlanar,bool);
+  vtkGetMacro(TestCoPlanar,bool);
+  vtkBooleanMacro(TestCoPlanar,bool);
 
   int CellIntersectWithLine(vtkCell *, double [3], double [3], 
                                 double&, double [3]);
@@ -139,7 +139,7 @@ private:
 
   vtkTriangle *triangle;
   vtkQuad *quad;
-  int TestCoPlanar;
+  bool TestCoPlanar;
 };
 
 #endif

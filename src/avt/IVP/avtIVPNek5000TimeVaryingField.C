@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -469,43 +469,6 @@ avtIVPNek5000TimeVaryingField::operator()( const double &t,
       
       vel[j] = p1 * v[1] + p0 * v[0];
     }
-
-
-    // Result res = FindCell(t, p);
-    // if (res != OK)
-    //     return res;
-
-    // double v0[3], v1[3];
-
-    // double p0 = (t1-t)/dt;
-    // double p1 = (t-t0)/dt;
-
-    // if (velCellBased)
-    // {
-    //     velData[0]->GetTuple( lastCell, v0 );
-    //     velData[1]->GetTuple( lastCell, v1 );
-
-    //     vel.x = p1 * v1[0] + p0 * v0[0];
-    //     vel.y = p1 * v1[1] + p0 * v0[1];
-    //     vel.z = p1 * v1[2] + p0 * v0[2];
-    // }
-    // else
-    // {
-    //     for( avtInterpolationWeights::const_iterator wi=lastWeights.begin();
-    //          wi!=lastWeights.end(); ++wi )
-    //     {
-    //         velData[0]->GetTuple( wi->i, v0 );
-    //         velData[1]->GetTuple( wi->i, v1 );
-
-    //         v0[0] = p1 * v1[0] + p0 * v0[0];
-    //         v0[1] = p1 * v1[1] + p0 * v0[1];
-    //         v0[2] = p1 * v1[2] + p0 * v0[2];
-
-    //         vel.x += wi->w * v0[0];
-    //         vel.y += wi->w * v0[1];
-    //         vel.z += wi->w * v0[2];
-    //     }
-    // }
 
     return OK;
 }

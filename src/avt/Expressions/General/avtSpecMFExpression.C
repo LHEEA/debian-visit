@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,6 +108,10 @@ avtSpecMFExpression::~avtSpecMFExpression()
 //  Programmer: Jeremy Meredith
 //  Creation:   June  8, 2004
 //
+//  Modifications:
+//    Cyrus Harrison, Thu May 25 09:55:07 PDT 2017
+//    Issue error if MIR has occurred b/c materials info is invlaid after MIR.
+//
 // ****************************************************************************
 
 void
@@ -115,6 +119,22 @@ avtSpecMFExpression::PreExecute(void)
 {
     issuedWarning = false;
     avtSingleInputExpressionFilter::PreExecute();
+
+    avtDataAttributes &datts = GetInput()->GetInfo().GetAttributes();
+
+    if(datts.MIROccurred())
+    {
+        EXCEPTION2(ExpressionException,
+                   outputVariableName,
+                   "avtSpecMFExpression: The 'specmf' expression "
+                   "cannot be used with Material Interface Reconstruction "
+                   "(MIR).\n"
+                   "To use 'specmf', "
+                   "turn on all materials and verify that \"Force interface "
+                   "reconstruction\" in the Material Options is disabled.");
+
+    }
+
 }
 
 
@@ -530,7 +550,7 @@ avtSpecMFExpression::ProcessArguments(ArgsExpr *args, ExprPipelineState *state)
 {
     // Check the number of arguments
     std::vector<ArgExpr*> *arguments = args->GetArgs();
-    int nargs = arguments->size();
+    size_t nargs = arguments->size();
     if (nargs == 0)
     {
         EXCEPTION2(ExpressionException, outputVariableName, 

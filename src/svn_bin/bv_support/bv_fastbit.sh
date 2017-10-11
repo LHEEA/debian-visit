@@ -1,53 +1,54 @@
 function bv_fastbit_initialize
 {
-export DO_FASTBIT="no"
-export ON_FASTBIT="off"
+    export DO_FASTBIT="no"
+    export ON_FASTBIT="off"
 }
 
 function bv_fastbit_enable
 {
-DO_FASTBIT="yes"
-ON_FASTBIT="on"
+    DO_FASTBIT="yes"
+    ON_FASTBIT="on"
 }
 
 function bv_fastbit_disable
 {
-DO_FASTBIT="no"
-ON_FASTBIT="off"
+    DO_FASTBIT="no"
+    ON_FASTBIT="off"
 }
 
 function bv_fastbit_depends_on
 {
-echo ""
+    echo ""
 }
 
 function bv_fastbit_info
 {
-export FASTBIT_VERSION=${FASTBIT_VERSION:-"1.2.0"}
-export FASTBIT_FILE=${FASTBIT_FILE:-"fastbit-ibis${FASTBIT_VERSION}.tar.gz"}
-# Note: last 3-digit field in URL changes with version.
-export FASTBIT_URL=${FASTBIT_URL:-"https://codeforge.lbl.gov/frs/download.php/208"}
-export FASTBIT_BUILD_DIR=${FASTBIT_BUILD_DIR:-"fastbit-ibis${FASTBIT_VERSION}"}
-export FASTBIT_MD5_CHECKSUM="380de470b856ecaf19d296aab6406811"
-export FASTBIT_SHA256_CHECKSUM=""
+    export FASTBIT_VERSION=${FASTBIT_VERSION:-"2.0.3"}
+    export FASTBIT_FILE=${FASTBIT_FILE:-"fastbit-${FASTBIT_VERSION}.tar.gz"}
+    # Note: last 3-digit field in URL changes with version.
+    export FASTBIT_URL=${FASTBIT_URL:-"https://code.lbl.gov/frs/download.php/file/426"}
+    export FASTBIT_BUILD_DIR=${FASTBIT_BUILD_DIR:-"fastbit-${FASTBIT_VERSION}"}
+    export FASTBIT_MD5_CHECKSUM="380de470b856ecaf19d296aab6406811"
+    export FASTBIT_SHA256_CHECKSUM=""
 }
 
 function bv_fastbit_print
 {
-  printf "%s%s\n" "FASTBIT_FILE=" "${FASTBIT_FILE}"
-  printf "%s%s\n" "FASTBIT_VERSION=" "${FASTBIT_VERSION}"
-  printf "%s%s\n" "FASTBIT_BUILD_DIR=" "${FASTBIT_BUILD_DIR}"
+    printf "%s%s\n" "FASTBIT_FILE=" "${FASTBIT_FILE}"
+    printf "%s%s\n" "FASTBIT_VERSION=" "${FASTBIT_VERSION}"
+    printf "%s%s\n" "FASTBIT_BUILD_DIR=" "${FASTBIT_BUILD_DIR}"
 }
 
 function bv_fastbit_print_usage
 {
-printf "%-15s %s [%s]\n" "--fastbit" "Build FastBit" "$DO_FASTBIT"
+    printf "\t\t%15s\n" "NOTE: FastBit not available for download from web" 
+    printf "%-15s %s [%s]\n" "--fastbit" "Build FastBit" "$DO_FASTBIT"
 }
 
 function bv_fastbit_graphical
 {
-local graphical_out="FastBit  $FASTBIT_VERSION($FASTBIT_FILE)   $ON_FASTBIT"
-echo $graphical_out
+    local graphical_out="FastBit  $FASTBIT_VERSION($FASTBIT_FILE)   $ON_FASTBIT"
+    echo $graphical_out
 }
 
 function bv_fastbit_host_profile
@@ -57,9 +58,10 @@ function bv_fastbit_host_profile
         echo "##" >> $HOSTCONF
         echo "## FastBit" >> $HOSTCONF
         echo "##" >> $HOSTCONF
+        echo "SETUP_APP_VERSION(FASTBIT $FASTBIT_VERSION)" >> $HOSTCONF
         echo \
-        "VISIT_OPTION_DEFAULT(VISIT_FASTBIT_DIR \${VISITHOME}/fastbit/$FASTBIT_VERSION/\${VISITARCH})" \
-        >> $HOSTCONF
+            "VISIT_OPTION_DEFAULT(VISIT_FASTBIT_DIR \${VISITHOME}/fastbit/\${FASTBIT_VERSION}/\${VISITARCH})" \
+            >> $HOSTCONF
     fi
 
 }
@@ -80,9 +82,70 @@ function bv_fastbit_ensure
 
 function bv_fastbit_dry_run
 {
-  if [[ "$DO_FASTBIT" == "yes" ]] ; then
-    echo "Dry run option not set for fastbit."
-  fi
+    if [[ "$DO_FASTBIT" == "yes" ]] ; then
+        echo "Dry run option not set for fastbit."
+    fi
+}
+
+function apply_fastbit_2_0_3_patch
+{
+    info "Patching FastBit"
+    patch -p0 << \EOF
+diff -rcN fastbit-2.0.3/configure-orig.ac fastbit-2.0.3/configure.ac
+*** fastbit-2.0.3/configure-orig.ac	2016-12-14 08:57:26.000000000 -0700
+--- fastbit-2.0.3/configure.ac	2016-12-14 08:58:42.000000000 -0700
+***************
+*** 916,922 ****
+  AC_SUBST(BUILD_CONTRIB)
+  
+  AC_DEFINE_UNQUOTED(FASTBIT_IBIS_INT_VERSION,
+!  `echo $PACKAGE_VERSION | awk 'BEGIN { FS="." } { printf("0x%d%.2d%.2d%.2d\n", substr($1, 5), $2, $3, $4); }'`,
+  [Define an integer version of FastBit IBIS version number])
+  OBJDIR=$objdir
+  AC_SUBST(BUILD_JAVA_INTERFACE)
+--- 916,922 ----
+  AC_SUBST(BUILD_CONTRIB)
+  
+  AC_DEFINE_UNQUOTED(FASTBIT_IBIS_INT_VERSION,
+!  `echo $PACKAGE_VERSION | awk 'BEGIN { FS="." } { printf("0x%d%.2d%.2d%.2d\n", $1, $2, $3, $4); }'`,
+  [Define an integer version of FastBit IBIS version number])
+  OBJDIR=$objdir
+  AC_SUBST(BUILD_JAVA_INTERFACE)
+
+diff -rcN fastbit-2.0.3/configure-orig fastbit-2.0.3/configure
+*** fastbit-2.0.3/configure-orig	2016-12-14 09:00:26.000000000 -0700
+--- fastbit-2.0.3/configure	2016-12-14 08:54:49.000000000 -0700
+***************
+*** 17350,17356 ****
+  
+  
+  cat >>confdefs.h <<_ACEOF
+! #define FASTBIT_IBIS_INT_VERSION `echo $PACKAGE_VERSION | awk 'BEGIN { FS="." } { printf("0x%d%.2d%.2d%.2d\n", substr($1, 5), $2, $3, $4); }'`
+  _ACEOF
+  
+  OBJDIR=$objdir
+--- 17350,17356 ----
+  
+  
+  cat >>confdefs.h <<_ACEOF
+! #define FASTBIT_IBIS_INT_VERSION `echo $PACKAGE_VERSION | awk 'BEGIN { FS="." } { printf("0x%d%.2d%.2d%.2d\n", $1, $2, $3, $4); }'`
+  _ACEOF
+  
+  OBJDIR=$objdir
+
+EOF
+}
+
+function apply_fastbit_patch
+{
+    if [[ ${FASTBIT_VERSION} == 2.0.3 ]] ; then
+        apply_fastbit_2_0_3_patch
+        if [[ $? != 0 ]] ; then
+            return 1
+        fi
+    fi
+
+    return 0
 }
 
 # *************************************************************************** #
@@ -92,66 +155,75 @@ function bv_fastbit_dry_run
 function build_fastbit
 {
     #
-    # Unzip the file, provided a gzipped file exists.
+    # Prepare build dir
     #
-    if [[ -d ${FASTBIT_BUILD_DIR} ]] ; then
-       info_box "Found ${FASTBIT_BUILD_DIR} . . ." 1>&3
-    elif [[ -f ${FASTBIT_FILE} ]] ; then
-       info_box "Unzipping/Tarring ${FASTBIT_FILE} . . ." 1>&3
-       uncompress_untar ${FASTBIT_FILE}
-       if [[ $? != 0 ]] ; then
-          echo \
-"Unable to untar ${FASTBIT_FILE}.  Corrupted file or out of space on device?"
-          return 1
-       fi
-    elif [[ -f ${FASTBIT_FILE%.*} ]] ; then
-       info_box "Tarring ${FASTBIT_FILE%.*} . . ." 1>&3
-       $TAR xf ${FASTBIT_FILE%.*}
-       if [[ $? != 0 ]] ; then
-          echo \
-"Unable to untar ${FASTBIT_FILE%.*}.  Corrupted file or out of space on device?"
-          return 1
-       fi
+    prepare_build_dir $FASTBIT_BUILD_DIR $FASTBIT_FILE
+    untarred_fastbit=$?
+    # 0, already exists, 1 untarred src, 2 error
+
+    if [[ $untarred_fastbit == -1 ]] ; then
+        warn "Unable to prepare FastBit Build Directory. Giving Up"
+        return 1
     fi
 
     #
-    info_box "Configuring FastBit . . ." 1>&3
-    cd ${FASTBIT_BUILD_DIR} || error "Can't cd to fastbit build dir."
-    echo "Invoking command to configure FastBit"
-    ./configure \
-       CXX="$CXX_COMPILER" CC="$C_COMPILER" \
-       CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
-       --prefix="$VISITDIR/fastbit/$FASTBIT_VERSION/$VISITARCH" \
-       --disable-shared --with-java=no
+    # Apply patches
+    #
+    apply_fastbit_patch
     if [[ $? != 0 ]] ; then
-       echo "FastBit configure failed.  Giving up"
-       return 1
+        if [[ $untarred_fastbit == 1 ]] ; then
+            warn "Giving up on FastBit build because the patch failed."
+            return 1
+        else
+            warn "Patch failed, but continuing.  I believe that this script\n" \
+                 "tried to apply a patch to an existing directory that had\n" \
+                 "already been patched ... that is, the patch is\n" \
+                 "failing harmlessly on a second application."
+        fi
+    fi
+
+    #
+    # Apply configure
+    #
+    info "Configuring FastBit . . ."
+    cd $FASTBIT_BUILD_DIR || error "Can't cd to FastBit build dir."
+    
+    info "Invoking command to configure FastBit"
+
+    ./configure \
+        CXX="$CXX_COMPILER" CC="$C_COMPILER" \
+        CFLAGS="$CFLAGS $C_OPT_FLAGS" CXXFLAGS="$CXXFLAGS $CXX_OPT_FLAGS" \
+        --prefix="$VISITDIR/fastbit/$FASTBIT_VERSION/$VISITARCH" \
+        --disable-shared --with-java=no
+    if [[ $? != 0 ]] ; then
+        echo "FastBit configure failed.  Giving up"
+        return 1
     fi
 
     #
     # Build FastBit
     #
-    info_box "Building FastBit . . . (~7 minutes)" 1>&3
-    echo "Building FastBit"
+    info "Building FastBit . . . (~7 minutes)"
     $MAKE $MAKE_OPT_FLAGS
     if [[ $? != 0 ]] ; then
-       echo "FastBit build failed.  Giving up"
-       return 1
+        warn "FastBit build failed.  Giving up"
+        return 1
     fi
-    info_box "Installing FastBit . . ." 1>&3
-    echo "Installing FastBit"
+    
+    info "Installing FastBit . . ."
     $MAKE install
     if [[ $? != 0 ]] ; then
-       echo "FastBit build (make install) failed.  Giving up"
-       return 1
+        warn "FastBit build (make install) failed.  Giving up"
+        return 1
     fi
 
     if [[ "$DO_GROUP" == "yes" ]] ; then
-       chmod -R ug+w,a+rX "$VISITDIR/fastbit"
-       chgrp -R ${GROUP} "$VISITDIR/fastbit"
+        chmod -R ug+w,a+rX "$VISITDIR/fastbit"
+        chgrp -R ${GROUP} "$VISITDIR/fastbit"
     fi
+
     cd "$START_DIR"
-    echo "Done with FastBit"
+    info "Done with FastBit"
     return 0
 }
 
@@ -174,18 +246,18 @@ function bv_fastbit_is_installed
 
 function bv_fastbit_build
 {
-cd "$START_DIR"
-if [[ "$DO_FASTBIT" == "yes" ]] ; then
-    check_if_installed "fastbit" $FASTBIT_VERSION
-    if [[ $? == 0 ]] ; then
-        info "Skipping FastBit build.  FastBit is already installed."
-    else
-        info "Building FastBit (~7 minutes)"
-        build_fastbit
-        if [[ $? != 0 ]] ; then
-            error "Unable to build or install FastBit.  Bailing out."
+    cd "$START_DIR"
+    if [[ "$DO_FASTBIT" == "yes" ]] ; then
+        check_if_installed "fastbit" $FASTBIT_VERSION
+        if [[ $? == 0 ]] ; then
+            info "Skipping FastBit build.  FastBit is already installed."
+        else
+            info "Building FastBit (~7 minutes)"
+            build_fastbit
+            if [[ $? != 0 ]] ; then
+                error "Unable to build or install FastBit.  Bailing out."
+            fi
+            info "Done building FastBit"
         fi
-        info "Done building FastBit"
     fi
-fi
 }

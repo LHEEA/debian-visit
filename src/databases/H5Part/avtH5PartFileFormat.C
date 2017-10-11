@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -60,9 +60,9 @@
 #include <Expression.h>
 
 #ifdef HAVE_LIBFASTBIT
-#include <avtDataRangeSelection.h>
-#include <avtHistogramSpecification.h>
-#include <avtIdentifierSelection.h>
+  #include <avtDataRangeSelection.h>
+  #include <avtHistogramSpecification.h>
+  #include <avtIdentifierSelection.h>
 #endif
 
 #include <avtCallback.h>
@@ -77,14 +77,6 @@
 #include <avtParallel.h>
 #endif
 
-// Define VERYVERBOSE to obtain diagnostic output to stdout.
-// #define VERYVERBOSE
-// FIXME: Remove all output to cout after extensive testing.
-#ifdef VERYVERBOSE
-#include <iostream>
-#endif
-
-#define H5PART_DEFAULT_ID_VARIABLE_NAME "id"
 
 // ****************************************************************************
 //  Method: avtH5PartFileFormat constructor
@@ -107,7 +99,7 @@
 //    not closing files.
 //
 //    Gunther H. Weber, Wed Aug 17 16:28:46 PDT 2011
-//    Write to debug log  file if reader was compiled with FastBit support.
+//    Write to debug log file if reader was compiled with FastBit support.
 //
 // ****************************************************************************
 
@@ -116,9 +108,6 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
 {
 #ifdef HAVE_LIBFASTBIT
     debug5 << "avtH5PartFileFormat compiled with FastBit support." << std::endl;
-#ifdef VERYVERBOSE
-    std::cout  << "avtH5PartFileFormat compiled with FastBit support." << std::endl;
-#endif
 #endif
     int t1 = visitTimer->StartTimer();
 
@@ -127,25 +116,21 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
     disableDomainDecomposition = false;
 
     // Check options
-    //bool idVarNameSpecified = false;
     if (readOpts != NULL)
+    {
         for (int i = 0; i < readOpts->GetNumberOfOptions(); ++i)
+        {
             if (readOpts->GetName(i) == "Use FastBit index")
                 useFastBitIndex = readOpts->GetBool("Use FastBit index");
             else if (readOpts->GetName(i) == "Disable domain decomposition")
                 disableDomainDecomposition = readOpts->GetBool("Disable domain decomposition");
+        }
+    }
 
-#ifdef HAVE_LIBFASTBIT
-    dataSelectionActive = false;
-    querySpecified = noQuery;
-    queryResultsValid = false;
-    queryString = "";
-    idVariableName = H5PART_DEFAULT_ID_VARIABLE_NAME; // FIXME: This information should be read as attribute from file.
-#endif
-
-    // Here we only open the file broiefly to ensure that it is really an
+    // only open the file briefly to ensure that it is really an
     // H5Part file
     file = H5PartOpenFile(filename, H5PART_READ);
+
     if (!file)
         EXCEPTION1(InvalidFilesException, filename);
 
@@ -153,8 +138,8 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
     // release. Until it is widely available, comment it out.
     if (H5PartFileIsValid(file) != H5PART_SUCCESS)
     {
-        debug1 << "avtH5PartFileFormat::avtH5PartFileFormat(): ";
-        debug1 << "H5PartFileIsValid check failed." << std::endl;
+        debug1 << "avtH5PartFileFormat::avtH5PartFileFormat(): "
+               << "H5PartFileIsValid check failed." << std::endl;
         H5PartCloseFile(file);
         EXCEPTION1(InvalidFilesException, filename);
     }
@@ -162,13 +147,14 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
     // Get number of time steps in file
     numTimestepsInFile = H5PartGetNumSteps(file);
 
-    // The following should be equivalent to testing the presence of a group
-    // named "Group #0".
+    // The following should be equivalent to testing the presence of a
+    // group named "Group #0".
     if (numTimestepsInFile <= 0)
     {
-        debug1 << "avtH5PartFileFormat::avtH5PartFileFormat(): ";
-        debug1 << "File contains " << numTimestepsInFile << " <= 0 time steps.";
-        debug1 << std::endl;
+        debug1 << "avtH5PartFileFormat::avtH5PartFileFormat(): "
+               << "File contains " << numTimestepsInFile
+               << " <= 0 time steps." << std::endl;
+
         H5PartCloseFile(file);
         EXCEPTION1(InvalidFilesException, filename);
     }
@@ -187,7 +173,7 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
     {
         H5PartCloseFile(file);
         EXCEPTION2(NonCompliantFileException, "H5Part Constructor",
-                "Could not obtain number of particle variables.");
+                "Could not obtain the number of particle variables.");
     }
 
     // Get information about particle variables
@@ -203,18 +189,21 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
         {
             H5PartCloseFile(file);
             EXCEPTION2(NonCompliantFileException, "H5Part Constructor",
-                    "Could not obtain particle data set information.");
+                       "Could not obtain particle data set information.");
         }
 
-        // Store information about type in map so that we can access it in GetVar()
+        // Store information about type in map so that we can access
+        // it in GetVar()
         if (particleVarNameToTypeMap.find(varName) != particleVarNameToTypeMap.end())
         {
             H5PartCloseFile(file);
             EXCEPTION2(NonCompliantFileException, "H5Part Constructor",
-                    "Particle data contains two variables with the same name.");
+                       "Particle data contains two variables with the same name.");
         }
-        else 
+        else
+        {
             particleVarNameToTypeMap[varName] = type;
+        }
     }
 
     particleNSpatialDims = 2;
@@ -226,9 +215,10 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
     // file could contain only block data).
     if (particleVarNameToTypeMap.size())
     {
-        // Determine what coordinate system is used and whether the file is 2D or 3D
+        // Determine the coordinate system used and whether the file
+        // is 2D or 3D
         for (VarNameToInt64Map_t::const_iterator it = particleVarNameToTypeMap.begin();
-                it != particleVarNameToTypeMap.end(); ++it)
+             it != particleVarNameToTypeMap.end(); ++it)
         {
             std::string currVarName = it->first; 
 
@@ -245,63 +235,71 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
                 ++spherical;
 
             if (currVarName == "z" || currVarName == "theta" )
-                particleNSpatialDims = 3;;
+                particleNSpatialDims = 3;
+
+            
         }
 
-        if( spherical == 3 && (cylindrical >= 2 || cartesian >= 2) )
+        // Spherical coordinates always requires three values. 
+        if( spherical == 3 && (cylindrical >= 3 || cartesian >= 3) )
         {
-          char buf[1024];
+          std::stringstream buf;
 
-          sprintf( buf, "avtH5PartFileFormat ambiguous coordinate system: both "
-                   "spherical and cylindrical or cartesian coordinate systems were found. "
-                   "Can not disambiguate. ");
+          buf << "avtH5PartFileFormat ambiguous coordinate system: both "
+              << "spherical and cylindrical or cartesian coordinate systems "
+              << " were found. Can not disambiguate. ";
 
           debug1 << "avtH5PartFileFormat::avtH5PartFileFormat(): "
-                 << buf << std::endl;
+                 << buf.str() << std::endl;
 
-          EXCEPTION2(NonCompliantFileException, "H5Part Constructor", buf );
+          EXCEPTION2(NonCompliantFileException,
+                     "H5Part Constructor", buf.str().c_str() );
 
-          // call backis not working so use the exception above
-          avtCallback::IssueWarning( buf );
+          // callback is not working so use the exception above
+          avtCallback::IssueWarning( buf.str().c_str() );
         }
 
+        // Cylindrical and cartesian coordinates have two or three values.
         else if( cylindrical >= 2 && cartesian >= 2 )
         {
-          char buf[1024];
+          std::stringstream buf;
 
-          sprintf( buf, "avtH5PartFileFormat ambiguous coordinate system: both "
-                   "cylindrical and cartesian coordinate systems were found. "
-                   "Can not disambiguate. ");
+          buf << "avtH5PartFileFormat ambiguous coordinate system: both "
+              << "cylindrical and cartesian coordinate systems were found. "
+              << "Can not disambiguate. ";
 
           debug1 << "avtH5PartFileFormat::avtH5PartFileFormat(): "
-                 << buf << std::endl;
+                 << buf.str() << std::endl;
 
-          EXCEPTION2(NonCompliantFileException, "H5Part Constructor", buf );
+          EXCEPTION2(NonCompliantFileException,
+                     "H5Part Constructor", buf.str().c_str());
 
-          // call backis not working so use the exception above
-          avtCallback::IssueWarning( buf );
+          // callback is not working so use the exception above
+          avtCallback::IssueWarning( buf.str().c_str() );
         }
 
         if( spherical == 3)           { coordType = sphericalCoordSystem; }
         else if( cylindrical >= 2)    { coordType = cylindricalCoordSystem; }
         else /* if( cartesian >= 2)*/ { coordType = cartesianCoordSystem; }
 
-        debug1 << "File contains a " << particleNSpatialDims << "D mesh ";
-        debug1 << "using a " << (coordType == cartesianCoordSystem ? "Cartesian" :
-                (coordType == cylindricalCoordSystem ? "Cylindrical" :
-                 (coordType == sphericalCoordSystem ? "Spherical" : "Unknown") ) ) <<
-            " coordinate system." << std::endl;
+        debug1 << "File contains a " << particleNSpatialDims
+               << "D mesh using a "
+               << (coordType == cartesianCoordSystem ? "Cartesian" :
+                   (coordType == cylindricalCoordSystem ? "Cylindrical" :
+                    (coordType == sphericalCoordSystem ? "Spherical" : "Unknown") ) )
+               << " coordinate system." << std::endl;
     }
 
     // Get information about field variables
-    // FIXME: Currently we assume that all fields live on the same mesh. This may not
-    // be true.
+
+    // FIXME: Currently we assume that all fields live on the same
+    // mesh. This may not be true.
     h5part_int64_t nFieldVars = H5BlockGetNumFields(file);
     if (nFieldVars < 0)
     {
         H5PartCloseFile(file);
         EXCEPTION2(NonCompliantFileException, "H5Part Constructor",
-                "Could not read number of field variables.");
+                   "Could not read number of field variables.");
     }
     else if (nFieldVars > 0)
     {
@@ -314,20 +312,23 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
             h5part_int64_t type;
 
             if (H5BlockGetFieldInfo (file, idx, varName, maxVarNameLen,
-                        &gridRank, gridDims, &fieldDims, &type) != H5PART_SUCCESS ) 
+                                     &gridRank, gridDims, &fieldDims, &type) !=
+                H5PART_SUCCESS ) 
             {
                 H5PartCloseFile(file);
                 EXCEPTION2(NonCompliantFileException, "H5Part Constructor",
-                        "Could not read field information.");
+                           "Could not read field information.");
             }
 
             if (fieldDims == 1)
             {
-                if (fieldScalarVarNameToTypeMap.find(varName) != fieldScalarVarNameToTypeMap.end())
+                if (fieldScalarVarNameToTypeMap.find(varName) !=
+                    fieldScalarVarNameToTypeMap.end())
                 {
                     H5PartCloseFile(file);
                     EXCEPTION2(NonCompliantFileException, "H5Part Constructor",
-                            "Field data contains two scalar variables with the same name.");
+                               "Field data contains two scalar variables with "
+                               "the same name.");
                 }
                 else 
                 {
@@ -336,11 +337,13 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
             }
             else
             {
-                if (fieldVectorVarNameToTypeMap.find(varName) != fieldVectorVarNameToTypeMap.end())
+                if (fieldVectorVarNameToTypeMap.find(varName) !=
+                    fieldVectorVarNameToTypeMap.end())
                 {
                     H5PartCloseFile(file);
                     EXCEPTION2(NonCompliantFileException, "H5Part Constructor",
-                            "Field data contains two vector variables with the same name.");
+                               "Field data contains two vector variables with "
+                               "the same name.");
                 }
                 else 
                 {
@@ -351,13 +354,84 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
         }
     }
 
-    // FIXME: We still need to check whether there there are duplicate variable names in field,
-    // scalar and vector variables and possibly modify the name so that VisIt can distinguish 
-    // between them.
+#ifdef HAVE_LIBFASTBIT
+    // If the data was sorted use the sortedkey as the default. Otherwise
+    // assume the id var name is "id".
+    char sortedKey[maxVarNameLen];
+    memset(sortedKey, 0, sizeof(char) * maxVarNameLen);
+    
+    if (H5PartReadFileAttrib(file, "sortedKey", sortedKey) == H5PART_SUCCESS)
+        defaultIdVariableName = sortedKey;
+    else
+        // FIXME: This information should be read as attribute from file.
+        defaultIdVariableName = "id";
 
+    idVariableName = defaultIdVariableName;
+#endif
+  
+    // FIXME: Still need to check whether there are duplicate variable
+    // names in field, scalar and vector variables and possibly modify
+    // the name so that VisIt can distinguish between them.
     H5PartCloseFile(file);
     file  = 0; // Mark file as closed
 
+#ifdef HAVE_LIBFASTBIT
+    querySpecified = noQuery;
+    queryResultsValid = false;
+    dataSelectionActive = false;
+    queryString = "";
+   
+    // Flag to see if any FastBit indexing was found.
+    bool foundFastBitIndexing = false;
+    
+    if (useFastBitIndex)
+    {
+      fqReader.openFile(filename, true);
+
+      // Get FastBit information about particle variables
+      for (VarNameToInt64Map_t::const_iterator
+             it = particleVarNameToTypeMap.begin();
+           it != particleVarNameToTypeMap.end(); ++it)
+      {
+          std::string varName = it->first;
+  
+          // Store information about whether the variable has
+          // FastBit information. If the min max is found then
+          // assume that all of the needed data is present.
+        
+          // NOTE: Assumption is that if the first time step has
+          // FastBit data that all time steps have that data.
+          double start, end;
+
+          if( fqReader.getDataMinMax_Double(varName.c_str(), activeTimeStep,
+                                            start, end) == true )
+          {
+              particleVarNameToFastBitMap[varName.c_str()] = true;
+              foundFastBitIndexing = true;
+          }
+          else
+          {
+              particleVarNameToFastBitMap[varName.c_str()] = false;
+          }
+      }
+
+      fqReader.closeFile();
+
+      // If no variables are using fastbit then it can be turned off.
+      //        useFastBitIndex = foundFastBitIndexing;
+    }
+    else
+    {
+      for (VarNameToInt64Map_t::const_iterator
+             it = particleVarNameToTypeMap.begin();
+           it != particleVarNameToTypeMap.end(); ++it)
+        {
+          std::string varName = it->first;
+          particleVarNameToFastBitMap[varName.c_str()] = false;
+        }
+    }
+#endif
+    
     visitTimer->StopTimer(t1, "H5PartFileFormat::avtH5PartFileFormat()");
 }
 
@@ -375,18 +449,8 @@ avtH5PartFileFormat::avtH5PartFileFormat(const char *filename,
 
 avtH5PartFileFormat::~avtH5PartFileFormat()
 {
-    if (file)
-    {
-        H5PartCloseFile(file);
-#ifdef HAVE_LIBFASTBIT
-        if (useFastBitIndex) reader.closeFile();
-        // Note: If useFastBitIndex is false but reader has an open file, the
-        // bug is somewhere else and not here!
-#endif
-    }
+    FreeUpResources();
 }
-
-#ifdef HAVE_LIBFASTBIT
 
 // ****************************************************************************
 //  Method: avtH5PartFileFormat::GetAuxiliaryData
@@ -420,46 +484,55 @@ avtH5PartFileFormat::~avtH5PartFileFormat()
 //    Honor useFastBitIndex option.
 //
 // ****************************************************************************
+#ifdef HAVE_LIBFASTBIT
 
 void*
-avtH5PartFileFormat::GetAuxiliaryData(const char *var, int ts, const char *type, 
-        void *s, DestructorFunction &df)
+avtH5PartFileFormat::GetAuxiliaryData(const char *varName, int ts,
+                                      const char *type, void *s,
+                                      DestructorFunction &df)
 {
     int t1 = visitTimer->StartTimer();
 
-    if (useFastBitIndex)
+    if (useFastBitIndex && particleVarNameToFastBitMap[varName])
     {
         if (strcmp(type, AUXILIARY_DATA_HISTOGRAM) == 0)
         {
             debug5 << "H5Part trying to get histogram!" << std::endl;
 
             avtHistogramSpecification *spec = (avtHistogramSpecification *) s;
+
             TRY
             {
                 ConstructHistogram(spec);
             }
             CATCHALL
             {
-                debug1 << "Exception thrown during histogram construction." << endl;
-                debug1 << "This is normal when an expression is passed in." << endl;
+                debug1 << "Exception thrown during histogram construction."
+                       << std::endl
+                       << "This is normal when an expression is passed in."
+                       << std::endl;
             }
             ENDTRY
 
-            // We don't return the spec ... it was passed in as an input, which we
-            // then populated.
+            // Don't return the spec ... it was passed in as an input,
+            // that was then populated.
             visitTimer->StopTimer(t1, "H5PartFileFormat::GetAuxiliaryData() [Histogram]");
             return NULL;
         }
         else if (strcmp(type, AUXILIARY_DATA_IDENTIFIERS) == 0)
         {
-            debug5 << "H5Part trying to get auxiliary data for identifiers " << std::endl;
+            debug5 << "H5Part trying to get auxiliary data for identifiers "
+                   << std::endl;
 
-            std::vector<avtDataSelection *> *ds = (std::vector<avtDataSelection *> *) s;
+            std::vector<avtDataSelection *> *ds =
+              (std::vector<avtDataSelection *> *) s;
+
             std::vector<avtDataSelection *> drs;
+
             for (size_t i = 0; i < ds->size(); ++i)
             {
                 if ((strcmp((*ds)[i]->GetType(), "Data Range Selection") == 0) ||
-                        ((strcmp((*ds)[i]->GetType(), "Identifier Data Selection") == 0)))
+                    ((strcmp((*ds)[i]->GetType(), "Identifier Data Selection") == 0)))
                     drs.push_back((*ds)[i]);
                 else
                 {
@@ -469,22 +542,24 @@ avtH5PartFileFormat::GetAuxiliaryData(const char *var, int ts, const char *type,
                 }
             }
 
-            avtIdentifierSelection *ids = ConstructIdentifiersFromDataRangeSelection(drs);
+            avtIdentifierSelection *ids =
+              ConstructIdentifiersFromDataRangeSelection(drs);
+            
             df = avtIdentifierSelection::Destruct;
 
             visitTimer->StopTimer(t1,
                     "H5PartFileFormat::GetAuxiliaryData() [Data identifiers]");
+
             return static_cast<void*>(ids);
         }
     }
 
     visitTimer->StopTimer(t1,
             "H5PartFileFormat::GetAuxiliaryData() [Unimplemented request]");
+
     return NULL;
 }
-
 #endif
-
 
 // ****************************************************************************
 //  Method: avtEMSTDFileFormat::GetNTimesteps
@@ -534,16 +609,20 @@ void
 avtH5PartFileFormat::FreeUpResources(void)
 {
     int t1 = visitTimer->StartTimer();
+
     if (file)
     {
         H5PartCloseFile(file);
+        file = 0;
+        
 #ifdef HAVE_LIBFASTBIT
-        if (useFastBitIndex) reader.closeFile();
+        if (useFastBitIndex)
+            fqReader.closeFile();
         // Note: If useFastBitIndex is false but reader has an open file, the
         // bug is somewhere else and not here!
 #endif
-        file = 0;
     }
+
     visitTimer->StopTimer(t1, "H5PartFileFormat::FreeUpResources()");
 }
 
@@ -568,7 +647,6 @@ std::string inline avtH5PartFileFormat::DoubleToString(double x)
     return o.str();
 }
 
-#ifdef HAVE_LIBFASTBIT
 
 // ****************************************************************************
 //  Method: avtH5PartFileFormat::RegisterDataSelections
@@ -600,6 +678,7 @@ std::string inline avtH5PartFileFormat::DoubleToString(double x)
 //    Make queries inclusive to match Threshold operator
 //
 // ****************************************************************************
+#ifdef HAVE_LIBFASTBIT
 
 void
 avtH5PartFileFormat::RegisterDataSelections(
@@ -609,104 +688,144 @@ avtH5PartFileFormat::RegisterDataSelections(
     int t1 = visitTimer->StartTimer();
 
     //time_t startTime = time(0);
-    debug5 << "Entering avtH5PartFileFormat::RegisterDataSelection()" << std::endl;
-#ifdef VERYVERBOSE
-    std::cout << "Entering avtH5PartFileFormat::RegisterDataSelection(). useFastBitIndex is " << useFastBitIndex << std::endl;
-#endif
+    debug5 << "avtH5PartFileFormat::RegisterDataSelection() "
+           << "useFastBitIndex is " << useFastBitIndex << std::endl;
 
     dataSelectionActive = false;
     querySpecified = noQuery;
     queryResultsValid = false;
     queryString.clear();
     queryIdList.clear();
+    queryResults.clear();
 
     if (useFastBitIndex)
     {
-        idVariableName = H5PART_DEFAULT_ID_VARIABLE_NAME;
+        idVariableName = defaultIdVariableName;
 
         if (selList.size() == 1 &&
             std::string(selList[0]->GetType()) ==
-               std::string("Identifier Data Selection"))
+            std::string("Identifier Data Selection"))
         {
-            // Shortcut: There is only one query and it is a list of identifiers.
-            // Thus, we can skip the step of creating a string and having FastBit
-            // parse it again.
+            // Shortcut: There is only one query and it is a list of
+            // identifiers.  Thus, we can skip the step of creating a
+            // string and having FastBit parse it again.
+            avtIdentifierSelection *ids =
+              (avtIdentifierSelection *) *(selList[0]);
+
+            const std::vector<double> &identifiers =
+              ids->GetIdentifiers();
+
+            if(!ids->GetIdVariable().empty() &&
+               ids->GetIdVariable() != std::string("avtOriginalCellNumbers"))
+              idVariableName = ids->GetIdVariable();
+            
             (*selsApplied)[0] = true;
-            querySpecified = idListQuery;
-            avtIdentifierSelection *ids = (avtIdentifierSelection *) *(selList[0]);
-            queryIdList = ids->GetIdentifiers();
-            if(!ids->GetIdVariable().empty())
-                idVariableName = ids->GetIdVariable();
-            debug5 << "Single Identifier Data Selection with " << queryIdList.size();
-            debug5 << " ids specified." << std::endl;
+
+            debug5 << "avtH5PartFileFormat::RegisterDataSelection() "
+                   << "single Identifier Data Selection " << idVariableName
+                   << " with " << identifiers.size()
+                   << " ids specified." << std::endl;
+
+            if (identifiers.size())
+            {
+                querySpecified = idListQuery;
+                queryIdList.resize(identifiers.size());
+                
+                for (size_t i = 0 ; i < identifiers.size() ; i++)
+                {
+                    queryIdList[i] = identifiers[i];
+                    
+                    debug5 << "identifies[ " <<i << "] = " << identifiers[i]
+                           << std::endl;
+                }
+            }
         }
         else
         {
             for (size_t i = 0; i < selList.size(); ++i)
             {
                 if (std::string(selList[i]->GetType()) ==
-                        std::string("Data Range Selection"))
+                    std::string("Data Range Selection"))
                 {
-                    // Check if the according variable name is available
-                    avtDataRangeSelection *dr = (avtDataRangeSelection *) *(selList[i]);
+                    // Check if the variable name is available
+                    avtDataRangeSelection *dr =
+                      (avtDataRangeSelection *) *(selList[i]);
+                    
                     std::string varName = dr->GetVariable();       
  
-                    bool available = particleVarNameToTypeMap.find(varName) !=
-                        particleVarNameToTypeMap.end();
-                    // FIXME: available only checks whether variable is in the file. It
-                    // should also check whether a FastBit index exists for this variable.
-                    (*selsApplied)[i] = available;
-                    debug5 << "H5Part plugin " << (available ? "can" : "*cannot*");
-                    debug5 << " limit read data based on variable " << varName;
-                    debug5 << std::endl;
+                    bool available =
+                      (particleVarNameToFastBitMap.find(varName) !=
+                       particleVarNameToFastBitMap.end());
 
-                    // If the variable is available then update the query string accordingly
+                    (*selsApplied)[i] = available;
+
+                    debug5 << "avtH5PartFileFormat::RegisterDataSelection() "
+                           << "found Data Range Selection "
+                           << "for selList[ " << i << "] "
+                           << (available ? "can" : "*cannot*")
+                           << " limit read data based on variable " << varName
+                           << std::endl;
+
+                    // If the variable is available then update the
+                    // query string accordingly
                     if (available)
                     {
                         double min = dr->GetMin();
                         double max = dr->GetMax();
 
-                        std::string min_cond = "(" + DoubleToString(min) + "<=" + varName + ")";
-                        std::string max_cond = "(" + varName + "<=" + DoubleToString(max) + ")";
+                        std::string min_cond =
+                          "(" + DoubleToString(min) + "<=" + varName + ")";
+                        std::string max_cond =
+                          "(" + varName + "<=" + DoubleToString(max) + ")";
 
                         if (queryString.empty())
                             queryString = min_cond + " && " + max_cond;
                         else
-                            queryString = queryString + "&&" + min_cond + "&&" + max_cond;
+                          queryString += " && " + min_cond + " && " + max_cond;
 
                         querySpecified = stringQuery;
                     }
                 }
                 else if (std::string(selList[i]->GetType()) ==
-                        std::string("Identifier Data Selection"))
+                         std::string("Identifier Data Selection"))
                 {
-                    debug5 << "RegisterDataSelection() found identifier type";
-                    debug5 << " for selList[ " << i << "]" << std::endl;
-
-                    (*selsApplied)[i] = true;
                     avtIdentifierSelection *ids =
                         (avtIdentifierSelection *) *(selList[i]);
 
-                    const std::vector<double> &identifiers = ids->GetIdentifiers();
-                    debug5 << "Returned identifiers list size is ";
-                    debug5 << identifiers.size() << endl;
+                    const std::vector<double> &identifiers =
+                      ids->GetIdentifiers();
+
+                    if(!ids->GetIdVariable().empty() &&
+                       ids->GetIdVariable() != std::string("avtOriginalCellNumbers"))
+                      idVariableName = ids->GetIdVariable();
+                        
+                    (*selsApplied)[i] = true;
+
+                    debug5 << "avtH5PartFileFormat::RegisterDataSelection() "
+                           << "found Identifier Data Selection "
+                           << "for selList[ " << i << "] " << idVariableName
+                           << " with " << identifiers.size()
+                           << " ids specified." << std::endl;
 
                     if (identifiers.size())
                     {
+                        // FIXME: Constructing a string is very
+                        // inefficient for large selection. However,
+                        // there seems no HDF5_FastQuery function to
+                        // combine a query for a passed array of
+                        // identifiers with a string specifying
+                        // thresholds. It may make sense to add this
+                        // functionality or add a non-string based API
+                        // for range queries and logical combination
+                        // of queries.
                         std::string id_string;
-                        // FIXME: Constructing a string is very inefficient for large selection. However,
-                        // there seems no HDF5_FastQuery function to combine a query for a passed array
-                        // of identifiers with a string specifying thresholds. It may make sense to add
-                        // this functionality or add a non-string based API for range queries and logical
-                        // combination of queries.
-                        if(!ids->GetIdVariable().empty())
-                            idVariableName = ids->GetIdVariable();
-                        ConstructIdQueryString(identifiers, idVariableName, id_string);
+                        ConstructIdQueryString(identifiers,
+                                               idVariableName, id_string);
 
                         if (queryString.empty())
                             queryString = id_string;
                         else
-                            queryString = queryString + "&&" + id_string;
+                            queryString += " && " + id_string;
 
                         querySpecified = stringQuery;
                     }
@@ -721,7 +840,6 @@ avtH5PartFileFormat::RegisterDataSelections(
 
     visitTimer->StopTimer(t1, "H5PartFileFormat::RegisterDataSelections()");
 }
-
 #endif
 
 
@@ -739,7 +857,8 @@ avtH5PartFileFormat::RegisterDataSelections(
 // ****************************************************************************
 
 void
-avtH5PartFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeState)
+avtH5PartFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
+                                              int timeState)
 {
     int t1 = visitTimer->StartTimer();
 
@@ -748,40 +867,48 @@ avtH5PartFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeS
         // AddMeshToMetaData(md, meshname, mt, extents, nblocks, block_origin,
         //                   spatial_dimension, topological_dimension);
         std::string particleMeshName = "particles";
-        AddMeshToMetaData(md, particleMeshName, AVT_POINT_MESH, 0 /* extents not known */,
-                1 /* single domain */, 0, particleNSpatialDims, 1);
-        for (VarNameToInt64Map_t::const_iterator it = particleVarNameToTypeMap.begin();
-                it != particleVarNameToTypeMap.end(); ++it)
+        AddMeshToMetaData(md, particleMeshName, AVT_POINT_MESH,
+                          0 /* extents not known */,
+                          1 /* single domain */,
+                          0, particleNSpatialDims, 1);
+        
+        for (VarNameToInt64Map_t::const_iterator
+               it = particleVarNameToTypeMap.begin();
+             it != particleVarNameToTypeMap.end(); ++it)
         {
-            // AddScalarVarToMetaData(md, varname, mesh_for_this_var, cent);
+            // AddScalarVarToMetaData(md, varName, mesh_for_this_var, cent);
             AddScalarVarToMetaData(md, it->first, particleMeshName, AVT_NODECENT);
         }
     }
 
-    // FIXME: Currently we assume that all fields live on the same mesh. This may not
-    // be true.
-    if (fieldScalarVarNameToTypeMap.size() || fieldVectorVarNameToTypeMap.size())
+    // FIXME: Currently we assume that all fields live on the same
+    // mesh. This may not be true.
+    if (fieldScalarVarNameToTypeMap.size() ||
+        fieldVectorVarNameToTypeMap.size())
     {
-        std::string fieldMeshName = "fields"; 
+        std::string fieldMeshName = "fields";
 
         // AddMeshToMetaData(md, meshname, mt, extents, nblocks, block_origin,
         //                   spatial_dimension, topological_dimension);
-        AddMeshToMetaData(md, fieldMeshName, AVT_RECTILINEAR_MESH, 0, 1, 0, 3, 3);
+        AddMeshToMetaData(md, fieldMeshName, AVT_RECTILINEAR_MESH,
+                          0, 1, 0, 3, 3);
         // FIXME: Assume three dimensions for grid data
-        // FIXME: Need to determine dimensions of mesh and create a new mesh
-        // if dimensions for variables differ
+        // FIXME: Need to determine dimensions of mesh and create a
+        // new mesh if dimensions for variables differ
 
-        for (VarNameToInt64Map_t::const_iterator it = fieldScalarVarNameToTypeMap.begin();
-                it != fieldScalarVarNameToTypeMap.end(); ++it)
+        for (VarNameToInt64Map_t::const_iterator
+               it = fieldScalarVarNameToTypeMap.begin();
+             it != fieldScalarVarNameToTypeMap.end(); ++it)
         {
-            // AddScalarVarToMetaData(md, varname, mesh_for_this_var, cent);
+            // AddScalarVarToMetaData(md, varName, mesh_for_this_var, cent);
             AddScalarVarToMetaData(md, it->first, fieldMeshName, AVT_NODECENT);
         }
 
-        for (VarNameToInt64Map_t::const_iterator it = fieldVectorVarNameToFieldRankMap.begin();
-                it != fieldVectorVarNameToFieldRankMap.end(); ++it)
+        for (VarNameToInt64Map_t::const_iterator
+               it = fieldVectorVarNameToFieldRankMap.begin();
+             it != fieldVectorVarNameToFieldRankMap.end(); ++it)
         {
-            // AddVectorVarToMetaData(md, varname, mesh_for_this_var, cent,vector_dim);
+            // AddVectorVarToMetaData(md, varName, mesh_for_this_var, cent,vector_dim);
             AddVectorVarToMetaData(md, it->first, fieldMeshName, AVT_NODECENT, it->second);
         }
     }
@@ -834,146 +961,220 @@ avtH5PartFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md, int timeS
 // ****************************************************************************
 
 void
-avtH5PartFileFormat::SelectParticlesToRead()
+avtH5PartFileFormat::SelectParticlesToRead( const char *varName )
 {
     int t1 = visitTimer->StartTimer();
 
-#ifdef HAVE_LIBFASTBIT
-    // Re-run query if necessary.
-    if (useFastBitIndex && querySpecified && !queryResultsValid)
-    {
-        // Re-run query
-        debug5 << "Query results invalid: Re-running query." << std::endl;
-#ifdef VERYVERBOSE
-        std::cout << "Query results invalid: Re-running query." << std::endl;
-#endif
-        PerformQuery();
-    }
-#endif
-
-    // Make sure we are seeing the entire file
+    // reset the view so all particles are considered.
     H5PartSetView(file, -1, -1);
 
-#ifdef PARALLEL
-#ifdef VERYVERBOSE
-    std::cout << "Proc #" << PAR_Rank() << " selecting particles to read: " << std::flush;
-#endif
 #ifdef HAVE_LIBFASTBIT
-    if (useFastBitIndex && dataSelectionActive)
+    // Using FastBit with a query, re-run query if necessary.
+    if (useFastBitIndex && particleVarNameToFastBitMap[ varName ]  &&
+        querySpecified && !queryResultsValid)
     {
+        debug5 << "SelectParticlesToRead(): "
+               << "Query results invalid: Re-running query." << std::endl;
+
+        // Re-run query
+        PerformQuery();
+    }
+    else if (useFastBitIndex && particleVarNameToFastBitMap[ varName ]  &&
+             dataSelectionActive)
+
+    {
+        debug5 << "SelectParticlesToRead(): "
+               << "Query results valid, have " << queryResults.size()
+               << " particles" << std::endl;
+    }
+    
+#endif // HAVE_LIBFASTBIT
+
+#ifdef PARALLEL
+    h5part_int64_t nRanks = PAR_Size();
+    h5part_int64_t rank   = PAR_Rank();
+
+#ifdef HAVE_LIBFASTBIT
+    if (useFastBitIndex &&  particleVarNameToFastBitMap[ varName ] &&
+        dataSelectionActive)
+    {
+        debug5 << "SelectParticlesToRead(): "
+               << "FastBit enabled with a selection active" << std::endl;
+
         // There is a query/selection. Read only those particles.
+        h5part_int64_t nParticles = queryResults.size();
+
+        // No domain decomposition so read all the particles rank zero.
         if (disableDomainDecomposition)
         {
-            if (queryResults.size())
+            debug5 << "SelectParticlesToRead(): "
+                   << "Domain decomposition disabled." << std::endl;
+            
+            if( PAR_Rank() )
             {
-                // Serial version and parallel if domain decomposition disabled
-                h5part_int64_t *indices = new h5part_int64_t[queryResults.size()];
-                std::copy(queryResults.begin(), queryResults.end(), indices);
-                H5PartSetViewIndices(file, indices, queryResults.size());
+                h5part_int64_t *indices = new h5part_int64_t[0];
+                H5PartSetViewIndices(file, indices, 0);
                 delete[] indices;
-            }
-#ifdef VERYVERBOSE
-            std::cout << queryResults.size() << " particles from query." << std::endl;
-#endif
-        }
-        else
-        {
-            h5part_int64_t minParticlesPerProc = 100;
-            h5part_int64_t particlesPerProc = std::max(minParticlesPerProc,
-                    h5part_int64_t( (queryResults.size() + PAR_Size() - 1) / PAR_Size()));
-            h5part_int64_t myStart = h5part_int64_t(PAR_Rank() * particlesPerProc);
-            h5part_int64_t myEnd = std::min(h5part_int64_t((PAR_Rank()+1) * particlesPerProc),
-                    h5part_int64_t(queryResults.size()));
-            if (myStart < (h5part_int64_t)queryResults.size())
-            {
-#ifdef VERYVERBOSE
-                std::cout << myEnd - myStart << " particles from query." << std::endl;
-#endif
-                h5part_int64_t *indices = new h5part_int64_t[myEnd - myStart];
-                for (h5part_int64_t i = myStart; i < myEnd; ++i)
-                    indices[i-myStart] = queryResults[i];
-                H5PartSetViewIndices(file, indices, myEnd - myStart);
-                delete[] indices;
+                
+                debug5 << "SelectParticlesToRead(): Rank " << rank
+                       << " no particles to read." << std::endl;
             }
             else
             {
-#ifdef VERYVERBOSE
-                std::cout << "None." << std::endl;
-#endif
-                h5part_int64_t dummy[] = { 0 };
-                // Empty selection since processor does not have any particles
-                H5PartSetViewIndices(file, dummy, 0);
-                //H5PartSetViewEmpty(file); // -> Not available in serial version.
-                debug5 << "Insufficient number of particles. ";
-                debug5 << "Proc. " << PAR_Rank() << " will not read any data." << std::endl;
+                // All particles selected are placed on this rank.
+                h5part_int64_t *indices = new h5part_int64_t[nParticles];
+                std::copy(queryResults.begin(), queryResults.end(), indices);
+                H5PartSetViewIndices(file, indices, nParticles);
+                delete[] indices;
+
+                debug5 << "SelectParticlesToRead(): Rank " << rank
+                       << " All " << nParticles << " particles "
+                       << " in the query read." << std::endl;
+            }
+        }
+
+        // Domain decomposition so read only the particles for this rank.
+        else
+        {
+            // Determine what portion of the query will be read by each rank.
+            h5part_int64_t myStart, myEnd, totalRead;
+            GetDecomp( nParticles, myStart, myEnd, totalRead );
+            
+            // Restrict the view to the particles read on this rank.
+            if (totalRead)
+            {
+                h5part_int64_t *indices = new h5part_int64_t[totalRead];
+
+                for (h5part_int64_t i=0, j=myStart; j<=myEnd; ++i, ++j)
+                    indices[i] = queryResults[j];
+                
+                H5PartSetViewIndices(file, indices, totalRead);
+                delete[] indices;
+                
+                debug5 << "SelectParticlesToRead(): Rank " << rank
+                       << " reads " << totalRead << " of " << nParticles
+                       << " particles from " << myStart << " to " << myEnd
+                       << " in the query. " << std::endl;
+            }
+            // This rank does not have any particles to read.
+            else
+            {
+                h5part_int64_t *indices = new h5part_int64_t[0];
+                H5PartSetViewIndices(file, indices, 0);
+                delete[] indices;
+
+                debug5 << "SelectParticlesToRead(): Rank " << rank
+                       << " no particles to read." << std::endl;
             }
         }
     }
     else
     {
-#endif
-        debug5 << "No selection active or FastBit disabled." << std::endl;
-        // No selection, decompose entire data set
-        if (!disableDomainDecomposition)
+#endif // HAVE_LIBFASTBIT
+
+        debug5 << "SelectParticlesToRead(): Rank " << rank
+               << " FastBit disabled or no selection active" << std::endl;
+        
+        // Not using FastBit or no selection. Read the whole file.
+        h5part_int64_t nParticles = H5PartGetNumParticles(file);
+        
+        // Read the entire data set on rank zero
+        if (disableDomainDecomposition)
         {
-            // Determine what portion of the file we need to read
-            int nProcs = PAR_Size();
-            int procNo = PAR_Rank();
+            debug5 << "SelectParticlesToRead(): Rank " << rank
+                   << " domain decomposition disabled." << std::endl;
+            
+            if( PAR_Rank() )
+            {
+                h5part_int64_t *indices = new h5part_int64_t[0];
+                H5PartSetViewIndices(file, indices, 0);
+                delete[] indices;
 
-            h5part_int64_t totalNPoints= H5PartGetNumParticles(file);
-            h5part_int64_t idStart = (totalNPoints/nProcs)*procNo;
-            h5part_int64_t idEnd;
-            if (procNo < nProcs-1) 
-                idEnd   = (totalNPoints/nProcs)*(procNo+1)-1;
-            else 
-                idEnd   = totalNPoints-1;
-
-            // Restrict the view to the particles we want to read on this processor
-            H5PartSetView(file, idStart, idEnd);
-
-            debug5 << "SelectParticlesToRead(): Processor " << procNo;
-            debug5 << " reads particles from " << idStart << " to ";
-            debug5 << idEnd << std::endl;
-#ifdef VERYVERBOSE
-            std::cout << "Particles from " << idStart << " to " << idEnd << " in entire file (no query)." << std::endl;
-#endif
+                debug5 << "SelectParticlesToRead(): Rank " << rank
+                       << " no particles to read." << std::endl;
+            }
+            else
+            {
+                H5PartSetView(file, -1, -1);
+          
+                debug5 << "SelectParticlesToRead(): Rank " << rank
+                       << " All " << nParticles << " particles "
+                       << " in the file read." << std::endl;
+            }
         }
+
+        // Domain decomposition so read only the particles for this rank.
         else
         {
-#ifdef VERYVERBOSE
-            std::cout << "All particles in file (no query)." << std::endl;
-#endif
-            debug5 << "SelectParticlesToRead(): Domain decomposition disabled." << std::endl;
+            // Determine what portion of the file will be read by each rank.
+            h5part_int64_t idStart, idEnd, totalRead;
+            GetDecomp( nParticles, idStart, idEnd, totalRead );
+
+            // Restrict the view to the particles read on this rank.
+            if( totalRead )
+            {
+                H5PartSetView(file, idStart, idEnd);
+              
+                debug5 << "SelectParticlesToRead(): Rank " << rank
+                       << " reads " << totalRead << " of " << nParticles
+                       << " particles from " << idStart << " to " << idEnd
+                       << " in the file. " << std::endl;
+            }
+            // This rank does not have any particles to read.
+            else
+            {
+                h5part_int64_t *indices = new h5part_int64_t[0];
+                H5PartSetViewIndices(file, indices, 0);
+                delete[] indices;
+                
+                debug5 << "SelectParticlesToRead(): Rank " << rank
+                       << " no particles to read." << std::endl;
+            }            
         }
 #ifdef HAVE_LIBFASTBIT
     }
-#endif
-#else
+#endif // HAVE_LIBFASTBIT
+
+#else  // PARALLEL
+
+    // Serial read
 #ifdef HAVE_LIBFASTBIT
-    if (useFastBitIndex && dataSelectionActive)
+    if (useFastBitIndex && particleVarNameToFastBitMap[ varName ] &&
+        dataSelectionActive)
     {
-#ifdef VERYVERBOSE
-        std::cout << "Reading " << queryResults.size() << " particles specified in query." << std::endl;
-#endif
-        int t2 = visitTimer->StartTimer();
+        debug5 << "SelectParticlesToRead(): Serial "
+               << "FastBit enabled with a selection active" << std::endl;
+
+        // All particles selected are read.
         h5part_int64_t *indices = new h5part_int64_t[queryResults.size()];
         std::copy(queryResults.begin(), queryResults.end(), indices);
         H5PartSetViewIndices(file, indices, queryResults.size());
         delete[] indices;
-        visitTimer->StopTimer(t2, "H5PartSetViewIndices()");
+
+        debug5 << "SelectParticlesToRead(): Serial "
+               << " all particles (" << queryResults.size()
+               << " in the query read." << std::endl;
     }
     else
     {
-#ifdef VERYVERBOSE
-        std::cout << "Reading all particles in file (no query)." << std::endl;
-#endif
-        debug5 << "No selection active or FastBit disabled." << std::endl;
+#endif      
+        // Not using FastBit or no selection
+        debug5 << "SelectParticlesToRead(): Serial "
+               << "FastBit disabled or no selection active" << std::endl;
+
+        H5PartSetView(file, -1, -1);
+
+        debug5 << "SelectParticlesToRead(): Serial "
+               << " reading all particles in file (no query)." << std::endl;
+        
+#ifdef HAVE_LIBFASTBIT
     }
-#endif
-#endif
+#endif // HAVE_LIBFASTBIT
+
+#endif // PARALLEL
+
     visitTimer->StopTimer(t1, "H5PartFileFormat::SelectParticlesToRead()");
 }
-
 
 
 // ****************************************************************************
@@ -1042,19 +1243,29 @@ avtH5PartFileFormat::GetParticleMesh(int timestate)
     // Switch to appropriate time step (opens file if necessary)
     ActivateTimestep(timestate);
 
-    // Select particles to actually read
-    SelectParticlesToRead();
+#ifdef HAVE_LIBFASTBIT
+    idVariableName = defaultIdVariableName;
 
+    VarNameToInt64Map_t::const_iterator it =
+      particleVarNameToTypeMap.find(idVariableName);
+
+    if (it == particleVarNameToTypeMap.end())
+      EXCEPTION1(InvalidVariableException, idVariableName);
+    
+    // Select particles to actually read
+    SelectParticlesToRead( idVariableName.c_str() );
+#else
+    SelectParticlesToRead();
+#endif
+    
     // Read data
     h5part_int64_t nPoints = H5PartGetNumParticles(file);
+
     // If we do domain decomposition or particle selection, this will only
     // return the number of particles in the current view, i.e., the number of
     // particles we actually read
-
-    debug5 << "GetParticleMesh(): Reading " << nPoints << " particles." << std::endl;
-#ifdef VERYVERBOSE
-    std::cout << "GetParticleMesh(): Reading " << nPoints << " particles." << std::endl;
-#endif
+    debug5 << "GetParticleMesh(): Reading " << nPoints
+           << " particles." << std::endl;
 
     if (nPoints ==  0)
     {
@@ -1065,16 +1276,20 @@ avtH5PartFileFormat::GetParticleMesh(int timestate)
     const char *coordNames[3][3] = {
         { "x", "y", "z" }, {"r", "phi", "z" } , { "r", "phi", "theta" }
     };
+
     h5part_int64_t coordValType = particleVarNameToTypeMap[coordNames[coordType][0]]; 
-    if (coordValType != (h5part_int64_t)particleVarNameToTypeMap[coordNames[coordType][1]] ||
-            ((particleNSpatialDims > 2) &&
-            coordValType != (h5part_int64_t)particleVarNameToTypeMap[coordNames[coordType][2]])) /// TODO: check parenthsis placement logic 
+    if (coordValType !=
+        (h5part_int64_t) particleVarNameToTypeMap[coordNames[coordType][1]] ||
+        ((particleNSpatialDims > 2) &&
+         coordValType != (h5part_int64_t) particleVarNameToTypeMap[coordNames[coordType][2]])) /// TODO: check parenthsis placement logic 
     {
         EXCEPTION2(NonCompliantFileException, "H5Part GetParticleMesh",
-                "Coordinate data sets do not have the same value type (double, float, ...).");
+                   "Coordinate data sets do not have the same value type "
+                   "(double, float, ...).");
     }
 
     void* coordsRead[3] = { 0, 0, 0 };
+
     for (int i=0; i < particleNSpatialDims; ++i)
     {
         h5part_int64_t status = H5PART_SUCCESS; 
@@ -1101,23 +1316,22 @@ avtH5PartFileFormat::GetParticleMesh(int timestate)
         else
         {
             EXCEPTION2(NonCompliantFileException, "H5Part GetParticleMesh",
-                    "Unsupported value type for coordinates. "
-                    "(Supported tyes are FLOAT64, FLOAT32 and INT64.)");
+                       "Unsupported value type for coordinates. "
+                       "(Supported tyes are FLOAT64, FLOAT32 and INT64.)");
         }
+        // FIXME: Possibly handle other data types for coordinates.
 
         if (status != H5PART_SUCCESS)
         {
             EXCEPTION2(NonCompliantFileException, "H5Part GetParticleMesh",
-                    "Could not read coordinates.");
+                       "Could not read coordinates.");
         }
     }
-
-    // Reset view
-    H5PartSetView(file, -1, -1);
 
     // Construct VTK data set
     vtkUnstructuredGrid *dataset = vtkUnstructuredGrid::New();
     vtkPoints *vtkpoints = vtkPoints::New();
+
     // FIXME: Once VisIt supports dobule data, we need to ensure that
     // native precsission is preserved
     vtkpoints->SetNumberOfPoints((vtkIdType) nPoints);
@@ -1126,7 +1340,7 @@ avtH5PartFileFormat::GetParticleMesh(int timestate)
 
     if (coordValType == H5PART_INT64)
     {
-        for (h5part_int64_t ptNo = 0; ptNo < nPoints; ptNo++)
+        for (h5part_int64_t ptNo = 0; ptNo < nPoints; ++ptNo)
         {
             pts[3*ptNo] =
                 float(static_cast<h5part_int64_t*>(coordsRead[0])[ptNo]);
@@ -1141,7 +1355,7 @@ avtH5PartFileFormat::GetParticleMesh(int timestate)
     }
     else if (coordValType == H5PART_FLOAT64)
     {
-        for (h5part_int64_t ptNo = 0; ptNo < nPoints; ptNo++)
+        for (h5part_int64_t ptNo = 0; ptNo < nPoints; ++ptNo)
         {
             pts[3*ptNo] =
                 float(static_cast<h5part_float64_t*>(coordsRead[0])[ptNo]);
@@ -1172,49 +1386,129 @@ avtH5PartFileFormat::GetParticleMesh(int timestate)
     else
     {
         EXCEPTION2(NonCompliantFileException, "H5Part GetParticleMesh",
-                "Unsupported value type for coordinates. "
-                "(Supported types are FLOAT64. FLOAT32 and INT64.)");
+                   "Unsupported value type for coordinates. "
+                   "Supported types are FLOAT64. FLOAT32 and INT64.");
     }
+    // FIXME: Possibly handle other data types for the coordinates
 
     for (int i=0; i <particleNSpatialDims; ++i) free(coordsRead[i]);
 
     dataset->Allocate(nPoints);
+
     for (h5part_int64_t i=0; i<nPoints; ++i)
     {
         vtkIdType onevertex = (vtkIdType) i;
         dataset->InsertNextCell(VTK_VERTEX, 1, &onevertex);
     }
+
     dataset->SetPoints(vtkpoints);
     vtkpoints->Delete();
 
+    //
+    // If using the FastBit index and a data selection was processed
+    // successfully then dataset with different connectivity from the
+    // original full dataset will be produced.  This means that if
+    // we're requesting original cell numbers above up in the database
+    // then the values calculated there would be wrong. We need to
+    // calculate them here and send them along so named selections
+    // will work properly.
+    //
 #ifdef HAVE_LIBFASTBIT
-    //
-    // If we're using the Fastbit index and we've processed a data selection successfully then
-    // we have produced a dataset with different connectivity from the original full dataset.
-    // This means that if we're requesting original cell numbers above up in the database then
-    // the values calculated there would be wrong. We need to calculate them here and send them
-    // along so named selections will work properly.
-    //
-    // The problem is that we might not need to do this work.
-    //
-    if (useFastBitIndex && dataSelectionActive && queryResultsValid)
+    debug5 << "avtH5PartFileFormat::GetParticleMesh(): "
+           << " Creating avtOriginalCellNumbers early" << std::endl;
+
+    vtkUnsignedIntArray *origZones = vtkUnsignedIntArray::New();
+    origZones->SetName("avtOriginalCellNumbers");
+    origZones->SetNumberOfComponents(2);
+    origZones->SetNumberOfTuples(nPoints);
+    unsigned int *iptr = (unsigned int *) origZones->GetVoidPointer(0);
+
+    if (it->second == H5PART_FLOAT64)
     {
-        debug5 << "avtH5PartFileFormat::GetParticleMesh: Creating avtOriginalCellNumbers early" << endl;
-        vtkUnsignedIntArray *origZones = vtkUnsignedIntArray::New();
-        origZones->SetName("avtOriginalCellNumbers");
-        origZones->SetNumberOfComponents(2);
-        origZones->SetNumberOfTuples(queryResults.size());
-        unsigned int *iptr = (unsigned int *)origZones->GetVoidPointer(0);
-        for(size_t ii = 0; ii < queryResults.size(); ++ii)
+        h5part_float64_t *idList = new h5part_float64_t[nPoints];;
+        if (H5PartReadDataFloat64(file, idVariableName.c_str(), idList) != H5PART_SUCCESS)
         {
-            *iptr++ = 0; // domain 0. This format is SD so it's probably okay.
-            *iptr++ = (unsigned int)queryResults[ii];
+          delete[] idList;
+          EXCEPTION1(InvalidVariableException, idVariableName);
         }
-        dataset->GetCellData()->AddArray(origZones);
-        origZones->Delete();
+        else
+        {
+          for(size_t i = 0; i < nPoints; ++i)
+          {
+            // domain 0. This format is single domain so it's probably okay.
+            *iptr++ = 0;
+            *iptr++ = (unsigned int) idList[i];
+        
+            debug5 << "Domain " << 0 << " cell " << idList[i]
+                   << std::endl;
+          }
+    
+          delete[] idList;
+        }
     }
+    else if (it->second == H5PART_FLOAT32)
+    {
+        h5part_float32_t *idList = new h5part_float32_t[nPoints];
+        if (H5PartReadDataFloat32(file, idVariableName.c_str(), idList) != H5PART_SUCCESS)
+        {
+          delete[] idList;
+          EXCEPTION1(InvalidVariableException, idVariableName);
+        }
+        else
+        {
+          for(size_t i = 0; i < nPoints; ++i)
+          {
+            // domain 0. This format is single domain so it's probably okay.
+            *iptr++ = 0;
+            *iptr++ = (unsigned int) idList[i];
+        
+            debug5 << "Domain " << 0 << " cell " << idList[i]
+                   << std::endl;
+          }
+
+          delete[] idList;
+        }
+    }
+    else if (it->second == H5PART_INT64)
+    {
+      h5part_int64_t *idList = new h5part_int64_t[nPoints];
+      if (H5PartReadDataInt64(file, idVariableName.c_str(), idList) != H5PART_SUCCESS)
+      {
+          delete[] idList;
+          EXCEPTION1(InvalidVariableException, idVariableName);
+      }
+      else
+      {
+          for(size_t i = 0; i < nPoints; ++i)
+          {
+            // domain 0. This format is single domain so it's probably okay.
+            *iptr++ = 0;
+            *iptr++ = (unsigned int) idList[i];
+        
+            debug5 << "Domain " << 0 << " cell " << idList[i]
+                   << std::endl;
+          }
+
+          delete[] idList;
+      }
+    }
+    else
+    {
+        EXCEPTION2(NonCompliantFileException, "H5Part GetVar",
+                   std::string("Scalar variable ") + idVariableName + 
+                   std::string(" uses an unsupported value type. Supported "
+                               "types are FLOAT64, FLOAT32 and INT64."));
+    }
+    // FIXME: Possibly handle other data types for the id variable
+
+    dataset->GetCellData()->AddArray(origZones);
+    origZones->Delete();
 #endif
+    
     visitTimer->StopTimer(t1, "H5PartFileFormat::GetParticleMesh()");
+
+    // Reset view
+    H5PartSetView(file, -1, -1);
 
     return dataset;
 }
@@ -1269,7 +1563,7 @@ avtH5PartFileFormat::GetFieldMesh(int timestate, const char *meshname)
     if (H5BlockGetFieldInfo (file, 0, fieldName, maxVarNameLen,
                 &gridRank, gridDims, &fieldDims, &type) != H5PART_SUCCESS)
         EXCEPTION2(NonCompliantFileException, "H5Part GetFieldMesh",
-                "Could not read field information.");
+                   "Could not read field information.");
 
     // Determine which data portion we need to construct a mesh for
     h5part_int64_t subBlockDims[6];
@@ -1283,7 +1577,7 @@ avtH5PartFileFormat::GetFieldMesh(int timestate, const char *meshname)
                 &xOrigin, &yOrigin, &zOrigin) != H5PART_SUCCESS)
     {
         EXCEPTION2(NonCompliantFileException, "H5Part GetFieldMesh",
-                "Could not read field origin.");
+                   "Could not read field origin.");
     }
 
     debug5 << "xOrigin: " << xOrigin << "\n";
@@ -1298,7 +1592,7 @@ avtH5PartFileFormat::GetFieldMesh(int timestate, const char *meshname)
                 &xSpacing, &ySpacing, &zSpacing) != H5PART_SUCCESS)
     {
         EXCEPTION2(NonCompliantFileException, "H5Part GetFieldMesh", 
-                "Could not read field spacing.");
+                   "Could not read field spacing.");
     }
 
     debug5 << "xSpacing: " << xSpacing << "\n";
@@ -1319,7 +1613,8 @@ avtH5PartFileFormat::GetFieldMesh(int timestate, const char *meshname)
     coords[1] = vtkFloatArray::New();
     coords[1]->SetNumberOfTuples(subBlockDims[3] - subBlockDims[2] + 1);
     float *yarray = (float *) coords[1]->GetVoidPointer(0);
-    for (int i=subBlockDims[2]; i <= subBlockDims[3]; i++) {
+    for (int i=subBlockDims[2]; i <= subBlockDims[3]; i++)
+    {
         yarray[i-subBlockDims[2]] = yOrigin + i * ySpacing;
     }
 
@@ -1327,7 +1622,8 @@ avtH5PartFileFormat::GetFieldMesh(int timestate, const char *meshname)
     coords[2] = vtkFloatArray::New();
     coords[2]->SetNumberOfTuples(subBlockDims[5] - subBlockDims[4] + 1);
     float *zarray = (float *) coords[2]->GetVoidPointer(0);
-    for (int i=subBlockDims[4]; i <= subBlockDims[5]; i++) {
+    for (int i=subBlockDims[4]; i <= subBlockDims[5]; i++)
+    {
         zarray[i-subBlockDims[4]] = zOrigin + i * zSpacing;
     }
 
@@ -1361,7 +1657,7 @@ avtH5PartFileFormat::GetFieldMesh(int timestate, const char *meshname)
 //  Arguments:
 //      timestate  The index of the timestate.  If GetNTimesteps returned
 //                 'N' time steps, this is guaranteed to be between 0 and N-1.
-//      varname    The name of the variable requested.
+//      varName    The name of the variable requested.
 //
 //  Programmer: ghweber -- generated by xml2avt
 //  Creation:   Tue Feb 9 13:44:50 PST 2010
@@ -1369,30 +1665,32 @@ avtH5PartFileFormat::GetFieldMesh(int timestate, const char *meshname)
 // ****************************************************************************
 
 vtkDataArray *
-avtH5PartFileFormat::GetVar(int timestate, const char *varname)
+avtH5PartFileFormat::GetVar(int timestate, const char *varName)
 {
     int t1 = visitTimer->StartTimer();
 
-    VarNameToInt64Map_t::const_iterator it = particleVarNameToTypeMap.find(varname);
+    VarNameToInt64Map_t::const_iterator it =
+      particleVarNameToTypeMap.find(varName);
+
     if (it == particleVarNameToTypeMap.end())
     {
         visitTimer->StopTimer(t1, "H5PartFileFormat::GetVar() [invoking GetFieldVar]");
-        return GetFieldVar(timestate, varname);
+        return GetFieldVar(timestate, varName);
     }
 
     // Switch to appropriate time step (opens file if necessary)
     ActivateTimestep(timestate);
 
     // Select particles to actually read
-    SelectParticlesToRead();
-
+#ifdef HAVE_LIBFASTBIT
+    SelectParticlesToRead( varName );
+#else
+    SelectParticlesToRead( );
+#endif
     // Read data
     h5part_int64_t nPoints = H5PartGetNumParticles(file);
 
     debug5 << "GetVar() reading " << nPoints << " particles." << std::endl;
-#ifdef VERYVERBOSE
-    std::cout << "GetVar() reading " << nPoints << " particles." << std::endl;
-#endif
 
     if (nPoints == 0)
     {
@@ -1405,22 +1703,22 @@ avtH5PartFileFormat::GetVar(int timestate, const char *varname)
     {
         scalars = vtkDoubleArray::New();
         scalars->SetNumberOfTuples(nPoints);
-        if (H5PartReadDataFloat64(file, varname,
+        if (H5PartReadDataFloat64(file, varName,
                     static_cast<h5part_float64_t*>(scalars->GetVoidPointer(0)))
                 != H5PART_SUCCESS)
         {
-            EXCEPTION1(InvalidVariableException, varname);
+            EXCEPTION1(InvalidVariableException, varName);
         }
     }
     else if (it->second == H5PART_FLOAT32)
     {
         scalars = vtkFloatArray::New();
         scalars->SetNumberOfTuples(nPoints);
-        if (H5PartReadDataFloat32(file, varname,
+        if (H5PartReadDataFloat32(file, varName,
                     static_cast<h5part_float32_t*>(scalars->GetVoidPointer(0)))
                 != H5PART_SUCCESS)
         {
-            EXCEPTION1(InvalidVariableException, varname);
+            EXCEPTION1(InvalidVariableException, varName);
         }
     }
     else if (it->second == H5PART_INT64)
@@ -1429,9 +1727,10 @@ avtH5PartFileFormat::GetVar(int timestate, const char *varname)
         // double we are not sure what int type is used to achieve 64 bits.
         // To be safe, read into separate array and copy.
         h5part_int64_t *idvar = new h5part_int64_t[nPoints];
-        if (H5PartReadDataInt64(file, varname, idvar) != H5PART_SUCCESS)
-            EXCEPTION1(InvalidVariableException, varname);
-        scalars = vtkFloatArray::New(); // FIXME: Can we use an integer array here?
+        if (H5PartReadDataInt64(file, varName, idvar) != H5PART_SUCCESS)
+            EXCEPTION1(InvalidVariableException, varName);
+
+        scalars = vtkFloatArray::New(); // FIXME: Can an integer array be used?
         scalars->SetNumberOfTuples(nPoints);
         float *ptr = static_cast<float*>(scalars->GetVoidPointer(0));
         for (h5part_int64_t i=0; i<nPoints; ++i)
@@ -1442,10 +1741,12 @@ avtH5PartFileFormat::GetVar(int timestate, const char *varname)
     }
     else
     {
-        EXCEPTION2(NonCompliantFileException, "H5Part GetVar", std::string("Variable ")
-                + varname + std::string(" uses an unsupported value type. (Supported ")
-                + std::string("types are FLOAT64, FLOAT32 and INT64.)"));
+        EXCEPTION2(NonCompliantFileException, "H5Part GetVar",
+                   std::string("Scalar variable ") + varName + 
+                   std::string(" uses an unsupported value type. Supported "
+                               "types are FLOAT64, FLOAT32 and INT64."));
     }
+    // FIXME: Possibly handle other data types for scalar variables
 
     // Reset view
     H5PartSetView(file, -1, -1);
@@ -1465,7 +1766,7 @@ avtH5PartFileFormat::GetVar(int timestate, const char *varname)
 //  Arguments:
 //      timestate   The index of the timestate.  If GetNTimesteps returned
 //                  'N' time steps, this is guaranteed to be between 0 and N-1.
-//      varname    The name of the variable requested.
+//      varName    The name of the variable requested.
 //
 //  Programmer: kurts
 //  Creation:   Tue Aug 28 17:35:50 PDT 2007
@@ -1483,14 +1784,16 @@ avtH5PartFileFormat::GetVar(int timestate, const char *varname)
 // ****************************************************************************
 
 vtkDataArray *
-avtH5PartFileFormat::GetFieldVar(int timestate, const char* varname)
+avtH5PartFileFormat::GetFieldVar(int timestate, const char* varName)
 {
     int t1 = visitTimer->StartTimer();
 
     // Check if we know about variable and get type
-    VarNameToInt64Map_t::const_iterator it = fieldScalarVarNameToTypeMap.find(varname);
+    VarNameToInt64Map_t::const_iterator it =
+      fieldScalarVarNameToTypeMap.find(varName);
+
     if (it == fieldScalarVarNameToTypeMap.end())
-        EXCEPTION1(InvalidVariableException, varname);
+        EXCEPTION1(InvalidVariableException, varName);
 
     // Activate correct time step (opens file if necessary)
     ActivateTimestep(timestate);
@@ -1504,7 +1807,8 @@ avtH5PartFileFormat::GetFieldVar(int timestate, const char* varname)
     // FIXME: This assumes that all blocks have the same mesh
     if (H5BlockGetFieldInfo (file, 0, fieldName, maxVarNameLen,
                 &gridRank, gridDims, &fieldDims, &type) != H5PART_SUCCESS)
-        EXCEPTION1(InvalidVariableException, "Could not read field information.");
+        EXCEPTION1(InvalidVariableException,
+                   "Could not read field information.");
 
     h5part_int64_t subBlockDims[6];
     GetSubBlock(gridDims, subBlockDims);
@@ -1525,22 +1829,22 @@ avtH5PartFileFormat::GetFieldVar(int timestate, const char* varname)
     {
         scalars = vtkDoubleArray::New();
         scalars->SetNumberOfTuples(nValues);
-        if (H5Block3dReadScalarFieldFloat64(file, varname,
+        if (H5Block3dReadScalarFieldFloat64(file, varName,
                     static_cast<h5part_float64_t*>(scalars->GetVoidPointer(0)))
                 != H5PART_SUCCESS)
         {
-            EXCEPTION1(InvalidVariableException, varname);
+            EXCEPTION1(InvalidVariableException, varName);
         }
     }
     else if (it->second == H5PART_FLOAT32)
     {
         scalars = vtkFloatArray::New();
         scalars->SetNumberOfTuples(nValues);
-        if (H5Block3dReadScalarFieldFloat32(file, varname,
+        if (H5Block3dReadScalarFieldFloat32(file, varName,
                     static_cast<h5part_float32_t*>(scalars->GetVoidPointer(0)))
                 != H5PART_SUCCESS)
         {
-            EXCEPTION1(InvalidVariableException, varname);
+            EXCEPTION1(InvalidVariableException, varName);
         }
     }
     else if (it->second == H5PART_INT64)
@@ -1549,11 +1853,10 @@ avtH5PartFileFormat::GetFieldVar(int timestate, const char* varname)
         // double we are not sure what int type is used to achieve 64 bits.
         // To be safe, read into separate array and copy.
         h5part_int64_t *idvar = new h5part_int64_t[nValues];
-        if (H5Block3dReadScalarFieldInt64(file, varname, idvar) != H5PART_SUCCESS)
-        {
-            EXCEPTION1(InvalidVariableException, varname);
-        }
-        scalars = vtkFloatArray::New(); // FIXME: Can we use an integer array here?
+        if (H5Block3dReadScalarFieldInt64(file, varName, idvar) != H5PART_SUCCESS)
+            EXCEPTION1(InvalidVariableException, varName);
+
+        scalars = vtkFloatArray::New(); // FIXME: Can an integer array be used?
         scalars->SetNumberOfTuples(nValues);
         float *ptr = static_cast<float*>(scalars->GetVoidPointer(0));
         for (h5part_int64_t i=0; i<nValues; ++i)
@@ -1564,10 +1867,12 @@ avtH5PartFileFormat::GetFieldVar(int timestate, const char* varname)
     }
     else
     {
-        EXCEPTION2(NonCompliantFileException, "H5Part GetVar", std::string("Variable ")
-                + varname + std::string(" uses an unsupported value type. (Supported ")
-                + std::string("types are FLOAT64, FLOAT32 and INT64.)"));
+        EXCEPTION2(NonCompliantFileException, "H5Part GetVar",
+                   std::string("Field variable ") + varName + 
+                   std::string(" uses an unsupported value type. Supported "
+                               "types are FLOAT64, FLOAT32 and INT64."));
     }
+    // FIXME: Possibly handle other data types for field variables
 
     visitTimer->StopTimer(t1, "H5PartFileFormat::GetFieldVar()");
 
@@ -1585,7 +1890,7 @@ avtH5PartFileFormat::GetFieldVar(int timestate, const char* varname)
 //  Arguments:
 //      timestate  The index of the timestate.  If GetNTimesteps returned
 //                 'N' time steps, this is guaranteed to be between 0 and N-1.
-//      varname    The name of the variable requested.
+//      varName    The name of the variable requested.
 //
 //  Programmer: ghweber -- generated by xml2avt
 //  Creation:   Tue Feb 9 13:44:50 PST 2010
@@ -1602,14 +1907,16 @@ avtH5PartFileFormat::GetFieldVar(int timestate, const char* varname)
 //
 // ****************************************************************************
 vtkDataArray *
-avtH5PartFileFormat::GetVectorVar(int timestate, const char *varname)
+avtH5PartFileFormat::GetVectorVar(int timestate, const char *varName)
 {
     int t1 = visitTimer->StartTimer();
 
     // Check if we know about variable and get type
-    VarNameToInt64Map_t::const_iterator it = fieldVectorVarNameToTypeMap.find(varname);
+    VarNameToInt64Map_t::const_iterator it =
+      fieldVectorVarNameToTypeMap.find(varName);
+    
     if (it == fieldVectorVarNameToTypeMap.end())
-        EXCEPTION1(InvalidVariableException, varname);
+        EXCEPTION1(InvalidVariableException, varName);
 
     // Activate correct time step (opens file if necessary)
     ActivateTimestep(timestate);
@@ -1647,7 +1954,7 @@ avtH5PartFileFormat::GetVectorVar(int timestate, const char *varname)
         for (int i=0; i<3; ++i)
             vecsRead[i] = malloc(sizeof(h5part_int64_t) * nValues);
 
-        status = H5Block3dRead3dVectorFieldInt64(file, varname,  
+        status = H5Block3dRead3dVectorFieldInt64(file, varName,  
                 static_cast<h5part_int64_t*>(vecsRead[0]),
                 static_cast<h5part_int64_t*>(vecsRead[1]),
                 static_cast<h5part_int64_t*>(vecsRead[2]));
@@ -1657,7 +1964,7 @@ avtH5PartFileFormat::GetVectorVar(int timestate, const char *varname)
         for (int i=0; i<3; ++i)
             vecsRead[i] = malloc(sizeof(h5part_float64_t) * nValues);
 
-        status = H5Block3dRead3dVectorFieldFloat64(file, varname,  
+        status = H5Block3dRead3dVectorFieldFloat64(file, varName,  
                 static_cast<h5part_float64_t*>(vecsRead[0]),
                 static_cast<h5part_float64_t*>(vecsRead[1]),
                 static_cast<h5part_float64_t*>(vecsRead[2]));
@@ -1669,7 +1976,7 @@ avtH5PartFileFormat::GetVectorVar(int timestate, const char *varname)
         for (int i=0; i<3; ++i)
             vecsRead[i] = malloc(sizeof(h5part_float32_t) * nValues);
 
-        status = H5Block3dRead3dVectorFieldFloat32(file, varname,  
+        status = H5Block3dRead3dVectorFieldFloat32(file, varName,  
                 static_cast<h5part_float32_t*>(vecsRead[0]),
                 static_cast<h5part_float32_t*>(vecsRead[1]),
                 static_cast<h5part_float32_t*>(vecsRead[2]));
@@ -1677,10 +1984,11 @@ avtH5PartFileFormat::GetVectorVar(int timestate, const char *varname)
     else
     {
         EXCEPTION2(NonCompliantFileException, "H5Part GetVectorVar",
-                std::string("Vector variable ") + varname + std::string(" uses an ") +
-                std::string("unsupported value type. (Supported types are ") +
-                std::string("FLOAT64, FLOAT32 and INT64.)"));
+                   std::string("Vector variable ") + varName +
+                   std::string(" uses an unsupported value type. Supported"
+                               "types are FLOAT64, FLOAT32 and INT64."));
     }
+    // FIXME: Possibly handle other data types for vector variables
 
     // Store data in VTK object
     vtkDataArray *array;
@@ -1690,7 +1998,6 @@ avtH5PartFileFormat::GetVectorVar(int timestate, const char *varname)
     }
     else
     {
-        //vtkFloatArray *array = vtkFloatArray::New(); ///TODO: original code?
         array = vtkFloatArray::New(); //TODO: check fix
         // FIXME: Possibly check for integer and create an integer array
     }
@@ -1743,12 +2050,14 @@ avtH5PartFileFormat::GetVectorVar(int timestate, const char *varname)
     else
     {
         EXCEPTION2(NonCompliantFileException, "H5Part GetVectorVar",
-                std::string("Vector variable ") + varname + std::string(" uses an ") +
-                std::string("unsupported value type. (Supported types are ") +
-                std::string("FLOAT64, FLOAT32 and INT64.)"));
+                   std::string("Vector variable ") + varName +
+                   std::string(" uses an unsupported value type. Supported "
+                               "types are FLOAT64, FLOAT32 and INT64.)"));
     }
+    // FIXME: Possibly handle other data types for vector variables
  
-    for (int i=0; i <3; ++i) free(vecsRead[i]);
+    for (int i=0; i<3; ++i)
+      free(vecsRead[i]);
 
     visitTimer->StopTimer(t1, "H5PartFileFormat::GetVectorVar()");
     return array;
@@ -1791,10 +2100,15 @@ avtH5PartFileFormat::ActivateTimestep(int ts)
         debug5 << "activating time step " << ts << std::endl;
 
         file = H5PartOpenFile(filenames[0], H5PART_READ);
+
+        if (!file)
+          EXCEPTION1(InvalidFilesException, "Cannot open file.");
+        
         H5PartSetStep(file, ts);
 
 #ifdef HAVE_LIBFASTBIT
-        if (useFastBitIndex) reader.openFile(filenames[0], true);
+        if (useFastBitIndex)
+            fqReader.openFile(filenames[0], true);
 
         // New file is opened -> Need to update query results.
         queryResultsValid = false;
@@ -1809,9 +2123,10 @@ avtH5PartFileFormat::ActivateTimestep(int ts)
         {
             debug1 << "avtH5PartFileFormat::ActivateTimestep(): Cannot ";
             debug1 << "activate time step " << ts << std::endl;
+
             EXCEPTION2(NonCompliantFileException, "H5Part AcitvateTimestep",
-                    "Cannot activate time step " + DoubleToString(ts) +
-                    std::string("."));
+                       "Cannot activate time step " + DoubleToString(ts) +
+                       std::string("."));
         }
 
 #ifdef HAVE_LIBFASTBIT
@@ -1819,8 +2134,6 @@ avtH5PartFileFormat::ActivateTimestep(int ts)
         queryResultsValid = false;
 #endif
     }
-    // Check if the open file branch was successful
-    if (!file) EXCEPTION1(InvalidFilesException, "Cannot open file.");
 
     // Update global time step information
     activeTimeStep = ts;
@@ -1848,8 +2161,9 @@ avtH5PartFileFormat::ActivateTimestep(int ts)
 //
 //  Modifications:
 //    Gunther H. Weber, Thu Apr  1 15:43:05 PDT 2010
-//    Use PAR_Rank() instead of block number as parameter. Fix problem that
-//    cuased data to be only read partially if domain decomposition was disabled.
+//    Use PAR_Rank() instead of block number as parameter. Fix problem
+//    that cuased data to be only read partially if domain
+//    decomposition was disabled.
 //
 // ****************************************************************************
 
@@ -1861,7 +2175,8 @@ void avtH5PartFileFormat::GetSubBlock(h5part_int64_t gridDims[3],
 #ifdef PARALLEL
     if (disableDomainDecomposition)
     {
-        debug1 << "Domain decomposition disabled. Returning entire block." << std::endl;
+        debug1 << "Domain decomposition disabled. Returning entire block."
+               << std::endl;
 #endif
         subBlockDims[2*0+0] = 0;
         subBlockDims[2*0+1] = gridDims[0] - 1;
@@ -1910,18 +2225,19 @@ void avtH5PartFileFormat::GetSubBlock(h5part_int64_t gridDims[3],
 
         int numPartsForPartition = std::min(h5part_int64_t(PAR_Size()),
                                             gridDims[partitionAxis]);
-        float slicesPerProcessor = float(gridDims[partitionAxis]) /
+        float slicesPerRank = float(gridDims[partitionAxis]) /
                                    float(numPartsForPartition);
-        debug1 << "Slices per processor: " << slicesPerProcessor << std::endl;
+        debug1 << "Slices per rank: " << slicesPerRank << std::endl;
 
-        subBlockDims[2*partitionAxis+0] = int(PAR_Rank()*slicesPerProcessor);
-        subBlockDims[2*partitionAxis+1] = int((PAR_Rank()+1)*slicesPerProcessor);
+        subBlockDims[2*partitionAxis+0] = int(PAR_Rank()*slicesPerRank);
+        subBlockDims[2*partitionAxis+1] = int((PAR_Rank()+1)*slicesPerRank);
         if (PAR_Rank() == numPartsForPartition - 1)
         {
-            // Make sure that we include the final slice and do not include anything beyond
+            // Make sure that we include the final slice and do not
+            // include anything beyond.
             subBlockDims[2*partitionAxis+1] = gridDims[partitionAxis] - 1; 
         }
-        debug1 << "Processor " << PAR_Rank() << " has block "
+        debug1 << "Rank " << PAR_Rank() << " has block "
             << subBlockDims[0] << " " << subBlockDims[1] << " "
             << subBlockDims[2] << " " << subBlockDims[3] << " "
             << subBlockDims[4] << " " << subBlockDims[5] << std::endl;
@@ -1931,7 +2247,6 @@ void avtH5PartFileFormat::GetSubBlock(h5part_int64_t gridDims[3],
     visitTimer->StopTimer(t1, "H5PartFileFormat::GetSubBlock()");
 }
 
-#ifdef HAVE_LIBFASTBIT
 
 // ****************************************************************************
 //  Method: avtH5PartFileFormat::ConstructHistogram
@@ -1940,10 +2255,10 @@ void avtH5PartFileFormat::GetSubBlock(h5part_int64_t gridDims[3],
 //      Given a specification, fill in the histogram data through FastBit calls
 //
 //  Arguments:
-//      spec       The input specification
+//      spec   The input specification
 //
-//  Returns:    Specification with count/bounds data filled in. Need to determine 
-//              appropriate exceptions to throw
+//  Returns:    Specification with count/bounds data filled in. Need to
+//              determine appropriate exceptions to throw
 //
 //  Programmer: Prabhat
 //  Creation:   February 26, 2008
@@ -1957,26 +2272,31 @@ void avtH5PartFileFormat::GetSubBlock(h5part_int64_t gridDims[3],
 //    Some clean-up and reformatting.
 //
 // ****************************************************************************
+#ifdef HAVE_LIBFASTBIT
 
 void
 avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
 {
-    // NOTE: Only called from GetAuxiliaryData() if useFastBitIndex is true.
-
     std::string method = "avtH5PartFileFormat::ConstructHistogram(): ";
 
-    if (!file)
-    {
-        file = H5PartOpenFile(filenames[0], H5PART_READ);
-        reader.openFile(filenames[0], true); // useFastBitIndex is always true here
-    }
-    if (!file) EXCEPTION1(InvalidFilesException, "Could not open file.");
-    H5PartSetStep(file, activeTimeStep);
+    // NOTE: Only called from GetAuxiliaryData() if useFastBitIndex is true.
 
     if (!spec) 
         EXCEPTION1(ImproperUseException, "NULL Histogram Specification");
 
-    // Compute the hisogram
+    if (!file)
+    {
+        file = H5PartOpenFile(filenames[0], H5PART_READ);
+
+        if (!file)
+          EXCEPTION1(InvalidFilesException, "Could not open file.");
+        
+        fqReader.openFile(filenames[0], true); // useFastBitIndex is always true here
+    }
+    
+    H5PartSetStep(file, activeTimeStep);
+
+    // Compute the histogram
     int                       timestep = spec->GetTimestep();
     bool                regularBinning = spec->IsRegularBinning();
     std::vector<std::string> variables = spec->GetVariables();
@@ -1987,37 +2307,38 @@ avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
     int                     boundsSize = spec->GetBounds().size();
     //VISIT_LONG_LONG *           counts = spec->GetCounts();
 
-#ifdef VERYVERBOSE
-    std::cout << "Constructing histogram for time step " << timestep << std::endl;
-#endif
-
     for (size_t i=0; i<numBins.size(); i++) 
     {
         if (regularBinning)
         {
             if (numBins[i]<1)
             {
-                debug5 << method <<  "Need to specify a valid #bins for histogram!";
-                debug5 << std::endl;
-                EXCEPTION1(ImproperUseException, "numBins cannot be less than one.");
+                debug5 << method
+                       <<  "Need to specify a valid #bins for histogram!"
+                       << std::endl;
+                EXCEPTION1(ImproperUseException,
+                           "numBins cannot be less than one.");
             }
         }
     }
 
     if (variables.empty())
     {
-        debug5 << method << "Histogram Spec needs to specify variables to plot!";
-        debug5 << std::endl;
-        EXCEPTION1(ImproperUseException, "No variables for histogram specified.");
+        debug5 << method
+               << "Histogram Spec needs to specify variables to plot!"
+               << std::endl;
+        EXCEPTION1(ImproperUseException,
+                   "No variables for histogram specified.");
     }
 
     for (size_t i=0; i<variables.size(); i++)
     {
-        bool found = reader.checkForVariable(variables[i]);
+        bool found = fqReader.checkForVariable(variables[i]);
         if (!found)
         {
-            debug5 << method << "Histogram Spec lists variable not present in file!";
-            debug5 << std::endl;
+            debug5 << method
+                   << "Histogram Spec lists variable not present in file!"
+                   << std::endl;
             EXCEPTION1(InvalidVariableException, variables[i]);
         }
     }
@@ -2026,23 +2347,22 @@ avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
     {
         if (variables.size() != (size_t)boundsSize)
         {
-            debug5 << method << " Histogram Spec variable list does not match bounds ";
-            debug5 << " list size " << std::endl;
+            debug5 << method
+                   << " Histogram Spec variable list does not match bounds "
+                   << " list size " << std::endl;
+
             EXCEPTION1(ImproperUseException, "Variable bounds list mismatch.");
         }
     }
 
     // Try to retrieve the histogram from cache
-    bool isCached =  histoCache.getCached(spec);
+    bool isCached = histoCache.getCached(spec);
 
     if (isCached)
     {
         // FIXME: Does it really make sense to override boundsSpecified?
         boundsSpecified = spec->BoundsSpecified();  
         debug5 << method << "Histogram retrieved from cache!" << std::endl;
-#ifdef VERYVERBOSE
-        std::cout << method << "Histogram retrieved from cache!" << std::endl;
-#endif
     }  
 
     // Define the begin and end 
@@ -2058,101 +2378,104 @@ avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
         {
             begins[i] = spec->GetBounds()[i][0];
             ends[i]   = spec->GetBounds()[i][spec->GetBounds()[i].size()-1];
-            debug5 << "boundsSpecified to be "<< begins[i] << ", " << ends[i];
-            debug5 << std::endl;
-#ifdef VERYVERBOSE
-            std::cout << "boundsSpecified to be "<< begins[i] <<", "<<ends[i]<<std::endl;
-#endif
+
+            debug5 << method
+                   << "boundsSpecified to be "<< begins[i] << ", " << ends[i]
+                   << std::endl;
         }
     }
     // If bounds are not specified than ask the reader for the extents 
     else
     {
-        debug5 << method << "Detected that bounds are not set. Setting them too.";
-        debug5 << std::endl;
-#ifdef VERYVERBOSE
-        std::cout << method << "Detected that bounds are not set. Setting them too." << std::endl;
-#endif
+        debug5 << method
+               << "Detected that bounds are not set. Setting them too."
+               << std::endl;
+
         for(size_t i=0; i<variables.size() ; i++)
         {
             std::vector<int64_t> dims;
             BaseFileInterface::DataType type;
-            reader.getVariableInformation(variables[i], timestep, dims, &type);
+            fqReader.getVariableInformation(variables[i], timestep, dims, &type);
 
             if (type==BaseFileInterface::H5_Float)
             {
                 float start, end;
-                std::string varname = variables[i];
-                reader.getDataMinMax(varname,
-                        timestep,
-                        type,
-                        (void*)&start, 
-                        (void*)&end);
+                std::string varName = variables[i];
+                fqReader.getDataMinMax(varName,
+                                       timestep,
+                                       type,
+                                       (void*)&start, 
+                                       (void*)&end);
                 begins[i] = start;
                 ends[i] = end;
             }
             else if (type==BaseFileInterface::H5_Double)
             {
                 double start, end;
-                std::string varname = variables[i];
-                reader.getDataMinMax(varname,
-                        timestep,
-                        type,
-                        (void*)&start,
-                        (void*)&end);
+                std::string varName = variables[i];
+                fqReader.getDataMinMax(varName,
+                                       timestep,
+                                       type,
+                                       (void*)&start,
+                                       (void*)&end);
                 begins[i] = start;
                 ends[i] = end;
             }
             else
             {
-                debug5 << method << "Warning:: data type min/max not yet supported!";
-                debug5 << std::endl;
-                EXCEPTION2(NonCompliantFileException, "H5Part ConstructHistogram",
-                        "Data type not supported for histogram computation.");
+                debug5 << method
+                       << "Warning:: data type min/max not yet supported for histogram computation"
+                       << std::endl;
+                
+                EXCEPTION2(NonCompliantFileException,
+                           "H5Part ConstructHistogram",
+                           "Data type min/max not yet not supported for histogram computation.");
             }
 
-            debug5 << "HDF-FQ/FastBit calculated " << variables[i] << " bounds are " 
-                << begins[i] << ", "<< ends[i] << endl<<endl;
-#ifdef VERYVERBOSE
-            std::cout << "HDF-FQ/FastBit calculated " << variables[i] << " bounds are " 
-                << begins[i] << ", "<< ends[i] << endl<<endl;
-#endif
+            debug5 << method
+                   << "HDF-FQ/FastBit calculated " << variables[i] 
+                   << " bounds are "  << begins[i] << ", " << ends[i]
+                   << std::endl << std::endl;
         }
     }
 
     bool cacheCurrentHisto = false;
 
-    // We need to check the dimensionality of the histogram to determine what FastBit call
-    // to make. We'll assume that the bounds contain junk for now and that num_bins is what will
+    // We need to check the dimensionality of the histogram to
+    // determine what FastBit call to make. We'll assume that the
+    // bounds contain junk for now and that num_bins is what will
     // drive the histogram creation.
     if (!isCached)
     {
         if (variables.size()==1)
         {
+            debug5 << method
+                   << "Asking reader for 1D histogram for"
+                   << " timestep " << timestep << std::endl
+                   << " condition " << (condition.empty() ? "None" : condition)
+                   << " variables " << variables[0]
+                   << " begin " << begins[0] << ", end " << ends[0]
+                   << " bins " << numBins[0]
+                   << std::endl;
+
             std::vector<uint32_t> count;
 
-            debug5 << "Asking reader for 1D histogram for timestep " << timestep;
-            debug5 << " condition " << condition << " variables " << variables[0];
-            debug5 << std::endl;
-#ifdef VERYVERBOSE
-            std::cout << "Asking reader for 1D histogram for timestep " << timestep;
-            std::cout << " condition " << condition << " variables " << variables[0];
-            std::cout << std::endl;
-#endif
-            reader.get1DHistogram((int64_t)timestep, 
-                    condition.c_str(),
-                    variables[0].c_str(),
-                    numBins[0],
-                    spec->GetBounds()[0],
-                    count);
-            // Make sure that the bounds specified flag is defined properly
-            spec->SetBoundsSpecified();
-            // TODO: Possibly replace in order to avoid copying of the histograms
-#ifdef VERYVERBOSE
-            std::cout << "Returning counts." << std::endl;
-#endif
+            fqReader.get1DHistogram((int64_t)timestep,
+                                    condition.c_str(),
+                                    variables[0].c_str(),
+                                    begins[0], ends[0], numBins[0],
+                                    spec->GetBounds()[0],
+                                    count);
+            
+            // TODO: Possibly replace in order to avoid copying of the
+            // histograms
+
             // Copy the counts into the specification
             spec->SetCounts(count);
+
+            // Make sure that the bounds specified flag is defined properly
+            spec->SetBoundsSpecified();
+
             cacheCurrentHisto = true;
         }
         else if (variables.size()==2)
@@ -2164,36 +2487,24 @@ avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
             double begin2 = begins[1];
             double end2 = ends[1];
 
-            debug5 << "begin1 = " << begin1 << ", end1 = " << end1;
-            debug5 << ", begin2 " << begin2 << ", end2 = " << end2 << std::endl;
-            debug5 << "numbins1 = " << numBins[0] << ", numBins2 = " << numBins[1];
-            debug5 << std::endl;
-
-#ifdef VERYVERBOSE
-            std::cout << "begin1 = " << begin1 << ", end1 = " << end1;
-            std::cout << ", begin2 " << begin2 << ", end2 = " << end2 << std::endl;
-            std::cout << "numbins1 = " << numBins[0] << ", numBins2 = " << numBins[1];
-            std::cout << std::endl;
-#endif
-
             if (regularBinning)
             {
-                debug5 << "Asking reader for 2D histogram for timestep " << timestep;
-                debug5 << " condition " << condition << " variables " << variables[0];
-                debug5 << " and " << variables[1] << std::endl;
-#ifdef VERYVERBOSE
-                std::cout << "Asking reader for 2D histogram for timestep " << timestep;
-                std::cout << " condition " << condition << " variables " << variables[0];
-                std::cout << " and " << variables[1] << std::endl;
-#endif
-                reader.get2DHistogram((int64_t)timestep,
-                        condition.c_str(),
-                        variables[0].c_str(),
-                        begin1, end1, numBins[0], 
-                        variables[1].c_str(),
-                        begin2, end2, numBins[1],
-                        spec->GetBounds()[0] , spec->GetBounds()[1] ,
-                        count);
+                debug5 << method
+                       << "Asking reader for 2D histogram for timestep for "
+                       << " timestep " << timestep << std::endl
+                       << " condition " << (condition.empty() ? "None" : condition)
+                       << " variables " << variables[0]
+                       << " and " << variables[1] << std::endl;
+
+                fqReader.get2DHistogram((int64_t)timestep,
+                                        condition.c_str(),
+                                        variables[0].c_str(),
+                                        begin1, end1, numBins[0], 
+                                        variables[1].c_str(),
+                                        begin2, end2, numBins[1],
+                                        spec->GetBounds()[0],
+                                        spec->GetBounds()[1],
+                                        count);
             }
             else
             {
@@ -2201,45 +2512,48 @@ avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
                 if (condition.empty())
                 {
                     // No condition.
-                    debug5 << "Asking reader for adaptive 2D histogram for timestep ";
-                    debug5 << timestep <<  " variables " << variables[0] << " and ";
-                    debug5 << variables[1] << std::endl;
-#ifdef VERYVERBOSE
-                    std::cout << "Asking reader for adaptive 2D histogram for timestep ";
-                    std::cout << timestep <<  " variables " << variables[0] << " and ";
-                    std::cout << variables[1] << std::endl;
-#endif
-                    reader.get2DAdaptiveHistogram(
-                            (int64_t)timestep,
-                            variables[0].c_str(),
-                            variables[1].c_str(),
-                            numBins[0],
-                            numBins[1],
-                            spec->GetBounds()[0] , spec->GetBounds()[1] ,
-                            count);
+                    debug5 << method
+                           << "Asking reader for adaptive 2D histogram for"
+                           << " timestep " << timestep << std::endl
+                           << " variables " << variables[0]
+                           << " and " << variables[1] << std::endl;
+
+                    fqReader.get2DAdaptiveHistogram((int64_t)timestep,
+                                                    variables[0].c_str(),
+                                                    variables[1].c_str(),
+                                                    numBins[0],
+                                                    numBins[1],
+                                                    spec->GetBounds()[0],
+                                                    spec->GetBounds()[1],
+                                                    count);
                 }
                 else
                 {
                     // Conditional histogram.
-                    debug5 << "Asking reader for adaptive 2D histogram for timestep ";
-                    debug5 << timestep << " condition " << condition << " variables ";
-                    debug5 << variables[0] << " and " << variables[1] << std::endl;
-#ifdef VERYVERBOSE
-                    std::cout << "Asking reader for adaptive 2D histogram for timestep ";
-                    std::cout << timestep << " condition " << condition << " variables ";
-                    std::cout << variables[0] << " and " << variables[1] << std::endl;
-#endif
-                    reader.get2DAdaptiveHistogram(
-                            (int64_t)timestep,
-                            condition.c_str(),
-                            variables[0].c_str(),
-                            variables[1].c_str(),
-                            numBins[0],
-                            numBins[1],
-                            spec->GetBounds()[0] , spec->GetBounds()[1] ,
-                            count );
+                    debug5 << method
+                           << "Asking reader for adaptive 2D histogram for "
+                           << "timestep " << timestep << std::endl
+                           << " condition " << condition
+                           << " variables " << variables[0]
+                           << " and " << variables[1] << std::endl;
+
+                    fqReader.get2DAdaptiveHistogram((int64_t)timestep,
+                                                    condition.c_str(),
+                                                    variables[0].c_str(),
+                                                    variables[1].c_str(),
+                                                    numBins[0],
+                                                    numBins[1],
+                                                    spec->GetBounds()[0],
+                                                    spec->GetBounds()[1],
+                                                    count );
                 }
             }
+
+            debug5 << "begin1 = " << begin1 << ", end1 = " << end1
+                   << ", begin2 " << begin2 << ", end2 = " << end2 << std::endl
+                   << "numbins1 = " << numBins[0]
+                   << ", numBins2 = " << numBins[1]
+                   << std::endl;
 
             spec->SetBoundsSpecified();
             // Copy the counts into the specification
@@ -2250,8 +2564,8 @@ avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
         else
         {
             // FIXME: generic histogram, will need to take slices.
-            debug5 << method << "Need to implement generic histogram slices.";
-            debug5 << std::endl;
+            debug5 << method << "Need to implement generic histogram slices."
+                   << std::endl;
             EXCEPTION1(VisItException, "Generic histogram slices not implemented.");
         }
     }
@@ -2260,6 +2574,8 @@ avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
     if (cacheCurrentHisto)
         histoCache.addToCache(spec);
 }
+#endif
+
 
 // ****************************************************************************
 //  Method: avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection
@@ -2289,13 +2605,14 @@ avtH5PartFileFormat::ConstructHistogram(avtHistogramSpecification *spec)
 //    avtFloatingPointIdNamedSelection.
 //
 // ****************************************************************************
+#ifdef HAVE_LIBFASTBIT
 
 avtIdentifierSelection *
 avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
-        std::vector<avtDataSelection *> &drs)
+    std::vector<avtDataSelection *> &drs)
 {
-    // NOTE: This function is only called from GetAuxiliaryData if useFastBitIndex
-    // is true. We do not need to check that option here.
+    // NOTE: This function is only called from GetAuxiliaryData if
+    // useFastBitIndex is true. So no need to check that option here.
     int t1 = visitTimer->StartTimer();
 
     std::string method =
@@ -2307,14 +2624,16 @@ avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
     debug5 << method << "Creating query string from selections." << std::endl;
 
     // FIXME: This function has some similarity/shared code with
-    // RegisterDataSelections() that should probably be put in a common helper
-    // function.
+    // RegisterDataSelections() that should probably be put in a
+    // common helper function.
 
     // Iterate over all the selections
-    idVariableName = H5PART_DEFAULT_ID_VARIABLE_NAME;
+    idVariableName = defaultIdVariableName;
+    
     for (size_t i=0; i<drs.size(); ++i)
     {
-        if (std::string(drs[i]->GetType()) == std::string("Data Range Selection"))
+        if (std::string(drs[i]->GetType()) ==
+            std::string("Data Range Selection"))
         {
             // Data Range is valid. -> Create the query string
             avtDataRangeSelection *dr = (avtDataRangeSelection*)drs[i];
@@ -2325,13 +2644,14 @@ avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
             std::string min_cond = "(" + DoubleToString(min) + "<=" + var + ")";
             std::string max_cond = "(" + var + "<=" + DoubleToString(max) + ")";
 
-            // FIXME: Check if all variables are availale and have FastBit index.
-            // Possibly issue warning when encountering a variable for which this
-           //  is not true.
+            // FIXME: Check if all variables are availale and have
+            // FastBit index.  Possibly issue warning when
+            // encountering a variable for which this
+            //  is not true.
             if (selectionQuery.empty())
                 selectionQuery = min_cond + " && " + max_cond;
             else
-                selectionQuery = selectionQuery + "&&" + min_cond + "&&" + max_cond;
+                selectionQuery += " && " + min_cond + " && " + max_cond;
 
             selectionSpecified = true;
         }
@@ -2339,7 +2659,7 @@ avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
                 std::string("Identifier Data Selection"))
         {
             // Identifier selection.
-            debug5 << method << "Named Selection found."  << endl;
+            debug5 << method << "Named Selection found."  << std::endl;
 
             avtIdentifierSelection *id = (avtIdentifierSelection*)drs[i];
             const std::vector<double>& ids = id->GetIdentifiers();
@@ -2347,26 +2667,31 @@ avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
             if (!ids.empty())
             {
                 std::string id_string;
-                // FIXME: Constructing a string is very inefficient for large selection. However,
-                // there seems no HDF5_FastQuery function to combine a query for a passed array
-                // of identifiers with a string specifying thresholds. It may make sense to add
-                // this functionality or add a non-string based API for range queries and logical
-                // combination of queries.
+                // FIXME: Constructing a string is very inefficient
+                // for large selection. However, there seems no
+                // HDF5_FastQuery function to combine a query for a
+                // passed array of identifiers with a string
+                // specifying thresholds. It may make sense to add
+                // this functionality or add a non-string based API
+                // for range queries and logical combination of
+                // queries.
                 if(!id->GetIdVariable().empty())
                     idVariableName = id->GetIdVariable();
-                debug5 << method << "Setting idVariableName to " << idVariableName << endl;
+                debug5 << method << "Setting idVariableName to "
+                       << idVariableName << std::endl;
 
                 ConstructIdQueryString(ids, idVariableName, id_string);
 
                 if (selectionQuery.empty())
                     selectionQuery = id_string;
                 else
-                    selectionQuery = selectionQuery + "&&" + id_string;
+                    selectionQuery += " && " + id_string;
 
                 selectionSpecified = true;
             }
         }
     }
+
     debug5 << method << "Query string is " << selectionQuery << std::endl;
 
     std::vector<double> returnIds;
@@ -2375,21 +2700,22 @@ avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
         if (!file)
         {
             file = H5PartOpenFile(filenames[0], H5PART_READ);
-#ifdef HAVE_LIBFASTBIT
+
+            if (!file)
+              EXCEPTION1(InvalidFilesException, "Could not open file.");
+            
             // NOTE: useFastBitIndex is true if this function is called.
-            reader.openFile(filenames[0], true);
-#endif
+            fqReader.openFile(filenames[0], true);
         }
-        if (!file) EXCEPTION1(InvalidFilesException, "Could not open file.");
         H5PartSetStep(file, activeTimeStep);
 
         std::vector<hsize_t> selectionQueryResults;
-        reader.executeQuery(selectionQuery.c_str(), activeTimeStep,
-                selectionQueryResults);
-        debug5 << method << "Execution of query string (length ";
-        debug5 << selectionQuery.size() << ") resulted in ";
-        debug5 << selectionQueryResults.size() << " entries.";
-        debug5 << std::endl;
+        fqReader.executeQuery(selectionQuery.c_str(), activeTimeStep,
+                              selectionQueryResults);
+        
+        debug5 << method << "Execution of query string (length "
+               << selectionQuery.size() << ") resulted in "
+               << selectionQueryResults.size() << " entries." << std::endl;
 
         VarNameToInt64Map_t::const_iterator it =
             particleVarNameToTypeMap.find(idVariableName);
@@ -2450,13 +2776,15 @@ avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
                 delete[] idList;
             }
         }
-        // FIXME: Possibly handle other data types for id variable (INT32?)
-    }
-    else
-    {
-        EXCEPTION2(NonCompliantFileException, "H5Part GetVar", std::string("Variable ")
-                + idVariableName + std::string(" uses an unsupported value type. ")
-                + std::string("(Supported types are FLOAT64, FLOAT32 and INT64.)"));
+        else
+        {
+            EXCEPTION2(NonCompliantFileException,
+                       "H5Part ConstructIdentifiersFromDataRangeSelection",
+                       std::string("Id variable ") + idVariableName +
+                       std::string(" uses an unsupported value type. Supported "
+                                   "types are FLOAT64, FLOAT32 and INT64.)"));
+        }
+        // FIXME: Possibly handle other data types for the id variable
     }
 
     avtIdentifierSelection *rv = new avtIdentifierSelection();
@@ -2466,6 +2794,8 @@ avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
     visitTimer->StopTimer(t1, "H5PartFileFormat::ConstructIdentifiersFromDataRangeSelection()");
     return rv;
 }
+#endif
+
 
 // ****************************************************************************
 //  Method: avtH5PartFileFormat::ConstructIdQueryString
@@ -2488,9 +2818,12 @@ avtH5PartFileFormat::ConstructIdentifiersFromDataRangeSelection(
 //    Pass in the id variable name.
 //
 // ****************************************************************************
+#ifdef HAVE_LIBFASTBIT
 
 void avtH5PartFileFormat::ConstructIdQueryString(
-        const std::vector<double>& identifiers, const std::string &idVar, std::string& id_string)
+    const std::vector<double>& identifiers,
+    const std::string &idVar,
+    std::string& id_string)
 {
     int t1 = visitTimer->StartTimer();
 
@@ -2498,30 +2831,35 @@ void avtH5PartFileFormat::ConstructIdQueryString(
 
     id_string.clear();
 
-    debug5 << "ConstructIdQueryString(): id length = " << identifiers.size();
-    debug5 << std::endl;
+    debug5 << "ConstructIdQueryString(): " << idVar
+           << " length = " << identifiers.size() << std::endl;
 
     if (identifiers.size()>0)
     {
         std::ostringstream queryStream;
         queryStream << "( " << idVar << " in ( ";
 
-        // FIXME: Precision always sufficient? In particular with floats this
-        // may not be true.
+        // FIXME: Precision always sufficient? In particular with
+        // floats this may not be true.
         for (size_t j=0; j<identifiers.size()-1; j++)
             queryStream << setprecision(32) << identifiers[j] << ", ";
-        queryStream << setprecision(32) << identifiers[identifiers.size()-1] << " ))";
+
+        queryStream << setprecision(32) << identifiers[identifiers.size()-1]
+                    << " ))";
 
         if (queryStream)
             id_string =  queryStream.str();
         else
-            EXCEPTION1(VisItException, "Error constructing identifier query string.")
+            EXCEPTION1(VisItException,
+                       "Error constructing identifier query string.")
     }
 
     //debug5 << "id_string is " << id_string << std::endl;
 
     visitTimer->StopTimer(t1, "H5PartFileFormat::ConstructIdQueryString()");
 }
+#endif
+
 
 // ****************************************************************************
 //  Method: avtH5PartFileFormat::PerformQuery
@@ -2535,60 +2873,141 @@ void avtH5PartFileFormat::ConstructIdQueryString(
 //  Modifications:
 //
 // ****************************************************************************
+#ifdef HAVE_LIBFASTBIT
 
 void avtH5PartFileFormat::PerformQuery()
 {
     // NOTE: Only called from SelectParticlesToRead if useFastBintIndex is true.
 
     int t1 = visitTimer->StartTimer();
-    debug5 << "avtH5PartFileFormat::PerformQuery(): Running query." << std::endl;
-#ifdef VERYVERBOSE
-    std::cout << "avtH5PartFileFormat::PerformQuery(): Running query." << std::endl;
-#endif
+
+    debug5 << "avtH5PartFileFormat::PerformQuery(): Running query."
+           << std::endl;
 
     if (!file)
     {
         file = H5PartOpenFile(filenames[0], H5PART_READ);
+
+        if (!file)
+          EXCEPTION1(InvalidFilesException, "Could not open file.");
+        
         // useFastBitIndex is always true if this function is called
-        reader.openFile(filenames[0], true);
+        fqReader.openFile(filenames[0], true);
     }
-    if (!file) EXCEPTION1(InvalidFilesException, "Could not open file.");
 
     H5PartSetStep(file, activeTimeStep);
 
     queryResults.clear();
+
     if (querySpecified == stringQuery)
     {
         debug5 << "String query specified: " << queryString << std::endl;
-#ifdef VERYVERBOSE
-        if (queryString.size() < 1000) std::cout << "Query specified: " << queryString << std::endl;
-#endif
 
-        reader.executeQuery(queryString.c_str(), activeTimeStep, queryResults);
+        fqReader.executeQuery(queryString.c_str(),
+                              activeTimeStep, queryResults);
+        
         dataSelectionActive = true;
     }
     else if (querySpecified == idListQuery)
     {
-        debug5 << "Id list query with " << queryIdList.size() << " ids specified." << std::endl;
-#ifdef VERYBERBOSE
-        std::cout << "Id list query with " << queryIdList.size() << " ids  specified." << std::endl;
-#endif
-        // Note: We ignore the number of hits that was returned
-        (void)reader.executeEqualitySelectionQuery(idVariableName.c_str(), activeTimeStep, queryIdList, queryResults);
-        dataSelectionActive = true;
+        debug5 << "Id list (" << idVariableName
+               << ") query with " << queryIdList.size()
+               << " ids specified." << std::endl;
+
+        if (queryIdList.size() > 0)
+        {
+            // Note: We ignore the number of hits that was returned
+            // fqReader.executeEqualitySelectionQuery(idVariableName.c_str(),
+            //                                     activeTimeStep,
+            //                                     queryIdList,
+            //                                     queryResults);
+
+            std::ostringstream queryStream;
+            
+            for( int i=0; i<queryIdList.size(); ++i)
+            {
+                queryStream << "("
+                      << setprecision(32) << queryIdList[i] << "=="
+                      << idVariableName << ")";
+
+                if( i < queryIdList.size()-1)
+                  queryStream << " || ";            
+            }
+
+            debug5 << "String query specified: " << queryStream.str()
+                   << std::endl;
+            
+            fqReader.executeQuery(queryStream.str().c_str(),
+                                  activeTimeStep, queryResults);
+  
+            dataSelectionActive = true;
+        }
     }
     else
     {
         debug5 << "No query specified." << std::endl;
     }
 
-    debug5 << "Query resulted in " << queryResults.size() << " hits." << std::endl;
-#ifdef VERYVERBOSE
-    std::cout << "Query resulted in " << queryResults.size() << " hits." << std::endl;
-#endif
+    debug5 << "Query resulted in " << queryResults.size() << " hits."
+           << std::endl;
 
     queryResultsValid = true;
+
     visitTimer->StopTimer(t1, "H5PartFileFormat::PerformQuery()");
 }
-
 #endif
+
+// ****************************************************************************
+// Method: avtH5PartFileFormat::GetDecomp
+//
+// Purpose: 
+//   Distribute a set of objects evenly amongst all ranks
+//
+// Arguments:
+//   nObjects   : The number of objects to be distributed
+//   firstIndex : The index of the first object on this rank
+//   lastIndex  : The index of the lastst object on this rank
+//   total      : The total number of ojects on this rank
+//
+// Programmer: Allen Sanderson
+// Creation:   Fri Jan 20 2017
+//
+// ****************************************************************************
+void avtH5PartFileFormat::GetDecomp( h5part_int64_t nObjects,
+                                     h5part_int64_t &firstIndex,
+                                     h5part_int64_t &lastIndex,
+                                     h5part_int64_t &total )
+{
+#ifdef PARALLEL
+  h5part_int64_t rank   = PAR_Rank();
+  h5part_int64_t nProcs = PAR_Size();
+
+  h5part_int64_t nObjectsPerProc = (nObjects / nProcs);
+  h5part_int64_t oneExtraUntil   = (nObjects % nProcs);
+    
+  if (rank < oneExtraUntil)
+  {
+    firstIndex = (rank  ) * (nObjectsPerProc+1);
+    lastIndex  = (rank+1) * (nObjectsPerProc+1) - 1;
+
+    total = lastIndex - firstIndex + 1;
+  }
+  else if( nObjectsPerProc ) 
+  {
+    firstIndex = (rank  ) * (nObjectsPerProc) + oneExtraUntil;
+    lastIndex  = (rank+1) * (nObjectsPerProc) + oneExtraUntil - 1;
+
+    total = lastIndex - firstIndex + 1;
+  }
+  else
+  {
+    firstIndex = -1;
+    lastIndex  = -2;
+    total = 0;
+  }
+#else   
+  firstIndex = 0;
+  lastIndex = nObjects-1;
+  total = nObjects;
+#endif
+}

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,7 +46,6 @@
 
 #include <QButtonGroup>
 #include <QCheckBox>
-#include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QRadioButton>
@@ -54,11 +53,6 @@
 #include <QTimer>
 #include <QWidget>
 #include <vectortypes.h>
-#include <stdio.h>
-#include <string>
-
-
-using std::string;
 
 
 #define MAX_VAL 100000000
@@ -137,6 +131,10 @@ QvisIndexSelectWindow::~QvisIndexSelectWindow()
 //   Cyrus Harrison, Tue Aug 19 16:23:19 PDT 2008
 //   Qt4 Port. 
 //
+//   Kathleen Biagas, Wed Jun  8 17:10:30 PDT 2016
+//   Set keyboard tracking to false for spin boxes so that 'valueChanged'
+//   signal will only emit when 'enter' is pressed or spinbox loses focus.
+//
 // ****************************************************************************
 
 void
@@ -189,6 +187,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Min
     oneDMin = new QSpinBox(central);
+    oneDMin->setKeyboardTracking(false);
     if( atts->GetXAbsMax() == -1 )
       oneDMin->setRange(0, MAX_VAL);
     else
@@ -200,6 +199,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Max
     oneDMax = new QSpinBox(central);
+    oneDMin->setKeyboardTracking(false);
     oneDMax->setSingleStep(1);
 
     if( atts->GetXAbsMax() == -1 )
@@ -222,6 +222,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Incr
     oneDIncr = new QSpinBox(central);
+    oneDIncr->setKeyboardTracking(false);
     if( atts->GetXAbsMax() == -1 )
       oneDIncr->setRange(1, MAX_VAL);
     else
@@ -249,6 +250,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Min
     twoDMin = new QSpinBox(central);
+    twoDMin->setKeyboardTracking(false);
     if( atts->GetZAbsMax() == -1 )
       twoDMin->setRange(0, MAX_VAL);
     else
@@ -260,6 +262,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Max
     twoDMax = new QSpinBox(central);
+    twoDMax->setKeyboardTracking(false);
     twoDMax->setSingleStep(1);
     if( atts->GetZAbsMax() == -1 )
     {
@@ -281,6 +284,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Incr
     twoDIncr = new QSpinBox(central);
+    twoDIncr->setKeyboardTracking(false);
     if( atts->GetZAbsMax() == -1 )
       twoDIncr->setRange(1,MAX_VAL);
     else
@@ -308,6 +312,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Min
     threeDMin = new QSpinBox(central);
+    threeDMin->setKeyboardTracking(false);
     if( atts->GetZAbsMax() == -1 )
       threeDMin->setRange(0, MAX_VAL);
     else
@@ -319,6 +324,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Max
     threeDMax = new QSpinBox(central);
+    threeDMax->setKeyboardTracking(false);
     threeDMax->setSingleStep(1);
     if( atts->GetZAbsMax() == -1 )
     {
@@ -340,6 +346,7 @@ QvisIndexSelectWindow::CreateWindowContents()
 
     // Set Up Incr
     threeDIncr = new QSpinBox(central);
+    threeDIncr->setKeyboardTracking(false);
     if( atts->GetZAbsMax() == -1 )
       threeDIncr->setRange(1, MAX_VAL);
     else

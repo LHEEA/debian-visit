@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -149,8 +149,7 @@ GetMetaDataRPCExecutor::Update(Subject *s)
 
     debug2 << "GetMetaDataRPCExecutor::Update - file="
            << rpc->GetFile().c_str() << " type="
-           << rpc->GetForcedFileType() << "\n";
-    debug2.flush();
+           << rpc->GetForcedFileType() << "\n" << std::flush;
 
     TRY
     {

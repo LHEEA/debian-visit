@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -2022,6 +2022,32 @@ FileServerList::SetProgressCallback(bool (*cb)(void *, int), void *data)
 }
 
 // ****************************************************************************
+// Method: FileServerList::GetProgressCallback
+//
+// Purpose: 
+//   Gets the progress callback that is called while we launch a new mdserver.
+//   This was added so the QvisFileOpenDialog could get and set this data
+//   for the data open window.
+//
+// Arguments:
+//   cb   : The address of the callback function.
+//   data : Callback data.
+//
+// Programmer: David Camp
+// Creation:   Mon Sep 28 10:48:39 PDT 2015
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+FileServerList::GetProgressCallback(bool (*cb)(void *, int), void *data)
+{
+    cb = progressCallback;
+    data = progressCallbackData;
+}
+
+// ****************************************************************************
 // Method: FileServerList::GetFilteredFileList
 //
 // Purpose: 
@@ -3489,7 +3515,7 @@ FileServerList::GetSeparatorString(const string &host)
 }
 
 // ****************************************************************************
-//  Method:  FileServerList::SetOpenFileMetaData
+//  Method:  FileServerList::SetFileMetaData
 //
 //  Purpose:
 //    Poke new metadata into the file server.  This is needed by
@@ -3518,11 +3544,12 @@ FileServerList::GetSeparatorString(const string &host)
 // ****************************************************************************
 
 void
-FileServerList::SetOpenFileMetaData(const avtDatabaseMetaData *md, int timeState)
+FileServerList::SetFileMetaData(const QualifiedFilename &filename,
+                                const avtDatabaseMetaData *md, int timeState)
 {
-    if(fileMetaData.find(openFile.FullName()) != fileMetaData.end())
+    if(fileMetaData.find(filename.FullName()) != fileMetaData.end())
     {
-        *(fileMetaData[openFile.FullName()]) = *md;
+        *(fileMetaData[filename.FullName()]) = *md;
         // hack to have it return that the file changed
         fileAction=FILE_OPEN;
         Select(ID_fileAction, (void *)&fileAction);
@@ -3530,12 +3557,12 @@ FileServerList::SetOpenFileMetaData(const avtDatabaseMetaData *md, int timeState
     else
     {
         debug1 << "Attempted to insert metadata for a file that has not been "
-                  "opened. openFile=" << openFile.FullName() << endl;
+                  "opened. openFile=" << filename.FullName() << endl;
     } 
 }
 
 // ****************************************************************************
-//  Method:  FileServerList::SetOpenFileSIL
+//  Method:  FileServerList::SetFileSIL
 //
 //  Purpose:
 //    Poke a new SIL into the file server.  This is needed by
@@ -3556,11 +3583,12 @@ FileServerList::SetOpenFileMetaData(const avtDatabaseMetaData *md, int timeState
 // ****************************************************************************
 
 void
-FileServerList::SetOpenFileSIL(const avtSIL *sil)
+FileServerList::SetFileSIL(const QualifiedFilename &filename,
+                           const avtSIL *sil)
 {
-    if(SILData.find(openFile.FullName()) != SILData.end())
+    if(SILData.find(filename.FullName()) != SILData.end())
     {
-        *(SILData[openFile.FullName()]) = *sil;
+        *(SILData[filename.FullName()]) = *sil;
         // hack to have it return that the file changed
         fileAction=FILE_OPEN;
         Select(ID_fileAction, (void *)&fileAction);
@@ -3593,4 +3621,64 @@ FileServerList::SetFilePlugin(const QualifiedFilename &filename,
                               const string &plugin)
 {
     filePlugins[filename.FullName()] = plugin;
+}
+
+// ****************************************************************************
+//  Method:  FileServerList::SaveSessionFile
+//
+//  Purpose:
+//    Save Session file.
+//
+//  Arguments:
+//    host     - host name.
+//    filename - Session file name to load.
+//    contents - contents to write in the session file.
+//
+//  Programmer:  David Camp
+//  Creation:    Thu Aug 27 09:40:00 PDT 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void 
+FileServerList::SaveSessionFile(const std::string &host, const std::string &filename, const std::string &contents)
+{
+    typedef MDServerManager::ServerMap ServerMap;
+    ServerMap& servers = MDServerManager::Instance()->GetServerMap();
+    ServerMap::iterator info = servers.find(host);
+    if(info != servers.end())
+    {
+        info->second->server->GetMDServerMethods()->SaveSession(filename, contents);
+    }
+}
+
+// ****************************************************************************
+//  Method:  FileServerList::RestoreSessionFile
+//
+//  Purpose:
+//    Load Remote Session file.
+//
+//  Arguments:
+//    host     - host name.
+//    filename - Session file name to load.
+//    contents - location to write session file contents.
+//
+//  Programmer:  David Camp
+//  Creation:    Thu Aug 27 09:40:00 PDT 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void 
+FileServerList::RestoreSessionFile(const std::string &host, const std::string &filename, std::string &contents)
+{
+    typedef MDServerManager::ServerMap ServerMap;
+    ServerMap& servers = MDServerManager::Instance()->GetServerMap();
+    ServerMap::iterator info = servers.find(host);
+    if(info != servers.end())
+    {
+        info->second->server->GetMDServerMethods()->RestoreSession(filename, contents);
+    }
 }

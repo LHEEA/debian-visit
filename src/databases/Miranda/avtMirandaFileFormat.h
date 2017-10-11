@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -148,7 +148,7 @@ class avtMirandaFileFormat : public avtMTMDFileFormat
      void                   InterleaveData(float *__restrict dst, float *__restrict src, int *dstDim, int nComp);
     virtual void           PackData(float *__restrict dst, const  float * const  *__restrict src, 
                                     const int *dstDim, int nComp, bool interleave);
-    virtual void           ReadRawScalar(FILE *fd, int iComp, float *out, const char *filename, int domain);
+    virtual void           ReadRawScalar(FILE *fd, int iComp, float *out, const char *filename, int domain, int numelems);
     virtual void           FindNeighborDomains(int domain, int *neighbors, int *realdim);
 
     static  void           SkipToEndOfLine( ifstream &f, bool bCheckForBadTokens = true );

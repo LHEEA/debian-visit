@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -187,6 +187,7 @@ public:
     std::string GetName(int) const;
     void SetObsolete(const std::string &name);
     bool IsObsolete(const std::string &name) const;
+    bool Merge(const DBOptionsAttributes &obj);
 
     // IDs that can be used to identify fields in case statements
     enum {

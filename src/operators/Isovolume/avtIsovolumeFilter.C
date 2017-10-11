@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -332,6 +332,9 @@ inline void IsovolumeMinMax(double &min, double &max, Accessor access)
 //    I modified the routine to return a NULL in the case where it previously
 //    returned an avtDataRepresentation with a NULL vtkDataSet.
 //
+//    Eric Brugger, Tue Aug 25 10:13:49 PDT 2015
+//    I modified the routine to return NULL if the output data set was NULL.
+//
 // ****************************************************************************
 
 avtDataRepresentation *
@@ -446,8 +449,10 @@ avtIsovolumeFilter::ExecuteData(avtDataRepresentation *in_dr)
         own = true;
     }
 
-    avtDataRepresentation *out_dr = new avtDataRepresentation(out_ds,
-        in_dr->GetDomain(), in_dr->GetLabel());
+    avtDataRepresentation *out_dr = NULL;
+    if (out_ds != NULL)
+        out_dr = new avtDataRepresentation(out_ds,
+            in_dr->GetDomain(), in_dr->GetLabel());
 
     if (own && out_ds != NULL)
         out_ds->Delete();

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -76,6 +76,7 @@
 #include <QueryList.h>
 #include <RenderingAttributes.h>
 #include <SaveWindowAttributes.h>
+#include <SeedMeAttributes.h>
 #include <SelectionList.h>
 #include <SelectionProperties.h>
 #include <SimulationUIValues.h>

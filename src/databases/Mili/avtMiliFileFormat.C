@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -245,7 +245,7 @@ avtMiliFileFormat::avtMiliFileFormat(const char *fname)
     //
     // If it ends in .m or .mili, strip it off.
     //
-    int len = strlen(root);
+    size_t len = strlen(root);
 
     if (len > 4 && strcmp(&(root[len - 5]), ".mili") == 0)
     {
@@ -1000,16 +1000,28 @@ avtMiliFileFormat::DecodeMultiLevelVarname(const string &inname, string &decoded
 //    Hank Childs, Wed Aug 18 16:17:52 PDT 2004
 //    Add some special handling for single domain families.
 //
+//    Eric Brugger, Mon Sep 21 11:01:46 PDT 2015
+//    The reader now returns the cycles and times in the meta data and 
+//    marks them as accurate so that they are used where needed.
+//
 // ****************************************************************************
 
 void
 avtMiliFileFormat::OpenDB(int dom)
 {
+    char const * const root_fmtstrs[] = {
+        "%s%.3d",
+        "%s%.4d",
+        "%s%.5d",
+        "%s%.6d",
+    };
+
     if (dbid[dom] == -1)
     {
         int rval;
         if (ndomains == 1)
         {
+            debug3 << "Attempting mc_open on root=\"" << famroot << "\", path=\"" << fampath << "\"." << endl;
             rval = mc_open( famroot, fampath, "r", &(dbid[dom]) );
 
             if ( rval != OK )
@@ -1017,18 +1029,27 @@ avtMiliFileFormat::OpenDB(int dom)
                 // Try putting in the domain number and see what happens...
                 // We need this because makemili accepts it and there are
                 // legacy .mili files that look like fam rather than fam000.
-                char rootname[255];
-                sprintf(rootname, "%s%.3d", famroot, dom);
-                rval = mc_open(rootname, fampath, "r", &(dbid[dom]) );
+                int i; char rootname[255];
+                for (i = 0; i < 4 && rval != OK; i++)
+                {
+                    sprintf(rootname, root_fmtstrs[i], famroot, dom);
+                    debug3 << "Attempting mc_open on root=\"" << rootname << "\", path=\"" << fampath << "\"." << endl;
+                    rval = mc_open(rootname, fampath, "r", &(dbid[dom]) );
+                }
             }
             if ( rval != OK )
                 EXCEPTION1(InvalidFilesException, famroot);
         }
         else
         {
-            char famname[128];
-            sprintf(famname, "%s%.3d", famroot, dom);
-            rval = mc_open( famname, fampath, "r", &(dbid[dom]) );
+            int i; char famname[128];
+            for (i = 0; i < 4; i++)
+            {
+                sprintf(famname, root_fmtstrs[i], famroot, dom);
+                debug3 << "Attempting mc_open on root=\"" << famname << "\", path=\"" << fampath << "\"." << endl;
+                rval = mc_open( famname, fampath, "r", &(dbid[dom]) );
+                if (rval == OK) break;
+            }
             if ( rval != OK )
                 EXCEPTION1(InvalidFilesException, famname);
         }
@@ -1070,6 +1091,12 @@ avtMiliFileFormat::OpenDB(int dom)
                 {
                     times.push_back(ttimes[i]);
                 }
+            }
+
+            cycles.clear();
+            for (int i = 0 ; i < ntimesteps ; i++)
+            {
+                cycles.push_back(i);
             }
         }
     }
@@ -1470,7 +1497,7 @@ avtMiliFileFormat::ValidateVariables(int dom)
                 vars_valid[dom][vv].push_back(pushVal);
                 var_size[dom][vv].push_back(M_FLOAT);
             }
-            int index = sub_records[dom].size() - 1;
+            int index = (int)sub_records[dom].size() - 1;
            
             for (int k = 0 ; k < sr.qty_svars ; k++)
             {
@@ -2059,18 +2086,17 @@ avtMiliFileFormat::GetVectorVar(int ts, int dom, const char *name)
 //  Programmer:  Hank Childs
 //  Creation:    April 11, 2003
 //
+//  Modifications:
+//    Eric Brugger, Mon Sep 21 11:01:46 PDT 2015
+//    The reader now returns the cycles and times in the meta data and 
+//    marks them as accurate so that they are used where needed.
+//
 // ****************************************************************************
 
 void
-avtMiliFileFormat::GetCycles(vector<int> &cycles)
+avtMiliFileFormat::GetCycles(vector<int> &out_cycles)
 {
-    int nTimesteps = GetNTimesteps();
-
-    cycles.resize(nTimesteps);
-    for (int i = 0 ; i < nTimesteps ; i++)
-    {
-        cycles[i] = i;
-    }
+    out_cycles = cycles;
 }
 
 
@@ -2173,6 +2199,11 @@ avtMiliFileFormat::GetNTimesteps()
 //
 //    Mark C. Miller, Tue Mar 27 08:39:55 PDT 2007
 //    Added support for node origin
+//
+//    Eric Brugger, Mon Sep 21 11:01:46 PDT 2015
+//    The reader now returns the cycles and times in the meta data and 
+//    marks them as accurate so that they are used where needed.
+//
 // ****************************************************************************
 
 void
@@ -2367,6 +2398,14 @@ avtMiliFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     // By calling OpenDB for domain 0, it will populate the times.
     //
     OpenDB(0);
+
+    //
+    // Set the cycle and time information.
+    //
+    md->SetCyclesAreAccurate(true);
+    md->SetCycles(cycles);
+    md->SetTimesAreAccurate(true);
+    md->SetTimes(times);
 
     vector<string> dirs;
     dirs.push_back("");
@@ -3855,8 +3894,6 @@ avtMiliFileFormat::LoadMiliInfo(const char *fname)
                      name = string(nameC);
 
                      // Remove trailing spaces
-                     int len=name.length();
-
                      found = name.find_last_not_of(" ");
                      if ( found!=string::npos && found!=(name.length()-1) )
                           name = name.substr(0, found+1);

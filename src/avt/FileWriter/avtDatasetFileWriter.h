@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,7 +106,7 @@ class AVTFILEWRITER_API avtDatasetFileWriter : public avtTerminatingDatasetSink
                        avtDatasetFileWriter();
     virtual           ~avtDatasetFileWriter();
 
-    void               Write(DatasetFileFormat, const char *filename, bool);
+    void               Write(DatasetFileFormat, const char *filename, int, int, bool);
 
     char              *CreateFilename(const char *base, bool family,
                                       DatasetFileFormat);
@@ -120,7 +120,7 @@ class AVTFILEWRITER_API avtDatasetFileWriter : public avtTerminatingDatasetSink
 
     void               WritePLYFile(const char *, bool);
 
-    void               WriteCurveFile(const char *);
+    void               WriteCurveFile(const char *, int, int);
 
     void               WritePOVRayFamily(const char *);
     int                WritePOVRayTree(avtDataTree_p, int, const char *,

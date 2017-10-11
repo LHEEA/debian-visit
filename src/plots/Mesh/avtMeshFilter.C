@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -239,12 +239,6 @@ avtMeshFilter::ExecuteDataTree(avtDataRepresentation *inDR)
     }
     else
         revisedInput = inDS;
-
-    if (atts.GetOutlineOnlyFlag())
-    {
-     // we need to do some decimation (?) here
-     // use atts.GetErrorTolerance();
-    }
 
     //
     // Do not perform opaque if topological dimension of input == 0 or 1 

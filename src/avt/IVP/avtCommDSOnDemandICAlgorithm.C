@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -167,7 +167,7 @@ avtCommDSOnDemandICAlgorithm::AddIntegralCurves(vector<avtIntegralCurve *> &ics)
     for (int i = i1; i < nSeeds; i++)
         delete ics[i];
     
-    debug5 << "I have seeds: "<<i0<<" to "<<(i1-1)<<" of "<<nSeeds<<endl;
+    debug5 << "I have seeds: "<<i0<<" to "<<(i1-1)<<" of "<<nSeeds<<" seeds"<<endl;
     
     // Filter the seeds for proper domain inclusion and fill the activeICs list.
     avtVector endPt;
@@ -208,7 +208,7 @@ avtCommDSOnDemandICAlgorithm::RunAlgorithm()
     debug1<<"avtCommDSOnDemandICAlgorithm::RunAlgorithm()\n";
     int timer = visitTimer->StartTimer();
 
-    //Sort the streamlines and load the first domain.
+    //Sort the integral curves and load the first domain.
     SortIntegralCurves(activeICs);
     SortIntegralCurves(oobICs);
 

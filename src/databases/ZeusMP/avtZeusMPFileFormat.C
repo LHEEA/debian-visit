@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -245,8 +245,9 @@ avtZeusMPFileFormat::GetFileInformation()
         {
             int32 sds_id = SDselect(file_handle, var);
             if(sds_id == FAIL)
+            {
                 debug4 << "SDselect failed for " << dsname << endl;
- 
+            }
             // Read the long_name attribute to see what we should call the variable.
             int32 attr_index = SDfindattr(sds_id, "long_name");
             if (attr_index != FAIL)
@@ -356,26 +357,6 @@ avtZeusMPFileFormat::GetTime(void)
            << (haveFileTime ? fileTime : INVALID_TIME) << endl;
 
     return haveFileTime ? fileTime : INVALID_TIME;
-}
-
-// ****************************************************************************
-// Method: avtZeusMPFileFormat::ReturnsValidTime
-//
-// Purpose: 
-//   Indicates whether the dataset returns a valid time.
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Jan 13 12:17:29 PDT 2006
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-bool
-avtZeusMPFileFormat::ReturnsValidTime() const
-{
-    debug4 << "avtZeusMPFileFormat::ReturnsValidTime: " << (haveFileTime?"true":"false") << endl;
-    return haveFileTime;
 }
 
 // ****************************************************************************

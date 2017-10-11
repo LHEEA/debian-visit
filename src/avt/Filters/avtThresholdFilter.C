@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -485,7 +485,7 @@ vtkDataSet *
 avtThresholdFilter::ThresholdToPointMesh(vtkDataSet *in_ds)
 {
     const stringVector curVariables = atts.GetListedVarNames();
-    int curVarCount = curVariables.size();
+    int curVarCount = (int)curVariables.size();
     int curVarNum;
     vtkPointData *inPointData = in_ds->GetPointData();
     
@@ -1073,7 +1073,7 @@ avtThresholdFilter::ModifyContract(avtContract_p in_spec)
     avtIntervalTree *it;
     size_t varDomNum;
     size_t curDomNum;
-    size_t curDomain;
+    int    curDomain;
     intVector varDomains;
     intVector curDomains;
     intVector outDomains;
@@ -1101,7 +1101,7 @@ avtThresholdFilter::ModifyContract(avtContract_p in_spec)
                     {
                         for (varDomNum=0; varDomNum<varDomains.size(); varDomNum++)
                         {
-                            if ((size_t)varDomains[varDomNum] == curDomain) break;
+                            if (varDomains[varDomNum] == curDomain) break;
                         }
 
                         if (varDomNum >= varDomains.size())

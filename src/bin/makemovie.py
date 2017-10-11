@@ -1,6 +1,6 @@
 ##############################################################################
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # All rights reserved.
 #
@@ -967,9 +967,9 @@ class MakeMovie(object):
         print "    -expedite          Makes batch system give priority scheduling."
         print ""
 
-    def Log(self, str):
+    def Log(self, msg):
         if self.log != 0:
-            self.log.write("%s\n" % str)
+            self.log.write("%s\n" % msg)
             self.log.flush()
 
     ###########################################################################
@@ -986,18 +986,18 @@ class MakeMovie(object):
     #
     ###########################################################################
 
-    def Debug(self, level, str):
+    def Debug(self, level, msg):
         if level not in (1,2,3,4,5):
             return
         debug_level = GetDebugLevel()
         if debug_level > 0:
             for i in range(level, 6):
                  if self.debug_real[i-1] != 0:
-                     self.debug_real[i-1].write("%s\n" % str)
+                     self.debug_real[i-1].write("%s\n" % msg)
                      self.debug_real[i-1].flush()
         # Write debug1 to the log also.
         if level == 1:
-            self.Log(str)
+            self.Log(msg)
           
     ###########################################################################
     # Method: SendClientProgress
@@ -1237,6 +1237,9 @@ class MakeMovie(object):
     #   Change the movie formats to all use PNG as the input format when
     #   ffmpeg is present and PPM otherwise (for use with mpeg2encode).
     #
+    #   Kathleen Biagas, Tue Sep 29 15:52:44 MST 2015
+    #   On Windows, only fail if format NOT compatible.
+    #
     ###########################################################################
 
     def ProcessArguments(self):
@@ -1288,7 +1291,7 @@ class MakeMovie(object):
                                     validFormat = k
 
                         if validFormat != "":
-                            if sys.platform == "win32" and self.formatInfo[validFormat][self.FMT_WINDOWSCOMPATIBLE]:
+                            if sys.platform == "win32" and not self.formatInfo[validFormat][self.FMT_WINDOWSCOMPATIBLE]:
                                 print "Error! ", format, " is not supported on Windows."
                                 sys.exit(-1)
                             else:

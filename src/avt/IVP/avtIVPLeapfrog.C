@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,7 +46,6 @@
 
 #include <limits>
 #include <cmath>
-#include <float.h>
 
 #include <avtIVPFlashField.h>
 
@@ -70,14 +69,14 @@ static inline double sign( const double& a, const double& b )
 //
 // ****************************************************************************
 
-avtIVPLeapfrog::avtIVPLeapfrog() : vCur(0,0,0)
+avtIVPLeapfrog::avtIVPLeapfrog()
 {
     // set (somewhat) reasonable defaults
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    numStep = 0;
 
+    firstStep = true;
     order = 2; // Highest order ODE that the integrator can support.
 }
 
@@ -99,45 +98,6 @@ avtIVPLeapfrog::~avtIVPLeapfrog()
 
 
 // ****************************************************************************
-//  Method: avtIVPLeapfrog::GetCurrentV
-//
-//  Purpose:
-//      Gets the current V.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   August 5, 2008
-//
-//  Modifications:
-
-// ****************************************************************************
-
-avtVector 
-avtIVPLeapfrog::GetCurrentV() const
-{
-    return vCur;
-}
-
-// ****************************************************************************
-//  Method: avtIVPLeapfrog::SetCurrentV
-//
-//  Purpose:
-//      Sets the current V.
-//
-//  Programmer: Dave Pugmire
-//  Creation:   August 5, 2008
-//
-//  Modifications:
-//
-// ****************************************************************************
-
-void
-avtIVPLeapfrog::SetCurrentV(const avtVector &newV)
-{
-    vCur = newV;
-}
-
-
-// ****************************************************************************
 //  Method: avtIVPLeapfrog::Reset
 //
 //  Purpose:
@@ -154,11 +114,11 @@ avtIVPLeapfrog::Reset(const double& t_start,
                       const avtVector &v_start)
 {
     t = t_start;
-    numStep = 0;
-
     yCur = y_start;
     vCur = v_start;
     h = h_max;
+
+    firstStep = true;
 }
 
 
@@ -207,9 +167,16 @@ avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
         h = t_max - t_local;
     }
 
-    // stepsize underflow?
+    // stepsize underflow??
     if( 0.1*std::abs(h) <= std::abs(t_local)*epsilon )
+    {
+        if (DebugStream::Level5())
+        {
+            debug5 << "\tavtIVPLeapfrog::Step(): exiting at t = " 
+                   << t << ", step size too small (h = " << h << ")\n";
+        }
         return avtIVPSolver::STEPSIZE_UNDERFLOW;
+    }
     
     avtIVPField::Result fieldResult;
     avtVector yNew, vNew;
@@ -220,7 +187,7 @@ avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
         if ((fieldResult = (*field)(t_local, yCur, vCur, aCur)) != avtIVPField::OK)
             return ConvertResult(fieldResult);
 
-        if( numStep )
+        if( firstStep )
             vNew = vCur + aCur * h;      // New velocity
         else
             vNew = vCur + aCur * h/2.0;  // Initial velocity at half step
@@ -232,6 +199,7 @@ avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
         if ((fieldResult = (*field)(t_local, yCur, vCur)) != avtIVPField::OK)
             return ConvertResult(fieldResult);
 
+        vNew = vCur;
         yNew = yCur + vCur * h;     // New position
     }
     
@@ -252,15 +220,12 @@ avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
     ivpstep->t0 = t;
     ivpstep->t1 = t + h;
 
-    // Update for the next step.
-    numStep++;
-    
     yCur = yNew;
     vCur = vNew;
-    t = t+h;
+    t = t + h;
     
     if( period && last )
-      t += FLT_EPSILON;
+      t += epsilon;
 
     // Reset the step size on sucessful step.
     h = h_max;
@@ -281,11 +246,7 @@ avtIVPLeapfrog::Step(avtIVPField* field, double t_max, avtIVPStep* ivpstep)
 void
 avtIVPLeapfrog::AcceptStateVisitor(avtIVPStateHelper& aiss)
 {
-    aiss.Accept(numStep)
-        .Accept(tol)
-        .Accept(h)
-        .Accept(h_max)
-        .Accept(t)
-        .Accept(yCur)
-        .Accept(vCur);
+    avtIVPSolver::AcceptStateVisitor(aiss);
+
+    aiss.Accept(firstStep);
 }

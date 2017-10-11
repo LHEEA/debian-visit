@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -68,7 +68,6 @@ class avtGULPFileFormat : public avtMTSDFileFormat
     virtual           ~avtGULPFileFormat() {;};
 
     virtual int       GetNTimesteps(void);
-    virtual bool      ReturnsValidTime() const { return true; };
     virtual void      GetTimes(std::vector<double> &t);
 
     virtual const char    *GetType(void)   { return "GULP"; };

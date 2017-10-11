@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -50,7 +50,7 @@ def gen_ofname(node):
     pattern = p.pattern
     offset  = p.offset
     if pattern.find("%") >0:
-        ofname = pattern % (node.state_vector.idx + offset)
+        ofname = pattern % (node.state_vector.index() + offset)
     else:
         ofname = pattern
     return ofname

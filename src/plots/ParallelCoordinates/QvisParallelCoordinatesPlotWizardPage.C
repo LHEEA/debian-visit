@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,11 +37,10 @@
 *****************************************************************************/
 
 #include <QvisParallelCoordinatesPlotWizardPage.h>
-#include <QButtonGroup>
 #include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
-#include <QRadioButton>
+#include <QPushButton>
 #include <QListWidget>
 
 #include <QvisParallelCoordinatesWidget.h>
@@ -50,7 +49,6 @@
 
 #include <avtDatabaseMetaData.h>
 #include <ExpressionList.h>
-#include <QDebug>
 
 
 // ****************************************************************************

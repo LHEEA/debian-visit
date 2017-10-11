@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -45,12 +45,10 @@
 // Forward declarations
 class IntegralCurveAttributes;
 
-class QTabWidget;
 class QLabel;
 class QCheckBox;
 class QLineEdit;
 class QSpinBox;
-class QVBox;
 class QButtonGroup;
 class QRadioButton;
 class QComboBox;
@@ -59,7 +57,6 @@ class QPushButton;
 class QListWidget;
 class QListWidgetItem;
 
-class QvisLineWidthWidget;
 class QvisVariableButton;
 
 class SelectionList;
@@ -84,7 +81,7 @@ class SelectionList;
 //   Added useWholeBox.
 //
 //   Dave Pugmire, Thu Nov 15 12:09:08 EST 2007
-//   Add streamline direction option.
+//   Add integral curve direction option.
 //
 //   Dave Pugmire, Mon Aug 4 2:49:38 EDT 2008
 //   Added termination, algorithm and integration options.
@@ -114,7 +111,7 @@ class SelectionList;
 //   Add min/max options to color table.
 //
 //   Dave Pugmire, Tue Dec 29 14:37:53 EST 2009
-//   Add lots of appearance options to the streamlines plots.
+//   Add lots of appearance options to the integral curves plots.
 //
 //   Dave Pugmire, Wed Jan 20 09:28:59 EST 2010
 //   Add ramp opacity, show head geom.
@@ -212,6 +209,7 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     void deletePoint();
     void deletePoints();
     void readPoints();
+    void copyPoints();
     void textChanged(const QString &currentText);
 
     void samplingTypeChanged(int);
@@ -249,6 +247,9 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     void processCorrelationDistanceAngTolEditText();
     void processCorrelationDistanceMinDistEditText();
 
+    void cleanupMethodChanged(int val);
+    void cleanupThresholdProcessText();
+
     void cropBeginFlagChanged(bool val);
     void cropBeginProcessText();
     void cropEndFlagChanged(bool val);
@@ -267,7 +268,10 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     void pathlinePeriodProcessText();
     void pathlineCMFEButtonGroupChanged(int val);
 
+    void issueWarningForAdvectionChanged(bool);
+    void issueWarningForBoundaryChanged(bool);
     void issueWarningForMaxStepsChanged(bool);
+    void issueWarningForStepsizeChanged(bool);
     void issueWarningForStiffnessChanged(bool);
     void issueWarningForCriticalPointsChanged(bool);
     void criticalPointThresholdProcessText();
@@ -286,6 +290,8 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     QLabel    *lineEndLabel;
     QListWidget *pointList;
     QPushButton *pointListDelPoint, *pointListDelAllPoints, *pointListAddPoint, *pointListReadPoints;
+    QListWidget *fieldData;
+    QPushButton *fieldDataCopyPoints;
     QLineEdit *planeOrigin;
     QLabel    *planeOriginLabel;
     QLineEdit *planeNormal;
@@ -351,6 +357,10 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     QLineEdit *correlationDistanceAngTolEdit, *correlationDistanceMinDistEdit;
     QComboBox *correlationDistanceMinDistType;
 
+    QLabel    *cleanupThresholdLabel;
+    QLineEdit *cleanupThreshold;
+    QComboBox *cleanupMethodComboBox;
+
     QCheckBox *cropBeginFlag;
     QLineEdit *cropBegin;
     QCheckBox *cropEndFlag;
@@ -373,7 +383,10 @@ class QvisIntegralCurveWindow : public QvisOperatorWindow
     QLineEdit *pathlinePeriod;
     QButtonGroup *pathlineCMFEButtonGroup;
 
+    QCheckBox *issueWarningForAdvection;
+    QCheckBox *issueWarningForBoundary;
     QCheckBox *issueWarningForMaxSteps;
+    QCheckBox *issueWarningForStepsize;
     QCheckBox *issueWarningForStiffness;
     QCheckBox *issueWarningForCriticalPoints;
     QLineEdit *criticalPointThreshold;

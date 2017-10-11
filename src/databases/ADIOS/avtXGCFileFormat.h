@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -106,11 +106,12 @@ class avtXGCFileFormat : public avtMTMDFileFormat
   protected:
     ADIOSFileObject *file, *meshFile, *diagFile;
     std::string sepFileName;
-    bool initialized, haveSepMesh;
+    bool initialized, haveSepMesh, haveParticles;
     int numNodes, numTris, numPhi;
 
 
     void                   Initialize();
+    vtkDataSet            *GetParticleMesh(int, int);
     vtkDataArray          *GetTurbulence(int ts, int dom);
     vtkDataArray          *GetSep();
     vtkDataArray          *GetPsi();

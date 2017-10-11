@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -37,16 +37,22 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                             avtNektarPPOptions.h                              //
+//                             avtNektarPPOptions.h                          //
 // ************************************************************************* //
 
 #ifndef AVT_NektarPP_OPTIONS_H
 #define AVT_NektarPP_OPTIONS_H
 
-class DBOptionsAttributes;
-
 #include <string>
 
+class DBOptionsAttributes;
+
+namespace NektarPPDBOptions
+{
+    // Read options
+    const char *const NEKTARPP_MESH_REFINEMENT = "Mesh refinement";
+    const char *const NEKTARPP_ASSUME_PLANAR_ELEMENTS = "Assume planar elements";
+}
 
 // ****************************************************************************
 //  Functions: avtNektarPPOptions

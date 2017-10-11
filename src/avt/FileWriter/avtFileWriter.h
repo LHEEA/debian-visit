@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,6 +62,9 @@
 //    Kathleen Bonnell, Thu Nov  6 07:44:38 PST 2003
 //    Add compression arg to Write method.
 //
+//    Brad Whitlock, Tue Mar 22 19:35:40 PDT 2016
+//    Add check permissions flag to CreateFilename.
+//
 // ****************************************************************************
 
 class AVTFILEWRITER_API avtFileWriter
@@ -78,7 +81,8 @@ class AVTFILEWRITER_API avtFileWriter
     void                   WriteImageDirectly(vtkImageWriter *, const char *,
                                             avtDataObject_p);
   
-    char                  *CreateFilename(const char *, bool);
+    char                  *CreateFilename(const char *base, bool family,
+                                          bool fileChecks = true);
 
   protected:
     int                    format;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -141,7 +141,6 @@ GetSiloWriteOptions(void)
     drivers.push_back("PDB");  // 0
     drivers.push_back("HDF5"); // 1
     rv->SetEnumStrings(SILO_WROPT_DRIVER, drivers);
-    rv->SetBool(SILO_WROPT_SINGLE_FILE, false);
     rv->SetBool(SILO_WROPT_CKSUMS, false);
     rv->SetString(SILO_WROPT_COMPRESSION, "");
 

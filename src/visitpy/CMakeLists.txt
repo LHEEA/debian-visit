@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -63,6 +63,12 @@
 #  Kathleen Biagas, Tue Feb 25 11:44:49 PST 2014
 #  Add visitpy/PyThresholdOpAttributes.
 #
+#  Kathleen Biagas, Mon Jul 13 18:48:19 PDT 2015
+#  Add common/PyLine3DObject.
+#
+#  Eric Brugger, Mon Apr 11 15:08:56 PDT 2016
+#  Added visit_flow
+#
 #****************************************************************************/
 
 SET(COMMON_SOURCES
@@ -73,6 +79,7 @@ common/MethodDoc.C
 common/PyImageObject.C
 common/PyLegendAttributesObject.C
 common/PyLineObject.C
+common/PyLine3DObject.C
 common/PySILRestrictionBase.C
 common/PySILRestriction.C
 common/PyText2DObject.C
@@ -291,6 +298,7 @@ ENDIF(VISIT_STATIC)
 #
 ADD_SUBDIRECTORY(visitmodule)
 ADD_SUBDIRECTORY(visit_utils)
+ADD_SUBDIRECTORY(visit_flow)
 
 
 IF(VISIT_PYTHON_FILTERS)

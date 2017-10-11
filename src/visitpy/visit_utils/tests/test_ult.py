@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -78,9 +78,9 @@ class TestUlt(unittest.TestCase):
     def test_plot_direct(self):
         w = Window()
         ult.plot(db)
-        ofile = pjoin(output_dir,"test.ult.plot.direct.render.png")
-        w.render(obase=ofile,res=[200,200])
-        self.assertTrue(os.path.isfile(ofile))
+        obase = pjoin(output_dir,"test.ult.plot.direct.render")
+        w.render(obase=obase,res=[200,200])
+        self.assertTrue(os.path.isfile(obase + ".png"))
         WindowManager.cleanup_windows()
         visit.DeleteAllPlots()
         visit.CloseDatabase(db)

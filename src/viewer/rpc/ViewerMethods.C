@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -3798,19 +3798,23 @@ ViewerMethods::WriteConfigFile()
 //
 // Arguments:
 //   filename : The name of the file used to write the state.
+//   hostname : Host name to export state too.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Jul 9 11:58:00 PDT 2003
 //
 // Modifications:
+//   David Camp, Thu Jul 23 09:50:33 PDT 2015
+//   Added hostname so we can export the session file to a remote host.
 //   
 // ****************************************************************************
 
 void
-ViewerMethods::ExportEntireState(const std::string &filename)
+ViewerMethods::ExportEntireState(const std::string &filename, const std::string &hostname)
 {
     state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportEntireStateRPC);
     state->GetViewerRPC()->SetVariable(filename);
+    state->GetViewerRPC()->SetStringArg1(hostname);
     state->GetViewerRPC()->Notify();
 }
 
@@ -3824,20 +3828,25 @@ ViewerMethods::ExportEntireState(const std::string &filename)
 // Arguments:
 //   filename   : The name of the file to read for the state.
 //   inVisItDir : Whether the session file is in the .visit directory.
+//   hostname   : Host name to import file from.
 //
 // Programmer: Brad Whitlock
 // Creation:   Wed Jul 9 11:58:23 PDT 2003
 //
 // Modifications:
+//   David Camp, Thu Jul 23 09:50:33 PDT 2015
+//   Added hostname so we can import the session file from a remote host.
 //   
 // ****************************************************************************
 
 void
-ViewerMethods::ImportEntireState(const std::string &filename, bool inVisItDir)
+ViewerMethods::ImportEntireState(const std::string &filename, bool inVisItDir, 
+                                 const std::string &hostname)
 {
     state->GetViewerRPC()->SetRPCType(ViewerRPC::ImportEntireStateRPC);
     state->GetViewerRPC()->SetVariable(filename);
     state->GetViewerRPC()->SetBoolFlag(inVisItDir);
+    state->GetViewerRPC()->SetStringArg1(hostname);
     state->GetViewerRPC()->Notify();
 }
 
@@ -3853,22 +3862,26 @@ ViewerMethods::ImportEntireState(const std::string &filename, bool inVisItDir)
 //   filename   : The name of the file to read for the state.
 //   inVisItDir : Whether the session file is in the .visit directory.
 //   sources    : The list of sources to use.
+//   hostname   : Host name to import file from.
 //
 // Programmer: Brad Whitlock
 // Creation:   Fri Nov 10 09:32:48 PDT 2006
 //
 // Modifications:
+//   David Camp, Thu Jul 23 09:50:33 PDT 2015
+//   Added hostname so we can import the session file from a remote host.
 //   
 // ****************************************************************************
 
 void
 ViewerMethods::ImportEntireStateWithDifferentSources(const std::string &filename, 
-    bool inVisItDir, const stringVector &sources)
+    bool inVisItDir, const stringVector &sources, const std::string &hostname)
 {
     state->GetViewerRPC()->SetRPCType(ViewerRPC::ImportEntireStateWithDifferentSourcesRPC);
     state->GetViewerRPC()->SetVariable(filename);
     state->GetViewerRPC()->SetBoolFlag(inVisItDir);
     state->GetViewerRPC()->SetProgramOptions(sources);
+    state->GetViewerRPC()->SetStringArg1(hostname);
     state->GetViewerRPC()->Notify();
 }
 
@@ -5585,17 +5598,23 @@ ViewerMethods::ExportWindows(const intVector &windowIds, const std::string &form
     state->GetViewerRPC()->Notify();
 }
 
-void
-ViewerMethods::ExportHostProfile(const std::string& profile, const std::string& filename, const bool &saveInUserDir)
-{
-    JSONNode node;
-    node["action"] = "ExportHostProfile";
-    node["profileName"] = profile;
-    node["fileName"] = filename;
-    node["saveInUserDir"] = saveInUserDir;
+// ****************************************************************************
+//  Method: ViewerMethods::ExportHostProfile
+//
+//  Purpose: Exports a host profile to a file.
+//
+//  Programmer: Brad Whitlock
+//  Creation:   Fri Jun  3 16:08:37 PDT 2016
+//
+// ****************************************************************************
 
-    state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportRPC);
-    state->GetViewerRPC()->SetStringArg1(node.ToString());
+void
+ViewerMethods::ExportHostProfile(const std::string &profile, const std::string &filename, bool saveInUserDir)
+{
+    state->GetViewerRPC()->SetRPCType(ViewerRPC::ExportHostProfileRPC);
+    state->GetViewerRPC()->SetStringArg1(profile);
+    state->GetViewerRPC()->SetStringArg2(filename);
+    state->GetViewerRPC()->SetBoolFlag(saveInUserDir);
     state->GetViewerRPC()->Notify();
 }
 

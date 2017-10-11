@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -181,8 +181,9 @@ private slots:
     void clearResultText();
     void displayModeChanged(int);
     void useGlobalToggled(bool);
-    void dumpStepsToggled(bool);
+    void dumpIndexToggled(bool);
     void dumpCoordinatesToggled(bool);
+    void dumpArcLengthToggled(bool);
     void dumpValuesToggled(bool);
     void saveResultText();
     void addVariable(const QString &);
@@ -214,7 +215,8 @@ private:
     QGroupBox           *argPanel;
     QLabel              *labels[6];
     QLineEdit           *textFields[6];
-    QCheckBox           *useGlobal, *dumpSteps, *dumpCoordinates, *dumpValues;
+    QCheckBox           *useGlobal, *dumpCoordinates, *dumpValues;
+    QCheckBox           *dumpIndex, *dumpArcLength;
     QvisVariableButton  *varsButton;
     QLineEdit           *varsLineEdit;
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -52,28 +52,15 @@
 #include <avtExpressionTypeConversions.h>
 
 #include <QButtonGroup>
-#include <QCheckBox>
 #include <QComboBox>
-#include <QDir>
-#include <QFileDialog>
 #include <QFrame>
-#include <QGroupBox>
 #include <QLabel>
 #include <QLayout>
 #include <QLineEdit>
 #include <QListWidget>
-#include <QProcess>
 #include <QPushButton>
 #include <QRadioButton>
-#include <QScrollArea>
-#include <QSpinBox>
-#include <QTextEdit>
-#include <QTimer>
-#include <QToolTip>
-#include <QTreeWidget>
-#include <QWidget>
 
-#include <QvisDialogLineEdit.h>
 #include <QvisFileOpenDialog.h>
 #include <QvisVariableButton.h>
 
@@ -1417,7 +1404,7 @@ QvisCMFEWizard::GetVarType(const std::string &str)
     int numExpressions = exprList->GetNumExpressions();
     for (int i = 0 ; i < numExpressions ; i++)
     {
-        Expression &e = exprList->GetExpressions(i);
+        Expression const &e = exprList->GetExpressions(i);
         if (str == e.GetName())
             return e.GetType();
     }

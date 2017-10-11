@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -292,6 +292,9 @@ static void ConvertToType(oT *obuf, const iT* ibuf, size_t n)
 //    Gunther H. Weber, Thu Nov  8 10:20:32 PST 2012
 //    Use size_t instead of int
 //
+//    Brad Whitlock, Thu Jul 23 16:01:46 PDT 2015
+//    Support for non-standard memory layout. Use vtkTemplateMacro.
+//
 // ****************************************************************************
 
 static vtkDataArray * 
@@ -309,9 +312,6 @@ ConvertDataArrayToFloat(vtkDataArray *oldArr)
         newArr->SetNumberOfComponents(numComponents);
         newArr->SetNumberOfTuples(numTuples);
 
-        float *newBuf = (float*) newArr->GetVoidPointer(0);
-        void *oldBuf = oldArr->GetVoidPointer(0);
-
         debug1 << "avtTransformManager: Converting vktDataArray, ";
         if (oldArr->GetName() != NULL) 
         {
@@ -322,52 +322,22 @@ ConvertDataArrayToFloat(vtkDataArray *oldArr)
                << DataArrayTypeName(oldArr) << "\" to \"float\"" << endl;
 
         size_t numValues = numTuples * numComponents;
-        switch (oldArr->GetDataType())
+        if(oldArr->HasStandardMemoryLayout())
         {
-            case VTK_CHAR:
-                ConvertToType(newBuf, (char*) oldBuf, numValues);
-                break;
-            case VTK_UNSIGNED_CHAR:
-                ConvertToType(newBuf, (unsigned char*) oldBuf, numValues);
-                break;
-            case VTK_SHORT:
-                ConvertToType(newBuf, (short*) oldBuf, numValues);
-                break;
-            case VTK_UNSIGNED_SHORT:
-                ConvertToType(newBuf, (unsigned short*) oldBuf, numValues);
-                break;
-            case VTK_INT:
-                ConvertToType(newBuf, (int*) oldBuf, numValues);
-                break;
-            case VTK_UNSIGNED_INT:
-                ConvertToType(newBuf, (unsigned int*) oldBuf, numValues);
-                break;
-            case VTK_LONG:
-                ConvertToType(newBuf, (long*) oldBuf, numValues);
-                break;
-            case VTK_LONG_LONG:
-                ConvertToType(newBuf, (long long*) oldBuf, numValues);
-                break;
-            case VTK_UNSIGNED_LONG:
-                ConvertToType(newBuf, (unsigned long*) oldBuf, numValues);
-                break;
-            case VTK_UNSIGNED_LONG_LONG:
-                ConvertToType(newBuf, (unsigned long long*) oldBuf, numValues);
-                break;
-            case VTK_DOUBLE:
-                ConvertToType(newBuf, (double*) oldBuf, numValues);
-                break;
-            case VTK_ID_TYPE:
-                ConvertToType(newBuf, (vtkIdType*) oldBuf, numValues);
-                break;
-            default:
-                {
-                   char msg[256];
-                    SNPRINTF(msg, sizeof(msg),
-                        "Cannot convert from type \"%s\" to float",
-                        DataArrayTypeName(oldArr));
-                    EXCEPTION1(ImproperUseException, msg);
-                }
+            float *newBuf = (float*) newArr->GetVoidPointer(0);
+            void *oldBuf = oldArr->GetVoidPointer(0);
+            switch (oldArr->GetDataType())
+            {
+            vtkTemplateMacro(
+                ConvertToType(newBuf, (VTK_TT *) oldBuf, numValues);
+            );
+            }
+        }
+        else
+        {
+            vtkIdType nTuples = oldArr->GetNumberOfTuples();
+            for (vtkIdType i = 0; i < nTuples; i++)
+                newArr->SetTuple(i, oldArr->GetTuple(i));
         }
     }
 
@@ -2103,6 +2073,11 @@ avtTransformManager::TransformMaterialDataset(avtDatabaseMetaData *md,
 //
 //    Mark C. Miller, Wed May  6 13:51:30 PDT 2009
 //    Fix md for the mesh if we indeed add VERTEX cells.
+//
+//    Kathleen Biagas, Tue Apr 12 16:58:47 PDT 2016
+//    Removed examination of cell/pt data arrays, as the restriction prevents
+//    creation of Vertex Cells for Mesh plots.
+//
 // ****************************************************************************
 
 vtkDataSet *
@@ -2119,31 +2094,6 @@ avtTransformManager::AddVertexCellsToPointsOnlyDataset(avtDatabaseMetaData *md,
         return ds; // no-op
 
     if (ds->GetNumberOfCells() != 0)
-        return ds; // no-op
-
-    if ((ds->GetCellData() == 0 || ds->GetCellData()->GetNumberOfArrays() == 0) &&
-        (ds->GetPointData() == 0 || ds->GetPointData()->GetNumberOfArrays() == 0))
-        return ds; // no-op
-
-    bool hasEmptyCellDataArrays = true;
-    for (i = 0; i < ds->GetCellData()->GetNumberOfArrays(); i++)
-    {
-        if (ds->GetCellData()->GetArray(i)->GetNumberOfTuples() == ds->GetNumberOfPoints())
-        {
-            hasEmptyCellDataArrays = false;
-            break;
-        }
-    }
-    bool hasEmptyPointDataArrays = true;
-    for (i = 0; i < ds->GetPointData()->GetNumberOfArrays(); i++)
-    {
-        if (ds->GetPointData()->GetArray(i)->GetNumberOfTuples() == ds->GetNumberOfPoints())
-        {
-            hasEmptyPointDataArrays = false;
-            break;
-        }
-    }
-    if (hasEmptyCellDataArrays && hasEmptyPointDataArrays)
         return ds; // no-op
 
     // Ok, really look this object up via reverse lookup

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -116,6 +116,7 @@ QvisImageAnnotationInterface::QvisImageAnnotationInterface(QWidget *parent) :
 
     // Add controls for width.
     widthSpinBox = new QSpinBox(this);
+    widthSpinBox->setKeyboardTracking(false);
     widthSpinBox->setMinimum(1);
     widthSpinBox->setMaximum(1000);
     widthSpinBox->setSuffix("%");
@@ -129,6 +130,7 @@ QvisImageAnnotationInterface::QvisImageAnnotationInterface(QWidget *parent) :
 
     // Add controls for height.
     heightSpinBox = new QSpinBox(this);
+    heightSpinBox->setKeyboardTracking(false);
     heightSpinBox->setSuffix("%");
     heightSpinBox->setMinimum(1);
     heightSpinBox->setMaximum(1000);
@@ -337,6 +339,7 @@ void
 QvisImageAnnotationInterface::GetCurrentValues(int which_widget)
 {
     bool doAll = (which_widget == -1);
+    double pos[3];
 
     if(which_widget == 0 || doAll)
     {
@@ -347,9 +350,10 @@ QvisImageAnnotationInterface::GetCurrentValues(int which_widget)
     if(which_widget == 1 || doAll)
     {
         // Get its new current value and store it in the atts.
-        ForceSpinBoxUpdate(widthSpinBox);
         int w = widthSpinBox->value();
-        double pos[] = {w, annot->GetPosition2()[1], 0};
+        pos[0] = w;
+        pos[1] = annot->GetPosition2()[1];
+        pos[2] = 0.;
         annot->SetPosition2(pos);
         if(linkedWH->isChecked())
             heightSpinBox->setValue(w);
@@ -358,9 +362,10 @@ QvisImageAnnotationInterface::GetCurrentValues(int which_widget)
     if(which_widget == 2 || doAll)
     {
         // Get its new current value and store it in the atts.
-        ForceSpinBoxUpdate(heightSpinBox);
         int h = heightSpinBox->value();
-        double pos[] = {annot->GetPosition2()[0], h, 0};
+        pos[0] = annot->GetPosition2()[0];
+        pos[1] = h;
+        pos[2] = 0.;
         annot->SetPosition2(pos);
         if(linkedWH->isChecked())
             widthSpinBox->setValue(h);
@@ -447,7 +452,9 @@ QvisImageAnnotationInterface::positionStartChanged(double x, double y)
 void
 QvisImageAnnotationInterface::widthChanged(int w)
 {
-    double pos[] = {w, annot->GetPosition2()[1], 0};
+    double pos[] = {static_cast<double>(w),
+                    annot->GetPosition2()[1],
+                    0.};
     annot->SetPosition2(pos);
     SetUpdate(false);
     Apply();
@@ -478,7 +485,7 @@ QvisImageAnnotationInterface::widthChanged(int w)
 void
 QvisImageAnnotationInterface::heightChanged(int h)
 {
-    double pos[] = {annot->GetPosition2()[0], h, 0};
+    double pos[] = {annot->GetPosition2()[0], static_cast<double>(h), 0.};
     annot->SetPosition2(pos);
     SetUpdate(false);
     Apply();

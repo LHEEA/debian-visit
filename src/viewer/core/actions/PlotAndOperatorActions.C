@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -630,12 +630,17 @@ HideActivePlotsAction::Execute()
 //   Kathlen Bonnell, Thu Apr  1 19:13:59 PST 2004 
 //   Added call to ResetTimeQueryDesignation. 
 //
+//   Kevin Griffin, Wed May 11 16:47:05 PDT 2016
+//   Updated the call to DeleteActivePlots to not consider active plots when
+//   calling updateExpressionList which caused invalid expression variables
+//   when multiple plots were active from different databases (See Bug #2528).
+//
 // ****************************************************************************
 
 void
 DeleteActivePlotsAction::Execute()
 {
-    window->GetPlotList()->DeleteActivePlots();
+    window->GetPlotList()->DeleteActivePlots(true, false);
     if(window->GetPlotList()->GetNumPlots() == 0)
     {
         window->ClearPickPoints();

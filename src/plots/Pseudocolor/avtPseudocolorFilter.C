@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -137,14 +137,22 @@ avtPseudocolorFilter::ExecuteData(avtDataRepresentation *inDR)
 void
 avtPseudocolorFilter::UpdateDataObjectInfo(void)
 {
+    avtDataAttributes &inAtts  = GetInput()->GetInfo().GetAttributes();
     avtDataAttributes &outAtts = GetOutput()->GetInfo().GetAttributes();
-    outAtts.SetTopologicalDimension(0);
-    outAtts.SetKeepNodeZoneArrays(keepNodeZone);
 
-    if (!primaryVar.empty() && outAtts.ValidActiveVariable())
+    int topoDim = inAtts.GetTopologicalDimension();
+
+    outAtts.SetTopologicalDimension(topoDim);
+
+    if( topoDim == 0 )
     {
+      outAtts.SetKeepNodeZoneArrays(keepNodeZone);
+      
+      if (!primaryVar.empty() && outAtts.ValidActiveVariable())
+      {
         if (outAtts.GetVariableName() != primaryVar)
             outAtts.SetActiveVariable(primaryVar.c_str());
+      }
     }
 }
 
@@ -168,6 +176,10 @@ avtPseudocolorFilter::UpdateDataObjectInfo(void)
 //    Kathleen Biagas, Fri Nov  2 10:24:21 PDT 2012
 //    Retrieve the active variable.
 //
+//    Eric Brugger, Wed Oct 26 09:23:35 PDT 2016
+//    I modified the plot to support independently setting the point style
+//    for the two end points of lines.
+//
 // ****************************************************************************
 
 avtContract_p
@@ -177,7 +189,13 @@ avtPseudocolorFilter::ModifyContract(avtContract_p contract)
 
     avtDataAttributes &data = GetInput()->GetInfo().GetAttributes();
 
-    std::string pointVar = plotAtts.GetPointSizeVar();
+    int topoDim = data.GetTopologicalDimension();
+
+    std::string pointVar           = plotAtts.GetPointSizeVar();
+    std::string tubeRadiusVar      = plotAtts.GetTubeRadiusVar();
+    std::string endPointRadiusVar  = plotAtts.GetEndPointRadiusVar();
+    std::string opacityVar         = plotAtts.GetOpacityVariable();
+
     avtDataRequest_p dataRequest = new avtDataRequest(
                                        contract->GetDataRequest());
 
@@ -186,22 +204,82 @@ avtPseudocolorFilter::ModifyContract(avtContract_p contract)
     //
     // Find out if we need to add a secondary variable.
     //
-    if (plotAtts.GetPointSizeVarEnabled() && 
+    if (plotAtts.GetOpacityType() == PseudocolorAttributes::VariableRange &&
+        opacityVar != "default" &&
+        opacityVar != "\0" &&
+        opacityVar != primaryVar &&
+        !dataRequest->HasSecondaryVariable(opacityVar.c_str()))
+    {
+        rv->GetDataRequest()->AddSecondaryVariable(opacityVar.c_str());
+        rv->SetCalculateVariableExtents(opacityVar, true);
+    }
+
+    // Point scaling by a secondary variable
+    if( (topoDim == 0 || (topoDim > 0 && plotAtts.GetRenderPoints())) &&
+        plotAtts.GetPointType() != PseudocolorAttributes::Point &&
+        plotAtts.GetPointType() != PseudocolorAttributes::Sphere &&
+        plotAtts.GetPointSizeVarEnabled() && 
         pointVar != "default" &&
         pointVar != "\0" &&
         pointVar != primaryVar &&
         !dataRequest->HasSecondaryVariable(pointVar.c_str()))
     {
         rv->GetDataRequest()->AddSecondaryVariable(pointVar.c_str());
+        rv->SetCalculateVariableExtents(pointVar, true);
     }
 
-
-    if (contract->GetDataRequest()->MayRequireZones() ||
-        contract->GetDataRequest()->MayRequireNodes())
+    // Tube/Ribbon scaling by a secondary variable
+    if( (topoDim == 1 || (topoDim > 1 && plotAtts.GetRenderWireframe())) &&
+        (plotAtts.GetLineType() == PseudocolorAttributes::Tube || 
+         plotAtts.GetLineType() == PseudocolorAttributes::Ribbon) && 
+        plotAtts.GetTubeRadiusVarEnabled() &&
+        tubeRadiusVar != "default" &&
+        tubeRadiusVar != "\0" &&
+        tubeRadiusVar != primaryVar &&
+        !dataRequest->HasSecondaryVariable(tubeRadiusVar.c_str()))
     {
+        rv->GetDataRequest()->AddSecondaryVariable(tubeRadiusVar.c_str());
+        rv->SetCalculateVariableExtents(tubeRadiusVar, true);
+
+        std::string key =
+          rv->SetAttribute( &plotAtts, PseudocolorAttributes::ID_tubeRadiusVar,
+                            tubeRadiusVar );
+    }
+
+    // End Point scaling by a secondary variable
+    if( (topoDim == 1 || (topoDim > 1 && plotAtts.GetRenderWireframe())) &&
+        (plotAtts.GetTailStyle() != PseudocolorAttributes::None ||
+         plotAtts.GetHeadStyle() != PseudocolorAttributes::None) && 
+        plotAtts.GetEndPointRadiusVarEnabled() &&
+        endPointRadiusVar != "default" &&
+        endPointRadiusVar != "\0" &&
+        endPointRadiusVar != primaryVar &&
+        !dataRequest->HasSecondaryVariable(endPointRadiusVar.c_str()))
+    {
+        rv->GetDataRequest()->AddSecondaryVariable(endPointRadiusVar.c_str());
+        rv->SetCalculateVariableExtents(endPointRadiusVar, true);
+
+        std::string key =
+          rv->SetAttribute( &plotAtts, PseudocolorAttributes::ID_endPointRadiusVar,
+                            endPointRadiusVar );
+    }
+
+    // Note the line type so that upstream operators can obtain the
+    // needed data for displaying ribbons or tubes.
+    std::string key =
+      rv->SetAttribute( &plotAtts, PseudocolorAttributes::ID_lineType,
+                        PseudocolorAttributes::LineType_ToString(plotAtts.GetLineType()) );
+
+
+    if( topoDim == 0 )
+    {
+      if (contract->GetDataRequest()->MayRequireZones() ||
+          contract->GetDataRequest()->MayRequireNodes())
+      {
         keepNodeZone = true;
+        
         if (data.ValidActiveVariable())
-        {
+          {
             if (data.GetCentering() == AVT_NODECENT)
             {
                 rv->GetDataRequest()->TurnNodeNumbersOn();
@@ -218,10 +296,11 @@ avtPseudocolorFilter::ModifyContract(avtContract_p contract)
             rv->GetDataRequest()->TurnNodeNumbersOn();
             rv->GetDataRequest()->TurnZoneNumbersOn();
         }
-    }
-    else
-    {
+      }
+      else
+      {
         keepNodeZone = false;
+      }
     }
 
     return rv;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -251,10 +251,10 @@ avtOriginatingSource::Update(avtContract_p contract)
         GetOutput()->GetInfo().GetValidity().Reset();
     int t0 = visitTimer->StartTimer();
     avtDataRequest_p data = BalanceLoad(contract);
-    visitTimer->StopTimer(t0, "Calling BalanceLoad in avtTermSrc::Update");
+    visitTimer->StopTimer(t0, "Calling BalanceLoad in avtOrigSrc::Update");
     int t1 = visitTimer->StartTimer();
     bool rv = FetchData(data);
-    visitTimer->StopTimer(t1, "Calling avtTermSrc::FetchData");
+    visitTimer->StopTimer(t1, "Calling avtOrigSrc::FetchData");
 
     return rv;
 }
@@ -505,7 +505,9 @@ avtOriginatingSource::BalanceLoad(avtContract_p contract)
     //
     if (contract->ShouldUseLoadBalancing())
     {
+        int t0 = visitTimer->StartTimer();
         InitPipeline(contract);
+        visitTimer->StopTimer(t0, "InitPipeline");
     }
     else if (contract->DoingOnDemandStreaming())
     {
@@ -519,19 +521,21 @@ avtOriginatingSource::BalanceLoad(avtContract_p contract)
     avtDataRequest_p rv = NULL;
     if (!UseLoadBalancer())
     {
-        debug5 << "This source should not load balance the data." << endl;
+        debug1 << "This source should not load balance the data." << endl;
         rv = contract->GetDataRequest();
     }
     else if (! contract->ShouldUseLoadBalancing())
     {
-        debug5 << "This pipeline has indicated that no load balancing should "
+        debug1 << "This pipeline has indicated that no load balancing should "
                << "be used." << endl;
         rv = contract->GetDataRequest();
     }
     else if (loadBalanceFunction != NULL)
     {
-        debug5 << "Using load balancer to reduce data." << endl;
+        debug1 << "Using load balancer to reduce data." << endl;
+        int t0 = visitTimer->StartTimer();
         rv = loadBalanceFunction(loadBalanceFunctionArgs, contract);
+        visitTimer->StopTimer(t0, "Call loadBalanceFunction");
         dataReplicationOccurred =
                               contract->ReplicateSingleDomainOnAllProcessors();
     }
@@ -877,4 +881,23 @@ avtOriginatingSource::FetchArbitraryRefPtr(const char *name, int domain,
     return vrp;
 }
 
+
+// ****************************************************************************
+//  Method: avtOriginatingSource::ResetAllExtents
+//
+//  Purpose:
+//      This is the termination of a pipeline, nothing to do here.
+//
+//  Programmer:  Kathleen Biagas
+//  Creation:    June 5, 2017
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtOriginatingSource::ResetAllExtents()
+{
+    ; // nothing to do here
+}
 

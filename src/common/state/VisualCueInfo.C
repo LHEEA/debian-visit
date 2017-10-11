@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -869,9 +869,18 @@ VisualCueInfo::SetFromP(const PickAttributes *pa)
     SetCueType(PickPoint);
     SetPointD(0,pa->GetPickPoint());
     SetLabel(pa->GetPickLetter());
+    SetShowLabel(pa->GetShowPickLetter());
     if ((pa->GetPickType() != PickAttributes::Zone) &&
         (pa->GetPickType() != PickAttributes::DomainZone))
         SetGlyphType("Square");
+    const doubleVector cellCoords = pa->GetCellCoordinates();
+    const int numPoints = cellCoords.size() / 3;
+    for(int i = 0; i < numPoints; ++i)
+    { 
+        // First point is attachment point, so offset by 1
+        int pid = (i + 1);
+        SetPointD(pid,&cellCoords[i*3]);
+    }
 }
 
 void

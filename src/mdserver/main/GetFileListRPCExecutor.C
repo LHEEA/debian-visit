@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -122,7 +122,7 @@ GetFileListRPCExecutor::Update(Subject *s)
     int total = visitTimer->StartTimer();
     GetFileListRPC *rpc = (GetFileListRPC *)s;
 
-    debug2 << "GetFileListRPCExecutor::Update\n"; debug2.flush();
+    debug2 << "GetFileListRPCExecutor::Update\n" << std::flush;
 
     // Either send a successful reply or send an error.
     if(parent->GetReadFileListReturnValue() == 0)
@@ -135,8 +135,7 @@ GetFileListRPCExecutor::Update(Subject *s)
                 rpc->GetSmartFileGrouping());
             parent->GetFilteredFileList(files);
 
-            debug4 << "FILELIST=" << files << endl;
-            debug4.flush();
+            debug4 << "FILELIST=" << files << endl << std::flush;
             rpc->SendReply(&files);
         }
         else
@@ -145,8 +144,7 @@ GetFileListRPCExecutor::Update(Subject *s)
             if (files == NULL)
                 debug4 << "FILELIST is NULL!" << endl;
             else
-                debug4 << "FILELIST=" << *files << endl;
-            debug4.flush();
+                debug4 << "FILELIST=" << *files << endl << std::flush;
 
             rpc->SendReply(files);
         }

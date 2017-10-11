@@ -11,8 +11,8 @@
 #    visit-install    [-c anag | anl | arl | asu | awe | clemson | cscs |"
 #                         eth_zurich | llnl_open | llnl_open_rz |"
 #                         llnl_open_cz | llnl_closed | lsu | ncar |"
-#                         nersc | nics | ornl | princeton | sandia |"
-#                         sandia_closed | tacc | umich | utah]"
+#                         nersc | nics | ohio | ornl | princeton |"
+#                         sandia | sandia_closed | tacc | umich | utah]"
 #                      [-g group] [-b bank] [-gw] [-l] [-dmg] [-test]"
 #                      [-beta | -private] version platform directory"
 #
@@ -364,6 +364,37 @@
 #    Kathleen Biagas, Mon Jan 26 07:46:28 PST 2015
 #    Removed host profile for edge.
 #
+#    Kathleen Biagas, Thu May  7 09:48:06 PDT 2015
+#    Fix second 'data' conditional to test for "$distributiondir"/data.
+#
+#    Eric Brugger, Tue Aug 25 16:30:55 PDT 2015
+#    I replaced "LLNL open network (RZ only)", "LLNL open network (CZ only)"
+#    and "LLNL open network (CZ and RZ)" with "LLNL open network" in the
+#    list of profiles that the user selects from when a profile wasn't
+#    specified on the command line. The three options are still supported
+#    on the command line.
+#
+#    Eric Brugger, Wed Oct 14 16:06:52 PDT 2015
+#    I changed the second 'data' conditional to test for ../data. The
+#    previous change to "$distributiondir"/data didn't work because the
+#    script is in the directory $distributiondir/$version at that point
+#    and $distributiondir is not an absolute path.
+#
+#    Eric Brugger, Wed Jan 11 14:45:37 PST 2017
+#    I added a host profile for syrah.
+#
+#    Eric Brugger, Fri Oct 29 09:40:23 PDT 2010
+#    I deleted the host profile for aztec and added host profiles for
+#    borax and quartz.
+#
+#    Eric Brugger, Fri Jan 13 09:41:59 PST 2017
+#    I deleted the host profile for sierra.
+#
+#    Eric Brugger, Fri Feb 17 09:26:52 PST 2017
+#    I corrected the bank setting logic to replace "wbronze" with
+#    the specified bank, since the default bank in all the llnl host
+#    profiles is now "wbronze" instead of "bdivp".
+#
 #-----------------------------------------------------------------------
 
 Compress=COMPRESS
@@ -437,8 +468,8 @@ if [ "$#" != "3" ]; then
    echo "Usage: visit-install [-c anag | anl | arl | asu | awe | clemson | cscs |"
    echo "                         eth_zurich | llnl_open | llnl_open_rz |"
    echo "                         llnl_open_cz | llnl_closed | lsu | ncar |"
-   echo "                         nersc | nics | ornl | princeton | sandia |"
-   echo "                         sandia_closed | tacc | umich | utah]"
+   echo "                         nersc | nics | ohio | ornl | princeton | "
+   echo "                         sandia | sandia_closed | tacc | umich | utah]"
    echo "                     [-g group] [-b bank] [-gw] [-l] [-dmg] [-test]"
    echo "                     [-beta | -private] version platform directory"
    echo ""
@@ -683,6 +714,14 @@ if [ "$test" = "true" ]; then
        echo "failed"
        exit 1
     fi
+    echo "Testing ohio configuration..."
+    rm -rf $dir
+    $0 -c ohio $version $platform $dir > /dev/null 2>&1
+    files=`ls $dir/$version/.visit/hosts/host_ohio*`
+    if [ "$files" == "" ]; then
+       echo "failed"
+       exit 1
+    fi
     echo "Testing ornl configuration..."
     rm -rf $dir
     $0 -c ornl $version $platform $dir > /dev/null 2>&1
@@ -758,24 +797,23 @@ while [ "$config" = "prompt" ]; do
    echo "   6)  AWE network"
    echo "   7)  Clemson University network"
    echo "   8)  ETH Zurich network"
-   echo "   9)  LLNL open network (CZ and RZ)"
-   echo "   10) LLNL open network (CZ only)"
-   echo "   11) LLNL open network (RZ only)"
-   echo "   12) LLNL closed network"
-   echo "   13) Lousiana State University network"
-   echo "   14) NCAR network"
-   echo "   15) NERSC network"
-   echo "   16) NICS at University of Tennessee at Knoxville"
-   echo "   17) ORNL network"
-   echo "   18) Princeton network"
-   echo "   19) Sandia network"
-   echo "   20) Sandia closed network"
-   echo "   21) Swiss National Supercomputing Center (CSCS) network"
-   echo "   22) TACC network"
-   echo "   23) U of Michigan Center for Advanced Computing network"
-   echo "   24) U of Utah Center for High Performance Computing network"
+   echo "   9)  LLNL open network"
+   echo "   10) LLNL closed network"
+   echo "   11) Lousiana State University network"
+   echo "   12) NCAR network"
+   echo "   13) NERSC network"
+   echo "   14) NICS at University of Tennessee at Knoxville"
+   echo "   15) Ohio Supercomputer Center (OSC) network"
+   echo "   16) ORNL network"
+   echo "   17) Princeton network"
+   echo "   18) Sandia network"
+   echo "   19) Sandia closed network"
+   echo "   20) Swiss National Supercomputing Center (CSCS) network"
+   echo "   21) TACC network"
+   echo "   22) U of Michigan Advanced Research Computing (ARC-TS) network"
+   echo "   23) U of Utah Center for High Performance Computing (CHPC) network"
    echo ""
-   echo "Enter (1-24):"
+   echo "Enter (1-23):"
 
    read config
    case "$config" in
@@ -807,48 +845,45 @@ while [ "$config" = "prompt" ]; do
          config=llnl_open
          ;;
       10)
-         config=llnl_open_cz
-         ;;
-      11)
-         config=llnl_open_rz
-         ;;
-      12)
          config=llnl_closed
          ;;
-      13)
+      11)
          config=lsu
          ;;
-      14)
+      12)
          config=ncar
          ;;
-      15)
+      13)
          config=nersc
          ;;
-      16)
+      14)
          config=nics
          ;;
-      17)
+      15)
+         config=ohio
+         ;;
+      16)
          config=ornl
          ;;
-      18)
+      17)
          config=princeton
          ;;
-      19)
+      18)
          config=sandia
          ;;
-      20)
+      19)
          config=sandia_closed
          ;;
-      21)
+      20)
          config=cscs
          ;;
-      22)
+      21)
          config=tacc
          ;;
-      23)
+      22)
          config=umich
          ;;
-      24)
+      23)
          config=utah
          ;;
       *)
@@ -890,6 +925,8 @@ case "$config" in
       ;;
    nics)
       ;; 
+   ohio)
+      ;;
    ornl)
       ;;
    princeton)
@@ -909,8 +946,8 @@ case "$config" in
    *)
       echo "Illegal configuration option, choices are none, anag, anl,"
       echo "arl, asu, awe, clemson, cscs, eth_zurich, llnl_open, llnl_open_rz,"
-      echo "llnl_open_cz, llnl_closed, lsu, ncar, nersc, nics, ornl, princeton,"
-      echo "sandia, sandia_closed, tacc, umich, utah"
+      echo "llnl_open_cz, llnl_closed, lsu, ncar, nersc, nics, ohio, ornl,"
+      echo "princeton, sandia, sandia_closed, tacc, umich, utah"
       exit 4
       ;;
 esac
@@ -1002,7 +1039,7 @@ for f in `echo $platformPath | tr "/" " "`; do
 done
 # Copy the files
 find . -print | cpio -pmud "$dir"/$version+
-if [ -e "$dir"/data ]; then
+if [ -e ../data ]; then
     cd ../data
     find . -print | cpio -pmud "$dir"/data
 fi
@@ -1054,12 +1091,13 @@ elif [ "$config" = "llnl_open_rz" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/config                 "$dir"/$version+/.visit/
 elif [ "$config" = "llnl_open_cz" ]; then
    # Copy the files explicitly to avoid the rzgw hosts. We're most likely installing on a cz machine.
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_aztec.xml    "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_ansel.xml    "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_borax.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_cab.xml      "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_hera.xml     "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_quartz.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_oslic.xml    "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_sierra.xml   "$dir"/$version+/.visit/hosts/
-   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_surface.xml     "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_surface.xml  "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_syrah.xml    "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_llnl_vulcan.xml   "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/llnl/host_slac_red.xml      "$dir"/$version+/.visit/hosts/
 
@@ -1079,6 +1117,9 @@ elif [ "$config" = "nersc" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
 elif [ "$config" = "nics" ]; then
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
+elif [ "$config" = "ohio" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
 elif [ "$config" = "ornl" ]; then
@@ -1101,12 +1142,13 @@ elif [ "$config" = "umich" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
 elif [ "$config" = "utah" ]; then
    cp "$dir"/$version+/$platformDir/resources/hosts/$config/*.xml               "$dir"/$version+/.visit/hosts/
+   cp "$dir"/$version+/$platformDir/resources/hosts/$config/customlauncher      "$dir"/$version+/bin/
 fi
 
 # Do the bank fixup
 if [ "$bank" != "false" ]; then
     for hostfile in `ls $dir/$version+/.visit/hosts`; do
-        sed -i -e "s/bdivp/${bank}/" $dir/$version+/.visit/hosts/$hostfile
+        sed -i -e "s/wbronze/${bank}/" $dir/$version+/.visit/hosts/$hostfile
     done
 fi
 

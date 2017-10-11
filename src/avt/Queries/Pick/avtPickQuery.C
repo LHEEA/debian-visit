@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,8 +46,10 @@
 #include <float.h>
 #include <snprintf.h>
 
+#include <vtkCell.h>
 #include <vtkCellData.h>
 #include <vtkDataSet.h>
+#include <vtkEdgeTable.h>
 #include <vtkIdList.h>
 #include <vtkIntArray.h>
 #include <vtkMath.h>
@@ -69,7 +71,6 @@
 #include <PickVarInfo.h>
 
 using     std::string;
-
 
 
 // ****************************************************************************
@@ -1165,7 +1166,6 @@ avtPickQuery::RetrieveNodes(vtkDataSet *ds, int zone, bool needRealId)
                  ((ds->GetPointData()->GetArray("avtGhostNodes") != NULL) ||
                   (ds->GetCellData()->GetArray("avtGhostZones") != NULL)));
         pickAtts.SetIncludeGhosts(findGhosts);
-        bool skipNode = false;
         if (findGhosts)
         {
             vtkUnsignedCharArray *gn = (vtkUnsignedCharArray*)ds->
@@ -1665,11 +1665,11 @@ avtPickQuery::GetCurrentZoneForOriginal(vtkDataSet *ds,
         int comp = nComp -1;
 
         unsigned int *oc = origCells->GetPointer(0);
-        size_t nFound = 0;
+        int nFound = 0;
         bool *zoneFound = new bool[origZones.size()];
         for (size_t i = 0; i < origZones.size(); i++)
             zoneFound[i] = false;
-        for (size_t i = 0; i < (size_t)nTuples && nFound < origZones.size(); i++)
+        for (int i = 0; i < nTuples && nFound < (int)origZones.size(); i++)
         {
             for (size_t j = 0; j < currentZones.size(); j++)
             {
@@ -1830,8 +1830,8 @@ avtPickQuery::SetRealIds(vtkDataSet *ds)
     }
 
     // need to change the zone/node names stored in all PickVarInfo
-    size_t numVars = pickAtts.GetNumVarInfos();
-    for (size_t i = 0; i < numVars; i++)
+    int numVars = pickAtts.GetNumVarInfos();
+    for (int i = 0; i < numVars; i++)
     {
         if (pickAtts.GetVarInfo(i).GetVariableType() == "material")
             continue;
@@ -1875,5 +1875,110 @@ avtPickQuery::SetPickAttsForTimeQuery(const PickAttributes *pa)
 {
     pickAtts.SetMatSelected(pa->GetMatSelected());
     pickAtts.SetElementIsGlobal(pa->GetElementIsGlobal());
+}
+
+// ****************************************************************************
+//  Method: avtPickQuery::ExtractZonePickHighlights
+//
+//  Purpose:
+//    Extract the zone edges for pick highlighting. If the data set, has been
+//    decomposed from something like arbitrary polyhedra, the zone id should
+//    be the original zone id.
+//
+//  Programmer: Matt Larsen
+//  Creation:   July 8, 2016
+//
+// ****************************************************************************
+
+void
+avtPickQuery::ExtractZonePickHighlights(const int &zoneId, 
+                                        vtkDataSet *ds,
+                                        const int &dom)
+{  
+   // Clear anything left over
+   pickAtts.ClearLines();
+   // Bail if highlights are not on
+   if(!pickAtts.GetShowPickHighlight()) return;
+   // Check to see if the cells were decomposed in some way
+    vtkDataArray* origCellsArr = ds->GetCellData()->
+        GetArray("avtOriginalCellNumbers");
+    if ( (!origCellsArr) || (origCellsArr->GetDataType() != VTK_UNSIGNED_INT)
+      || (origCellsArr->GetNumberOfComponents() != 2))
+    {
+        // this is a normal cell or could not find the proper
+        // original cell information. Just extract the lines from the edges
+        vtkCell *cell = ds->GetCell(zoneId);
+        const int numEdges = cell->GetNumberOfEdges();
+
+        for(int i = 0; i < numEdges; ++i)
+        {
+            vtkCell *edge = cell->GetEdge(i);
+            vtkPoints *edgePoints = edge->GetPoints();
+            const int numPoints = edgePoints->GetNumberOfPoints();
+            if(numPoints != 2) continue; 
+            double p1[3];
+            double p2[3];
+            edgePoints->GetPoint(0, p1);
+            edgePoints->GetPoint(1, p2);
+            pickAtts.AddLine(p1, p2,i); 
+        }
+        return;
+    }
+    else
+    {   
+        // Find the cells that make up the original cell
+        const int numCells = ds->GetNumberOfCells();
+        unsigned int* origCellNums =
+            ((vtkUnsignedIntArray*)origCellsArr)->GetPointer(0);
+        std::vector<int> relatedCells; 
+        const unsigned int origCell = zoneId;
+        const unsigned int origDom = dom;
+        for(int i = 0; i < numCells; ++i)
+        {
+            if(origCell == origCellNums[i*2+1] &&
+               origDom == origCellNums[i*2+0]) 
+                relatedCells.push_back(i);
+        }
+
+        // loop over related cells and eliminate duplicate egdes
+        vtkEdgeTable *edgeTable = vtkEdgeTable::New();
+        const int numRelated = relatedCells.size();
+        for(int i = 0; i < numRelated; ++i)
+        {
+            const int cellId = relatedCells[i];
+            vtkCell *cell = ds->GetCell(cellId);
+            const int numEdges = cell->GetNumberOfEdges();
+            // estimate some space requirements
+            if(i == 0) edgeTable->InitEdgeInsertion(numEdges*numRelated);
+            for(int j = 0; j < numEdges; ++j)
+            {
+                vtkCell *edge = cell->GetEdge(j);
+                vtkPoints *edgePoints = edge->GetPoints();
+                const int numPoints = edgePoints->GetNumberOfPoints();
+                if(numPoints != 2) continue; 
+                vtkIdType p1 = edge->GetPointIds()->GetId(0);
+                vtkIdType p2 = edge->GetPointIds()->GetId(1);
+
+                vtkIdType idx = edgeTable->IsEdge(p1,p2);
+                if(idx == -1) edgeTable->InsertEdge(p1,p2);
+            }
+        }
+
+        // Iterate through the table and set the points in pictAtts
+        const int totEdges = edgeTable->GetNumberOfEdges();
+        
+        edgeTable->InitTraversal();
+        for(int i = 0; i < totEdges; ++i)
+        {
+            vtkIdType p1Id,p2Id;
+            edgeTable->GetNextEdge(p1Id,p2Id);
+            double p1[3],p2[2];
+            ds->GetPoint(p1Id, p1);
+            ds->GetPoint(p2Id, p2);
+            pickAtts.AddLine(p1, p2,i);
+        }
+        // cleanup
+        edgeTable->Delete();
+    }
 }
 

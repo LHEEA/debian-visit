@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,26 +49,13 @@
 #include <QLineEdit>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
-#include <QSpinBox>
-#include <QWidget>
-#include <QListWidget>
 #include <QHeaderView>
 #include <QPushButton>
-#include <QButtonGroup>
-#include <QRadioButton>
-#include <QComboBox>
 #include <QTabWidget>
 #include <QGroupBox>
-#include <QvisColorTableButton.h>
-#include <QvisOpacitySlider.h>
-#include <QvisColorButton.h>
-#include <QvisLineStyleWidget.h>
-#include <QvisLineWidthWidget.h>
 #include <QvisVariableButton.h>
-#include <ImproperUseException.h>
 #include <QvisElementButton.h>
-
-#include <stdio.h>
+#include <ImproperUseException.h>
 #include <string>
 
 using std::string;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -79,8 +79,6 @@ class avtTensorFilter : public avtDataTreeIterator
                                   { return "Creating tensors"; };
 
     virtual void              ReleaseData(void);
-
-    bool                      Equivalent(bool, int);
 
     void                      SetStride(int);
     void                      SetNTensors(int);

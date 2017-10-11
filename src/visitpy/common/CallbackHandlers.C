@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -115,6 +115,7 @@ CALLBACK_ACTION(DatabaseMetaData,         avtDatabaseMetaData,      PyavtDatabas
 static void \
 default_handler_##Obj(Subject *subj, void *data) \
 { \
+    (void)subj; \
     CallbackManager::CallbackHandlerData *cbData = (CallbackManager::CallbackHandlerData *)data; \
     if(cbData->pycb != 0) \
     { \

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -348,6 +348,9 @@ TransformSingleVector(avtCoordSystemConvert::VectorTransformMethod method,
 //    Kathleen Biagas, Tue Aug 21 16:53:09 MST 2012
 //    Preserve coordinate type.
 //
+//    Kathleen Biagas, Thu Jun 4 16:51:27 MST 2015
+//    Pass along FieldData.
+//
 // ****************************************************************************
 
 static vtkDataSet *
@@ -560,6 +563,7 @@ Transform(vtkDataSet *in_ds,
         cellCoordsNew->Delete();
     }
 
+    rv->GetFieldData()->PassData(in_ds->GetFieldData());
     pts->Delete();
     newPts->Delete();
 

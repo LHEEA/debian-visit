@@ -1,6 +1,6 @@
 // ***************************************************************************
 //
-// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -41,6 +41,8 @@ package llnl.visit.operators;
 import llnl.visit.AttributeSubject;
 import llnl.visit.CommunicationBuffer;
 import llnl.visit.Plugin;
+import java.lang.Double;
+import java.util.Vector;
 import llnl.visit.ColorAttribute;
 
 // ****************************************************************************
@@ -60,11 +62,12 @@ import llnl.visit.ColorAttribute;
 
 public class PoincareAttributes extends AttributeSubject implements Plugin
 {
-    private static int PoincareAttributes_numAdditionalAtts = 76;
+    private static int PoincareAttributes_numAdditionalAtts = 77;
 
     // Enum values
     public final static int SOURCETYPE_SPECIFIEDPOINT = 0;
-    public final static int SOURCETYPE_SPECIFIEDLINE = 1;
+    public final static int SOURCETYPE_POINTLIST = 1;
+    public final static int SOURCETYPE_SPECIFIEDLINE = 2;
 
     public final static int FIELDTYPE_DEFAULT = 0;
     public final static int FIELDTYPE_FLASHFIELD = 1;
@@ -163,6 +166,16 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[0] = 0;
         pointSource[1] = 0;
         pointSource[2] = 0;
+        pointList = new Vector();
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(1));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(1));
+        pointList.addElement(new Double(0));
         lineStart = new double[3];
         lineStart[0] = 0;
         lineStart[1] = 0;
@@ -194,7 +207,6 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         overridePoloidalWinding = 0;
         windingPairConfidence = 0.9;
         rationalSurfaceFactor = 0.1;
-        adjustPlane = -1;
         overlaps = OVERLAPTYPE_REMOVE;
         meshType = SHOWMESHTYPE_CURVES;
         numberPlanes = 1;
@@ -233,6 +245,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pathlinesPeriod = 0;
         pathlinesCMFE = PATHLINESCMFE_POS_CMFE;
         issueTerminationWarnings = true;
+        issueStepsizeWarnings = true;
         issueStiffnessWarnings = true;
         issueCriticalPointsWarnings = true;
         criticalPointThreshold = 0.001;
@@ -257,6 +270,16 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[0] = 0;
         pointSource[1] = 0;
         pointSource[2] = 0;
+        pointList = new Vector();
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(1));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(0));
+        pointList.addElement(new Double(1));
+        pointList.addElement(new Double(0));
         lineStart = new double[3];
         lineStart[0] = 0;
         lineStart[1] = 0;
@@ -288,7 +311,6 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         overridePoloidalWinding = 0;
         windingPairConfidence = 0.9;
         rationalSurfaceFactor = 0.1;
-        adjustPlane = -1;
         overlaps = OVERLAPTYPE_REMOVE;
         meshType = SHOWMESHTYPE_CURVES;
         numberPlanes = 1;
@@ -327,6 +349,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pathlinesPeriod = 0;
         pathlinesCMFE = PATHLINESCMFE_POS_CMFE;
         issueTerminationWarnings = true;
+        issueStepsizeWarnings = true;
         issueStiffnessWarnings = true;
         issueCriticalPointsWarnings = true;
         criticalPointThreshold = 0.001;
@@ -353,6 +376,13 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pointSource[0] = obj.pointSource[0];
         pointSource[1] = obj.pointSource[1];
         pointSource[2] = obj.pointSource[2];
+
+        pointList = new Vector(obj.pointList.size());
+        for(i = 0; i < obj.pointList.size(); ++i)
+        {
+            Double dv = (Double)obj.pointList.elementAt(i);
+            pointList.addElement(new Double(dv.doubleValue()));
+        }
 
         lineStart = new double[3];
         lineStart[0] = obj.lineStart[0];
@@ -388,7 +418,6 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         overridePoloidalWinding = obj.overridePoloidalWinding;
         windingPairConfidence = obj.windingPairConfidence;
         rationalSurfaceFactor = obj.rationalSurfaceFactor;
-        adjustPlane = obj.adjustPlane;
         overlaps = obj.overlaps;
         meshType = obj.meshType;
         numberPlanes = obj.numberPlanes;
@@ -427,6 +456,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         pathlinesPeriod = obj.pathlinesPeriod;
         pathlinesCMFE = obj.pathlinesCMFE;
         issueTerminationWarnings = obj.issueTerminationWarnings;
+        issueStepsizeWarnings = obj.issueStepsizeWarnings;
         issueStiffnessWarnings = obj.issueStiffnessWarnings;
         issueCriticalPointsWarnings = obj.issueCriticalPointsWarnings;
         criticalPointThreshold = obj.criticalPointThreshold;
@@ -453,6 +483,15 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         for(i = 0; i < 3 && pointSource_equal; ++i)
             pointSource_equal = (pointSource[i] == obj.pointSource[i]);
 
+        // Compare the elements in the pointList vector.
+        boolean pointList_equal = (obj.pointList.size() == pointList.size());
+        for(i = 0; (i < pointList.size()) && pointList_equal; ++i)
+        {
+            // Make references to Double from Object.
+            Double pointList1 = (Double)pointList.elementAt(i);
+            Double pointList2 = (Double)obj.pointList.elementAt(i);
+            pointList_equal = pointList1.equals(pointList2);
+        }
         // Compare the lineStart arrays.
         boolean lineStart_equal = true;
         for(i = 0; i < 3 && lineStart_equal; ++i)
@@ -481,6 +520,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
                 (puncturePlane == obj.puncturePlane) &&
                 (sourceType == obj.sourceType) &&
                 pointSource_equal &&
+                pointList_equal &&
                 lineStart_equal &&
                 lineEnd_equal &&
                 (pointDensity == obj.pointDensity) &&
@@ -503,7 +543,6 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
                 (overridePoloidalWinding == obj.overridePoloidalWinding) &&
                 (windingPairConfidence == obj.windingPairConfidence) &&
                 (rationalSurfaceFactor == obj.rationalSurfaceFactor) &&
-                (adjustPlane == obj.adjustPlane) &&
                 (overlaps == obj.overlaps) &&
                 (meshType == obj.meshType) &&
                 (numberPlanes == obj.numberPlanes) &&
@@ -542,6 +581,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
                 (pathlinesPeriod == obj.pathlinesPeriod) &&
                 (pathlinesCMFE == obj.pathlinesCMFE) &&
                 (issueTerminationWarnings == obj.issueTerminationWarnings) &&
+                (issueStepsizeWarnings == obj.issueStepsizeWarnings) &&
                 (issueStiffnessWarnings == obj.issueStiffnessWarnings) &&
                 (issueCriticalPointsWarnings == obj.issueCriticalPointsWarnings) &&
                 (criticalPointThreshold == obj.criticalPointThreshold));
@@ -633,12 +673,18 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         Select(11);
     }
 
+    public void SetPointList(Vector pointList_)
+    {
+        pointList = pointList_;
+        Select(12);
+    }
+
     public void SetLineStart(double[] lineStart_)
     {
         lineStart[0] = lineStart_[0];
         lineStart[1] = lineStart_[1];
         lineStart[2] = lineStart_[2];
-        Select(12);
+        Select(13);
     }
 
     public void SetLineStart(double e0, double e1, double e2)
@@ -646,7 +692,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineStart[0] = e0;
         lineStart[1] = e1;
         lineStart[2] = e2;
-        Select(12);
+        Select(13);
     }
 
     public void SetLineEnd(double[] lineEnd_)
@@ -654,7 +700,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineEnd[0] = lineEnd_[0];
         lineEnd[1] = lineEnd_[1];
         lineEnd[2] = lineEnd_[2];
-        Select(13);
+        Select(14);
     }
 
     public void SetLineEnd(double e0, double e1, double e2)
@@ -662,31 +708,31 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         lineEnd[0] = e0;
         lineEnd[1] = e1;
         lineEnd[2] = e2;
-        Select(13);
+        Select(14);
     }
 
     public void SetPointDensity(int pointDensity_)
     {
         pointDensity = pointDensity_;
-        Select(14);
+        Select(15);
     }
 
     public void SetFieldType(int fieldType_)
     {
         fieldType = fieldType_;
-        Select(15);
+        Select(16);
     }
 
     public void SetForceNodeCenteredData(boolean forceNodeCenteredData_)
     {
         forceNodeCenteredData = forceNodeCenteredData_;
-        Select(16);
+        Select(17);
     }
 
     public void SetFieldConstant(double fieldConstant_)
     {
         fieldConstant = fieldConstant_;
-        Select(17);
+        Select(18);
     }
 
     public void SetVelocitySource(double[] velocitySource_)
@@ -694,7 +740,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         velocitySource[0] = velocitySource_[0];
         velocitySource[1] = velocitySource_[1];
         velocitySource[2] = velocitySource_[2];
-        Select(18);
+        Select(19);
     }
 
     public void SetVelocitySource(double e0, double e1, double e2)
@@ -702,102 +748,96 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         velocitySource[0] = e0;
         velocitySource[1] = e1;
         velocitySource[2] = e2;
-        Select(18);
+        Select(19);
     }
 
     public void SetIntegrationType(int integrationType_)
     {
         integrationType = integrationType_;
-        Select(19);
+        Select(20);
     }
 
     public void SetCoordinateSystem(int coordinateSystem_)
     {
         coordinateSystem = coordinateSystem_;
-        Select(20);
+        Select(21);
     }
 
     public void SetMaxStepLength(double maxStepLength_)
     {
         maxStepLength = maxStepLength_;
-        Select(21);
+        Select(22);
     }
 
     public void SetLimitMaximumTimestep(boolean limitMaximumTimestep_)
     {
         limitMaximumTimestep = limitMaximumTimestep_;
-        Select(22);
+        Select(23);
     }
 
     public void SetMaxTimeStep(double maxTimeStep_)
     {
         maxTimeStep = maxTimeStep_;
-        Select(23);
+        Select(24);
     }
 
     public void SetRelTol(double relTol_)
     {
         relTol = relTol_;
-        Select(24);
+        Select(25);
     }
 
     public void SetAbsTolSizeType(int absTolSizeType_)
     {
         absTolSizeType = absTolSizeType_;
-        Select(25);
+        Select(26);
     }
 
     public void SetAbsTolAbsolute(double absTolAbsolute_)
     {
         absTolAbsolute = absTolAbsolute_;
-        Select(26);
+        Select(27);
     }
 
     public void SetAbsTolBBox(double absTolBBox_)
     {
         absTolBBox = absTolBBox_;
-        Select(27);
+        Select(28);
     }
 
     public void SetAnalysis(int analysis_)
     {
         analysis = analysis_;
-        Select(28);
+        Select(29);
     }
 
     public void SetMaximumToroidalWinding(int maximumToroidalWinding_)
     {
         maximumToroidalWinding = maximumToroidalWinding_;
-        Select(29);
+        Select(30);
     }
 
     public void SetOverrideToroidalWinding(int overrideToroidalWinding_)
     {
         overrideToroidalWinding = overrideToroidalWinding_;
-        Select(30);
+        Select(31);
     }
 
     public void SetOverridePoloidalWinding(int overridePoloidalWinding_)
     {
         overridePoloidalWinding = overridePoloidalWinding_;
-        Select(31);
+        Select(32);
     }
 
     public void SetWindingPairConfidence(double windingPairConfidence_)
     {
         windingPairConfidence = windingPairConfidence_;
-        Select(32);
+        Select(33);
     }
 
     public void SetRationalSurfaceFactor(double rationalSurfaceFactor_)
     {
         rationalSurfaceFactor = rationalSurfaceFactor_;
-        Select(33);
-    }
-
-    public void SetAdjustPlane(int adjustPlane_)
-    {
-        adjustPlane = adjustPlane_;
         Select(34);
     }
 
@@ -1029,22 +1069,28 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         Select(72);
     }
 
+    public void SetIssueStepsizeWarnings(boolean issueStepsizeWarnings_)
+    {
+        issueStepsizeWarnings = issueStepsizeWarnings_;
+        Select(73);
+    }
+
     public void SetIssueStiffnessWarnings(boolean issueStiffnessWarnings_)
     {
         issueStiffnessWarnings = issueStiffnessWarnings_;
-        Select(73);
+        Select(74);
     }
 
     public void SetIssueCriticalPointsWarnings(boolean issueCriticalPointsWarnings_)
     {
         issueCriticalPointsWarnings = issueCriticalPointsWarnings_;
-        Select(74);
+        Select(75);
     }
 
     public void SetCriticalPointThreshold(double criticalPointThreshold_)
     {
         criticalPointThreshold = criticalPointThreshold_;
-        Select(75);
+        Select(76);
     }
 
     // Property getting methods
@@ -1060,6 +1106,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public int            GetPuncturePlane() { return puncturePlane; }
     public int            GetSourceType() { return sourceType; }
     public double[]       GetPointSource() { return pointSource; }
+    public Vector         GetPointList() { return pointList; }
     public double[]       GetLineStart() { return lineStart; }
     public double[]       GetLineEnd() { return lineEnd; }
     public int            GetPointDensity() { return pointDensity; }
@@ -1082,7 +1129,6 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public int            GetOverridePoloidalWinding() { return overridePoloidalWinding; }
     public double         GetWindingPairConfidence() { return windingPairConfidence; }
     public double         GetRationalSurfaceFactor() { return rationalSurfaceFactor; }
-    public int            GetAdjustPlane() { return adjustPlane; }
     public int            GetOverlaps() { return overlaps; }
     public int            GetMeshType() { return meshType; }
     public int            GetNumberPlanes() { return numberPlanes; }
@@ -1121,6 +1167,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     public double         GetPathlinesPeriod() { return pathlinesPeriod; }
     public int            GetPathlinesCMFE() { return pathlinesCMFE; }
     public boolean        GetIssueTerminationWarnings() { return issueTerminationWarnings; }
+    public boolean        GetIssueStepsizeWarnings() { return issueStepsizeWarnings; }
     public boolean        GetIssueStiffnessWarnings() { return issueStiffnessWarnings; }
     public boolean        GetIssueCriticalPointsWarnings() { return issueCriticalPointsWarnings; }
     public double         GetCriticalPointThreshold() { return criticalPointThreshold; }
@@ -1153,51 +1200,51 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(11, buf))
             buf.WriteDoubleArray(pointSource);
         if(WriteSelect(12, buf))
-            buf.WriteDoubleArray(lineStart);
+            buf.WriteDoubleVector(pointList);
         if(WriteSelect(13, buf))
-            buf.WriteDoubleArray(lineEnd);
+            buf.WriteDoubleArray(lineStart);
         if(WriteSelect(14, buf))
-            buf.WriteInt(pointDensity);
+            buf.WriteDoubleArray(lineEnd);
         if(WriteSelect(15, buf))
-            buf.WriteInt(fieldType);
+            buf.WriteInt(pointDensity);
         if(WriteSelect(16, buf))
-            buf.WriteBool(forceNodeCenteredData);
+            buf.WriteInt(fieldType);
         if(WriteSelect(17, buf))
-            buf.WriteDouble(fieldConstant);
+            buf.WriteBool(forceNodeCenteredData);
         if(WriteSelect(18, buf))
-            buf.WriteDoubleArray(velocitySource);
+            buf.WriteDouble(fieldConstant);
         if(WriteSelect(19, buf))
-            buf.WriteInt(integrationType);
+            buf.WriteDoubleArray(velocitySource);
         if(WriteSelect(20, buf))
-            buf.WriteInt(coordinateSystem);
+            buf.WriteInt(integrationType);
         if(WriteSelect(21, buf))
-            buf.WriteDouble(maxStepLength);
+            buf.WriteInt(coordinateSystem);
         if(WriteSelect(22, buf))
-            buf.WriteBool(limitMaximumTimestep);
+            buf.WriteDouble(maxStepLength);
         if(WriteSelect(23, buf))
-            buf.WriteDouble(maxTimeStep);
+            buf.WriteBool(limitMaximumTimestep);
         if(WriteSelect(24, buf))
-            buf.WriteDouble(relTol);
+            buf.WriteDouble(maxTimeStep);
         if(WriteSelect(25, buf))
-            buf.WriteInt(absTolSizeType);
+            buf.WriteDouble(relTol);
         if(WriteSelect(26, buf))
-            buf.WriteDouble(absTolAbsolute);
+            buf.WriteInt(absTolSizeType);
         if(WriteSelect(27, buf))
-            buf.WriteDouble(absTolBBox);
+            buf.WriteDouble(absTolAbsolute);
         if(WriteSelect(28, buf))
-            buf.WriteInt(analysis);
+            buf.WriteDouble(absTolBBox);
         if(WriteSelect(29, buf))
-            buf.WriteInt(maximumToroidalWinding);
+            buf.WriteInt(analysis);
         if(WriteSelect(30, buf))
-            buf.WriteInt(overrideToroidalWinding);
+            buf.WriteInt(maximumToroidalWinding);
         if(WriteSelect(31, buf))
-            buf.WriteInt(overridePoloidalWinding);
+            buf.WriteInt(overrideToroidalWinding);
         if(WriteSelect(32, buf))
-            buf.WriteDouble(windingPairConfidence);
+            buf.WriteInt(overridePoloidalWinding);
         if(WriteSelect(33, buf))
-            buf.WriteDouble(rationalSurfaceFactor);
+            buf.WriteDouble(windingPairConfidence);
         if(WriteSelect(34, buf))
-            buf.WriteInt(adjustPlane);
+            buf.WriteDouble(rationalSurfaceFactor);
         if(WriteSelect(35, buf))
             buf.WriteInt(overlaps);
         if(WriteSelect(36, buf))
@@ -1275,10 +1322,12 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(72, buf))
             buf.WriteBool(issueTerminationWarnings);
         if(WriteSelect(73, buf))
-            buf.WriteBool(issueStiffnessWarnings);
+            buf.WriteBool(issueStepsizeWarnings);
         if(WriteSelect(74, buf))
-            buf.WriteBool(issueCriticalPointsWarnings);
+            buf.WriteBool(issueStiffnessWarnings);
         if(WriteSelect(75, buf))
+            buf.WriteBool(issueCriticalPointsWarnings);
+        if(WriteSelect(76, buf))
             buf.WriteDouble(criticalPointThreshold);
     }
 
@@ -1323,73 +1372,73 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
             SetPointSource(buf.ReadDoubleArray());
             break;
         case 12:
-            SetLineStart(buf.ReadDoubleArray());
+            SetPointList(buf.ReadDoubleVector());
             break;
         case 13:
-            SetLineEnd(buf.ReadDoubleArray());
+            SetLineStart(buf.ReadDoubleArray());
             break;
         case 14:
-            SetPointDensity(buf.ReadInt());
+            SetLineEnd(buf.ReadDoubleArray());
             break;
         case 15:
-            SetFieldType(buf.ReadInt());
+            SetPointDensity(buf.ReadInt());
             break;
         case 16:
-            SetForceNodeCenteredData(buf.ReadBool());
+            SetFieldType(buf.ReadInt());
             break;
         case 17:
-            SetFieldConstant(buf.ReadDouble());
+            SetForceNodeCenteredData(buf.ReadBool());
             break;
         case 18:
-            SetVelocitySource(buf.ReadDoubleArray());
+            SetFieldConstant(buf.ReadDouble());
             break;
         case 19:
-            SetIntegrationType(buf.ReadInt());
+            SetVelocitySource(buf.ReadDoubleArray());
             break;
         case 20:
-            SetCoordinateSystem(buf.ReadInt());
+            SetIntegrationType(buf.ReadInt());
             break;
         case 21:
-            SetMaxStepLength(buf.ReadDouble());
+            SetCoordinateSystem(buf.ReadInt());
             break;
         case 22:
-            SetLimitMaximumTimestep(buf.ReadBool());
+            SetMaxStepLength(buf.ReadDouble());
             break;
         case 23:
-            SetMaxTimeStep(buf.ReadDouble());
+            SetLimitMaximumTimestep(buf.ReadBool());
             break;
         case 24:
-            SetRelTol(buf.ReadDouble());
+            SetMaxTimeStep(buf.ReadDouble());
             break;
         case 25:
-            SetAbsTolSizeType(buf.ReadInt());
+            SetRelTol(buf.ReadDouble());
             break;
         case 26:
-            SetAbsTolAbsolute(buf.ReadDouble());
+            SetAbsTolSizeType(buf.ReadInt());
             break;
         case 27:
-            SetAbsTolBBox(buf.ReadDouble());
+            SetAbsTolAbsolute(buf.ReadDouble());
             break;
         case 28:
-            SetAnalysis(buf.ReadInt());
+            SetAbsTolBBox(buf.ReadDouble());
             break;
         case 29:
-            SetMaximumToroidalWinding(buf.ReadInt());
+            SetAnalysis(buf.ReadInt());
             break;
         case 30:
-            SetOverrideToroidalWinding(buf.ReadInt());
+            SetMaximumToroidalWinding(buf.ReadInt());
             break;
         case 31:
-            SetOverridePoloidalWinding(buf.ReadInt());
+            SetOverrideToroidalWinding(buf.ReadInt());
             break;
         case 32:
-            SetWindingPairConfidence(buf.ReadDouble());
+            SetOverridePoloidalWinding(buf.ReadInt());
             break;
         case 33:
-            SetRationalSurfaceFactor(buf.ReadDouble());
+            SetWindingPairConfidence(buf.ReadDouble());
             break;
         case 34:
-            SetAdjustPlane(buf.ReadInt());
+            SetRationalSurfaceFactor(buf.ReadDouble());
             break;
         case 35:
             SetOverlaps(buf.ReadInt());
@@ -1507,12 +1556,15 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
             SetIssueTerminationWarnings(buf.ReadBool());
             break;
         case 73:
-            SetIssueStiffnessWarnings(buf.ReadBool());
+            SetIssueStepsizeWarnings(buf.ReadBool());
             break;
         case 74:
-            SetIssueCriticalPointsWarnings(buf.ReadBool());
+            SetIssueStiffnessWarnings(buf.ReadBool());
             break;
         case 75:
+            SetIssueCriticalPointsWarnings(buf.ReadBool());
+            break;
+        case 76:
             SetCriticalPointThreshold(buf.ReadDouble());
             break;
         }
@@ -1551,10 +1603,13 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         str = str + indent + "sourceType = ";
         if(sourceType == SOURCETYPE_SPECIFIEDPOINT)
             str = str + "SOURCETYPE_SPECIFIEDPOINT";
+        if(sourceType == SOURCETYPE_POINTLIST)
+            str = str + "SOURCETYPE_POINTLIST";
         if(sourceType == SOURCETYPE_SPECIFIEDLINE)
             str = str + "SOURCETYPE_SPECIFIEDLINE";
         str = str + "\n";
         str = str + doubleArrayToString("pointSource", pointSource, indent) + "\n";
+        str = str + doubleVectorToString("pointList", pointList, indent) + "\n";
         str = str + doubleArrayToString("lineStart", lineStart, indent) + "\n";
         str = str + doubleArrayToString("lineEnd", lineEnd, indent) + "\n";
         str = str + intToString("pointDensity", pointDensity, indent) + "\n";
@@ -1620,7 +1675,6 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
         str = str + intToString("overridePoloidalWinding", overridePoloidalWinding, indent) + "\n";
         str = str + doubleToString("windingPairConfidence", windingPairConfidence, indent) + "\n";
         str = str + doubleToString("rationalSurfaceFactor", rationalSurfaceFactor, indent) + "\n";
-        str = str + intToString("adjustPlane", adjustPlane, indent) + "\n";
         str = str + indent + "overlaps = ";
         if(overlaps == OVERLAPTYPE_RAW)
             str = str + "OVERLAPTYPE_RAW";
@@ -1721,6 +1775,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
             str = str + "PATHLINESCMFE_POS_CMFE";
         str = str + "\n";
         str = str + boolToString("issueTerminationWarnings", issueTerminationWarnings, indent) + "\n";
+        str = str + boolToString("issueStepsizeWarnings", issueStepsizeWarnings, indent) + "\n";
         str = str + boolToString("issueStiffnessWarnings", issueStiffnessWarnings, indent) + "\n";
         str = str + boolToString("issueCriticalPointsWarnings", issueCriticalPointsWarnings, indent) + "\n";
         str = str + doubleToString("criticalPointThreshold", criticalPointThreshold, indent) + "\n";
@@ -1741,6 +1796,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     private int            puncturePlane;
     private int            sourceType;
     private double[]       pointSource;
+    private Vector         pointList; // vector of Double objects
     private double[]       lineStart;
     private double[]       lineEnd;
     private int            pointDensity;
@@ -1763,7 +1819,6 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     private int            overridePoloidalWinding;
     private double         windingPairConfidence;
     private double         rationalSurfaceFactor;
-    private int            adjustPlane;
     private int            overlaps;
     private int            meshType;
     private int            numberPlanes;
@@ -1802,6 +1857,7 @@ public class PoincareAttributes extends AttributeSubject implements Plugin
     private double         pathlinesPeriod;
     private int            pathlinesCMFE;
     private boolean        issueTerminationWarnings;
+    private boolean        issueStepsizeWarnings;
     private boolean        issueStiffnessWarnings;
     private boolean        issueCriticalPointsWarnings;
     private double         criticalPointThreshold;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,13 +40,13 @@
 //                          avtPoincareFilter.h                              //
 // ************************************************************************* //
 
-#ifndef AVT_Poincare_FILTER_H
-#define AVT_Poincare_FILTER_H
+#ifndef AVT_POINCARE_FILTER_H
+#define AVT_POINCARE_FILTER_H
 
 /** header file for plugin development */
 #include <avtPluginFilter.h>
-/** header file for parallel integral curve system via the streamline filter */
-#include <avtStreamlineFilter.h>
+/** header file for parallel integral curve system via the avtPICSfilter */
+#include <avtPICSFilter.h>
 
 /** included attributes for Poincare */
 #include <PoincareAttributes.h>
@@ -55,6 +55,7 @@
 
 #include <vector>
 
+class avtPoincareIC;
 
 // ****************************************************************************
 //  Class: avtPoincareFilter
@@ -70,7 +71,7 @@
 // ****************************************************************************
 
 class avtPoincareFilter : public virtual avtPluginFilter,
-                          public avtPICSFilter
+                          public virtual avtPICSFilter
 {
   public:
     // default constructor
@@ -85,6 +86,7 @@ class avtPoincareFilter : public virtual avtPluginFilter,
       return "Performing Poincare"; };
 
     void SetPointSource(const double *p);
+    void SetPointListSource(const std::vector<double> &ptList);
     void SetLineSource(const double *p0, const double *p1,
                        int den, bool rand, int seed, int numPts);
 
@@ -105,8 +107,6 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
     void SetWindingPairConfidence( double val ) { windingPairConfidence = val; }
     void SetRationalSurfaceFactor( double val ) { rationalSurfaceFactor = val; }
-
-    void SetAdjustPlane( int val ) { adjust_plane = val; }
 
     void SetOverlaps( unsigned int val ) { overlaps = val; }
 
@@ -171,11 +171,14 @@ class avtPoincareFilter : public virtual avtPluginFilter,
                                                    const avtVector &v_start,
                                                    long ID );
 
+    virtual bool             GetAllSeedsSentToAllProcs() { return true; };
+
     /** Construct the initial locations to emanate integral curves */
     virtual std::vector<avtVector> GetInitialLocations();
     virtual std::vector<avtVector> GetInitialVelocities();
 
     void GenerateSeedPointsFromPoint(std::vector<avtVector> &pts);
+    void GenerateSeedPointsFromPointList(std::vector<avtVector> &pts);
     void GenerateSeedPointsFromLine(std::vector<avtVector> &pts);
 
     void CreateIntegralCurveOutput(std::vector<avtIntegralCurve*,
@@ -194,7 +197,6 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
     virtual void drawRationalCurve( avtDataTree *dt,
                                     std::vector< std::vector < std::vector < avtVector > > > &nodes,
-                                    unsigned int nnodes,
                                     unsigned int islands,
                                     unsigned int skip,
                                     unsigned int color,
@@ -212,12 +214,10 @@ class avtPoincareFilter : public virtual avtPluginFilter,
   
     virtual void drawSurface( avtDataTree *dt,
                               std::vector< std::vector < std::vector < avtVector > > > &nodes,
-                              unsigned int nnodes,
                               unsigned int islands,
                               unsigned int skip,
                               unsigned int color,
-                              double color_value,
-                              bool modulo = false);
+                              double color_value);
   
     virtual void drawPeriodicity( avtDataTree *dt,
                                   std::vector < avtVector > &nodes,
@@ -231,6 +231,7 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
     // Poincare filter methods.
     bool ClassifyFieldlines(std::vector<avtIntegralCurve *> &ic);
+    void SetupPlaneOrdering( avtPoincareIC *poincare_ic );
     void CreatePoincareOutput(avtDataTree *dt,
                               std::vector<avtIntegralCurve *> &ic);
 
@@ -240,6 +241,8 @@ class avtPoincareFilter : public virtual avtPluginFilter,
 
     void IssueWarningForMaxStepsTermination(bool v) 
                  { issueWarningForMaxStepsTermination = v; };
+    void IssueWarningForStepsize(bool v) 
+                 { issueWarningForStepsize = v; };
     void IssueWarningForStiffness(bool v) 
                  { issueWarningForStiffness = v; };
     void IssueWarningForCriticalPoints(bool v, double speed) 
@@ -257,8 +260,8 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     bool     doTime;
     double   maxTime;
 
-    // Various starting locations for streamlines.
-    avtVector points[2];
+    // Various starting locations for integral curves.
+    std::vector< avtVector > points;
     int       numSamplePoints;
     int       sampleDensity[3];
     bool      randomSamples;
@@ -281,7 +284,6 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     double rationalSurfaceFactor;
 
     std::vector< double > planes;
-    int adjust_plane;
 
     unsigned int overlaps;
     bool is_curvemesh;
@@ -310,6 +312,7 @@ class avtPoincareFilter : public virtual avtPluginFilter,
     std::vector<avtVector> seedPoints;
 
     bool      issueWarningForMaxStepsTermination;
+    bool      issueWarningForStepsize;
     bool      issueWarningForStiffness;
     bool      issueWarningForCriticalPoints;
     double    criticalPointThreshold;

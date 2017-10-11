@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,7 @@
 #define QVIS_XRAYIMAGE_QUERY_WIDGET_H
 #include <gui_exports.h>
 #include <QWidget>
+#include <vectortypes.h>
 
 // Forward declarations.
 class QCheckBox;
@@ -59,8 +60,18 @@ class MapNode;
 // Creation:   June 17, 2011 
 //
 // Modifications:
-//    Kathleen Biagas, Wed Oct 17 12:12:10 PDT 2012
-//    Added upVector.
+//   Kathleen Biagas, Wed Oct 17 12:12:10 PDT 2012
+//   Added upVector.
+//
+//   Eric Brugger, Fri May 22 15:50:50 PDT 2015
+//   I updated the window to use the new view description and support the
+//   recently added background intensity parameter.
+//
+//   Eric Brugger, Wed May 27 17:27:31 PDT 2015
+//   I added an option to family output files.
+//
+//   Eric Brugger, Thu Jun  4 17:23:58 PDT 2015
+//   I added an option to enable outputting the ray bounds to a vtk file.
 //
 // ****************************************************************************
 
@@ -75,17 +86,25 @@ public:
 
 
 private:
+    bool             GetDoubleValues(int whichWidget, doubleVector &pt);
     bool             GetDoubleValues(int whichWidget, int n, double *pt);
     bool             GetIntValues(int whichWidget, int *pt);
 
     QComboBox       *imageFormat;
     QCheckBox       *divideFlag;
-    QLineEdit       *origin;
-    QLineEdit       *upVector;
-    QLineEdit       *theta;
-    QLineEdit       *phi;
-    QLineEdit       *width;
-    QLineEdit       *height;
+    QLineEdit       *backgroundIntensities;
+    QLineEdit       *normal;
+    QLineEdit       *focus;
+    QLineEdit       *viewUp;
+    QLineEdit       *viewAngle;
+    QLineEdit       *parallelScale;
+    QLineEdit       *nearPlane;
+    QLineEdit       *farPlane;
+    QLineEdit       *imagePan;
+    QLineEdit       *imageZoom;
+    QCheckBox       *perspective;
+    QCheckBox       *family;
+    QCheckBox       *outputRayBounds;
     QLineEdit       *imageSize;
 };
 

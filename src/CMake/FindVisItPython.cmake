@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -367,7 +367,7 @@ ELSE(NOT WIN32)
     FILE(TO_NATIVE_PATH ${CMAKE_CURRENT_BINARY_DIR} CCBD_NATIVE)
     STRING(REPLACE "\\" "\\\\" CCBD_ESC_PATH "${CCBD_NATIVE}")
 
-    add_custom_command(OUTPUT  ${CMAKE_CURRENT_BINARY_DIR}/build
+    add_custom_target(${target_name} ALL
             COMMAND ${PYTHON_EXECUTABLE} ${setup_file} -v
             build
             --build-base=${CMAKE_CURRENT_BINARY_DIR}/build
@@ -376,7 +376,10 @@ ELSE(NOT WIN32)
             DEPENDS  ${setup_file} ${ARGN}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-    add_custom_target(${target_name} ALL DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/build)
+    if(VISIT_NO_ALLBUILD)
+        add_dependencies(visit_special_builds ${target_name})
+    endif()
+
     # also use distutils for the install ...
     FILE(TO_NATIVE_PATH ${VISIT_INSTALLED_VERSION_LIB} VIVL_NATIVE)
     STRING(REPLACE "\\" "\\\\" VIVL_ESC_PATH "${VIVL_NATIVE}")
@@ -400,10 +403,16 @@ FUNCTION(PYTHON_ADD_HYBRID_MODULE target_name dest_dir setup_file py_sources)
                                ${setup_file}
                                ${py_sources})
     PYTHON_ADD_MODULE(${target_name} ${ARGN})
-    IF(NOT WIN32)
+    if(NOT WIN32)
         SET_TARGET_PROPERTIES(${target_name} PROPERTIES
                                              LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${dest_dir}/${target_name}/)
-    ENDIF(NOT WIN32)
+    else()
+        foreach(cfg ${CMAKE_CONFIGURATION_TYPES})
+            string(TOUPPER ${cfg} UCFG)
+            set_target_properties(${target_name} PROPERTIES
+                 LIBRARY_OUTPUT_DIRECTORY_${UCFG} "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${cfg}/${dest_dir}/${target_name}/")
+        endforeach()
+    endif()
     ADD_DEPENDENCIES(${target_name} "${target_name}_py_setup")
     VISIT_INSTALL_TARGETS_RELATIVE(${dest_dir}/${target_name} ${target_name})
 

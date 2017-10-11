@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -209,6 +209,8 @@ f_visit_internal_InstallCallbacks(void)
 #define F_VISITSETPARALLEL          F77_ID(visitsetparallel_,visitsetparallel,VISITSETPARALLEL)
 #define F_VISITSETPARALLELRANK      F77_ID(visitsetparallelrank_,visitsetparallelrank,VISITSETPARALLELRANK)
 #define F_VISITSETUPENV             F77_ID(visitsetupenv_,visitsetupenv,VISITSETUPENV)
+#define F_VISITSETUPENV2            F77_ID(visitsetupenv2_,visitsetupenv2,VISITSETUPENV2)
+#define F_VISITGETENV               F77_ID(visitgetenv_,visitgetenv,VISITGETENV)
 #define F_VISITSYNCHRONIZE          F77_ID(visitsynchronize_,visitsynchronize,VISITSYNCHRONIZE)
 #define F_VISITTIMESTEPCHANGED      F77_ID(visittimestepchanged_,visittimestepchanged,VISITTIMESTEPCHANGED)
 #define F_VISITUPDATEPLOTS          F77_ID(visitupdateplots_,visitupdateplots,VISITUPDATEPLOTS)
@@ -221,6 +223,7 @@ f_visit_internal_InstallCallbacks(void)
 #define F_VISITSETACTIVEPLOTS       F77_ID(visitsetactiveplots_,visitsetactiveplots,VISITSETACTIVEPLOTS)
 #define F_VISITGETMEMORY            F77_ID(visitgetmemory_,visitgetmemory,VISITGETMEMORY)
 #define F_VISITEXPORTDATABASE       F77_ID(visitexportdatabase_,visitexportdatabase,VISITEXPORTDATABASE)
+#define F_VISITEXPORTDATABASEWITHOPTIONS       F77_ID(visitexportdatabasewithoptions_,visitexportdatabasewithoptions,VISITEXPORTDATABASEWITHOPTIONS)
 #define F_VISITRESTORESESSION       F77_ID(visitrestoresession_,visitrestoresession,VISITRESTORESESSION)
 
 /******************************************************************************
@@ -273,7 +276,7 @@ F_VISITSETMPICOMMUNICATOR(int *comm)
 {
     int ret = VISIT_ERROR;
     if(comm != NULL)
-        ret = VisItSetMPICommunicator((void *)comm);
+        ret = VisItSetMPICommunicator_f(comm);
     return ret;
 }
 
@@ -409,30 +412,50 @@ F_VISITSETUPENV2(VISIT_F77STRING env, int *lenv)
  * Date:       Tue Jun  4 09:27:04 PDT 2013
  *
  * Modifications:
- *
+ *   Brad Whitlock, Tue Oct 27 11:01:11 PDT 2015
+ *   Fixed potential memory issue.
  *****************************************************************************/
+
+#define FMINLENGTH(A,B) (((A) < (B)) ? (A) : (B))
 
 FORTRAN
 F_VISITGETENV(VISIT_F77STRING env, int *lenv)
 {
-    char *src = VisItGetEnvironment();
-
-    if(src != NULL)
+    if(*lenv <= 0)
     {
-        size_t len, sz = 1; /// TODO: WARNING sz was uninitalized setting to 1 so the sz == 0 gets triggered if it needs to be (CHECK)
-        len = strlen(src);
-        sz = (len < *lenv) ? (sz - 1) : (*lenv - 1);
-        if(sz == 0)
-            *lenv = 0;
-        else
-        {
-            memcpy(env, src, sz);
-            env[sz] = '\0';
-        }
+        *lenv = 0;
+        return VISIT_ERROR;
     }
     else
     {
-        *lenv = 0;
+        char *src = VisItGetEnvironment();
+        if(src != NULL)
+        {
+            /* We have lenv which is the size of the destination buffer. 
+               We have len which is the length of the string. */
+            size_t len, sz;
+            len = strlen(src);
+
+            /* Fill the output buffer with NULL characters */
+            memset(env, 0, *lenv);
+
+            /* Copy the amount of string that will fit into the output buffer
+              (leaving 1 element for a NULL terminator).*/
+            sz = FMINLENGTH(len, *lenv-1);
+            if(sz > 0)
+                memcpy(env, src, sz);
+
+            /* Return the length of the string in lenv */
+            *lenv = (int)sz;
+
+            /* VisItGetEnvironment returns a strdup'd copy of the 
+               environment now. Free it.*/
+            free(src);
+        }
+        else
+        {
+            *lenv = 0;
+        }
     }
 
     return VISIT_OKAY;
@@ -1124,14 +1147,48 @@ F_VISITGETMEMORY(double *m_size, double *m_rss)
 }
 
 /******************************************************************************
- * Function: F_VISITEXPORTDATABASE
+ * Function: F_VISITEXPORTDATABASEWITHOPTIONS
  *
- * Purpose:   Allows FORTRAN to setup the VisIt environment variables.
+ * Purpose:   Allows FORTRAN to export plots.
  *
  * Programmer: Brad Whitlock
  * Date:       Fri Sep 19 14:15:54 PDT 2014
  *
  * Modifications:
+ *   Brad Whitlock, Fri Aug 14 11:57:57 PDT 2015
+ *   Added options.
+ *
+ *****************************************************************************/
+
+FORTRAN
+F_VISITEXPORTDATABASEWITHOPTIONS(VISIT_F77STRING filename, int *lfilename,
+                                 VISIT_F77STRING format, int *lformat,
+                                 visit_handle *vars, visit_handle *options)
+{
+    FORTRAN retval;
+    char *f_filename = NULL, *f_format = NULL;
+
+    COPY_FORTRAN_STRING(f_filename, filename, lfilename);
+    COPY_FORTRAN_STRING(f_format, format, lformat);
+
+    retval = VisItExportDatabaseWithOptions(f_filename, f_format, *vars, *options);
+
+    FREE(f_filename);
+    FREE(f_format);
+    return retval;
+}
+
+/******************************************************************************
+ * Function: F_VISITEXPORTDATABASE
+ *
+ * Purpose:   Allows FORTRAN to export plots.
+ *
+ * Programmer: Brad Whitlock
+ * Date:       Fri Sep 19 14:15:54 PDT 2014
+ *
+ * Modifications:
+ *   Brad Whitlock, Fri Aug 14 11:57:57 PDT 2015
+ *   Added options.
  *
  *****************************************************************************/
 
@@ -1140,17 +1197,8 @@ F_VISITEXPORTDATABASE(VISIT_F77STRING filename, int *lfilename,
                       VISIT_F77STRING format, int *lformat,
                       visit_handle *vars)
 {
-    FORTRAN retval;
-    char *f_filename = NULL, *f_format = NULL;
-
-    COPY_FORTRAN_STRING(f_filename, filename, lfilename);
-    COPY_FORTRAN_STRING(f_format, format, lformat);
-
-    retval = VisItExportDatabase(f_filename, f_format, *vars);
-
-    FREE(f_filename);
-    FREE(f_format);
-    return retval;
+    int no_options = VISIT_INVALID_HANDLE;
+    return F_VISITEXPORTDATABASEWITHOPTIONS(filename, lfilename, format, lformat, vars, &no_options);
 }
 
 /******************************************************************************
@@ -1576,7 +1624,7 @@ extern int F_VISITGETDOMAINNESTING(const char *, int *);
  *****************************************************************************/
 
 /******************************************************************************
- * Function: VisItGetMetaData
+ * Function: VisItActivateTimestep
  *
  * Purpose:   Calls FORTRAN "visitactivatetimestep" to activate the time step.
  *

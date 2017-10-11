@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -336,18 +336,26 @@ QualifiedFilename::DetermineSeparator(const std::string &p) const
 //   Made the index variable an int so it works properly when there is no
 //   host or path in the filename.
 //
-//   Brad Whitlock, Mon Aug 26 17:14:42 PST 2002
-//   
 // ****************************************************************************
 
 void
 QualifiedFilename::SetFromString(const std::string &str)
 {
-    int index;
+    std::string::size_type index;
 
     // Look for the hostname in the string.
     if((index = str.find(":")) != std::string::npos)
-        host = str.substr(0, index);
+    {
+        std::string::size_type drive = str.find(":\\");
+        if(drive != std::string::npos && drive == index)
+        {
+            // The colon was just from a Windows drive; not a host.
+            host = std::string("localhost");
+            index = std::string::npos;
+        }
+        else
+            host = str.substr(0, index);
+    }
     else
     {
         // The filename was not a qualified filename, assume it
@@ -362,7 +370,7 @@ QualifiedFilename::SetFromString(const std::string &str)
 
     // Look for the last slash in the path if there is one.
     std::string pathAndFile(str.substr(index + 1));
-    if((index = pathAndFile.rfind(separator_str)) > 0)
+    if((index = pathAndFile.rfind(separator_str)) != std::string::npos)
     {
         path = pathAndFile.substr(0, index);
         filename = pathAndFile.substr(index + 1);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -249,6 +249,9 @@ avtScatterFilter::PreExecute(void)
 //    Make 'PointMeshFromVariables' a templated method to support double
 //    precision.
 //
+//    Eric Brugger, Tue Aug 25 10:04:00 PDT 2015
+//    Modified the routine to return NULL if the output data set was NULL.
+//
 // ****************************************************************************
 
 avtDataRepresentation *
@@ -425,11 +428,13 @@ avtScatterFilter::ExecuteData(avtDataRepresentation *inDR)
     }
     ENDTRY
 
-    avtDataRepresentation *outDR = new avtDataRepresentation(outDS,
-        inDR->GetDomain(), inDR->GetLabel());
-
+    avtDataRepresentation *outDR = NULL;
     if (outDS != NULL)
+    {
+        outDR = new avtDataRepresentation(outDS,
+            inDR->GetDomain(), inDR->GetLabel());
         outDS->Delete();
+    }
 
     return outDR;
 }
@@ -1576,6 +1581,14 @@ avtScatterFilter::ModifyContract(avtContract_p spec)
     else
         keepNodeZone = false;
 
+    // Admit more VTK types.
+    std::vector<int> dataTypes;
+    dataTypes.push_back(VTK_CHAR);
+    dataTypes.push_back(VTK_INT);
+    dataTypes.push_back(VTK_LONG);
+    dataTypes.push_back(VTK_FLOAT);
+    dataTypes.push_back(VTK_DOUBLE);
+    rv->GetDataRequest()->UpdateAdmissibleDataTypes(dataTypes);
 
     return rv;
 }

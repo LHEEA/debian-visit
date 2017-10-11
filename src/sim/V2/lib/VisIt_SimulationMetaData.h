@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -59,6 +59,8 @@ int VisIt_SimulationMetaData_addExpression(visit_handle h, visit_handle obj);
 int VisIt_SimulationMetaData_addSpecies(visit_handle h, visit_handle obj);
 int VisIt_SimulationMetaData_addGenericCommand(visit_handle h, visit_handle obj);
 int VisIt_SimulationMetaData_addCustomCommand(visit_handle h, visit_handle obj);
+
+int VisIt_SimulationMetaData_addMessage(visit_handle h, visit_handle obj);
 
 #ifdef __cplusplus
 }

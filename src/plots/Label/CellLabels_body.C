@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -96,6 +96,9 @@
     // Look for the variable that we want to plot.
     //
     data = input->GetCellData()->GetArray(varname);
+
+    vtkUnsignedIntArray *logIndices = vtkUnsignedIntArray::SafeDownCast(
+        input->GetCellData()->GetArray("LabelFilterCellLogicalIndices"));
 
     if(useGlobalLabel)
     {
@@ -291,6 +294,31 @@
             free(formatStringMiddle);
             free(formatStringEnd);
             free(formatStringLast);
+        }
+    }
+    else if(logIndices != 0 && 
+            atts.GetLabelDisplayFormat() != LabelAttributes::Index)
+    {
+debug3 << "Labelling cells with logical Indices: " << endl;
+        const unsigned int *intptr = (const unsigned int*)logIndices->GetVoidPointer(0);
+        int nc = logIndices->GetNumberOfComponents();
+        if (nc == 2)
+        {
+            for(vtkIdType id = 0; id < nCells; id += skipIncrement)
+            {
+                BEGIN_LABEL
+                CREATE_LABEL(labelString, MAX_LABEL_SIZE, "%d,%d", intptr[id*2+0], intptr[id*2+1]);
+                END_LABEL
+            }
+        }
+        else
+        {
+            for(vtkIdType id = 0; id < nCells; id += skipIncrement)
+            {
+                BEGIN_LABEL
+                CREATE_LABEL(labelString, MAX_LABEL_SIZE, "%d,%d,%d", intptr[id*3+0], intptr[id*3+1], intptr[id*3+2]);
+                END_LABEL
+            }
         }
     }
     else if(originalCells != 0)

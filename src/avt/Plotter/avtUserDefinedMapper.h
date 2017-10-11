@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -154,9 +154,8 @@ class PLOTTER_API vtkUserDefinedMapperBridge : public vtkDataSetMapper
                              vtkUserDefinedMapperBridge();
     virtual                 ~vtkUserDefinedMapperBridge();
 
-                             vtkUserDefinedMapperBridge(const
-                                               vtkUserDefinedMapperBridge&) {};
-    void                     operator=(const vtkUserDefinedMapperBridge&) {};
+                             vtkUserDefinedMapperBridge(const vtkUserDefinedMapperBridge&);
+    void                     operator=(const vtkUserDefinedMapperBridge&);
 
     avtCustomRenderer_p      ren;
 };

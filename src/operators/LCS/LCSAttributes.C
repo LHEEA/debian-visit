@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,6 +107,44 @@ LCSAttributes::Extents_FromString(const std::string &s, LCSAttributes::Extents &
         if(s == Extents_strings[i])
         {
             val = (Extents)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
+// Enum conversion methods for LCSAttributes::AuxiliaryGrid
+//
+
+static const char *AuxiliaryGrid_strings[] = {
+"None", "TwoDim", "ThreeDim"
+};
+
+std::string
+LCSAttributes::AuxiliaryGrid_ToString(LCSAttributes::AuxiliaryGrid t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 3) index = 0;
+    return AuxiliaryGrid_strings[index];
+}
+
+std::string
+LCSAttributes::AuxiliaryGrid_ToString(int t)
+{
+    int index = (t < 0 || t >= 3) ? 0 : t;
+    return AuxiliaryGrid_strings[index];
+}
+
+bool
+LCSAttributes::AuxiliaryGrid_FromString(const std::string &s, LCSAttributes::AuxiliaryGrid &val)
+{
+    val = LCSAttributes::None;
+    for(int i = 0; i < 3; ++i)
+    {
+        if(s == AuxiliaryGrid_strings[i])
+        {
+            val = (AuxiliaryGrid)i;
             return true;
         }
     }
@@ -344,33 +382,71 @@ LCSAttributes::OperationType_FromString(const std::string &s, LCSAttributes::Ope
 }
 
 //
+// Enum conversion methods for LCSAttributes::CauchyGreenTensor
+//
+
+static const char *CauchyGreenTensor_strings[] = {
+"Left", "Right"};
+
+std::string
+LCSAttributes::CauchyGreenTensor_ToString(LCSAttributes::CauchyGreenTensor t)
+{
+    int index = int(t);
+    if(index < 0 || index >= 2) index = 0;
+    return CauchyGreenTensor_strings[index];
+}
+
+std::string
+LCSAttributes::CauchyGreenTensor_ToString(int t)
+{
+    int index = (t < 0 || t >= 2) ? 0 : t;
+    return CauchyGreenTensor_strings[index];
+}
+
+bool
+LCSAttributes::CauchyGreenTensor_FromString(const std::string &s, LCSAttributes::CauchyGreenTensor &val)
+{
+    val = LCSAttributes::Left;
+    for(int i = 0; i < 2; ++i)
+    {
+        if(s == CauchyGreenTensor_strings[i])
+        {
+            val = (CauchyGreenTensor)i;
+            return true;
+        }
+    }
+    return false;
+}
+
+//
 // Enum conversion methods for LCSAttributes::EigenComponent
 //
 
 static const char *EigenComponent_strings[] = {
-"First", "Second", "Third"
-};
+"Smallest", "Intermediate", "Largest", 
+"PosShearVector", "NegShearVector", "PosLambdaShearVector", 
+"NegLambdaShearVector"};
 
 std::string
 LCSAttributes::EigenComponent_ToString(LCSAttributes::EigenComponent t)
 {
     int index = int(t);
-    if(index < 0 || index >= 3) index = 0;
+    if(index < 0 || index >= 7) index = 0;
     return EigenComponent_strings[index];
 }
 
 std::string
 LCSAttributes::EigenComponent_ToString(int t)
 {
-    int index = (t < 0 || t >= 3) ? 0 : t;
+    int index = (t < 0 || t >= 7) ? 0 : t;
     return EigenComponent_strings[index];
 }
 
 bool
 LCSAttributes::EigenComponent_FromString(const std::string &s, LCSAttributes::EigenComponent &val)
 {
-    val = LCSAttributes::First;
-    for(int i = 0; i < 3; ++i)
+    val = LCSAttributes::Smallest;
+    for(int i = 0; i < 7; ++i)
     {
         if(s == EigenComponent_strings[i])
         {
@@ -523,9 +599,13 @@ void LCSAttributes::Init()
     EndPosition[1] = 1;
     EndPosition[2] = 1;
     integrationDirection = Forward;
+    auxiliaryGrid = None;
+    auxiliaryGridSpacing = 0.0001;
     maxSteps = 1000;
     operationType = Lyapunov;
-    eigenComponent = First;
+    cauchyGreenTensor = Right;
+    eigenComponent = Largest;
+    eigenWeight = 1;
     operatorType = BaseValue;
     terminationType = Time;
     terminateBySize = false;
@@ -547,7 +627,7 @@ void LCSAttributes::Init()
     velocitySource[1] = 0;
     velocitySource[2] = 0;
     integrationType = DormandPrince;
-    clampLogValues = true;
+    clampLogValues = false;
     parallelizationAlgorithmType = VisItSelects;
     maxProcessCount = 10;
     maxDomainCacheSize = 3;
@@ -557,8 +637,14 @@ void LCSAttributes::Init()
     pathlinesOverrideStartingTime = 0;
     pathlinesPeriod = 0;
     pathlinesCMFE = POS_CMFE;
-    forceNodeCenteredData = false;
+    thresholdLimit = 0.1;
+    radialLimit = 0.1;
+    boundaryLimit = 0.1;
+    seedLimit = 10;
+    issueAdvectionWarnings = true;
+    issueBoundaryWarnings = true;
     issueTerminationWarnings = true;
+    issueStepsizeWarnings = true;
     issueStiffnessWarnings = true;
     issueCriticalPointsWarnings = true;
     criticalPointThreshold = 0.001;
@@ -599,9 +685,13 @@ void LCSAttributes::Copy(const LCSAttributes &obj)
     EndPosition[2] = obj.EndPosition[2];
 
     integrationDirection = obj.integrationDirection;
+    auxiliaryGrid = obj.auxiliaryGrid;
+    auxiliaryGridSpacing = obj.auxiliaryGridSpacing;
     maxSteps = obj.maxSteps;
     operationType = obj.operationType;
+    cauchyGreenTensor = obj.cauchyGreenTensor;
     eigenComponent = obj.eigenComponent;
+    eigenWeight = obj.eigenWeight;
     operatorType = obj.operatorType;
     terminationType = obj.terminationType;
     terminateBySize = obj.terminateBySize;
@@ -634,8 +724,14 @@ void LCSAttributes::Copy(const LCSAttributes &obj)
     pathlinesOverrideStartingTime = obj.pathlinesOverrideStartingTime;
     pathlinesPeriod = obj.pathlinesPeriod;
     pathlinesCMFE = obj.pathlinesCMFE;
-    forceNodeCenteredData = obj.forceNodeCenteredData;
+    thresholdLimit = obj.thresholdLimit;
+    radialLimit = obj.radialLimit;
+    boundaryLimit = obj.boundaryLimit;
+    seedLimit = obj.seedLimit;
+    issueAdvectionWarnings = obj.issueAdvectionWarnings;
+    issueBoundaryWarnings = obj.issueBoundaryWarnings;
     issueTerminationWarnings = obj.issueTerminationWarnings;
+    issueStepsizeWarnings = obj.issueStepsizeWarnings;
     issueStiffnessWarnings = obj.issueStiffnessWarnings;
     issueCriticalPointsWarnings = obj.issueCriticalPointsWarnings;
     criticalPointThreshold = obj.criticalPointThreshold;
@@ -823,9 +919,13 @@ LCSAttributes::operator == (const LCSAttributes &obj) const
             (UseDataSetEnd == obj.UseDataSetEnd) &&
             EndPosition_equal &&
             (integrationDirection == obj.integrationDirection) &&
+            (auxiliaryGrid == obj.auxiliaryGrid) &&
+            (auxiliaryGridSpacing == obj.auxiliaryGridSpacing) &&
             (maxSteps == obj.maxSteps) &&
             (operationType == obj.operationType) &&
+            (cauchyGreenTensor == obj.cauchyGreenTensor) &&
             (eigenComponent == obj.eigenComponent) &&
+            (eigenWeight == obj.eigenWeight) &&
             (operatorType == obj.operatorType) &&
             (terminationType == obj.terminationType) &&
             (terminateBySize == obj.terminateBySize) &&
@@ -855,8 +955,14 @@ LCSAttributes::operator == (const LCSAttributes &obj) const
             (pathlinesOverrideStartingTime == obj.pathlinesOverrideStartingTime) &&
             (pathlinesPeriod == obj.pathlinesPeriod) &&
             (pathlinesCMFE == obj.pathlinesCMFE) &&
-            (forceNodeCenteredData == obj.forceNodeCenteredData) &&
+            (thresholdLimit == obj.thresholdLimit) &&
+            (radialLimit == obj.radialLimit) &&
+            (boundaryLimit == obj.boundaryLimit) &&
+            (seedLimit == obj.seedLimit) &&
+            (issueAdvectionWarnings == obj.issueAdvectionWarnings) &&
+            (issueBoundaryWarnings == obj.issueBoundaryWarnings) &&
             (issueTerminationWarnings == obj.issueTerminationWarnings) &&
+            (issueStepsizeWarnings == obj.issueStepsizeWarnings) &&
             (issueStiffnessWarnings == obj.issueStiffnessWarnings) &&
             (issueCriticalPointsWarnings == obj.issueCriticalPointsWarnings) &&
             (criticalPointThreshold == obj.criticalPointThreshold));
@@ -1024,9 +1130,13 @@ LCSAttributes::SelectAll()
     Select(ID_UseDataSetEnd,                     (void *)&UseDataSetEnd);
     Select(ID_EndPosition,                       (void *)EndPosition, 3);
     Select(ID_integrationDirection,              (void *)&integrationDirection);
+    Select(ID_auxiliaryGrid,                     (void *)&auxiliaryGrid);
+    Select(ID_auxiliaryGridSpacing,              (void *)&auxiliaryGridSpacing);
     Select(ID_maxSteps,                          (void *)&maxSteps);
     Select(ID_operationType,                     (void *)&operationType);
+    Select(ID_cauchyGreenTensor,                 (void *)&cauchyGreenTensor);
     Select(ID_eigenComponent,                    (void *)&eigenComponent);
+    Select(ID_eigenWeight,                       (void *)&eigenWeight);
     Select(ID_operatorType,                      (void *)&operatorType);
     Select(ID_terminationType,                   (void *)&terminationType);
     Select(ID_terminateBySize,                   (void *)&terminateBySize);
@@ -1056,8 +1166,14 @@ LCSAttributes::SelectAll()
     Select(ID_pathlinesOverrideStartingTime,     (void *)&pathlinesOverrideStartingTime);
     Select(ID_pathlinesPeriod,                   (void *)&pathlinesPeriod);
     Select(ID_pathlinesCMFE,                     (void *)&pathlinesCMFE);
-    Select(ID_forceNodeCenteredData,             (void *)&forceNodeCenteredData);
+    Select(ID_thresholdLimit,                    (void *)&thresholdLimit);
+    Select(ID_radialLimit,                       (void *)&radialLimit);
+    Select(ID_boundaryLimit,                     (void *)&boundaryLimit);
+    Select(ID_seedLimit,                         (void *)&seedLimit);
+    Select(ID_issueAdvectionWarnings,            (void *)&issueAdvectionWarnings);
+    Select(ID_issueBoundaryWarnings,             (void *)&issueBoundaryWarnings);
     Select(ID_issueTerminationWarnings,          (void *)&issueTerminationWarnings);
+    Select(ID_issueStepsizeWarnings,             (void *)&issueStepsizeWarnings);
     Select(ID_issueStiffnessWarnings,            (void *)&issueStiffnessWarnings);
     Select(ID_issueCriticalPointsWarnings,       (void *)&issueCriticalPointsWarnings);
     Select(ID_criticalPointThreshold,            (void *)&criticalPointThreshold);
@@ -1135,6 +1251,18 @@ LCSAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAdd
         node->AddNode(new DataNode("integrationDirection", IntegrationDirection_ToString(integrationDirection)));
     }
 
+    if(completeSave || !FieldsEqual(ID_auxiliaryGrid, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("auxiliaryGrid", AuxiliaryGrid_ToString(auxiliaryGrid)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_auxiliaryGridSpacing, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("auxiliaryGridSpacing", auxiliaryGridSpacing));
+    }
+
     if(completeSave || !FieldsEqual(ID_maxSteps, &defaultObject))
     {
         addToParent = true;
@@ -1147,10 +1275,22 @@ LCSAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAdd
         node->AddNode(new DataNode("operationType", OperationType_ToString(operationType)));
     }
 
+    if(completeSave || !FieldsEqual(ID_cauchyGreenTensor, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("cauchyGreenTensor", CauchyGreenTensor_ToString(cauchyGreenTensor)));
+    }
+
     if(completeSave || !FieldsEqual(ID_eigenComponent, &defaultObject))
     {
         addToParent = true;
         node->AddNode(new DataNode("eigenComponent", EigenComponent_ToString(eigenComponent)));
+    }
+
+    if(completeSave || !FieldsEqual(ID_eigenWeight, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("eigenWeight", eigenWeight));
     }
 
     if(completeSave || !FieldsEqual(ID_operatorType, &defaultObject))
@@ -1327,16 +1467,52 @@ LCSAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAdd
         node->AddNode(new DataNode("pathlinesCMFE", PathlinesCMFE_ToString(pathlinesCMFE)));
     }
 
-    if(completeSave || !FieldsEqual(ID_forceNodeCenteredData, &defaultObject))
+    if(completeSave || !FieldsEqual(ID_thresholdLimit, &defaultObject))
     {
         addToParent = true;
-        node->AddNode(new DataNode("forceNodeCenteredData", forceNodeCenteredData));
+        node->AddNode(new DataNode("thresholdLimit", thresholdLimit));
+    }
+
+    if(completeSave || !FieldsEqual(ID_radialLimit, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("radialLimit", radialLimit));
+    }
+
+    if(completeSave || !FieldsEqual(ID_boundaryLimit, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("boundaryLimit", boundaryLimit));
+    }
+
+    if(completeSave || !FieldsEqual(ID_seedLimit, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("seedLimit", seedLimit));
+    }
+
+    if(completeSave || !FieldsEqual(ID_issueAdvectionWarnings, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("issueAdvectionWarnings", issueAdvectionWarnings));
+    }
+
+    if(completeSave || !FieldsEqual(ID_issueBoundaryWarnings, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("issueBoundaryWarnings", issueBoundaryWarnings));
     }
 
     if(completeSave || !FieldsEqual(ID_issueTerminationWarnings, &defaultObject))
     {
         addToParent = true;
         node->AddNode(new DataNode("issueTerminationWarnings", issueTerminationWarnings));
+    }
+
+    if(completeSave || !FieldsEqual(ID_issueStepsizeWarnings, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("issueStepsizeWarnings", issueStepsizeWarnings));
     }
 
     if(completeSave || !FieldsEqual(ID_issueStiffnessWarnings, &defaultObject))
@@ -1463,6 +1639,24 @@ LCSAttributes::SetFromNode(DataNode *parentNode)
                 SetIntegrationDirection(value);
         }
     }
+    if((node = searchNode->GetNode("auxiliaryGrid")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 3)
+                SetAuxiliaryGrid(AuxiliaryGrid(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            AuxiliaryGrid value;
+            if(AuxiliaryGrid_FromString(node->AsString(), value))
+                SetAuxiliaryGrid(value);
+        }
+    }
+    if((node = searchNode->GetNode("auxiliaryGridSpacing")) != 0)
+        SetAuxiliaryGridSpacing(node->AsDouble());
     if((node = searchNode->GetNode("maxSteps")) != 0)
         SetMaxSteps(node->AsInt());
     if((node = searchNode->GetNode("operationType")) != 0)
@@ -1481,13 +1675,29 @@ LCSAttributes::SetFromNode(DataNode *parentNode)
                 SetOperationType(value);
         }
     }
+    if((node = searchNode->GetNode("cauchyGreenTensor")) != 0)
+    {
+        // Allow enums to be int or string in the config file
+        if(node->GetNodeType() == INT_NODE)
+        {
+            int ival = node->AsInt();
+            if(ival >= 0 && ival < 2)
+                SetCauchyGreenTensor(CauchyGreenTensor(ival));
+        }
+        else if(node->GetNodeType() == STRING_NODE)
+        {
+            CauchyGreenTensor value;
+            if(CauchyGreenTensor_FromString(node->AsString(), value))
+                SetCauchyGreenTensor(value);
+        }
+    }
     if((node = searchNode->GetNode("eigenComponent")) != 0)
     {
         // Allow enums to be int or string in the config file
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 3)
+            if(ival >= 0 && ival < 7)
                 SetEigenComponent(EigenComponent(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1497,6 +1707,8 @@ LCSAttributes::SetFromNode(DataNode *parentNode)
                 SetEigenComponent(value);
         }
     }
+    if((node = searchNode->GetNode("eigenWeight")) != 0)
+        SetEigenWeight(node->AsDouble());
     if((node = searchNode->GetNode("operatorType")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -1653,10 +1865,22 @@ LCSAttributes::SetFromNode(DataNode *parentNode)
                 SetPathlinesCMFE(value);
         }
     }
-    if((node = searchNode->GetNode("forceNodeCenteredData")) != 0)
-        SetForceNodeCenteredData(node->AsBool());
+    if((node = searchNode->GetNode("thresholdLimit")) != 0)
+        SetThresholdLimit(node->AsDouble());
+    if((node = searchNode->GetNode("radialLimit")) != 0)
+        SetRadialLimit(node->AsDouble());
+    if((node = searchNode->GetNode("boundaryLimit")) != 0)
+        SetBoundaryLimit(node->AsDouble());
+    if((node = searchNode->GetNode("seedLimit")) != 0)
+        SetSeedLimit(node->AsInt());
+    if((node = searchNode->GetNode("issueAdvectionWarnings")) != 0)
+        SetIssueAdvectionWarnings(node->AsBool());
+    if((node = searchNode->GetNode("issueBoundaryWarnings")) != 0)
+        SetIssueBoundaryWarnings(node->AsBool());
     if((node = searchNode->GetNode("issueTerminationWarnings")) != 0)
         SetIssueTerminationWarnings(node->AsBool());
+    if((node = searchNode->GetNode("issueStepsizeWarnings")) != 0)
+        SetIssueStepsizeWarnings(node->AsBool());
     if((node = searchNode->GetNode("issueStiffnessWarnings")) != 0)
         SetIssueStiffnessWarnings(node->AsBool());
     if((node = searchNode->GetNode("issueCriticalPointsWarnings")) != 0)
@@ -1725,6 +1949,20 @@ LCSAttributes::SetIntegrationDirection(LCSAttributes::IntegrationDirection integ
 }
 
 void
+LCSAttributes::SetAuxiliaryGrid(LCSAttributes::AuxiliaryGrid auxiliaryGrid_)
+{
+    auxiliaryGrid = auxiliaryGrid_;
+    Select(ID_auxiliaryGrid, (void *)&auxiliaryGrid);
+}
+
+void
+LCSAttributes::SetAuxiliaryGridSpacing(double auxiliaryGridSpacing_)
+{
+    auxiliaryGridSpacing = auxiliaryGridSpacing_;
+    Select(ID_auxiliaryGridSpacing, (void *)&auxiliaryGridSpacing);
+}
+
+void
 LCSAttributes::SetMaxSteps(int maxSteps_)
 {
     maxSteps = maxSteps_;
@@ -1739,10 +1977,24 @@ LCSAttributes::SetOperationType(LCSAttributes::OperationType operationType_)
 }
 
 void
+LCSAttributes::SetCauchyGreenTensor(LCSAttributes::CauchyGreenTensor cauchyGreenTensor_)
+{
+    cauchyGreenTensor = cauchyGreenTensor_;
+    Select(ID_cauchyGreenTensor, (void *)&cauchyGreenTensor);
+}
+
+void
 LCSAttributes::SetEigenComponent(LCSAttributes::EigenComponent eigenComponent_)
 {
     eigenComponent = eigenComponent_;
     Select(ID_eigenComponent, (void *)&eigenComponent);
+}
+
+void
+LCSAttributes::SetEigenWeight(double eigenWeight_)
+{
+    eigenWeight = eigenWeight_;
+    Select(ID_eigenWeight, (void *)&eigenWeight);
 }
 
 void
@@ -1951,10 +2203,45 @@ LCSAttributes::SetPathlinesCMFE(LCSAttributes::PathlinesCMFE pathlinesCMFE_)
 }
 
 void
-LCSAttributes::SetForceNodeCenteredData(bool forceNodeCenteredData_)
+LCSAttributes::SetThresholdLimit(double thresholdLimit_)
 {
-    forceNodeCenteredData = forceNodeCenteredData_;
-    Select(ID_forceNodeCenteredData, (void *)&forceNodeCenteredData);
+    thresholdLimit = thresholdLimit_;
+    Select(ID_thresholdLimit, (void *)&thresholdLimit);
+}
+
+void
+LCSAttributes::SetRadialLimit(double radialLimit_)
+{
+    radialLimit = radialLimit_;
+    Select(ID_radialLimit, (void *)&radialLimit);
+}
+
+void
+LCSAttributes::SetBoundaryLimit(double boundaryLimit_)
+{
+    boundaryLimit = boundaryLimit_;
+    Select(ID_boundaryLimit, (void *)&boundaryLimit);
+}
+
+void
+LCSAttributes::SetSeedLimit(int seedLimit_)
+{
+    seedLimit = seedLimit_;
+    Select(ID_seedLimit, (void *)&seedLimit);
+}
+
+void
+LCSAttributes::SetIssueAdvectionWarnings(bool issueAdvectionWarnings_)
+{
+    issueAdvectionWarnings = issueAdvectionWarnings_;
+    Select(ID_issueAdvectionWarnings, (void *)&issueAdvectionWarnings);
+}
+
+void
+LCSAttributes::SetIssueBoundaryWarnings(bool issueBoundaryWarnings_)
+{
+    issueBoundaryWarnings = issueBoundaryWarnings_;
+    Select(ID_issueBoundaryWarnings, (void *)&issueBoundaryWarnings);
 }
 
 void
@@ -1962,6 +2249,13 @@ LCSAttributes::SetIssueTerminationWarnings(bool issueTerminationWarnings_)
 {
     issueTerminationWarnings = issueTerminationWarnings_;
     Select(ID_issueTerminationWarnings, (void *)&issueTerminationWarnings);
+}
+
+void
+LCSAttributes::SetIssueStepsizeWarnings(bool issueStepsizeWarnings_)
+{
+    issueStepsizeWarnings = issueStepsizeWarnings_;
+    Select(ID_issueStepsizeWarnings, (void *)&issueStepsizeWarnings);
 }
 
 void
@@ -2049,6 +2343,18 @@ LCSAttributes::GetIntegrationDirection() const
     return IntegrationDirection(integrationDirection);
 }
 
+LCSAttributes::AuxiliaryGrid
+LCSAttributes::GetAuxiliaryGrid() const
+{
+    return AuxiliaryGrid(auxiliaryGrid);
+}
+
+double
+LCSAttributes::GetAuxiliaryGridSpacing() const
+{
+    return auxiliaryGridSpacing;
+}
+
 int
 LCSAttributes::GetMaxSteps() const
 {
@@ -2061,10 +2367,22 @@ LCSAttributes::GetOperationType() const
     return OperationType(operationType);
 }
 
+LCSAttributes::CauchyGreenTensor
+LCSAttributes::GetCauchyGreenTensor() const
+{
+    return CauchyGreenTensor(cauchyGreenTensor);
+}
+
 LCSAttributes::EigenComponent
 LCSAttributes::GetEigenComponent() const
 {
     return EigenComponent(eigenComponent);
+}
+
+double
+LCSAttributes::GetEigenWeight() const
+{
+    return eigenWeight;
 }
 
 LCSAttributes::OperatorType
@@ -2247,16 +2565,52 @@ LCSAttributes::GetPathlinesCMFE() const
     return PathlinesCMFE(pathlinesCMFE);
 }
 
-bool
-LCSAttributes::GetForceNodeCenteredData() const
+double
+LCSAttributes::GetThresholdLimit() const
 {
-    return forceNodeCenteredData;
+    return thresholdLimit;
+}
+
+double
+LCSAttributes::GetRadialLimit() const
+{
+    return radialLimit;
+}
+
+double
+LCSAttributes::GetBoundaryLimit() const
+{
+    return boundaryLimit;
+}
+
+int
+LCSAttributes::GetSeedLimit() const
+{
+    return seedLimit;
+}
+
+bool
+LCSAttributes::GetIssueAdvectionWarnings() const
+{
+    return issueAdvectionWarnings;
+}
+
+bool
+LCSAttributes::GetIssueBoundaryWarnings() const
+{
+    return issueBoundaryWarnings;
 }
 
 bool
 LCSAttributes::GetIssueTerminationWarnings() const
 {
     return issueTerminationWarnings;
+}
+
+bool
+LCSAttributes::GetIssueStepsizeWarnings() const
+{
+    return issueStepsizeWarnings;
 }
 
 bool
@@ -2336,9 +2690,13 @@ LCSAttributes::GetFieldName(int index) const
     case ID_UseDataSetEnd:                     return "UseDataSetEnd";
     case ID_EndPosition:                       return "EndPosition";
     case ID_integrationDirection:              return "integrationDirection";
+    case ID_auxiliaryGrid:                     return "auxiliaryGrid";
+    case ID_auxiliaryGridSpacing:              return "auxiliaryGridSpacing";
     case ID_maxSteps:                          return "maxSteps";
     case ID_operationType:                     return "operationType";
+    case ID_cauchyGreenTensor:                 return "cauchyGreenTensor";
     case ID_eigenComponent:                    return "eigenComponent";
+    case ID_eigenWeight:                       return "eigenWeight";
     case ID_operatorType:                      return "operatorType";
     case ID_terminationType:                   return "terminationType";
     case ID_terminateBySize:                   return "terminateBySize";
@@ -2368,8 +2726,14 @@ LCSAttributes::GetFieldName(int index) const
     case ID_pathlinesOverrideStartingTime:     return "pathlinesOverrideStartingTime";
     case ID_pathlinesPeriod:                   return "pathlinesPeriod";
     case ID_pathlinesCMFE:                     return "pathlinesCMFE";
-    case ID_forceNodeCenteredData:             return "forceNodeCenteredData";
+    case ID_thresholdLimit:                    return "thresholdLimit";
+    case ID_radialLimit:                       return "radialLimit";
+    case ID_boundaryLimit:                     return "boundaryLimit";
+    case ID_seedLimit:                         return "seedLimit";
+    case ID_issueAdvectionWarnings:            return "issueAdvectionWarnings";
+    case ID_issueBoundaryWarnings:             return "issueBoundaryWarnings";
     case ID_issueTerminationWarnings:          return "issueTerminationWarnings";
+    case ID_issueStepsizeWarnings:             return "issueStepsizeWarnings";
     case ID_issueStiffnessWarnings:            return "issueStiffnessWarnings";
     case ID_issueCriticalPointsWarnings:       return "issueCriticalPointsWarnings";
     case ID_criticalPointThreshold:            return "criticalPointThreshold";
@@ -2404,9 +2768,13 @@ LCSAttributes::GetFieldType(int index) const
     case ID_UseDataSetEnd:                     return FieldType_enum;
     case ID_EndPosition:                       return FieldType_doubleArray;
     case ID_integrationDirection:              return FieldType_enum;
+    case ID_auxiliaryGrid:                     return FieldType_enum;
+    case ID_auxiliaryGridSpacing:              return FieldType_double;
     case ID_maxSteps:                          return FieldType_int;
     case ID_operationType:                     return FieldType_enum;
+    case ID_cauchyGreenTensor:                 return FieldType_enum;
     case ID_eigenComponent:                    return FieldType_enum;
+    case ID_eigenWeight:                       return FieldType_double;
     case ID_operatorType:                      return FieldType_enum;
     case ID_terminationType:                   return FieldType_enum;
     case ID_terminateBySize:                   return FieldType_bool;
@@ -2436,8 +2804,14 @@ LCSAttributes::GetFieldType(int index) const
     case ID_pathlinesOverrideStartingTime:     return FieldType_double;
     case ID_pathlinesPeriod:                   return FieldType_double;
     case ID_pathlinesCMFE:                     return FieldType_enum;
-    case ID_forceNodeCenteredData:             return FieldType_bool;
+    case ID_thresholdLimit:                    return FieldType_double;
+    case ID_radialLimit:                       return FieldType_double;
+    case ID_boundaryLimit:                     return FieldType_double;
+    case ID_seedLimit:                         return FieldType_int;
+    case ID_issueAdvectionWarnings:            return FieldType_bool;
+    case ID_issueBoundaryWarnings:             return FieldType_bool;
     case ID_issueTerminationWarnings:          return FieldType_bool;
+    case ID_issueStepsizeWarnings:             return FieldType_bool;
     case ID_issueStiffnessWarnings:            return FieldType_bool;
     case ID_issueCriticalPointsWarnings:       return FieldType_bool;
     case ID_criticalPointThreshold:            return FieldType_double;
@@ -2472,9 +2846,13 @@ LCSAttributes::GetFieldTypeName(int index) const
     case ID_UseDataSetEnd:                     return "enum";
     case ID_EndPosition:                       return "doubleArray";
     case ID_integrationDirection:              return "enum";
+    case ID_auxiliaryGrid:                     return "enum";
+    case ID_auxiliaryGridSpacing:              return "double";
     case ID_maxSteps:                          return "int";
     case ID_operationType:                     return "enum";
+    case ID_cauchyGreenTensor:                 return "enum";
     case ID_eigenComponent:                    return "enum";
+    case ID_eigenWeight:                       return "double";
     case ID_operatorType:                      return "enum";
     case ID_terminationType:                   return "enum";
     case ID_terminateBySize:                   return "bool";
@@ -2504,8 +2882,14 @@ LCSAttributes::GetFieldTypeName(int index) const
     case ID_pathlinesOverrideStartingTime:     return "double";
     case ID_pathlinesPeriod:                   return "double";
     case ID_pathlinesCMFE:                     return "enum";
-    case ID_forceNodeCenteredData:             return "bool";
+    case ID_thresholdLimit:                    return "double";
+    case ID_radialLimit:                       return "double";
+    case ID_boundaryLimit:                     return "double";
+    case ID_seedLimit:                         return "int";
+    case ID_issueAdvectionWarnings:            return "bool";
+    case ID_issueBoundaryWarnings:             return "bool";
     case ID_issueTerminationWarnings:          return "bool";
+    case ID_issueStepsizeWarnings:             return "bool";
     case ID_issueStiffnessWarnings:            return "bool";
     case ID_issueCriticalPointsWarnings:       return "bool";
     case ID_criticalPointThreshold:            return "double";
@@ -2585,6 +2969,16 @@ LCSAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (integrationDirection == obj.integrationDirection);
         }
         break;
+    case ID_auxiliaryGrid:
+        {  // new scope
+        retval = (auxiliaryGrid == obj.auxiliaryGrid);
+        }
+        break;
+    case ID_auxiliaryGridSpacing:
+        {  // new scope
+        retval = (auxiliaryGridSpacing == obj.auxiliaryGridSpacing);
+        }
+        break;
     case ID_maxSteps:
         {  // new scope
         retval = (maxSteps == obj.maxSteps);
@@ -2595,9 +2989,19 @@ LCSAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (operationType == obj.operationType);
         }
         break;
+    case ID_cauchyGreenTensor:
+        {  // new scope
+        retval = (cauchyGreenTensor == obj.cauchyGreenTensor);
+        }
+        break;
     case ID_eigenComponent:
         {  // new scope
         retval = (eigenComponent == obj.eigenComponent);
+        }
+        break;
+    case ID_eigenWeight:
+        {  // new scope
+        retval = (eigenWeight == obj.eigenWeight);
         }
         break;
     case ID_operatorType:
@@ -2750,14 +3154,44 @@ LCSAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (pathlinesCMFE == obj.pathlinesCMFE);
         }
         break;
-    case ID_forceNodeCenteredData:
+    case ID_thresholdLimit:
         {  // new scope
-        retval = (forceNodeCenteredData == obj.forceNodeCenteredData);
+        retval = (thresholdLimit == obj.thresholdLimit);
+        }
+        break;
+    case ID_radialLimit:
+        {  // new scope
+        retval = (radialLimit == obj.radialLimit);
+        }
+        break;
+    case ID_boundaryLimit:
+        {  // new scope
+        retval = (boundaryLimit == obj.boundaryLimit);
+        }
+        break;
+    case ID_seedLimit:
+        {  // new scope
+        retval = (seedLimit == obj.seedLimit);
+        }
+        break;
+    case ID_issueAdvectionWarnings:
+        {  // new scope
+        retval = (issueAdvectionWarnings == obj.issueAdvectionWarnings);
+        }
+        break;
+    case ID_issueBoundaryWarnings:
+        {  // new scope
+        retval = (issueBoundaryWarnings == obj.issueBoundaryWarnings);
         }
         break;
     case ID_issueTerminationWarnings:
         {  // new scope
         retval = (issueTerminationWarnings == obj.issueTerminationWarnings);
+        }
+        break;
+    case ID_issueStepsizeWarnings:
+        {  // new scope
+        retval = (issueStepsizeWarnings == obj.issueStepsizeWarnings);
         }
         break;
     case ID_issueStiffnessWarnings:
@@ -2837,15 +3271,15 @@ LCSAttributes::ChangesRequireRecalculation(const LCSAttributes &obj) const
     //Check the general stuff first...
 
     if( sourceType != obj.sourceType ||
+
+        auxiliaryGrid != obj.auxiliaryGrid ||
+        auxiliaryGridSpacing != obj.auxiliaryGridSpacing ||
+
+        fieldType != obj.fieldType ||
+        fieldConstant != obj.fieldConstant ||
+
         integrationDirection != obj.integrationDirection ||
-        maxSteps != obj.maxSteps ||
-        terminationType != obj.terminationType ||
-        terminateBySize != obj.terminateBySize ||
-        termSize != obj.termSize ||
-        terminateByDistance != obj.terminateByDistance ||
-        termDistance != obj.termDistance ||
-        terminateByTime != obj.terminateByTime ||
-        termTime != obj.termTime ||
+        integrationType != obj.integrationType ||
         maxStepLength != obj.maxStepLength ||
         limitMaximumTimestep != obj.limitMaximumTimestep ||
         maxTimeStep != obj.maxTimeStep ||
@@ -2853,19 +3287,42 @@ LCSAttributes::ChangesRequireRecalculation(const LCSAttributes &obj) const
         absTolSizeType != obj.absTolSizeType ||
         absTolAbsolute != obj.absTolAbsolute ||
         absTolBBox != obj.absTolBBox ||
-        fieldType != obj.fieldType ||
-        fieldConstant != obj. fieldConstant||
-        integrationType != obj.integrationType ||
-        parallelizationAlgorithmType != obj.parallelizationAlgorithmType ||
-        maxProcessCount != obj.maxProcessCount ||
-        maxDomainCacheSize != obj.maxDomainCacheSize ||
-        workGroupSize != obj.workGroupSize ||
+
+        operationType != obj.operationType ||
+        eigenComponent != obj.eigenComponent ||
+        eigenWeight != obj.eigenWeight ||
+        operatorType != obj.operatorType ||
+        cauchyGreenTensor != obj.cauchyGreenTensor ||
+        clampLogValues != obj.clampLogValues ||
+
+        terminationType != obj.terminationType ||
+        terminateBySize != obj.terminateBySize ||
+        termSize != obj.termSize ||
+        terminateByDistance != obj.terminateByDistance ||
+        termDistance != obj.termDistance ||
+        terminateByTime != obj.terminateByTime ||
+        termTime != obj.termTime ||
+        maxSteps != obj.maxSteps ||
+
+        thresholdLimit != obj.thresholdLimit ||
+        radialLimit != obj.radialLimit ||
+        boundaryLimit != obj.boundaryLimit ||
+        seedLimit != obj.seedLimit ||
+
         pathlines != obj.pathlines ||
         pathlinesOverrideStartingTimeFlag != obj.pathlinesOverrideStartingTimeFlag ||
         pathlinesOverrideStartingTime != obj.pathlinesOverrideStartingTime ||
         pathlinesCMFE != obj.pathlinesCMFE ||
-        forceNodeCenteredData != obj.forceNodeCenteredData ||
+
+        parallelizationAlgorithmType != obj.parallelizationAlgorithmType ||
+        maxProcessCount != obj.maxProcessCount ||
+        maxDomainCacheSize != obj.maxDomainCacheSize ||
+        workGroupSize != obj.workGroupSize ||
+
+        issueAdvectionWarnings != obj.issueAdvectionWarnings ||
+        issueBoundaryWarnings != obj.issueBoundaryWarnings ||
         issueTerminationWarnings != obj.issueTerminationWarnings ||
+        issueStepsizeWarnings != obj.issueStepsizeWarnings ||
         issueStiffnessWarnings != obj.issueStiffnessWarnings ||
         issueCriticalPointsWarnings != obj.issueCriticalPointsWarnings ||
         criticalPointThreshold != obj.criticalPointThreshold )
@@ -2886,24 +3343,16 @@ LCSAttributes::ChangesRequireRecalculation(const LCSAttributes &obj) const
     }
 
     //Check by source type.
-    if ((sourceType == RegularGrid) &&
-         POINT_DIFFERS(Resolution, obj.Resolution))
+    if (sourceType == RegularGrid)
     {
-        return true;
-    }
-
-    if ((sourceType == RegularGrid) &&
-         UseDataSetStart == Subset &&
-         POINT_DIFFERS(StartPosition, obj.StartPosition))
-    {
-        return true;
-    }
-
-    if ((sourceType == RegularGrid) &&
-         UseDataSetEnd == Subset &&
-         POINT_DIFFERS(EndPosition, obj.EndPosition))
-    {
-        return true;
+         if( (POINT_DIFFERS(Resolution, obj.Resolution)) ||
+             (UseDataSetStart == Subset &&
+              POINT_DIFFERS(StartPosition, obj.StartPosition)) ||
+             (UseDataSetEnd == Subset &&
+              POINT_DIFFERS(EndPosition, obj.EndPosition)) )
+        {
+            return true;
+        }
     }
 
     return false;

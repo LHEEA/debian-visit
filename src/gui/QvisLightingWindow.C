@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -256,6 +256,7 @@ QvisLightingWindow::CreateWindowContents()
     sLayout->addWidget(lightBrightness, 4, 1);
 
     lightBrightnessSpinBox = new QSpinBox(lightGroupBox);
+    lightBrightnessSpinBox->setKeyboardTracking(false);
     lightBrightnessSpinBox->setRange(0,100);
     lightBrightnessSpinBox->setSingleStep(1);
     lightBrightnessSpinBox->setSuffix("%");

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -265,6 +265,10 @@ vtkParallelImageSpaceRedistributor::GetOutput()
 //    Eric Brugger, Wed Jan  9 10:37:37 PST 2013
 //    Modified to inherit from vtkPolyDataAlgorithm.
 //
+//    Burlen Loring, Thu Aug 13 10:23:15 PDT 2015
+//    Fix an error reported by VTK thrown when a pipeline requiring
+//    an input is run without one
+//
 // ****************************************************************************
 
 int
@@ -478,6 +482,10 @@ vtkParallelImageSpaceRedistributor::RequestData(
                 dests.clear();
             }
             // else dest==-2 and thus no one owned it.
+            else
+            {
+                debug1 << "no owner for cell " << i << endl;
+            }
         }
     }
     visitTimer->StopTimer(TH_finddestinations, "finddestinations");
@@ -616,8 +624,8 @@ vtkParallelImageSpaceRedistributor::RequestData(
     //
     int TH_communicate = visitTimer->StartTimer(); 
     unsigned char *big_recv_buffer = new unsigned char[totalRecv];
-    MPI_Alltoallv(big_send_buffer, &sendCount[0], &sendDisp[0], MPI_CHAR,
-                  big_recv_buffer, &recvCount[0], &recvDisp[0], MPI_CHAR,
+    MPI_Alltoallv(big_send_buffer, &sendCount[0], &sendDisp[0], MPI_UNSIGNED_CHAR,
+                  big_recv_buffer, &recvCount[0], &recvDisp[0], MPI_UNSIGNED_CHAR,
                   comm);
     visitTimer->StopTimer(TH_communicate, "communicate");
 
@@ -641,13 +649,18 @@ vtkParallelImageSpaceRedistributor::RequestData(
 
     // remember we explicitly didn't convert our own data to a string, so
     // we have to add it to the appender explicitly
+    bool update = false;
     if (outgoingPolyData[rank])
+    {
         appender->AddInputData(outgoingPolyData[rank]);
+        update = true;
+    }
 
     for (i=0; i<size; i++)
     {
         if (recvCount[i] > 0)
         {
+            update = true;
             vtkPolyData *pd = GetDataVTK(&big_recv_buffer[recvDisp[i]],
                                          recvCount[i]);
             appender->AddInputData(pd);
@@ -655,9 +668,13 @@ vtkParallelImageSpaceRedistributor::RequestData(
         }
     }
     delete[] big_recv_buffer;
-    
-    appender->Update();
-    output->ShallowCopy(appender->GetOutput());
+
+    if (update)
+    {
+        appender->Update();
+        output->ShallowCopy(appender->GetOutput());
+    }
+
     visitTimer->StopTimer(TH_appending, "appending");
 
     //

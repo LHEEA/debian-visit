@@ -3,6 +3,9 @@
     <Field name="MasterProcess" label="Master process" type="bool">
       true
     </Field>
+    <Field name="InSitu" label="in situ" type="bool">
+      false
+    </Field>
     <Field name="nowin" label="No window" type="bool">
       false
     </Field>
@@ -62,6 +65,9 @@
        false
     </Field>
     <Field name="inLaunch" label="In Launch" type="bool">
+       false
+    </Field>
+    <Field name="decorateDebug" label="Decorate level 1 debug logs with __FILE__ and __LINE__" type="bool">
        false
     </Field>
   </Attribute>

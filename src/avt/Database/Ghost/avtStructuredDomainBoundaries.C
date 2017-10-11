@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -122,7 +122,7 @@ avtStructuredDomainBoundaries::CreateDomainToProcessorMap(const vector<int> &dom
 #endif
 
     // find the number of domains
-    int ntotaldomains = wholeBoundary.size();
+    int ntotaldomains = (int)wholeBoundary.size();
 
     // create the map
     vector<int> domain2proc(ntotaldomains, -1);
@@ -180,6 +180,7 @@ avtStructuredDomainBoundaries::CreateCurrentDomainBoundaryInformation(
                 boundary[i].DeleteNeighbor(wbi.neighbors[j].domain, boundary);
         }
     }
+
     visitTimer->StopTimer(t0, "avtStructuredDomainBoundaries::CurrentDBI");
 }
 
@@ -242,6 +243,9 @@ BoundaryHelperFunctions<T>::InitializeBoundaryData()
 //    Add support for asymmetric relationships (which occur at coarse/fine
 //    AMR boundaries).
 //
+//    Cyrus Harrison, Tue Dec 22 15:39:48 PST 2015
+//    When match index == -1, find match index instead of using a stored index.
+//
 // ****************************************************************************
 template <class T>
 void
@@ -269,8 +273,14 @@ BoundaryHelperFunctions<T>::FillBoundaryData(int      d1,
         bnddata[d1][n] = t;
 
         int mi = n1->match;
+        // local dbi's case doesn't use an explicit match index
+        if(mi == -1)
+        {
+            // find the match index ourselves
+            mi = FindMatchIndex(d1,d2);
+        }
+
         Neighbor *n2 = &(sdb->boundary[d2].neighbors[mi]);
-                
         int *n2extents = (isPointData ? n2->nextents : n2->zextents);
         int bndindex = 0;
         for (int k=n2extents[4]; k<=n2extents[5]; k++)
@@ -322,6 +332,9 @@ BoundaryHelperFunctions<T>::FillBoundaryData(int      d1,
 //    way, use the "match", which is already pre-computed by the client for
 //    this purpose.
 //
+//    Cyrus Harrison, Tue Dec 22 15:39:48 PST 2015
+//    When match index == -1, find match index instead of using a stored index.
+//
 // ****************************************************************************
 template <class T>
 void
@@ -342,9 +355,19 @@ BoundaryHelperFunctions<T>::FillRectilinearBoundaryData(int      d1,
         bnddata[d1][n] = new T[n1->npts*3];
 
         int d2 = n1->domain;
+
         int mi = n1->match;
+        // local dbi's case doesn't use an explicit match index
+        if(mi == -1)
+        {
+            // find the match index ourselves
+            mi = FindMatchIndex(d1,d2);
+        }
+
+        // get the other neis list
         Neighbor *n2 = &(sdb->boundary[d2].neighbors[mi]);
-                
+
+
         int *n2extents = n2->nextents;
         int bndindex = 0;
         for (int k=n2extents[4]; k<=n2extents[5]; k++)
@@ -495,6 +518,42 @@ BoundaryHelperFunctions<T>::FillMixedBoundaryData(int          d1,
             }
         }
     }
+}
+
+// ****************************************************************************
+//  Method:  BoundaryHelperFunctions::FindMatchIndex
+//
+//  Purpose:
+//    Finds the match index of the neighbor for a given source domain.
+//
+//
+//  Programmer:  Cyrus Harrison
+//  Creation:    Thu Apr 18 11:02:25 PDT 2013
+//
+//  Modifications:
+//
+// ****************************************************************************
+template <class T>
+int
+BoundaryHelperFunctions<T>::FindMatchIndex(int src_domain,
+                                           int nei_domain)
+{
+
+    int res_match = -1;
+    Neighbor *n = NULL;
+    for(int i=0;n == NULL && i < sdb->boundary[nei_domain].neighbors.size();i++)
+    {
+        Neighbor *n_test = &(sdb->boundary[nei_domain].neighbors[i]);
+        if(n_test->domain == src_domain)
+        {
+            n = n_test;
+            res_match = i;
+        }
+    }
+    if (res_match == -1)
+            EXCEPTION1(VisItException,"Bad Neighbor Index");
+
+    return res_match;
 }
 
 // ****************************************************************************
@@ -758,7 +817,13 @@ BoundaryHelperFunctions<T>::CommunicateMixedBoundaryData(const vector<int> &doma
     int rank;
     MPI_Comm_rank(VISIT_MPI_COMM, &rank);
 
-    int mpiMsgTag = GetUniqueMessageTag();
+    int tags[5];
+    GetUniqueMessageTags(tags, 5);
+    int mpiMsgTag        = tags[0];
+    int mpiBndDataTag    = tags[1];
+    int mpiBndMixMatTag  = tags[2];
+    int mpiBndMixZoneTag = tags[3];
+    int mpiBndMixNextTag = tags[4];
 
     for (size_t d1 = 0; d1 < sdb->boundary.size(); d1++)
     {
@@ -785,11 +850,6 @@ BoundaryHelperFunctions<T>::CommunicateMixedBoundaryData(const vector<int> &doma
             }
         }
     }
-
-    int mpiBndDataTag    = GetUniqueMessageTag();
-    int mpiBndMixMatTag  = GetUniqueMessageTag();
-    int mpiBndMixZoneTag = GetUniqueMessageTag();
-    int mpiBndMixNextTag = GetUniqueMessageTag();
 
     for (size_t d1 = 0; d1 < sdb->boundary.size(); d1++)
     {
@@ -1127,6 +1187,9 @@ avtStructuredDomainBoundaries::SetExistence(int      d1,
 //    Add support for asymmetric relationships (which occur at coarse/fine
 //    AMR boundaries).
 //
+//    Cyrus Harrison, Tue Dec 22 15:39:48 PST 2015
+//    When match index == -1, find match index instead of using a stored index.
+//
 // ****************************************************************************
 template <class T>
 void
@@ -1149,6 +1212,13 @@ BoundaryHelperFunctions<T>::SetNewBoundaryData(int       d1,
         }
 
         int mi = n1->match;
+        // local dbi's case doesn't use an explicit match index
+        if(mi == -1)
+        {
+            // find the match index ourselves
+            mi = FindMatchIndex(d1,d2);
+        }
+
         T *data = bnddata[d2][mi];
         if (!data)
             EXCEPTION1(VisItException,"Null array");
@@ -1200,6 +1270,9 @@ BoundaryHelperFunctions<T>::SetNewBoundaryData(int       d1,
 //    way, use the "match", which is already pre-computed by the client for
 //    this purpose.
 //
+//    Cyrus Harrison, Tue Dec 22 15:39:48 PST 2015
+//    When match index == -1, find match index instead of using a stored index.
+//
 // ****************************************************************************
 template <class T>
 void
@@ -1216,7 +1289,14 @@ BoundaryHelperFunctions<T>::SetNewRectilinearBoundaryData(int d1,
     {
         Neighbor *n1 = &bi->neighbors[n];
         int d2 = n1->domain;
+
         int mi = n1->match;
+        // local dbi's case doesn't use an explicit match index
+        if(mi == -1)
+        {
+            // find the match index ourselves
+            mi = FindMatchIndex(d1,d2);
+        }
 
         T *data = coord[d2][mi];
         if (!data)
@@ -2214,7 +2294,7 @@ avtStructuredDomainBoundaries::ExchangeFloatVector(vector<int>      domainNum,
     for (size_t d = 0; d < vectors.size(); d++)
     {
         // Create the new VTK objects
-        out[d] = vtkFloatArray::New(); 
+        out[d] = vtkFloatArray::New();
         out[d]->SetNumberOfComponents(nComp); 
         out[d]->SetName(vectors[d]->GetName());
         if (isPointData)
@@ -2664,7 +2744,7 @@ avtStructuredDomainBoundaries::ExchangeMixVar(vector<int>            domainNum,
     int length = 0;
     if (mixvarname != NULL)
     {
-        length = strlen(mixvarname)+1;
+        length = (int)strlen(mixvarname)+1;
     }
     struct {int length; int rank;} len_rank_out, len_rank_in={length, rank};
 
@@ -3428,7 +3508,7 @@ avtStructuredDomainBoundaries::CreateGhostNodes(vector<int>         domainNum,
     // trick because the rest of the routine does not care which domains 
     // are on which processors -- only that we are using them.
     //
-    int ntotaldomains = wholeBoundary.size();
+    int ntotaldomains = (int)wholeBoundary.size();
     vector<int> domain2proc(ntotaldomains, -1);
     for (size_t i = 0 ; i < allDomains.size() ; i++)
     {
@@ -3710,8 +3790,6 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
         int t0 = visitTimer->StartTimer();
 
-        size_t i, j, l;
-
         if (!shouldComputeNeighborsFromExtents)
         {
             EXCEPTION1(VisItException,
@@ -3720,7 +3798,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                     "computation of neighbors from index extents");
         }
 
-        for (l = 0 ; l < (size_t)maxAMRLevel ; l++)
+        for (int l = 0 ; l < maxAMRLevel ; l++)
         {
             vector<int> doms_at_this_level;
             int ndoms;
@@ -3728,26 +3806,26 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
             if (maxAMRLevel == 1)
             {
                 renumberForEachAMRLevel = false;
-                ndoms = levels.size();
+                ndoms = (int)levels.size();
             }
             else
             {
                 renumberForEachAMRLevel = true;
 
-                size_t totalNDoms = levels.size();
-                for (i = 0 ; i < totalNDoms ; i++)
+                int totalNDoms = (int)levels.size();
+                for (int i = 0 ; i < totalNDoms ; i++)
                 {
-                    if ((size_t)levels[i] == l)
+                    if (levels[i] == l)
                         doms_at_this_level.push_back(i);
                 }
-                ndoms = doms_at_this_level.size();
+                ndoms = (int)doms_at_this_level.size();
             }
 
             avtIntervalTree itree(ndoms, 3);
             double extf[6];
-            for (i = 0 ; i < (size_t)ndoms ; i++)
+            for (int i = 0 ; i < ndoms ; i++)
             {
-                for (j = 0 ; j < 6 ; j++)
+                for (int j = 0 ; j < 6 ; j++)
                 {
                     int dom = (renumberForEachAMRLevel ? doms_at_this_level[i] : i);
                     extf[j] = (double) extents[6*dom+j];
@@ -3757,7 +3835,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
             itree.Calculate(true);
 
             vector<int> neighbors(ndoms, 0);
-            for (i = 0 ; i < (size_t)ndoms ; i++)
+            for (int i = 0 ; i < ndoms ; i++)
             {
                 double min_vec[3], max_vec[3];
                 int dom = (renumberForEachAMRLevel ? doms_at_this_level[i] : i);
@@ -3778,7 +3856,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
                 for (size_t j = 0 ; j < list.size() ; j++)
                 {
-                    if (i == (size_t)list[j])
+                    if (i == list[j])
                         continue; // Not interested in self-intersection.
 
                     int orientation[3] = { 1, 2, 3 }; // this doesn't really
@@ -3817,7 +3895,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
         // This will perform some calculations that are necessary to do the actual
         // communication.
         //
-        for (i = 0 ; i < levels.size() ; i++)
+        for (int i = 0 ; i < (int)levels.size() ; i++)
         {
             Finish(i);
         }
@@ -3831,10 +3909,8 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
             return;
 
         int t0 = visitTimer->StartTimer();
-        int totalNumDomains = wholeBoundary.size();
+        int totalNumDomains = (int)wholeBoundary.size();
         vector<int> numNeighbors(totalNumDomains, 0);
-
-        size_t i, j, l;
 
         if (!shouldComputeNeighborsFromExtents)
         {
@@ -3858,7 +3934,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                 continue;
 
             int maxLevel = (iteration == 0 ? maxAMRLevel-1 : maxAMRLevel);
-            for (l = 0 ; l < (size_t)maxLevel ; l++)
+            for (int l = 0 ; l < maxLevel ; l++)
             {
                 std::vector<int> refrat(3, 1);
                 if (iteration == 0)
@@ -3866,35 +3942,35 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                         refrat[d] = ref_ratios[l][d];
 
                 vector<int> doms;
-                size_t totalNDoms = levels.size();
-                for (i = 0 ; i < totalNDoms ; i++)
+                int totalNDoms = (int)levels.size();
+                for (int i = 0 ; i < totalNDoms ; i++)
                 {
                     if (iteration == 0)
                     {
-                        if ((size_t)levels[i] == l || (size_t)levels[i] == l+1)
+                        if (levels[i] == l || levels[i] == l+1)
                         {
                             doms.push_back(i);
                         }
                     }
                     else
                     {
-                        if ((size_t)levels[i] == l)
+                        if (levels[i] == l)
                         {
                             doms.push_back(i);
                         }
                     }
                 }
-                int ndoms = doms.size();
+                int ndoms = (int)doms.size();
 
                 avtIntervalTree itree(ndoms, 3);
                 double extf[6];
-                for (i = 0 ; i < (size_t)ndoms ; i++)
+                for (int i = 0 ; i < ndoms ; i++)
                 {
 
-                    for (j = 0 ; j < 6 ; j++)
+                    for (int j = 0 ; j < 6 ; j++)
                     {
                         int dom = doms[i];
-                        if ((size_t)levels[dom] == l)
+                        if (levels[dom] == l)
                             extf[j] = (double) (refrat[j/2]*extents[6*dom+j]);
                         else
                             extf[j] = (double) extents[6*dom+j];
@@ -3903,10 +3979,10 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                 }
                 itree.Calculate(true);
 
-                for (i = 0 ; i < (size_t)ndoms ; i++)
+                for (int i = 0 ; i < ndoms ; i++)
                 {
                     int d1 = doms[i];
-                    if ((size_t)levels[d1] != l) // next refinement level.  We'll get this later
+                    if (levels[d1] != l) // next refinement level.  We'll get this later
                         continue;
 
                     double min_vec[3], max_vec[3];
@@ -3931,7 +4007,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 
                     for (size_t j = 0 ; j < list.size() ; j++)
                     {
-                        if (i == (size_t)list[j])
+                        if (i == list[j])
                             continue; // Not interested in self-intersection.
 
                         int orientation[3] = { 1, 2, 3 }; // this doesn't really
@@ -3939,13 +4015,13 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
                         int d2 = doms[list[j]];
                         if (iteration == 0)
                         {
-                            if ((size_t)levels[d2] != (l+1)) // at same refinement level
+                            if (levels[d2] != (l+1)) // at same refinement level
                                 // and we want one finer
                                 continue;
                         }
                         else
                         {
-                            if ((size_t)levels[d2] != (l)) // at different refinement level
+                            if (levels[d2] != (l)) // at different refinement level
                                 // and we want the same
                                 continue;
                         }
@@ -4105,7 +4181,7 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
         // This will perform some calculations that are necessary to do the actual
         // communication.
         //
-        for (i = 0 ; i < levels.size() ; i++)
+        for (int i = 0 ; i < (int)levels.size() ; i++)
         {
             Finish(i);
         }
@@ -4134,10 +4210,12 @@ avtStructuredDomainBoundaries::CalculateBoundaries(void)
 void
 avtStructuredDomainBoundaries::GetExtents(int domain, int e[6])
 {
-    if ((size_t)domain >= wholeBoundary.size())
-        EXCEPTION1(VisItException,
-                   "avtStructuredDomainBoundaries: "
-                   "targeted domain more than number of domains");
+    int ntotaldomains = (int)wholeBoundary.size();
+  
+    if (domain < 0 || ntotaldomains <= domain)
+    {
+        EXCEPTION2(BadIndexException, domain, ntotaldomains);
+    }
 
     e[0] = wholeBoundary[domain].oldnextents[0];
     e[1] = wholeBoundary[domain].oldnextents[1];
@@ -4164,9 +4242,9 @@ void
 avtStructuredDomainBoundaries::GetNeighborPresence(int domain, bool *b,
                                                   std::vector<int> &allDomains)
 {
-    int   ntotaldomains = wholeBoundary.size();
+    int ntotaldomains = (int)wholeBoundary.size();
 
-    if (domain < 0 || domain >= ntotaldomains)
+    if (domain < 0 || ntotaldomains <= domain)
     {
         EXCEPTION2(BadIndexException, domain, ntotaldomains);
     }
@@ -4187,6 +4265,7 @@ avtStructuredDomainBoundaries::GetNeighborPresence(int domain, bool *b,
         for (size_t j = 0 ; j < allDomains.size() ; j++)
              if (allDomains[j] == neighbor)
                  foundIt = true;
+
         if (!foundIt)
             continue;
 
@@ -4214,10 +4293,12 @@ avtStructuredDomainBoundaries::GetNeighborPresence(int domain, bool *b,
 vector<Neighbor> 
 avtStructuredDomainBoundaries::GetNeighbors(int domain)
 {
-  int ntotaldomains = wholeBoundary.size();
-  if (domain < 0 || domain >= ntotaldomains)
-  {
-    EXCEPTION2(BadIndexException, domain, ntotaldomains);
-  }
-  return wholeBoundary[domain].neighbors;
+    int ntotaldomains = (int)wholeBoundary.size();
+  
+    if (domain < 0 || ntotaldomains <= domain)
+    {
+        EXCEPTION2(BadIndexException, domain, ntotaldomains);
+    }
+
+    return wholeBoundary[domain].neighbors;
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,7 +46,6 @@
 
 #include <limits>
 #include <cmath>
-#include <float.h>
 
 static const double epsilon = std::numeric_limits<double>::epsilon();
 
@@ -93,10 +92,8 @@ avtIVPAdamsBashforth::avtIVPAdamsBashforth()
     tol = 1e-8;
     h = 1e-5;
     t = 0.0;
-    numStep = 0;
-    degenerate_iterations = 0;
-    stiffness_eps = tol / 1000.0;
-    abStep = 0;
+
+    abCIndex = 0;
     abNSteps = 1;
 }
 
@@ -133,7 +130,6 @@ void
 avtIVPAdamsBashforth::SetTolerances(const double& relt, const double& abst)
 {
     tol = abst;
-    stiffness_eps = tol / 1000.0;
 }
 
 // ****************************************************************************
@@ -178,13 +174,11 @@ avtIVPAdamsBashforth::Reset(const double& t_start,
                             const avtVector &v_start)
 {
     t = t_start;
-    numStep = 0;
-
-    degenerate_iterations = 0;
     yCur = y_start;
+    vCur = v_start;
     h = h_max;
 
-    abStep = 0;
+    abCIndex = 0;
     abNSteps = 1;
 }
 
@@ -275,24 +269,29 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
         h = t_max - t_local;
     }
 
-    // stepsize underflow?
+    // stepsize underflow??
     if( 0.1*std::abs(h) <= std::abs(t_local)*epsilon )
+    {
+        if (DebugStream::Level5())
+        {
+            debug5 << "\tavtIVPAdamsBashforth::Step(): exiting at t = " 
+                   << t << ", step size too small (h = " << h << ")\n";
+        }
         return avtIVPSolver::STEPSIZE_UNDERFLOW;
+    }
 
     avtIVPField::Result fieldResult;
-    avtVector yNew, vCur, vNew(0,0,0);
+    avtVector yNew, vTmp, vNew(0,0,0);
 
     // Get the first vector value for the history. 
     if ((fieldResult = (*field)(t_local, yCur, vCur)) != avtIVPField::OK)
       return ConvertResult(fieldResult);
 
-    // NOTE: DO NOT pass history[0] to the above as it gets a bogus
-    // value when calculating pathlines.
     history[0] = vCur;
 
     // Calculate the new velocity using the Adams-Bashforth algorithm
     for (int i = 0; i < abNSteps; ++i)
-        vNew += bashforth[abStep][i] * history[i];
+        vNew += bashforth[abCIndex][i] * history[i];
 
     // Calculate the new position.
     yNew = yCur + h * vNew;
@@ -300,13 +299,13 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
     // Increment the number of steps to be taken.
     if( abNSteps < ADAMS_BASHFORTH_NSTEPS )
     {
-      ++abStep;    // Index of the coefficents for the step order.
+      ++abCIndex;  // Index of the coefficents for the step order.
       ++abNSteps;  // Number of steps to be taken
     }
 
     // Update the history to save the last N vector values. Note: the
-    // history needs to be updated after the abStep is incremented.
-    for (size_t i = abStep; i>0; --i)
+    // history needs to be updated after the abCIndex is incremented.
+    for (size_t i = abCIndex; i>0; --i)
       history[i] = history[i-1];
 
     // Convert and save the position.
@@ -326,10 +325,8 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
     ivpstep->t0 = t;
     ivpstep->t1 = t + h;
 
-    // Update for the next step.
-    numStep++;
-
     yCur = yNew;
+    vCur = vNew;
     t = t+h;
 
     if( period && last )
@@ -363,14 +360,10 @@ avtIVPAdamsBashforth::Step(avtIVPField* field, double t_max,
 void
 avtIVPAdamsBashforth::AcceptStateVisitor(avtIVPStateHelper& aiss)
 {
-    aiss.Accept(numStep)
-        .Accept(tol)
-        .Accept(degenerate_iterations)
-        .Accept(stiffness_eps)
-        .Accept(h)
-        .Accept(h_max)
-        .Accept(t)
-        .Accept(yCur)
+    avtIVPSolver::AcceptStateVisitor(aiss);
+
+    aiss.Accept(abCIndex)
+        .Accept(abNSteps)
         .Accept(history[0])
         .Accept(history[1])
         .Accept(history[2])

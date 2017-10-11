@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -51,7 +51,7 @@
 // Class: avtICAlgorithm
 //
 // Purpose:
-//    Abstract base class for streamline algorithms.
+//    Abstract base class for integral curve algorithms.
 //
 // Programmer: Dave Pugmire
 // Creation:   Mon Jan 26 13:25:58 EST 2009
@@ -77,28 +77,10 @@
 //   Add counters for domain loading
 //
 //   Dave Pugmire, Tue Aug 18 09:10:49 EDT 2009
-//   Add ability to restart integration of streamlines.
+//   Add ability to restart integration of integral curves.
 //
 //   Dave Pugmire, Thu Sep 24 13:52:59 EDT 2009
 //   Replace Execute() with RunAlgorithm(). Add a Pre/Post RunAlgorithm.
-//
-//   Dave Pugmire, Tue Apr  6 08:24:44 EDT 2010
-//   Make sure the avtStreamlineFilter baseclass gets called.
-//
-//   Dave Pugmire, Tue May 25 10:15:35 EDT 2010
-//   Added DeleteIntegralCurves method.
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:25:31 CDT 2010
-//   Change the names of several methods to reflect the new emphasis in 
-//   particle advection, as opposed to streamlines.  Also change reference
-//   from avtStreamlineFilter to avtPICSFilter.
-//
-//   Hank Childs, Sun Jun  6 14:54:08 CDT 2010
-//   Rename class "IC" from "SL", to reflect the emphasis on integral curves,
-//   as opposed to streamlines.
 //
 //   Dave Pugmire, Thu Dec  2 11:21:06 EST 2010
 //   Add CheckNextTimeStepNeeded.
@@ -142,15 +124,12 @@ class avtICAlgorithm
   protected:
     virtual void              RunAlgorithm() = 0;
     virtual void              PreRunAlgorithm() {}
-    virtual void              PostRunAlgorithm() {}
+    virtual void              PostRunAlgorithm();
     
     std::string               activeICInfo() const;
     std::string               terminatedICInfo() const;
     std::string               inactiveICInfo() const;
 
-    avtPICSFilter *picsFilter;
-    std::list<avtIntegralCurve *> terminatedICs, activeICs, inactiveICs;
-    int                       numDomains, numSeedPoints;
     virtual const char*       AlgoName() const = 0;
     
     //Helper accessor funcstions to the filter.
@@ -175,7 +154,12 @@ class avtICAlgorithm
     virtual void              SortIntegralCurves(std::list<avtIntegralCurve *> &);
     virtual void              SortIntegralCurves(std::vector<avtIntegralCurve *> &);
     void                      Sleep(long nanoSec=10) const;
+
+public:
+    virtual void              SetAllSeedsSentToAllProcs( bool flag )
+    { allSeedsSentToAllProcs = flag; };
     
+protected:
     //Statistics and timers.
     class ICStatistics
     {
@@ -187,9 +171,9 @@ class avtICAlgorithm
             min=max=mean=sigma=total=0.0;
             histogram.resize(0);
         }
-        float min, max, mean, sigma, total;
-        std::vector<float> histogram;
-        float value;
+        double min, max, mean, sigma, total;
+        std::vector<double> histogram;
+        double value;
         std::string nm;
 
         ostream& operator<<(std::ostream &out) const;
@@ -216,16 +200,24 @@ class avtICAlgorithm
                                            const ICStatistics &s,
                                            bool total);
 
+    avtPICSFilter             *picsFilter;
+
     //Timers.
     ICStatistics              TotalTime, IOTime, IntegrateTime, SortTime,
                               ExtraTime;
     //Counters.
     ICStatistics              IntegrateCnt, IntegrateStepCnt, DomLoadCnt, DomPurgeCnt;
 
+    std::list<avtIntegralCurve *> terminatedICs, activeICs, inactiveICs;
+
+    // Flag if all seeds are sent to all process
+    bool                      allSeedsSentToAllProcs;
+    int                       numDomains, numSeedPoints;  
+
     //Special counters.
     int                       domainsUsed, totDomainsLoaded, domainLoadedMin, domainLoadedMax;
     int                       globalDomainsUsed, globalTotDomainsLoaded, globalDomainLoadedMin, globalDomainLoadedMax;
-    float                     avgDomainLoaded, globalAvgDomainLoaded;
+    double                    avgDomainLoaded, globalAvgDomainLoaded;
 };
 
 #endif

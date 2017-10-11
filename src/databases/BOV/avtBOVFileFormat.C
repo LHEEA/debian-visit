@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,6 +86,7 @@
 #ifdef _WIN32
 #define FSEEK _fseeki64
 #define strcasecmp stricmp
+#include <Shlwapi.h> // for PathIsRelative
 #else
 #define FSEEK fseek
 #endif
@@ -144,7 +145,7 @@ avtBOVFileFormat::avtBOVFileFormat(const char *fname)
     // Determine what path we should prepend to every file name.
     //
     int last_slash = -1;
-    int len = strlen(fname);
+    int len = (int)strlen(fname);
     for (int i = len-1 ; i >= 0 ; i--)
         if (fname[i] == '/' || fname[i] == '\\')
         {
@@ -953,7 +954,11 @@ avtBOVFileFormat::GetVar(int dom, const char *var)
     char filename[1024];
     sprintf(filename, file_pattern.c_str(), dom);
     char qual_filename[1024];
+#ifdef WIN32
+    if (PathIsRelative(filename))
+#else
     if (filename[0] != '/')
+#endif
         sprintf(qual_filename, "%s%s", path, filename);
     else
         strcpy(qual_filename, filename);
@@ -2406,11 +2411,11 @@ FormatLine(char *line)
     bool inWord = false;
     bool inQuotes = false;
     int buffOffset = 0;
-    int nchar = strlen(line);
+    size_t nchar = strlen(line);
     bool hasColon = (strstr(line, ":") != NULL);
     bool foundColon = false;
-    int i;
-    for (i = 0 ; i < nchar ; i++)
+
+    for (size_t i = 0 ; i < nchar ; i++)
     {
         if (line[i] == '\"')
             inQuotes = (inQuotes ? false : true);
@@ -2454,7 +2459,7 @@ FormatLine(char *line)
     // Make sure we have a trailing '\0'
     buff[buffOffset++] = '\0';
  
-    for (i = 0 ; i < buffOffset ; i++)
+    for (int i = 0 ; i < buffOffset ; i++)
         line[i] = buff[i];
 
     return nwords;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1162,6 +1162,35 @@ avtDataRequest::SetOriginalVariable(const char *v)
 
 
 // ****************************************************************************
+//  Method: avtDataRequest::SetVariable
+//
+//  Purpose:
+//      Sets the variable
+//
+//  Programmer: Burlen Loring
+//  Creation:   Wed Aug  5 12:05:27 PDT 2015
+//
+//  Modifications:
+//
+// ****************************************************************************
+
+void
+avtDataRequest::SetVariable(const char *v)
+{
+    if (variable != NULL)
+    {
+        delete [] variable;
+        variable = NULL;
+    }
+    if (v != NULL)
+    {
+        variable = new char[strlen(v)+1];
+        strcpy(variable, v);
+    }
+}
+
+
+// ****************************************************************************
 //  Method: avtDataRequest::GetRestriction
 //
 //  Purpose:
@@ -2053,5 +2082,3 @@ avtDataRequest::DebugDump(avtWebpage *webpage)
 
     webpage->EndTable();
 }
-
-

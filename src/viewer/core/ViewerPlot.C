@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -5944,9 +5944,12 @@ ViewerPlot::GetEngineKey() const
 //    Kathleen Biagas, Wed Feb 29 14:08:13 MST 2012
 //    Wrapped in a Try-catch block.
 //
+//    Burlen Loring, Wed Aug 26 14:05:24 PDT 2015
+//    fix a compiler warning
+//
 // ****************************************************************************
 
-const avtCentering
+avtCentering
 ViewerPlot::GetVariableCentering() const
 {
     avtCentering retval = AVT_UNKNOWN_CENT; 

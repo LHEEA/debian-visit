@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -81,10 +81,8 @@ class avtCaleFileFormat : public avtSTSDFileFormat
     // file.  These should only be defined if the file format knows what the
     // time and/or cycle is.
     //
-    virtual bool      ReturnsValidCycle() const { return true; };
     virtual int       GetCycle(void);
     virtual int       GetCycleFromFilename(const char *f) const;
-    virtual bool      ReturnsValidTime() const { return true; };
     virtual double    GetTime(void);
     //
 

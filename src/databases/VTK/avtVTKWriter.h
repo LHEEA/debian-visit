@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,6 +46,7 @@
 #include <avtDatabaseWriter.h>
 
 #include <string>
+#include <vector>
 
 class DBOptionsAttributes;
 
@@ -73,6 +74,12 @@ class DBOptionsAttributes;
 //    Kathleen Biagas, Thu Dec 18 14:19:13 PST 2014
 //    Added doXML.
 //
+//    Kathleen Biagas, Wed Feb 25 13:25:07 PST 2015
+//    Added meshName.
+//
+//    Kathleen Biagas, Tue Sep  1 11:27:23 PDT 2015
+//    Add storage for fileNames, used when exporting multi-block XML.
+//
 // ****************************************************************************
 
 class
@@ -83,19 +90,26 @@ avtVTKWriter : public virtual avtDatabaseWriter
     virtual       ~avtVTKWriter() {;};
 
   protected:
+    static int            INVALID_CYCLE;
+    static double         INVALID_TIME;
+
     std::string    stem;
+    std::string    meshName;
+    double         time;
+    int            cycle;
     bool           doBinary;
-    bool           doMultiBlock;
     bool           doXML;
     int            nblocks;
+    std::vector<std::string> fileNames;
 
     virtual void   OpenFile(const std::string &, int);
     virtual void   WriteHeaders(const avtDatabaseMetaData *,
-                                std::vector<std::string> &, 
-                                std::vector<std::string> &,
-                                std::vector<std::string> &);
+                                const std::vector<std::string> &, 
+                                const std::vector<std::string> &,
+                                const std::vector<std::string> &);
     virtual void   WriteChunk(vtkDataSet *, int);
     virtual void   CloseFile(void);
+    virtual void   WriteRootFile();
 };
 
 

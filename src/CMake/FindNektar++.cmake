@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -35,6 +35,8 @@
 # DAMAGE.
 #
 # Modifications:
+#   Kathleen Biagas, Fri Mar 17 10:27:23 PDT 2017
+#   Set HAVE_NETKAR_PP if NEKTAR++_FOUND.
 #
 #****************************************************************************/
 
@@ -78,11 +80,15 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
 SET_UP_THIRD_PARTY(NEKTAR++
     ${LIB}/nektar++-${NEKTAR++_VERSION}
     include/nektar++-${NEKTAR++_VERSION}
+    Collections
     LibUtilities
     LocalRegions
     MultiRegions
     SolverUtils
     SpatialDomains
-    StdRegions
-    metis
-    tinyxml)
+    StdRegions)
+
+IF(NEKTAR++_FOUND)
+    SET(HAVE_NEKTAR_PP true CACHE BOOL "Have Nektar++ lib")
+ENDIF(NEKTAR++_FOUND)
+

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -295,26 +295,26 @@ avtProjectFilter::ProjectPoint(float &x,float &y,float &z)
     {
       case ProjectAttributes::ZYCartesian:
         x = z;
-        y = y;
+        //y = y;
         z = 0;
         break;
 
       case ProjectAttributes::XZCartesian:
-        x = x;
+        //x = x;
         y = z;
         z = 0;
         break;
 
       case ProjectAttributes::XYCartesian:
-        x = x;
-        y = y;
+        //x = x;
+        //y = y;
         z = 0;
         break;
 
       case ProjectAttributes::XRCylindrical:
         {
             float r = sqrt(y*y + z*z);
-            x = x;
+            //x = x;
             y = r;
             z = 0;
         }
@@ -359,26 +359,26 @@ avtProjectFilter::ProjectPoint(double &x,double &y,double &z)
     {
       case ProjectAttributes::ZYCartesian:
         x = z;
-        y = y;
+        //y = y;
         z = 0;
         break;
 
       case ProjectAttributes::XZCartesian:
-        x = x;
+        //x = x;
         y = z;
         z = 0;
         break;
 
       case ProjectAttributes::XYCartesian:
-        x = x;
-        y = y;
+        //x = x;
+        //y = y;
         z = 0;
         break;
 
       case ProjectAttributes::XRCylindrical:
         {
             double r = sqrt(y*y + z*z);
-            x = x;
+            //x = x;
             y = r;
             z = 0;
         }

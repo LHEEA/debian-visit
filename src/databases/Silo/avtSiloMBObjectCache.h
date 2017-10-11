@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -61,6 +61,8 @@
 //
 //  Modifications:
 //
+//    Mark C. Miller, Tue Feb  2 15:19:09 PST 2016
+//    Handle empty list too.
 // ****************************************************************************
 
 
@@ -70,21 +72,26 @@ public:
                  avtSiloMBNameGenerator(DBfile      *dbfile,
                                         char const *objpath,
                                         int          nblocks,
-                                        char       **names_lst,
+                                        char const * const *names_lst,
                                         const char  *file_ns,
-                                        const char  *block_ns);
+                                        const char  *block_ns,
+                                        int          empty_cnt,
+                                        int const   *empty_lst);
 
     virtual     ~avtSiloMBNameGenerator();
     std::string  Name(int idx) const;
     int          NumberOfBlocks() const { return nblocks;}
+    bool         IsExplicit() const { return namesLst!=0; }
 
 private:
       int             nblocks;
-      char          **namesLst;
+      char const * const *namesLst;
       DBnamescheme   *fileNS;
       int            *fileVals;
       DBnamescheme   *blockNS;
       int            *blockVals;
+      int             emptyCnt;
+      int const      *emptyLst;
 };
 
 
@@ -99,6 +106,8 @@ private:
 //
 //  Modifications:
 //
+//    Mark C. Miller, Tue Feb  2 15:19:09 PST 2016
+//    Handle empty list too.
 // ****************************************************************************
 
 class avtSiloMBObjectCacheEntry
@@ -109,13 +118,17 @@ public:
                                                        int     nblocks,
                                                        char  **names_lst,
                                                        const char *file_ns,
-                                                       const char *block_ns);
+                                                       const char *block_ns,
+                                                       int empty_cnt,
+                                                       int *empty_list);
     virtual                ~avtSiloMBObjectCacheEntry();
 
     int                     NumberOfBlocks() const
                                 { return nameGen->NumberOfBlocks();}
     std::string             GenerateName(int idx) const
                                 { return nameGen->Name(idx);}
+    bool                    IsExplicit() const
+                                { return nameGen->IsExplicit(); }
 private:
     avtSiloMBNameGenerator *nameGen;
 };

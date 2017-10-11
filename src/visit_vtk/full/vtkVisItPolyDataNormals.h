@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,8 +63,9 @@ class VISIT_VTK_API vtkVisItPolyDataNormals : public vtkPolyDataAlgorithm
 
     static vtkVisItPolyDataNormals *New();
 
-    void SetFeatureAngle(float fa)  { FeatureAngle        = fa;    }
-    void SetSplitting(bool s)       { Splitting           = s;     }
+    vtkSetMacro(FeatureAngle,float);
+    vtkSetMacro(Splitting, bool);
+    vtkBooleanMacro(Splitting, bool);
     void SetNormalTypeToCell()      { ComputePointNormals = false; }
     void SetNormalTypeToPoint()     { ComputePointNormals = true;  }
 

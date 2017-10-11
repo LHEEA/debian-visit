@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -110,7 +110,6 @@ class IVP_API avtIVPNIMRODIntegrator: public avtIVPSolver
                      int dflag, double *Bpout);
 
   private:
-    int numStep;
     unsigned int max_degenerate_iterations;
     unsigned int degenerate_iterations;
     double stiffness_eps;

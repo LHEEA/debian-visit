@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -140,14 +140,19 @@ protected:
                                         stringVector &);
     void AddRayMetaData(avtDatabaseMetaData *);
     vtkDataSet *GetRayMesh(int state, const char *var);
+    vtkDataSet *GetMarkerMesh(int state, const char *var);
     vtkDataSet *ConstructRayMesh(int state, bool is3d);
     vtkDataArray *GetRayVar(int state, const std::string &varStr);
+    vtkDataArray *GetMarkerVar(int state, const std::string &varStr);
     int GetNumLasers(const std::string &);
 
     static vtkDataSet *RevolveDataSet(vtkDataSet *in_ds, const double *axis,
                                       double start_angle, double stop_angle,
                                       int nsteps, vtkMatrix4x4 **, 
                                       int *, bool extrude);
+
+    bool HandleMarkerVariable(bool have_nmarkATgnl, avtDatabaseMetaData *md,
+                              PDBFileObject *pdb, char const *var);
 
     // Data members
     int                      kmax;
@@ -168,6 +173,9 @@ protected:
     bool                     varStorageInitialized;
     std::vector<std::string> nodalVars;
     avtVariableCache        *cache;
+
+    int                      nmarkATgnl;
+    bool                     have_nmarkATgnl;
 
     static const int         revolutionSteps;
 };

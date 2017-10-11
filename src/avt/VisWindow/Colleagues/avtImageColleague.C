@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -441,6 +441,10 @@ avtImageColleague::SetOptions(const AnnotationObject &annot)
 //   Add an error message if the file can't be read.  Add support for tilde's
 //   for home directories.
 //
+//   Kathleen Biagas, Wed Jul  1 12:15:00 PDT 2015
+//   No need to ExpandPath if filename is empty. This change prevents
+//   unnecessary warning message.
+//
 // ****************************************************************************
 
 bool
@@ -448,7 +452,8 @@ avtImageColleague::UpdateImage(std::string filename)
 {
     bool retval = true;
 
-    filename = FileFunctions::ExpandPath(filename);
+    if (!filename.empty())
+        filename = FileFunctions::ExpandPath(filename);
 
     // Get a reader for filename if possible.
     vtkImageReader2 *r =
@@ -555,7 +560,9 @@ avtImageColleague::GetOptions(AnnotationObject &annot)
 
     annot.SetPosition(actor->GetPosition());
 
-    double pos[] = {width, height, 0};
+    double pos[] = {static_cast<double>(width),
+                    static_cast<double>(height),
+                    0.};
     annot.SetPosition2(pos);
 
     annot.SetIntAttribute1(useOpacityColor ? 1 : 0);

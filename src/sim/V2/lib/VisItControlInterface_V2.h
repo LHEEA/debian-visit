@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -671,11 +671,25 @@ void  VisItDisconnect(void);
  *
  * Returns:   1 if VisIt is connected; 0 otherwise.
  *
- * Note:      All processors must call this function.
+ * Note:      
  *
  * ****************************************************************************/
-
 int   VisItIsConnected(void);
+
+/******************************************************************************
+ * Function: VisItIsRuntimeLoaded
+ *
+ * Purpose: 
+ *   This function returns 1 if the VisIt runtime is loaded; 0 otherwise.
+ *
+ * Arguments: None
+ *
+ * Returns:   1 if VisIt runtime is loaded; 0 otherwise.
+ *
+ * Note:      
+ *
+ * ****************************************************************************/
+int   VisItIsRuntimeLoaded(void);
 
 /******************************************************************************
  * Function: VisItGetLastError
@@ -820,6 +834,26 @@ int VisItSaveWindow(const char *filename, int width, int height, int format);
 int VisItSetMPICommunicator(void *mpicom);
 
 /******************************************************************************
+ * Function: VisItSetMPICommunicator_f
+ *
+ * Purpose: 
+ *   This function sets the communicator that VisIt should use for parallel 
+ *   operations from a Fortran handle. Note that you may want to temporarily
+ *   install a communicator for vis operations and then revert to the default
+ *   communicator for when VisIt needs to communicate commands to other
+ *   processes.
+ *
+ * Arguments:
+ *   mpicom : A pointer to the FORTRAN communicator that we should use.
+ * 
+ * Returns:   VISIT_OKAY on success; otherwise VISIT_ERROR
+ *
+ * Note:      use VisItSetMPICommunicator to revert to its copy of MPI_COMM_WORLD.
+ *
+ * ****************************************************************************/
+int VisItSetMPICommunicator_f(int *mpicom);
+
+/******************************************************************************
  * Function: VisItInitializeRuntime
  *
  * Purpose: 
@@ -877,7 +911,38 @@ int VisItGetMemory(double *m_size, double *m_rss);
  *            Call this function on all processors.
  *
  * ****************************************************************************/
-int VisItExportDatabase(const char *filename, const char *format, visit_handle variables);
+int VisItExportDatabase(const char *filename, const char *format, 
+                        visit_handle variables);
+
+/******************************************************************************
+ * Function: VisItExportDatabaseWithOptions
+ *
+ * Purpose: 
+ *   Export the active plots to database files.
+ *
+ * Arguments:
+ *   filename : The name of the file to save. If it does not have a path then
+ *              the current working directory will be where files are saved.
+ *              File format writers are free to append their own file extensions
+ *              to this name.
+ *   format   : The name of a database plugin for the export. This can be either
+ *              the plugin name or id (e.g. "Silo" or "Silo_1.0").
+ *   variables: A name list containing the names of the variables to be exported.
+ *              If an empty list or VISIT_INVALID_HANDLE are passed then the
+ *              "default" variables will be exported.
+ *   options  : A handle to an optional optionlist object (contaisn key/value 
+ *              pairs) or VISIT_INVALID_HANDLE if no options are to be passed.
+ *
+ * Returns:   VISIT_OKAY on success; otherwise VISIT_ERROR
+ *
+ * Note:      The active plots in the plot list are exported just like in
+ *            typical export usage from VisIt.
+ *
+ *            Call this function on all processors.
+ *
+ * ****************************************************************************/
+int VisItExportDatabaseWithOptions(const char *filename, const char *format, 
+                                   visit_handle variables, visit_handle options);
 
 /******************************************************************************
  * Function: VisItRestoreSession
@@ -1262,9 +1327,21 @@ int VisItSetWriteVariable(int (*cb)(const char *, const char *, int, visit_handl
 int VisItUI_clicked(const char *name, void (*cb)(void*), void *cbdata2);
 int VisItUI_stateChanged(const char *name, void (*cb)(int,void*), void *cbdata2);
 int VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata2);
+int VisItUI_textChanged(const char *name, void (*cb)(char *,void*), void *cbdata2);
+int VisItUI_cellChanged(const char *name, void (*cb)(char *,void*), void *cbdata2);
 
 int VisItUI_setValueI(const char *name, int value, int enabled);
+int VisItUI_setValueD(const char *name, double value, int enabled);
 int VisItUI_setValueS(const char *name, const char *value, int enabled);
+
+int VisItUI_setTableValueI(const char *name,
+                           int row, int col, int value, int enabled);
+int VisItUI_setTableValueD(const char *name,
+                           int row, int col, double value, int enabled);
+int VisItUI_setTableValueV(const char *name,
+                           int row, int col, double x, double y, double z, int enabled);
+int VisItUI_setTableValueS(const char *name,
+                           int row, int col, const char *value, int enabled);
 
 /* Include some experimental plotting functions */
 #include <VisItControlInterface_V2_plotting.h>

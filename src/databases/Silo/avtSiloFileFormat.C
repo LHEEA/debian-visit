@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -124,6 +124,7 @@
 #include <string>
 #include <vector>
 
+
 using std::map;
 using std::set;
 using std::string;
@@ -174,6 +175,12 @@ static void BuildDomainAuxiliaryInfoForAMRMeshes(DBfile *dbfile, DBmultimesh *mm
 
 static int MultiMatHasAllMatInfo(const DBmultimat *const mm);
 static vtkDataArray *CreateDataArray(int silotype, void *data, int numvals);
+
+static int FindFirstNonEmptyBlock(char const *mbobj_name, int nblocks,
+    avtSiloMBObjectCacheEntry const *mb_ent,
+    int repr_block_idx, int empty_cnt, int const *empty_list);
+
+static int db_get_index(DBnamescheme const *ns, int natnum);
 
 // ****************************************************************************
 //  Class: avtSiloFileFormat
@@ -314,6 +321,9 @@ avtSiloFileFormat::avtSiloFileFormat(const char *toc_name,
     useLocalDomainBoundries = false;
     hasDisjointElements = false;
     ioInfoValid = false;
+    addBlockDecompositionAsVar = false;
+    haveAddedBlockDecompositionAsVar = false;
+    ignoreMissingBlocks = false;
     topDir = "/";
     siloDriver = DB_UNKNOWN;
     dbfiles = new DBfile*[MAX_FILES];
@@ -513,6 +523,9 @@ avtSiloFileFormat::GetFile(int f)
 //
 //    Mark C. Miller, Thu Jan  6 17:17:25 PST 2011
 //    Set driver type for unknown case by asking file what its type was.
+//
+//    Mark C. Miller, Tue May 23 10:28:07 PDT 2017
+//    Add logic to use siloDriver to open if its not DB_UNKNOWN.
 // ****************************************************************************
 
 DBfile *
@@ -535,25 +548,35 @@ avtSiloFileFormat::OpenFile(int f, bool skipGlobalInfo)
         return dbfiles[f];
     }
 
-    debug4 << "Opening silo file " << filenames[f] << endl;
+    debug4 << "Opening silo file \"" << filenames[f] << "\"" << endl;
 
     //
     // Open the Silo file. Impose priority order on drivers by first
-    // trying PDB, then HDF5, then fall-back to UNKNOWN
+    // trying HDF5, then PDB, then fall-back to UNKNOWN
     //
-    if ((dbfiles[f] = DBOpen(filenames[f], DB_PDB, DB_READ)) != NULL)
+    if ((siloDriver != DB_UNKNOWN) &&
+        (dbfiles[f] = DBOpen(filenames[f], siloDriver, DB_READ)) != NULL)
     {
-        debug1 << "Succeeding in opening Silo file with DB_PDB driver" << endl;
-        siloDriver = DB_PDB;
+        if (siloDriver == DB_PDB)
+            debug1 << "Opened with DB_PDB driver; lib=" << DBVersion() << ", file=" << DBFileVersion(dbfiles[f]) <<endl;
+        else if (siloDriver == DB_HDF5)
+            debug1 << "Opened with DB_HDF5 driver; lib=" << DBVersion() << ", file=" << DBFileVersion(dbfiles[f]) <<endl;
+        else
+            debug1 << "Opened with DB_UNKNOWN driver; lib=" << DBVersion() << ", file=" << DBFileVersion(dbfiles[f]) <<endl;
     }
     else if ((dbfiles[f] = DBOpen(filenames[f], DB_HDF5, DB_READ)) != NULL)
     {
-        debug1 << "Succeeding in opening Silo file with DB_HDF5 driver" << endl;
+        debug1 << "Opened with DB_HDF5 driver; lib=" << DBVersion() << ", file=" << DBFileVersion(dbfiles[f]) <<endl;
         siloDriver = DB_HDF5;
+    }
+    else if ((dbfiles[f] = DBOpen(filenames[f], DB_PDB, DB_READ)) != NULL)
+    {
+        debug1 << "Opened with DB_PDB driver; lib=" << DBVersion() << ", file=" << DBFileVersion(dbfiles[f]) <<endl;
+        siloDriver = DB_PDB;
     }
     else if ((dbfiles[f] = DBOpen(filenames[f], DB_UNKNOWN, DB_READ)) != NULL)
     {
-        debug1 << "Succeeding in opening Silo file with DB_UNKNOWN driver" << endl;
+        debug1 << "Opened with DB_UNKNOWN driver; lib=" << DBVersion() << ", file=" << DBFileVersion(dbfiles[f]) <<endl;
         siloDriver = DBGetDriverType(dbfiles[f]);
     }
     else
@@ -882,6 +905,10 @@ avtSiloFileFormat::GetTimeVaryingInformation(DBfile *dbfile,
 //
 //    Mark C. Miller, Tue Jul 17 20:05:52 PDT 2012
 //    Permit file to be an absolute path instead of relative to toc file.
+//
+//    Mark C. Miller, Tue Feb 21 17:39:22 PST 2017
+//    Added logic to ensure that as other files are opened, the toc file
+//    remains the most recently used (MRU) file.
 // *****************************************************************************
 
 DBfile *
@@ -949,6 +976,7 @@ avtSiloFileFormat::OpenFile(const char *n, bool skipGlobalInfo)
     }
 
     DBfile *dbfile = OpenFile(fileIndex, skipGlobalInfo);
+    UsedFile(tocIndex); // Ensure toc file remains MRU
     return dbfile;
 }
 
@@ -1462,7 +1490,9 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 
 // ****************************************************************************
 //  Programmer: Mark C. Miller (re-factored here from ReadDir()
+//
 //  Created: Wed Jun 17 10:42:42 PDT 2009
+//
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:55:49 PDT 2009
 //    Removed DBtoc* arg.
@@ -1478,6 +1508,17 @@ avtSiloFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //    Reverted previous change. Moved init of 'metadataIsTimeVarying'
 //    out of this function & into CheckForTimeVaryingMetadata().
 //
+//    Eric Brugger, Wed Sep 30 13:47:14 PDT 2015
+//    I corrected a bug that caused "_meshtv_searchpath" to be ignored.
+//    I also added "_visit_searchpath" as a synonym for "_meshtv_searchpath"
+//    since "_visit_searchpath" is much more appropriate for VisIt.
+//
+//    Mark C. Miller, Wed Feb 10 20:47:43 PST 2016
+//    Add logic to ignore searchpath vars if once read they consist entirely
+//    of blank or ';' characters.
+//
+//    Mark C. Miller, Wed Jun 15 09:22:14 PDT 2016
+//    Added logic to support adding of block decomposition as a variable.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
@@ -1490,7 +1531,6 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
         // The dbfile will probably change, so read in the meshtv_defvars and
         // meshtv_searchpath while we can.
         //
-        char *searchpath_str = *searchpath_strp;
         if (strcmp(dirname, topDir.c_str()) == 0)
         {
             codeNameGuess = GuessCodeNameFromTopLevelVars(dbfile);
@@ -1539,6 +1579,14 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
                 hasDisjointElements = true;
             }
 
+            if (DBInqVarExists(dbfile, "_visit_allow_empty_blocks"))
+            {
+                int mbFlag;
+                DBReadVar(dbfile, "_visit_allow_empty_blocks", &mbFlag);
+                if (mbFlag == 1)
+                    ignoreMissingBlocks = true;
+            }
+
             bool hadVisitDefvars = false;
             if (DBInqVarExists(dbfile, "_visit_defvars") &&
                 DBInqVarType(dbfile, "_visit_defvars") == DB_VARIABLE)
@@ -1575,13 +1623,38 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
                 }
             }
 
-            if (DBInqVarExists(dbfile, "_meshtv_searchpath"))
+            bool hadVisitSearchpath = false;
+            if (DBInqVarExists(dbfile, "_visit_searchpath"))
+            {
+                int    lsearchpath = DBGetVarLength(dbfile, "_visit_searchpath");
+                if (lsearchpath > 0)
+                {
+                    char *searchpath_str = new char[lsearchpath+1];
+                    DBReadVar(dbfile, "_visit_searchpath", searchpath_str);
+                    searchpath_str[lsearchpath] = '\0';
+                    if (strspn(searchpath_str, " ;\t") < strlen(searchpath_str))
+                    {
+                        debug1 << "Setting search path from _visit_searchpath" << endl;
+                        *searchpath_strp = searchpath_str;
+                    }
+                }
+                hadVisitSearchpath = true;
+            }
+
+            if (!hadVisitSearchpath &&
+                DBInqVarExists(dbfile, "_meshtv_searchpath"))
             {
                 int    lsearchpath = DBGetVarLength(dbfile, "_meshtv_searchpath");
                 if (lsearchpath > 0)
                 {
-                    searchpath_str = new char[lsearchpath+1];
+                    char *searchpath_str = new char[lsearchpath+1];
                     DBReadVar(dbfile, "_meshtv_searchpath", searchpath_str);
+                    searchpath_str[lsearchpath] = '\0';
+                    if (strspn(searchpath_str, " ;\t") < strlen(searchpath_str))
+                    {
+                        debug1 << "Setting search path from _meshtv_searchpath" << endl;
+                        *searchpath_strp = searchpath_str;
+                    }
                 }
             }
 
@@ -1596,6 +1669,12 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
                     delete [] fileinfo_str;
                 }
             }
+
+
+            // See if we should add the block decomp as a scalar var
+            if (codeNameGuess == "BlockStructured" &&
+                DBInqVarExists(dbfile, "Decomposition/Domains_BlockNums"))
+                addBlockDecompositionAsVar = true;
         }
 
     }
@@ -1641,6 +1720,25 @@ avtSiloFileFormat::ReadTopDirStuff(DBfile *dbfile, const char *dirname,
 //    Cyrus Harrison, Fri Aug 16 10:07:47 PDT 2013
 //    Added support for nodelists placed @ /Nodelists/
 //
+//    Mark C. Miller, Tue Feb  2 14:50:26 PST 2016
+//    Added logic to handle all-empty multi-block meshes. Moved a lot of
+//    functionality related to finding first non-empty block to a function.
+//    Collapsed DB_QUAD_CURV, DB_QUAD_RECT switch cases to a single case and
+//    added support for DB_QUADMESH where actual mesh type is known only on
+//    first non-empty block via the coordtype member of a DBquadmesh.
+//    
+//    Mark C. Miller, Wed Jun 15 09:22:14 PDT 2016
+//    Added logic to support adding of block decomposition as a variable.
+//
+//    Kathleen Biagas, Thu Nov 17 16:18:32 PST 2016
+//    Change use of std::vector::reserve to adding the size to the
+//    constructor.  Prevents segv for attempting to access a slot in the
+//    vector that hasn't been allocated yet.
+//
+//    Mark C. Miller, Sat Dec 24 00:35:41 PST 2016
+//    Fix real and potential issues with layer namescheme by ensuring
+//    layer ids as given internally to VisIt are 0...numLayers-1 and that
+//    groupNames are specified explicitly.
 // ****************************************************************************
 
 void
@@ -1659,6 +1757,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
         {
             name_w_dir = GenerateName(dirname, multimesh_names[i], topDir.c_str());
             bool valid_var = true;
+            bool is_all_empty = false;
             int silo_mt = -1;
             int meshnum = 0;
             string mb_meshname = "";
@@ -1670,39 +1769,20 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
             if (mm != NULL && valid_var)
             {
                 RegisterDomainDirs(mm_ent,dirname);
-                mb_meshname  = mm_ent->GenerateName(meshnum);
-
-                // Find the first non-empty mesh
-                if (mm->repr_block_idx >= 0)
+                meshnum = FindFirstNonEmptyBlock(multimesh_names[i], mm->nblocks, mm_ent,
+                    mm->repr_block_idx, mm->empty_cnt, mm->empty_list);
+                if (meshnum < 0)
                 {
-                    if (mm->repr_block_idx >= mm->nblocks)
-                    {
-                        debug1 << "Invalidating mesh \"" << multimesh_names[i] 
-                               << "\" since repr_block_idx (" << mm->repr_block_idx
-                               << ") >= nblocks (" << mm->nblocks << ")" << endl;
-                        valid_var = false;
-                    }
-                    else
-                    { 
-                        meshnum = mm->repr_block_idx;
-                        mb_meshname  = mm_ent->GenerateName(meshnum);
-                    }
+                    is_all_empty = true;
+                    if (firstAllEmptyMultimesh == "")
+                        firstAllEmptyMultimesh = name_w_dir;
+                    emptyObjectsList[name_w_dir] = true;
                 }
-                while (mb_meshname == "EMPTY")
+                else
                 {
-                    meshnum++;
-                    if (meshnum >= mm->nblocks)
-                    {
-                        debug1 << "Invalidating mesh \"" << multimesh_names[i] 
-                               << "\" since all its blocks are EMPTY." << endl;
-                        valid_var = false;
-                        break;
-                    }
                     mb_meshname  = mm_ent->GenerateName(meshnum);
+                    silo_mt = mm_ent->MeshType(meshnum);
                 }
-
-                if (valid_var)
-                    silo_mt = GetMeshtype(dbfile, mb_meshname.c_str());
             }
             else
             {
@@ -1745,6 +1825,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                             debug1 << "Invalidating mesh \"" << multimesh_names[i] 
                                    << "\" since its first non-empty block (" << mb_meshname
                                    << ") is invalid." << endl;
+                            valid_var = false;
                             break;
                         }
                         ndims = um->ndims;
@@ -1789,6 +1870,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                             debug1 << "Invalidating mesh \"" << multimesh_names[i] 
                                    << "\" since its first non-empty block (" << mb_meshname
                                    << ") is invalid." << endl;
+                            valid_var = false;
                             break;
                         }
                         ndims = pm->ndims;
@@ -1812,64 +1894,34 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     }
                     break;
                   case DB_QUAD_RECT:
+                  case DB_QUAD_CURV:
+                  case DB_QUADMESH:
                     {
-                        mt = AVT_RECTILINEAR_MESH;
                         string realvar;
                         DBfile *correctFile = dbfile;
-                        DetermineFileAndDirectory(mb_meshname.c_str(),"",
-                                                  correctFile,
-                                                  realvar);
+                        DetermineFileAndDirectory(mb_meshname.c_str(),"", correctFile, realvar);
                         DBquadmesh *qm = DBGetQuadmesh(correctFile, realvar.c_str());
                         if (qm == NULL)
                         {
                             debug1 << "Invalidating mesh \"" << multimesh_names[i] 
                                    << "\" since its first non-empty block (" << mb_meshname
                                    << ") is invalid." << endl;
+                            valid_var = false;
                             break;
+                        }
+                        if (silo_mt == DB_QUAD_RECT)
+                            mt = AVT_RECTILINEAR_MESH;
+                        else if (silo_mt == DB_QUAD_CURV)
+                            mt = AVT_CURVILINEAR_MESH;
+                        else
+                        {
+                            if (qm->coordtype == DB_COLLINEAR)
+                                mt = AVT_RECTILINEAR_MESH;
+                            else if (qm->coordtype == DB_NONCOLLINEAR)
+                                mt = AVT_CURVILINEAR_MESH;
                         }
                         ndims = qm->ndims;
                         tdims = ndims;
-                        cellOrigin = qm->origin;
-                        if (qm->units[0] != NULL)
-                            xUnits = qm->units[0];
-                        if (qm->units[1] != NULL)
-                            yUnits = qm->units[1];
-                        if (qm->units[2] != NULL)
-                            zUnits = qm->units[2];
-
-                        if (qm->labels[0] != NULL)
-                            xLabel = qm->labels[0];
-                        if (qm->labels[1] != NULL)
-                            yLabel = qm->labels[1];
-                        if (qm->labels[2] != NULL)
-                            zLabel = qm->labels[2];
-
-                        if (ndims ==2 && qm->coord_sys == DB_CYLINDRICAL)
-                            mct = AVT_RZ;
-                        else 
-                            mct = AVT_XY;
-
-                        DBFreeQuadmesh(qm);
-                    }
-                    break;
-                  case DB_QUAD_CURV:
-                    {
-                        mt = AVT_CURVILINEAR_MESH;
-                        string realvar;
-                        DBfile *correctFile = dbfile;
-                        DetermineFileAndDirectory(mb_meshname.c_str(),"",
-                                                  correctFile,
-                                                  realvar);
-                        DBquadmesh *qm = DBGetQuadmesh(correctFile, realvar.c_str());
-                        if (qm == NULL)
-                        {
-                            debug1 << "Invalidating mesh \"" << multimesh_names[i] 
-                                   << "\" since its first non-empty block (" << mb_meshname
-                                   << ") is invalid." << endl;
-                            break;
-                        }
-                        ndims = qm->ndims;
-                        tdims = ndims; 
                         cellOrigin = qm->origin;
                         if (qm->units[0] != NULL)
                             xUnits = qm->units[0];
@@ -1903,9 +1955,11 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     break;
                 }
 
+                int block_cnt = mm?mm->nblocks:0;
+                if (is_all_empty) block_cnt = 1;
 
                 avtMeshMetaData *mmd = new avtMeshMetaData(name_w_dir,
-                    mm?mm->nblocks:0, mm?mm->blockorigin:0, cellOrigin,
+                    block_cnt, mm?mm->blockorigin:0, cellOrigin,
                     groupOrigin, ndims, tdims, mt);
 
                 mmd->hideFromGUI = mm->guihide;
@@ -1927,7 +1981,7 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                 vector<int> amr_group_ids;
                 vector<string> amr_block_names;
 
-                if (mm->mrgtree_name != 0)
+                if (mm->mrgtree_name != 0 && !is_all_empty)
                 {
                     // So far, we've coded only for MRG trees representing AMR hierarchies
                     HandleMrgtreeAMRGroups(dbfile, mm, multimesh_names[i],
@@ -1937,10 +1991,48 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     HandleMrgtreeNodelistVars(dbfile, name_w_dir, mm->mrgtree_name, md);
                 }
 
+                //
+                // Handle possible layer namescheme for this mesh
+                //
+                map<int, int> layer_to_nlayer_map;
+                vector<int> block_to_nlayer_map; 
+                vector<string> layer_names; 
+                int nlayer_id = 0;
+                string candidate_layer_namescheme = string(name_w_dir) + "_layer_namescheme";
+                if (DBInqVarExists(dbfile, candidate_layer_namescheme.c_str()))
+                {
+                    char *layer_ns_str = (char*) DBGetVar(dbfile, candidate_layer_namescheme.c_str());
+                    DBnamescheme *layer_ns = DBMakeNamescheme(layer_ns_str);
+                    if (layer_ns)
+                    {
+                        // Normalize layer ids to range 0...numLayers-1 
+                        for (int b = 0; b < (mm?mm->nblocks:0); b++)
+                        {
+                            int layer_id = db_get_index(layer_ns, b);
+                            if (layer_to_nlayer_map.find(layer_id) == 
+                                layer_to_nlayer_map.end())
+                            {
+                                char layer_name[64];
+                                SNPRINTF(layer_name, sizeof(layer_name), "layer_%d", layer_id);
+                                layer_names.push_back(layer_name);
+                                layer_to_nlayer_map[layer_id] = nlayer_id;
+                                nlayer_id++;
+                            }
+                        }
+                        for (int b = 0; b < (mm?mm->nblocks:0); b++)
+                        {
+                            int layer_id = db_get_index(layer_ns, b);
+                            block_to_nlayer_map.push_back(layer_to_nlayer_map[layer_id]);
+                        }
+                        DBFreeNamescheme(layer_ns);
+                    }
+                    free(layer_ns_str);
+                }
+
                 if (mt == AVT_UNSTRUCTURED_MESH)
                     mmd->disjointElements = hasDisjointElements || mm->disjoint_mode != 0; 
 
-                if (num_amr_groups > 0)
+                if (num_amr_groups > 0 && !is_all_empty)
                 {
                     mmd->numGroups = num_amr_groups;
                     mmd->groupTitle = "levels";
@@ -1956,6 +2048,16 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
                     haveAmrGroupInfo = true;
                     md->AddGroupInformation(num_amr_groups, mm?mm->nblocks:0, amr_group_ids);
                     debug1 << "Using AMR levels as Group Information"<<endl;
+                }
+                else if (nlayer_id>1 && !is_all_empty)
+                {
+                    mmd->numGroups = nlayer_id;
+                    mmd->groupTitle = "layers";
+                    mmd->groupPieceName = "layer";
+                    mmd->groupNames = layer_names;
+                    md->Add(mmd);
+                    md->AddGroupInformation(nlayer_id, mm?mm->nblocks:0, block_to_nlayer_map);
+                    debug1 << "Using Layers as Group Information"<<endl;
                 }
                 else
                 {
@@ -2000,6 +2102,20 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
         }
         ENDTRY
 
+        // Add block decomp as variable if needed
+        if (i == 0 && 
+            addBlockDecompositionAsVar &&
+            !haveAddedBlockDecompositionAsVar)
+        {
+            char cwd[512];
+            DBGetDir(dbfile, cwd);
+            if (!strcmp(cwd, "/"))
+            {
+                SNPRINTF(cwd, sizeof(cwd), "%s_block_nums", name_w_dir);
+                md->Add(new avtScalarMetaData(cwd, name_w_dir, AVT_ZONECENT));
+                haveAddedBlockDecompositionAsVar = true;
+            }
+        }
 
         if (name_w_dir) delete [] name_w_dir;
     }
@@ -2012,6 +2128,9 @@ avtSiloFileFormat::ReadMultimeshes(DBfile *dbfile,
 //  Modifications:
 //    Mark C. Miller, Thu Jun 18 20:56:08 PDT 2009
 //    Replaced DBtoc* arg. with list of object names.
+//
+//    Mark C. Miller, Wed Jun 15 09:22:14 PDT 2016
+//    Added logic to support adding of block decomposition as a variable.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
@@ -2078,42 +2197,34 @@ avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
                 extents_to_use = extents;
             }
 
-            if (!DBIsEmptyQuadmesh(qm))
-            {
-                avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
-                                                       extents_to_use,
-                                                       name_w_dir, 1, 0,
-                                                       qm->origin, 0,
-                                                       qm->ndims, qm->ndims,
-                                                       mt);
-                if (qm->units[0] != NULL)
-                    mmd->xUnits = qm->units[0];
-                if (qm->units[1] != NULL)
-                    mmd->yUnits = qm->units[1];
-                if (qm->units[2] != NULL)
-                    mmd->zUnits = qm->units[2];
+            avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
+                                                   extents_to_use,
+                                                   name_w_dir, 1, 0,
+                                                   qm->origin, 0,
+                                                   qm->ndims, qm->ndims,
+                                                   mt);
+            if (qm->units[0] != NULL)
+                mmd->xUnits = qm->units[0];
+            if (qm->units[1] != NULL)
+                mmd->yUnits = qm->units[1];
+            if (qm->units[2] != NULL)
+                mmd->zUnits = qm->units[2];
 
-                if (qm->labels[0] != NULL)
-                    mmd->xLabel = qm->labels[0];
-                if (qm->labels[1] != NULL)
-                    mmd->yLabel = qm->labels[1];
-                if (qm->labels[2] != NULL)
-                    mmd->zLabel = qm->labels[2];
+            if (qm->labels[0] != NULL)
+                mmd->xLabel = qm->labels[0];
+            if (qm->labels[1] != NULL)
+                mmd->yLabel = qm->labels[1];
+            if (qm->labels[2] != NULL)
+                mmd->zLabel = qm->labels[2];
 
-                if (qm->ndims == 2 && qm->coord_sys == DB_CYLINDRICAL)
-                    mmd->meshCoordType = AVT_RZ;
+            if (qm->ndims == 2 && qm->coord_sys == DB_CYLINDRICAL)
+                mmd->meshCoordType = AVT_RZ;
     
-                mmd->validVariable = valid_var;
-                mmd->groupTitle = "blocks";
-                mmd->groupPieceName = "block";
-                mmd->hideFromGUI = qm->guihide;
-                md->Add(mmd);
-
-            }
-            else
-            {
-                debug1 << "Skipping/ignoring empty quad mesh \"" << qmesh_names[i] << "\"" << endl;
-            }
+            mmd->validVariable = valid_var;
+            mmd->groupTitle = "blocks";
+            mmd->groupPieceName = "block";
+            mmd->hideFromGUI = qm->guihide;
+            md->Add(mmd);
         }
         CATCHALL
         {
@@ -2124,6 +2235,21 @@ avtSiloFileFormat::ReadQuadmeshes(DBfile *dbfile,
             md->Add(mmd);
         }
         ENDTRY
+
+        // Add block decomp as variable if needed
+        if (i == 0 && 
+            addBlockDecompositionAsVar &&
+            !haveAddedBlockDecompositionAsVar)
+        {
+            char cwd[512];
+            DBGetDir(dbfile, cwd);
+            if (!strcmp(cwd, "/"))
+            {
+                SNPRINTF(cwd, sizeof(cwd), "%s_block_nums", name_w_dir);
+                md->Add(new avtScalarMetaData(cwd, name_w_dir, AVT_ZONECENT));
+                haveAddedBlockDecompositionAsVar = true;
+            }
+        }
 
         if (name_w_dir) delete [] name_w_dir;
         if (qm) DBFreeQuadmesh(qm);
@@ -2214,39 +2340,32 @@ avtSiloFileFormat::ReadUcdmeshes(DBfile *dbfile,
             if (um->topo_dim != -1)
                 tdims = um->topo_dim;
 
-            if (!DBIsEmptyUcdmesh(um))
-            {
-                avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
-                    extents_to_use, name_w_dir, 1, 0, um->origin, 0,
-                    um->ndims, tdims, AVT_UNSTRUCTURED_MESH);
-                if (um->units[0] != NULL)
-                   mmd->xUnits = um->units[0];
-                if (um->units[1] != NULL)
-                   mmd->yUnits = um->units[1];
-                if (um->units[2] != NULL)
-                   mmd->zUnits = um->units[2];
+            avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
+                extents_to_use, name_w_dir, 1, 0, um->origin, 0,
+                um->ndims, tdims, AVT_UNSTRUCTURED_MESH);
+            if (um->units[0] != NULL)
+               mmd->xUnits = um->units[0];
+            if (um->units[1] != NULL)
+               mmd->yUnits = um->units[1];
+            if (um->units[2] != NULL)
+               mmd->zUnits = um->units[2];
 
-                if (um->labels[0] != NULL)
-                    mmd->xLabel = um->labels[0];
-                if (um->labels[1] != NULL)
-                    mmd->yLabel = um->labels[1];
-                if (um->labels[2] != NULL)
-                    mmd->zLabel = um->labels[2];
+            if (um->labels[0] != NULL)
+                mmd->xLabel = um->labels[0];
+            if (um->labels[1] != NULL)
+                mmd->yLabel = um->labels[1];
+            if (um->labels[2] != NULL)
+                mmd->zLabel = um->labels[2];
 
-                if (um->ndims == 2 && um->coord_sys == DB_CYLINDRICAL)
-                    mmd->meshCoordType = AVT_RZ;
+            if (um->ndims == 2 && um->coord_sys == DB_CYLINDRICAL)
+                mmd->meshCoordType = AVT_RZ;
 
-                mmd->groupTitle = "blocks";
-                mmd->groupPieceName = "block";
-                mmd->disjointElements = hasDisjointElements;
-                mmd->validVariable = valid_var;
-                mmd->hideFromGUI = um->guihide;
-                md->Add(mmd);
-            }
-            else
-            {
-                debug1 << "Skipping/ignoring empty ucd mesh \"" << ucdmesh_names[i] << "\"" << endl;
-            }
+            mmd->groupTitle = "blocks";
+            mmd->groupPieceName = "block";
+            mmd->disjointElements = hasDisjointElements;
+            mmd->validVariable = valid_var;
+            mmd->hideFromGUI = um->guihide;
+            md->Add(mmd);
         }
         CATCHALL
         {
@@ -2304,36 +2423,29 @@ avtSiloFileFormat::ReadPointmeshes(DBfile *dbfile,
                 pm = DBAllocPointmesh(); // to fool code block below
             }
 
-            if (!DBIsEmptyPointmesh(pm))
-            {
-                avtMeshMetaData *mmd = new avtMeshMetaData(name_w_dir, 1, 0,pm->origin,
-                    0, pm->ndims, 0, AVT_POINT_MESH);
+            avtMeshMetaData *mmd = new avtMeshMetaData(name_w_dir, 1, 0,pm->origin,
+                0, pm->ndims, 0, AVT_POINT_MESH);
 
-                mmd->groupTitle = "blocks";
-                mmd->hideFromGUI = pm->guihide;
-                mmd->groupPieceName = "block";
-                mmd->validVariable = valid_var;
+            mmd->groupTitle = "blocks";
+            mmd->hideFromGUI = pm->guihide;
+            mmd->groupPieceName = "block";
+            mmd->validVariable = valid_var;
 
-                if (pm->units[0] != NULL)
-                    mmd->xUnits = pm->units[0];
-                if (pm->units[1] != NULL)
-                    mmd->yUnits = pm->units[1];
-                if (pm->units[2] != NULL)
-                    mmd->zUnits = pm->units[2];
+            if (pm->units[0] != NULL)
+                mmd->xUnits = pm->units[0];
+            if (pm->units[1] != NULL)
+                mmd->yUnits = pm->units[1];
+            if (pm->units[2] != NULL)
+                mmd->zUnits = pm->units[2];
 
-                if (pm->labels[0] != NULL)
-                    mmd->xLabel = pm->labels[0];
-                if (pm->labels[1] != NULL)
-                    mmd->yLabel = pm->labels[1];
-                if (pm->labels[2] != NULL)
-                    mmd->zLabel = pm->labels[2];
+            if (pm->labels[0] != NULL)
+                mmd->xLabel = pm->labels[0];
+            if (pm->labels[1] != NULL)
+                mmd->yLabel = pm->labels[1];
+            if (pm->labels[2] != NULL)
+                mmd->zLabel = pm->labels[2];
 
-                md->Add(mmd);
-            }
-            else
-            {
-                debug1 << "Skipping/ignoring empty point mesh \"" << ptmesh_names[i] << "\"" << endl;
-            }
+            md->Add(mmd);
         }
         CATCHALL
         {
@@ -2484,42 +2596,35 @@ avtSiloFileFormat::ReadCSGmeshes(DBfile *dbfile,
                extents_to_use = extents;
            }
 
-           if (!DBIsEmptyCsgmesh(csgm))
+           avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
+               extents_to_use, name_w_dir, csgm->zones->nzones, 0, csgm->origin, 0,
+               csgm->ndims, csgm->ndims, AVT_CSG_MESH);
+           if (csgm->units[0] != NULL)
+              mmd->xUnits = csgm->units[0];
+           if (csgm->units[1] != NULL)
+              mmd->yUnits = csgm->units[1];
+           if (csgm->units[2] != NULL)
+              mmd->zUnits = csgm->units[2];
+
+           if (csgm->labels[0] != NULL)
+               mmd->xLabel = csgm->labels[0];
+           if (csgm->labels[1] != NULL)
+               mmd->yLabel = csgm->labels[1];
+           if (csgm->labels[2] != NULL)
+               mmd->zLabel = csgm->labels[2];
+
+           mmd->blockTitle = "regions";
+           mmd->validVariable = valid_var;
+           mmd->hideFromGUI = csgm->guihide;
+           if (csgm->zones->zonenames)
            {
-               avtMeshMetaData *mmd = new avtMeshMetaData(NULL,
-                   extents_to_use, name_w_dir, csgm->zones->nzones, 0, csgm->origin, 0,
-                   csgm->ndims, csgm->ndims, AVT_CSG_MESH);
-               if (csgm->units[0] != NULL)
-                  mmd->xUnits = csgm->units[0];
-               if (csgm->units[1] != NULL)
-                  mmd->yUnits = csgm->units[1];
-               if (csgm->units[2] != NULL)
-                  mmd->zUnits = csgm->units[2];
-
-               if (csgm->labels[0] != NULL)
-                   mmd->xLabel = csgm->labels[0];
-               if (csgm->labels[1] != NULL)
-                   mmd->yLabel = csgm->labels[1];
-               if (csgm->labels[2] != NULL)
-                   mmd->zLabel = csgm->labels[2];
-
-               mmd->blockTitle = "regions";
-               mmd->validVariable = valid_var;
-               mmd->hideFromGUI = csgm->guihide;
-               if (csgm->zones->zonenames)
-               {
-                   vector<string> znames;
-                   for (j = 0; j < (size_t)csgm->zones->nzones; j++)
-                       znames.push_back(csgm->zones->zonenames[j]);
-                   mmd->blockNames = znames;
-               }
-
-               md->Add(mmd);
+               vector<string> znames;
+               for (j = 0; j < (size_t)csgm->zones->nzones; j++)
+                   znames.push_back(csgm->zones->zonenames[j]);
+               mmd->blockNames = znames;
            }
-           else
-           {
-                debug1 << "Skipping/ignoring empty csg mesh \"" << csgmesh_names[i] << "\"" << endl;
-           }
+
+           md->Add(mmd);
         }
         CATCHALL
         {
@@ -2684,6 +2789,17 @@ GetRestrictedMaterialIndices(const avtDatabaseMetaData *md, const char *const va
 //    I corrected a bug where a NULL pointer would be de-referenced causing
 //    a crash if a multivar was completely empty.
 //
+//    Mark C. Miller, Mon Nov  9 17:14:21 PST 2015
+//    Adjusted setting of associated meshname from objects 'mmesh_name' member
+//    to use absolute path name instead of just whatever the Silo file had
+//    stored.
+//
+//    Mark C. Miller, Tue Feb  2 15:01:05 PST 2016
+//    Add support for all-empty multi-vars.
+//
+//    Mark C. Miller, Thu Feb 25 12:40:17 PST 2016
+//    Add logic to check mesh identified by mmesh_name member and then fall
+//    back to fuzzy match if it doesn't exist.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
@@ -2701,10 +2817,11 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
 
             name_w_dir = GenerateName(dirname, multivar_names[i], topDir.c_str());
             string meshname;
-            string mb_varname;
+            string mb_varname = "";
             int meshnum = 0;
             int tensor_rank = 0;
             bool valid_var = true;
+            bool is_all_empty = false;
             GetMultiVar(dirname, multivar_names[i], &mv_ent, &valid_var);
 
             if(mv_ent != NULL)
@@ -2712,47 +2829,44 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
 
             if (mv != NULL)
             {
-
                 RegisterDomainDirs(mv_ent, dirname);
-
-                mb_varname = mv_ent->GenerateName(meshnum);
-                // Find the first non-empty block
-                if (mv->repr_block_idx >= 0)
+                meshnum = FindFirstNonEmptyBlock(multivar_names[i], mv->nvars,
+                    mv_ent, mv->repr_block_idx, mv->empty_cnt, mv->empty_list);
+                if (meshnum < 0)
                 {
-                    if (mv->repr_block_idx >= mv->nvars)
-                    {
-                        debug1 << "Invalidating variable \"" << multivar_names[i] 
-                               << "\" since repr_block_idx (" << mv->repr_block_idx
-                               << ") >= nvars (" << mv->nvars << ")" << endl;
-                        valid_var = false;
-                    }
-                    else
-                    { 
-                        meshnum = mv->repr_block_idx;
-                        mb_varname  = mv_ent->GenerateName(meshnum);
-                    }
+                    is_all_empty = true;
+                    emptyObjectsList[name_w_dir] = true;
+                    meshname = firstAllEmptyMultimesh;
                 }
-                while (mb_varname == "EMPTY")
-                {
-                    meshnum++;
-                    if (meshnum >= mv->nvars)
-                    {
-                        debug1 << "Invalidating variable \"" << multivar_names[i] 
-                               << "\" since all its blocks are EMPTY." << endl;
-                        valid_var = false;
-                        break;
-                    }
+                else
                     mb_varname = mv_ent->GenerateName(meshnum);
-                }
 
-                if (valid_var)
+                if (valid_var && !is_all_empty)
                 {
                     if (mv->mmesh_name != 0)
                     {
-                        meshname = mv->mmesh_name;
-                        debug5 << "Variable \"" << multivar_names[i] 
-                               << "\" indicates it is defined on mesh \""
-                               << meshname.c_str() << "\"" << endl;
+                        char cwd[512];
+                        DBGetDir(dbfile, cwd);
+                        meshname = FileFunctions::Absname(cwd,mv->mmesh_name,"/");
+                        if (!DBInqVarExists(dbfile, meshname.c_str()))
+                        {
+                            debug5 << "Although 'mmesh_name' member indicates variable \"" << multivar_names[i] 
+                                   << "\" is defined on mesh \"" << meshname.c_str() << "\", "
+                                   << "the associated mesh does not exist." << endl;
+                            meshname = DetermineMultiMeshForSubVariable(dbfile,
+                                multivar_names[i], mv_ent, dirname);
+                            debug5 << "Guessing variable \"" << multivar_names[i] 
+                                   << "\" is defined on mesh \""
+                                   << meshname.c_str() << "\"" << endl;
+                        }
+                        else
+                        {
+                            debug5 << "Variable \"" << multivar_names[i] 
+                                   << "\" indicates it is defined on mesh \""
+                                   << meshname.c_str() << "\"" << endl;
+                            // VisIt won't match this var to its mesh if leading slash is presnet
+                            meshname.erase(meshname.begin());
+                        }
                     }
                     else
                     {
@@ -2793,7 +2907,7 @@ avtSiloFileFormat::ReadMultivars(DBfile *dbfile,
             string  varUnits;
             int nvals = 1;
             double missing_value = DB_MISSING_VALUE_NOT_SET;
-            if (valid_var && mv)
+            if (valid_var && mv && !is_all_empty)
             {
                 if (mv->missing_value != DB_MISSING_VALUE_NOT_SET)
                     missing_value = mv->missing_value;
@@ -3062,80 +3176,74 @@ avtSiloFileFormat::ReadQuadvars(DBfile *dbfile,
                 qv = DBAllocQuadvar();
             }
 
-            if (!DBIsEmptyQuadvar(qv))
-            {
-                char meshname[256];
-                DBInqMeshname(correctFile, realvar.c_str(), meshname);
-                meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
+            char meshname[256];
+            DBInqMeshname(correctFile, realvar.c_str(), meshname);
+            meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
 
-                //
-                // Get the centering information.
-                //
-                avtCentering   centering = (qv->align[0] == 0. ? AVT_NODECENT :
+            //
+            // Get the centering information.
+            //
+            avtCentering   centering = (qv->align[0] == 0. ? AVT_NODECENT :
                                                              AVT_ZONECENT);
-                bool guiHide = qv->guihide;
+            bool guiHide = qv->guihide;
 
-                //
-                // If this variable is defined on material subset(s), determine
-                // the associated material numbers and indi
-                //
-                vector<int> selectedMats;
-                if (qv->region_pnames)
-                    valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
-                        meshname_w_dir, qv->region_pnames, &selectedMats);
+            //
+            // If this variable is defined on material subset(s), determine
+            // the associated material numbers and indi
+            //
+            vector<int> selectedMats;
+            if (qv->region_pnames)
+                valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                    meshname_w_dir, qv->region_pnames, &selectedMats);
 
-                //
-                // Get the dimension of the variable.
-                //
-                if (qv->nvals == 1)
+            //
+            // Get the dimension of the variable.
+            //
+            if (qv->nvals == 1)
+            {
+                avtScalarMetaData *smd = new avtScalarMetaData(name_w_dir,
+                                             meshname_w_dir, centering);
+                smd->treatAsASCII = (qv->ascii_labels);
+                smd->validVariable = valid_var;
+                smd->hideFromGUI = guiHide;
+                smd->matRestricted = selectedMats;
+                if(qv->units != 0)
                 {
-                    avtScalarMetaData *smd = new avtScalarMetaData(name_w_dir,
-                                                            meshname_w_dir, centering);
-                    smd->treatAsASCII = (qv->ascii_labels);
-                    smd->validVariable = valid_var;
-                    smd->hideFromGUI = guiHide;
-                    smd->matRestricted = selectedMats;
-                    if(qv->units != 0)
-                    {
-                        smd->hasUnits = true;
-                        smd->units = string(qv->units);
-                    }
+                    smd->hasUnits = true;
+                    smd->units = string(qv->units);
+                }
 
-                    if (qv->missing_value != DB_MISSING_VALUE_NOT_SET)
-                    {
-                        double arr[2] = {0., 0.};
-                        arr[0] = qv->missing_value;
-                        smd->SetMissingData(arr);
-                        smd->SetMissingDataType(avtScalarMetaData::MissingData_Value);
-                    }
-                    md->Add(smd);
-                }
-                else if (qv->ascii_labels)
+                if (qv->missing_value != DB_MISSING_VALUE_NOT_SET)
                 {
-                    avtLabelMetaData *lmd = new avtLabelMetaData(name_w_dir, meshname_w_dir, centering);
-                    lmd->validVariable = valid_var;
-                    lmd->hideFromGUI = guiHide;
-                    lmd->matRestricted = selectedMats;
-                    md->Add(lmd);
+                    double arr[2] = {0., 0.};
+                    arr[0] = qv->missing_value;
+                    smd->SetMissingData(arr);
+                    smd->SetMissingDataType(avtScalarMetaData::MissingData_Value);
                 }
-                else
-                {
-                    avtVectorMetaData *vmd = new avtVectorMetaData(name_w_dir,
-                                                 meshname_w_dir, centering, qv->nvals);
-                    vmd->validVariable = valid_var;
-                    vmd->hideFromGUI = guiHide;
-                    vmd->matRestricted = selectedMats;
-                    if(qv->units != 0)
-                    {
-                        vmd->hasUnits = true;
-                        vmd->units = string(qv->units);
-                    }
-                    md->Add(vmd);
-                }
+                md->Add(smd);
+            }
+            else if (qv->ascii_labels)
+            {
+                avtLabelMetaData *lmd = new avtLabelMetaData(name_w_dir,
+                                            meshname_w_dir, centering);
+                lmd->validVariable = valid_var;
+                lmd->hideFromGUI = guiHide;
+                lmd->matRestricted = selectedMats;
+                md->Add(lmd);
             }
             else
             {
-                debug1 << "Skipping/ignoring empty quad var \"" << qvar_names[i] << "\"" << endl;
+                avtVectorMetaData *vmd = new avtVectorMetaData(name_w_dir,
+                                             meshname_w_dir, centering, qv->nvals);
+                vmd->validVariable = valid_var;
+                vmd->hideFromGUI = guiHide;
+                vmd->matRestricted = selectedMats;
+                if(qv->units != 0)
+                {
+                    vmd->hasUnits = true;
+                    vmd->units = string(qv->units);
+                }
+                md->Add(vmd);
             }
         }
         CATCHALL
@@ -3193,79 +3301,72 @@ avtSiloFileFormat::ReadUcdvars(DBfile *dbfile,
                 uv = DBAllocUcdvar();
             }
 
-            if (!DBIsEmptyUcdvar(uv))
+            char meshname[256];
+            DBInqMeshname(correctFile, realvar.c_str(), meshname);
+            meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
+
+            //
+            // Get the centering information.
+            //
+            avtCentering centering = (uv->centering == DB_ZONECENT ? AVT_ZONECENT
+                                                               : AVT_NODECENT);
+            bool guiHide = uv->guihide;
+
+            //
+            // If this variable is defined on material subset(s), determine
+            // the associated material numbers and indi
+            //
+            vector<int> selectedMats;
+            if (uv->region_pnames)
+                valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                    meshname_w_dir, uv->region_pnames, &selectedMats);
+            //
+            // Get the dimension of the variable.
+            //
+            if (uv->nvals == 1)
             {
-                char meshname[256];
-                DBInqMeshname(correctFile, realvar.c_str(), meshname);
-                meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
-
-                //
-                // Get the centering information.
-                //
-                avtCentering centering = (uv->centering == DB_ZONECENT ? AVT_ZONECENT
-                                                                   : AVT_NODECENT);
-                bool guiHide = uv->guihide;
-
-                //
-                // If this variable is defined on material subset(s), determine
-                // the associated material numbers and indi
-                //
-                vector<int> selectedMats;
-                if (uv->region_pnames)
-                    valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
-                        meshname_w_dir, uv->region_pnames, &selectedMats);
-                //
-                // Get the dimension of the variable.
-                //
-                if (uv->nvals == 1)
+                avtScalarMetaData *smd = new avtScalarMetaData(name_w_dir,
+                                                    meshname_w_dir, centering);
+                smd->validVariable = valid_var;
+                smd->treatAsASCII = (uv->ascii_labels);
+                smd->hideFromGUI = guiHide;
+                smd->matRestricted = selectedMats;
+                if(uv->units != 0)
                 {
-                    avtScalarMetaData *smd = new avtScalarMetaData(name_w_dir,
-                                                        meshname_w_dir, centering);
-                    smd->validVariable = valid_var;
-                    smd->treatAsASCII = (uv->ascii_labels);
-                    smd->hideFromGUI = guiHide;
-                    smd->matRestricted = selectedMats;
-                    if(uv->units != 0)
-                    {
-                        smd->hasUnits = true;
-                        smd->units = string(uv->units);
-                    }
+                    smd->hasUnits = true;
+                    smd->units = string(uv->units);
+                }
 
-                    if (uv->missing_value != DB_MISSING_VALUE_NOT_SET)
-                    {
-                        double arr[2] = {0., 0.};
-                        arr[0] = uv->missing_value;
-                        smd->SetMissingData(arr);
-                        smd->SetMissingDataType(avtScalarMetaData::MissingData_Value);
-                    }
-                    md->Add(smd);
-                }
-                else if (uv->ascii_labels)
+                if (uv->missing_value != DB_MISSING_VALUE_NOT_SET)
                 {
-                    avtLabelMetaData *lmd = new avtLabelMetaData(name_w_dir, meshname_w_dir, centering);
-                    lmd->validVariable = valid_var;
-                    lmd->hideFromGUI = guiHide;
-                    lmd->matRestricted = selectedMats;
-                    md->Add(lmd);
+                    double arr[2] = {0., 0.};
+                    arr[0] = uv->missing_value;
+                    smd->SetMissingData(arr);
+                    smd->SetMissingDataType(avtScalarMetaData::MissingData_Value);
                 }
-                else
-                {
-                    avtVectorMetaData *vmd = new avtVectorMetaData(name_w_dir,
-                                                 meshname_w_dir, centering, uv->nvals);
-                    vmd->validVariable = valid_var;
-                    vmd->hideFromGUI = guiHide;
-                    vmd->matRestricted = selectedMats;
-                    if(uv->units != 0)
-                    {
-                        vmd->hasUnits = true;
-                        vmd->units = string(uv->units);
-                    }
-                    md->Add(vmd);
-                }
+                md->Add(smd);
+            }
+            else if (uv->ascii_labels)
+            {
+                avtLabelMetaData *lmd = new avtLabelMetaData(name_w_dir, meshname_w_dir, centering);
+                lmd->validVariable = valid_var;
+                lmd->hideFromGUI = guiHide;
+                lmd->matRestricted = selectedMats;
+                md->Add(lmd);
             }
             else
             {
-                debug1 << "Skipping/ignoring empty ucd var \"" << ucdvar_names[i] << "\"" << endl;
+                avtVectorMetaData *vmd = new avtVectorMetaData(name_w_dir,
+                                             meshname_w_dir, centering, uv->nvals);
+                vmd->validVariable = valid_var;
+                vmd->hideFromGUI = guiHide;
+                vmd->matRestricted = selectedMats;
+                if(uv->units != 0)
+                {
+                    vmd->hasUnits = true;
+                    vmd->units = string(uv->units);
+                }
+                md->Add(vmd);
             }
         }
         CATCHALL
@@ -3330,55 +3431,48 @@ avtSiloFileFormat::ReadPointvars(DBfile *dbfile,
             //
             // Get the dimension of the variable.
             //
-            if (!DBIsEmptyPointvar(pv))
+            bool guiHide = pv->guihide;
+            meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
+            if (pv->nvals == 1)
             {
-                bool guiHide = pv->guihide;
-                meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
-                if (pv->nvals == 1)
+                avtScalarMetaData *smd = new avtScalarMetaData(name_w_dir,
+                                                meshname_w_dir, AVT_NODECENT);
+                smd->treatAsASCII = (pv->ascii_labels);
+                smd->validVariable = valid_var;
+                smd->hideFromGUI = guiHide;
+                if(pv->units != 0)
                 {
-                    avtScalarMetaData *smd = new avtScalarMetaData(name_w_dir,
-                                                    meshname_w_dir, AVT_NODECENT);
-                    smd->treatAsASCII = (pv->ascii_labels);
-                    smd->validVariable = valid_var;
-                    smd->hideFromGUI = guiHide;
-                    if(pv->units != 0)
-                    {
-                        smd->hasUnits = true;
-                        smd->units = string(pv->units);
-                    }
-                    if (pv->missing_value != DB_MISSING_VALUE_NOT_SET)
-                    {
-                        double arr[2] = {0., 0.};
-                        arr[0] = pv->missing_value;
-                        smd->SetMissingData(arr);
-                        smd->SetMissingDataType(avtScalarMetaData::MissingData_Value);
-                    }
-                    md->Add(smd);
+                    smd->hasUnits = true;
+                    smd->units = string(pv->units);
                 }
-                else if (pv->ascii_labels)
+                if (pv->missing_value != DB_MISSING_VALUE_NOT_SET)
                 {
-                    avtLabelMetaData *lmd = new avtLabelMetaData(name_w_dir, meshname_w_dir, AVT_NODECENT);
-                    lmd->validVariable = valid_var;
-                    lmd->hideFromGUI = guiHide;
-                    md->Add(lmd);
+                    double arr[2] = {0., 0.};
+                    arr[0] = pv->missing_value;
+                    smd->SetMissingData(arr);
+                    smd->SetMissingDataType(avtScalarMetaData::MissingData_Value);
                 }
-                else
-                {
-                    avtVectorMetaData *vmd = new avtVectorMetaData(name_w_dir,
-                                              meshname_w_dir, AVT_NODECENT, pv->nvals);
-                    vmd->validVariable = valid_var;
-                    vmd->hideFromGUI = guiHide;
-                    if(pv->units != 0)
-                    {
-                        vmd->hasUnits = true;
-                        vmd->units = string(pv->units);
-                    }
-                    md->Add(vmd);
-                }
+                md->Add(smd);
+            }
+            else if (pv->ascii_labels)
+            {
+                avtLabelMetaData *lmd = new avtLabelMetaData(name_w_dir, meshname_w_dir, AVT_NODECENT);
+                lmd->validVariable = valid_var;
+                lmd->hideFromGUI = guiHide;
+                md->Add(lmd);
             }
             else
             {
-                debug1 << "Skipping/ignoring empty point var \"" << ptvar_names[i] << "\"" << endl;
+                avtVectorMetaData *vmd = new avtVectorMetaData(name_w_dir,
+                                          meshname_w_dir, AVT_NODECENT, pv->nvals);
+                vmd->validVariable = valid_var;
+                vmd->hideFromGUI = guiHide;
+                if(pv->units != 0)
+                {
+                    vmd->hasUnits = true;
+                    vmd->units = string(pv->units);
+                }
+                md->Add(vmd);
             }
         }
         CATCHALL
@@ -3437,84 +3531,77 @@ avtSiloFileFormat::ReadCSGvars(DBfile *dbfile,
                 csgv = DBAllocCsgvar();
             }
 
-            if (!DBIsEmptyCsgvar(csgv))
+            char meshname[256]; 
+            DBInqMeshname(correctFile, realvar.c_str(), meshname);
+
+            //
+            // Get the centering information.
+            //
+            // AVT doesn't have a 'boundary centering'. So, use node centering.
+            avtCentering centering = (csgv->centering == DB_BNDCENT ? AVT_NODECENT
+                                                                   : AVT_ZONECENT);
+            bool guiHide = csgv->guihide;
+
+            //
+            // If this variable is defined on material subset(s), determine
+            // the associated material numbers and indi
+            //
+            vector<int> selectedMats;
+            if (csgv->region_pnames)
+                valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
+                    meshname_w_dir, csgv->region_pnames, &selectedMats);
+
+            //
+            // Get the dimension of the variable.
+            //
+            meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
+            if (csgv->nvals == 1)
             {
-                char meshname[256]; 
-                DBInqMeshname(correctFile, realvar.c_str(), meshname);
-
-                //
-                // Get the centering information.
-                //
-                // AVT doesn't have a 'boundary centering'. So, use node centering.
-                avtCentering centering = (csgv->centering == DB_BNDCENT ? AVT_NODECENT
-                                                                       : AVT_ZONECENT);
-                bool guiHide = csgv->guihide;
-
-                //
-                // If this variable is defined on material subset(s), determine
-                // the associated material numbers and indi
-                //
-                vector<int> selectedMats;
-                if (csgv->region_pnames)
-                    valid_var = GetRestrictedMaterialIndices(md, name_w_dir,
-                        meshname_w_dir, csgv->region_pnames, &selectedMats);
-
-                //
-                // Get the dimension of the variable.
-                //
-                meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
-                if (csgv->nvals == 1)
+                avtScalarMetaData *smd = new avtScalarMetaData(name_w_dir,
+                                                    meshname_w_dir, centering);
+                smd->treatAsASCII = (csgv->ascii_labels);
+                smd->validVariable = valid_var;
+                smd->hideFromGUI = guiHide;
+                smd->matRestricted = selectedMats;
+                if(csgv->units != 0)
                 {
-                    avtScalarMetaData *smd = new avtScalarMetaData(name_w_dir,
-                                                        meshname_w_dir, centering);
-                    smd->treatAsASCII = (csgv->ascii_labels);
-                    smd->validVariable = valid_var;
-                    smd->hideFromGUI = guiHide;
-                    smd->matRestricted = selectedMats;
-                    if(csgv->units != 0)
-                    {
-                        smd->hasUnits = true;
-                        smd->units = string(csgv->units);
-                    }
+                    smd->hasUnits = true;
+                    smd->units = string(csgv->units);
+                }
 
 #ifdef DBOPT_MISSING_VALUE
-                    if (csgv->missing_value != DB_MISSING_VALUE_NOT_SET)
-                    {
-                        double arr[2] = {0., 0.};
-                        arr[0] = csgv->missing_value;
-                        smd->SetMissingData(arr);
-                        smd->SetMissingDataType(avtScalarMetaData::MissingData_Value);
-                    }
+                if (csgv->missing_value != DB_MISSING_VALUE_NOT_SET)
+                {
+                    double arr[2] = {0., 0.};
+                    arr[0] = csgv->missing_value;
+                    smd->SetMissingData(arr);
+                    smd->SetMissingDataType(avtScalarMetaData::MissingData_Value);
+                }
 #endif
 
-                    md->Add(smd);
-                }
-                else if (csgv->ascii_labels)
-                {
-                    avtLabelMetaData *lmd = new avtLabelMetaData(name_w_dir, meshname_w_dir, centering);
-                    lmd->validVariable = valid_var;
-                    lmd->hideFromGUI = guiHide;
-                    lmd->matRestricted = selectedMats;
-                    md->Add(lmd);
-                }
-                else
-                {
-                    avtVectorMetaData *vmd = new avtVectorMetaData(name_w_dir,
-                                                 meshname_w_dir, centering, csgv->nvals);
-                    vmd->validVariable = valid_var;
-                    vmd->hideFromGUI = guiHide;
-                    vmd->matRestricted = selectedMats;
-                    if(csgv->units != 0)
-                    {
-                        vmd->hasUnits = true;
-                        vmd->units = string(csgv->units);
-                    }
-                    md->Add(vmd);
-                }
+                md->Add(smd);
+            }
+            else if (csgv->ascii_labels)
+            {
+                avtLabelMetaData *lmd = new avtLabelMetaData(name_w_dir, meshname_w_dir, centering);
+                lmd->validVariable = valid_var;
+                lmd->hideFromGUI = guiHide;
+                lmd->matRestricted = selectedMats;
+                md->Add(lmd);
             }
             else
             {
-                debug1 << "Skipping/ignoring empty csg var \"" << csgvar_names[i] << "\"" << endl;
+                avtVectorMetaData *vmd = new avtVectorMetaData(name_w_dir,
+                                             meshname_w_dir, centering, csgv->nvals);
+                vmd->validVariable = valid_var;
+                vmd->hideFromGUI = guiHide;
+                vmd->matRestricted = selectedMats;
+                if(csgv->units != 0)
+                {
+                    vmd->hasUnits = true;
+                    vmd->units = string(csgv->units);
+                }
+                md->Add(vmd);
             }
         }
         CATCHALL
@@ -3575,67 +3662,59 @@ avtSiloFileFormat::ReadMaterials(DBfile *dbfile,
                 mat = DBAllocMaterial();
             }
 
-            if (!DBIsEmptyMaterial(mat))
-            {
-                char meshname[256];
-                DBInqMeshname(correctFile, realvar.c_str(), meshname);
+            char meshname[256];
+            DBInqMeshname(correctFile, realvar.c_str(), meshname);
 
+            //
+            // Give the materials names based on their material number.  If
+            // they have names in the Silo file, use those as well.
+            //
+            vector<string>  matnames;
+            vector<string>  matcolors;
+            for (j = 0 ; j < mat->nmat ; j++)
+            {
                 //
-                // Give the materials names based on their material number.  If
-                // they have names in the Silo file, use those as well.
+                // Deal with material names
                 //
-                vector<string>  matnames;
-                vector<string>  matcolors;
-                for (j = 0 ; j < mat->nmat ; j++)
+                char *num = NULL;
+                int dlen = int(log10(float(mat->matnos[j]+1))) + 1;
+                if (mat->matnames == NULL || mat->matnames[j] == NULL)
                 {
-                    //
-                    // Deal with material names
-                    //
-                    char *num = NULL;
-                    int dlen = int(log10(float(mat->matnos[j]+1))) + 1;
-                    if (mat->matnames == NULL || mat->matnames[j] == NULL)
-                    {
-                        num = new char[dlen + 2];
-                        sprintf(num, "%d", mat->matnos[j]);
-                    }
-                    else
-                    {
-                        int len = strlen(mat->matnames[j]);
-                        num = new char[len + 1 + dlen + 1];
-                        sprintf(num, "%d %s", mat->matnos[j], mat->matnames[j]);
-                    }
-                    matnames.push_back(num);
-                    delete[] num;
-
-                    //
-                    // Deal with material colors
-                    //
-                    if (mat->matcolors)
-                    {
-                        if (mat->matcolors[j] && mat->matcolors[j][0])
-                            matcolors.push_back(mat->matcolors[j]);
-                        else
-                            matcolors.push_back("");
-                    }
+                    num = new char[dlen + 2];
+                    sprintf(num, "%d", mat->matnos[j]);
                 }
-
-                meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
-                avtMaterialMetaData *mmd;
-                if (matcolors.size())
-                    mmd = new avtMaterialMetaData(name_w_dir, meshname_w_dir,
-                                                  mat->nmat, matnames, matcolors);
                 else
-                    mmd = new avtMaterialMetaData(name_w_dir, meshname_w_dir,
-                                                  mat->nmat, matnames);
-                mmd->validVariable = valid_var;
-                mmd->hideFromGUI = mat->guihide;
-                md->Add(mmd);
-            }
-            else
-            {
-                debug1 << "Skipping/ignoring empty material \"" << mat_names[i] << "\"" << endl;
+                {
+                    int len = strlen(mat->matnames[j]);
+                    num = new char[len + 1 + dlen + 1];
+                    sprintf(num, "%d %s", mat->matnos[j], mat->matnames[j]);
+                }
+                matnames.push_back(num);
+                delete[] num;
+
+                //
+                // Deal with material colors
+                //
+                if (mat->matcolors)
+                {
+                    if (mat->matcolors[j] && mat->matcolors[j][0])
+                        matcolors.push_back(mat->matcolors[j]);
+                    else
+                        matcolors.push_back("");
+                }
             }
 
+            meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
+            avtMaterialMetaData *mmd;
+            if (matcolors.size())
+                mmd = new avtMaterialMetaData(name_w_dir, meshname_w_dir,
+                                              mat->nmat, matnames, matcolors);
+            else
+                mmd = new avtMaterialMetaData(name_w_dir, meshname_w_dir,
+                                              mat->nmat, matnames);
+            mmd->validVariable = valid_var;
+            mmd->hideFromGUI = mat->guihide;
+            md->Add(mmd);
         }
         CATCHALL
         {
@@ -3680,6 +3759,17 @@ avtSiloFileFormat::ReadMaterials(DBfile *dbfile,
 //    Improve way multimat and mat info are inspected to create material names.
 //    Avoid using using a dummy DBMaterial struct and pointer stealing.
 //
+//    Mark C. Miller, Mon Nov  9 17:14:21 PST 2015
+//    Adjusted setting of associated meshname from object's 'mmesh_name' member
+//    to use absolute path name instead of just whatever the Silo file had
+//    stored.
+//
+//    Mark C. Miller, Tue Feb  2 15:01:05 PST 2016
+//    Add support for all-empty multi-mats.
+//
+//    Mark C. Miller, Thu Feb 25 12:40:17 PST 2016
+//    Add logic to check mesh identified by mmesh_name member and then fall
+//    back to fuzzy match if it doesn't exist.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
@@ -3695,9 +3785,9 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
         avtSiloMultiMatCacheEntry *mm_ent = NULL;
         TRY
         {
-
             name_w_dir = GenerateName(dirname, multimat_names[i], topDir.c_str());
             bool valid_var = true;
+            bool is_all_empty = false;
             GetMultiMat(dirname, multimat_names[i], &mm_ent, &valid_var);
             string mb_matname = "";
 
@@ -3721,59 +3811,28 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
             char **minfo_matnames = NULL;
             char **minfo_matcolors = NULL;
 
-            if (MultiMatHasAllMatInfo(mm) < 3 && mm->nmats)
+            if (MultiMatHasAllMatInfo(mm) < 3)
             {
-                // Find the first non-empty mesh
-                int meshnum = 0;
-                mb_matname = mm_ent->GenerateName(meshnum);
-                if (mm->repr_block_idx >= 0)
+                int meshnum = FindFirstNonEmptyBlock(multimat_names[i], mm->nmats,
+                    mm_ent, mm->repr_block_idx, mm->empty_cnt, mm->empty_list);
+                if (meshnum < 0)
                 {
-                    if (mm->repr_block_idx >= mm->nmats)
-                    {
-                        debug1 << "Invalidating material \"" << multimat_names[i] 
-                               << "\" since repr_block_idx (" << mm->repr_block_idx
-                               << ") >= nmats (" << mm->nmats << ")" << endl;
-                        valid_var = false;
-                    }
-                    else
-                    { 
-                        meshnum = mm->repr_block_idx;
-                        mb_matname = mm_ent->GenerateName(meshnum);
-                    }
+                    is_all_empty = true;
+                    emptyObjectsList[name_w_dir] = true;
                 }
-                while (mb_matname == "EMPTY")
-                {
-                    meshnum++;
-                    if (meshnum >= mm->nmats)
-                    {
-                        debug1 << "Invalidating material \"" << multimat_names[i] 
-                               << "\" since all its blocks are EMPTY." << endl;
-                        valid_var = false;
-                        break;
-                    }
+                else
                     mb_matname = mm_ent->GenerateName(meshnum);
-                }
 
                 string realvar;
                 DBfile *correctFile = dbfile;
 
-                if (valid_var)
+                if (valid_var && !is_all_empty)
                 {
                     DetermineFileAndDirectory(mb_matname.c_str(),"", correctFile, realvar);
                     mat = DBGetMaterial(correctFile, realvar.c_str());
                 }
 
-                if (mat == NULL)
-                {
-                    debug1 << "Invalidating material \"" << multimat_names[i] 
-                           << "\" since its first non-empty block ";
-                    if(valid_var) {
-                        debug1 << "(" << mb_matname << ") ";
-                    }
-                    debug1 << "is invalid." << endl;
-                    valid_var = false;
-                }
-                else
+                if (mat)
                 {
                     //Get all the info from the mat obj.
                     minfo_nmats     = mat->nmat;
@@ -3794,6 +3853,16 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
                         debug1 << "has different # materials than its parent multimat." << endl;
                         valid_var = false;
                     }
+                }
+                else if (!is_all_empty)
+                {
+                    debug1 << "Invalidating material \"" << multimat_names[i] 
+                           << "\" since its first non-empty block ";
+                    if(valid_var) {
+                        debug1 << "(" << mb_matname << ") ";
+                    }
+                    debug1 << "is invalid." << endl;
+                    valid_var = false;
                 }
             }
             else
@@ -3843,12 +3912,30 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
 
                 if (mm->mmesh_name != 0)
                 {
-                    meshname = mm->mmesh_name;
-                    debug5 << "Material \"" << multimat_names[i]
-                           << "\" indicates it is defined on mesh \""
-                           << meshname.c_str() << "\"" << endl;
+                    char cwd[512];
+                    DBGetDir(dbfile, cwd);
+                    meshname = FileFunctions::Absname(cwd,mm->mmesh_name,"/");
+                    if (!DBInqVarExists(dbfile, meshname.c_str()))
+                    {
+                        debug5 << "Although 'mmesh_name' member indicates material \"" << multimat_names[i]
+                               << "\" is defined on mesh \"" << meshname.c_str() << "\", "
+                               << "the associated mesh does not exist." << endl;
+                        meshname = DetermineMultiMeshForSubVariable(dbfile,
+                                       multimat_names[i], mm_ent, dirname);
+                        debug5 << "Guessing material \"" << multimat_names[i]
+                               << "\" is defined on mesh \""
+                               << meshname.c_str() << "\"" << endl;
+                    }
+                    else
+                    {
+                        debug5 << "Material \"" << multimat_names[i]
+                               << "\" indicates it is defined on mesh \""
+                               << meshname.c_str() << "\"" << endl;
+                        // VisIt won't match this var to its mesh if leading slash is presnet
+                        meshname.erase(meshname.begin());
+                    }
                 }
-                else
+                else if (!is_all_empty)
                 {
                     meshname = DetermineMultiMeshForSubVariable(dbfile,
                                                                 multimat_names[i],
@@ -3857,6 +3944,12 @@ avtSiloFileFormat::ReadMultimats(DBfile *dbfile,
                     debug5 << "Guessing material \"" << multimat_names[i]
                            << "\" is defined on mesh \""
                            << meshname.c_str() << "\"" << endl;
+                }
+                else
+                {
+                    meshname = firstAllEmptyMultimesh;
+                    minfo_nmats = 1;
+                    matnames.push_back("unknown");
                 }
             }
 
@@ -3951,51 +4044,44 @@ avtSiloFileFormat::ReadSpecies(DBfile *dbfile,
                 spec = DBAllocMatspecies();
             }
 
-            if (!DBIsEmptyMatspecies(spec))
-            {
-                char meshname[256];
-                GetMeshname(dbfile, spec->matname, meshname);
+            char meshname[256];
+            GetMeshname(dbfile, spec->matname, meshname);
 
-                vector<int>   numSpecies;
-                vector<vector<string> > speciesNames;
-                int spec_name_idx =0;
-                ostringstream oss;
-                for (j = 0 ; j < spec->nmat ; j++)
-                {
-                    numSpecies.push_back(spec->nmatspec[j]);
-                    vector<string>  tmp_string_vector;
-                    //
-                    // Species do not currently have names, so just use their index.
-                    //
-                    for (k = 0 ; k < spec->nmatspec[j] ; k++)
-                    {
-                        oss.str("");
-                        oss << (k+1);
-                        if(spec->specnames != NULL)
-                        {
-                            //
-                            //add spec name if it exists
-                            //
-                            oss << " ("
-                                << string(spec->specnames[spec_name_idx])
-                                << ")";
-                            spec_name_idx++;
-                        }
-                        tmp_string_vector.push_back(oss.str());
-                    }
-                    speciesNames.push_back(tmp_string_vector);
-                }
-                meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
-                avtSpeciesMetaData *smd = new avtSpeciesMetaData(name_w_dir,
-                                          meshname_w_dir, spec->matname, spec->nmat,
-                                          numSpecies, speciesNames);
-                //smd->hideFromGUI = spec->guihide;
-                md->Add(smd);
-            }
-            else
+            vector<int>   numSpecies;
+            vector<vector<string> > speciesNames;
+            int spec_name_idx =0;
+            ostringstream oss;
+            for (j = 0 ; j < spec->nmat ; j++)
             {
-                debug1 << "Skipping/ignoring empty species \"" << matspecies_names[i] << "\"" << endl;
+                numSpecies.push_back(spec->nmatspec[j]);
+                vector<string>  tmp_string_vector;
+                //
+                // Species do not currently have names, so just use their index.
+                //
+                for (k = 0 ; k < spec->nmatspec[j] ; k++)
+                {
+                    oss.str("");
+                    oss << (k+1);
+                    if(spec->specnames && spec->specnames[spec_name_idx])
+                    {
+                        //
+                        //add spec name if it exists
+                        //
+                        oss << " ("
+                            << string(spec->specnames[spec_name_idx])
+                            << ")";
+                    }
+                    spec_name_idx++;
+                    tmp_string_vector.push_back(oss.str());
+                }
+                speciesNames.push_back(tmp_string_vector);
             }
+            meshname_w_dir = GenerateName(dirname, meshname, topDir.c_str());
+            avtSpeciesMetaData *smd = new avtSpeciesMetaData(name_w_dir,
+                                      meshname_w_dir, spec->matname, spec->nmat,
+                                      numSpecies, speciesNames);
+            //smd->hideFromGUI = spec->guihide;
+            md->Add(smd);
         }
         CATCHALL
         {
@@ -4041,6 +4127,11 @@ avtSiloFileFormat::ReadSpecies(DBfile *dbfile,
 //    Cyrus Harrison, Thu Mar 14 15:16:43 PDT 2013
 //    Support species names from silo species objects. 
 //
+//    Mark C. Miller, Tue Feb  2 15:01:05 PST 2016
+//    Add support for all-empty multi-matspecies.
+//
+//    Mark C. Miller, 04Apr17
+//    Adjust logic for building species names to allow nulls in Silo's names.
 // ****************************************************************************
 void
 avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
@@ -4057,6 +4148,7 @@ avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
         TRY
         {
             bool valid_var = true;
+            bool is_all_empty = false;
             GetMultiSpec(dirname, multimatspecies_names[i], &ms_ent, &valid_var);
 
             if(ms_ent != NULL )
@@ -4072,36 +4164,16 @@ avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
 
             RegisterDomainDirs(ms_ent,dirname);
 
-            // Find the first non-empty mesh
-            int meshnum = 0;
-            string mb_specname = ms_ent->GenerateName(meshnum);
-            if (ms->repr_block_idx >= 0)
+            string mb_specname;
+            int meshnum = FindFirstNonEmptyBlock(multimatspecies_names[i], ms->nspec,
+                    ms_ent, ms->repr_block_idx, ms->empty_cnt, ms->empty_list);
+            if (meshnum < 0)
             {
-                if (ms->repr_block_idx >= ms->nspec)
-                {
-                    debug1 << "Invalidating species \"" << multimatspecies_names[i] 
-                           << "\" since repr_block_idx (" << ms->repr_block_idx
-                           << ") >= nspec (" << ms->nspec << ")" << endl;
-                    valid_var = false;
-                }
-                else
-                { 
-                    meshnum = ms->repr_block_idx;
-                    mb_specname  = ms_ent->GenerateName(meshnum);
-                }
+                is_all_empty = true;
+                emptyObjectsList[name_w_dir] = true;
             }
-            while (mb_specname  == "EMPTY")
-            {
-                meshnum++;
-                if (meshnum >= ms->nspec)
-                {
-                    debug1 << "Invalidating species \"" << multimatspecies_names[i] 
-                           << "\" since all its blocks are EMPTY." << endl;
-                    valid_var = false;
-                    break;
-                }
+            else
                 mb_specname = ms_ent->GenerateName(meshnum);
-            }
 
             string meshname;
 
@@ -4127,19 +4199,13 @@ avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
                 {
                     valid_var = false;
                 }
-                else
+                else if (!is_all_empty)
                 {
                     meshname = DetermineMultiMeshForSubVariable(dbfile,
                                                               multimatspecies_names[i],
                                                               mm_ent,
                                                               dirname);
                     //
-                    // note: prev code: mm vs ms  - looks wrong?
-                    //   meshname = DetermineMultiMeshForSubVariable(dbfile,
-                    //                                          multimatspecies_names[i],
-                    //                                          mm->matnames,
-                    //                                          ms->nspec, dirname);
-
                     // get the species info
 
                     string realvar;
@@ -4157,6 +4223,10 @@ avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
                         valid_var = false;
                     }
                 }
+                else
+                {
+                    meshname = firstAllEmptyMultimesh;
+                }
             }
 
             vector<int>              numSpecies;
@@ -4173,7 +4243,7 @@ avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
                     {
                         oss.str("");
                         oss << (k+1);
-                        if(spec->specnames != NULL)
+                        if(spec->specnames && spec->specnames[spec_name_idx])
                         {
                             //
                             //add spec name if it exists
@@ -4181,8 +4251,8 @@ avtSiloFileFormat::ReadMultispecies(DBfile *dbfile,
                             oss << " ("
                                 << string(spec->specnames[spec_name_idx])
                                 << ")";
-                            spec_name_idx++;
                         }
+                        spec_name_idx++;
                         tmp_string_vector.push_back(oss.str());
                     }
                     speciesNames.push_back(tmp_string_vector);
@@ -4328,6 +4398,15 @@ avtSiloFileFormat::ReadDefvars(DBfile *dbfile,
 //
 //    Mark C. Miller, Wed Aug 19 11:21:37 PDT 2009
 //    Reformatted with TOC_ENTRY macros to reduce size.
+//
+//    Eric Brugger, Wed Sep 30 13:47:14 PDT 2015
+//    I corrected a bug that caused "_meshtv_searchpath" to be ignored.
+//    I also added "_visit_searchpath" as a synonym for "_meshtv_searchpath"
+//    since "_visit_searchpath" is much more appropriate for VisIt.
+//
+//    Mark C. Miller, Thu Feb 11 17:40:32 PST 2016
+//    Adjusted logic for going into directories to only call ReadDir() when
+//    preceding call to DBSetDir succeeds.
 // ****************************************************************************
 #define COPY_TOC_ENTRY(NM)                        \
     int      n ## NM = toc->n ## NM;                    \
@@ -4446,7 +4525,8 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
         //
         // Create the new list of directories.
         //
-        dir_names = new char*[ndir];
+        debug1 << "Set list of directories to search from searchpath_str..." << endl;
+        dir_names = new char*[max_ndir];
         ndir = 0;
         int searchpath_strlen = strlen(searchpath_str);
         for (i = 0; i < searchpath_strlen; i++)
@@ -4463,11 +4543,13 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
             {
                 dir_names[ndir] = new char[strlen(dirname)+1];
                 strcpy(dir_names[ndir], dirname);
+                debug1 << "... \"" << dirname << "\"" << endl;
                 ndir++;
             }
         }
           
         delete [] searchpath_str;
+        searchpath_str = NULL;
     }
 
     //
@@ -4491,9 +4573,16 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
             }
             if (ShouldGoToDir(path))
             {
-                DBSetDir(dbfile, dir_names[i]);
-                ReadDir(dbfile, path, md);
-                DBSetDir(dbfile, "..");
+                int dir_status = DBSetDir(dbfile, dir_names[i]);
+                if (dir_status == 0) 
+                {
+                    ReadDir(dbfile, path, md);
+                    DBSetDir(dbfile, "..");
+                }
+                else
+                {
+                    debug1 << "Unable to DBSetDir(\"" << path << "\")" << endl;
+                }
             }
 
         }
@@ -4568,6 +4657,9 @@ avtSiloFileFormat::ReadDir(DBfile *dbfile, const char *dirname,
 //
 //    Mark C. Miller, Thu Apr 12 23:07:36 PDT 2012
 //    Removed calls to build NChooseRMaps supporting nodelists.
+//
+//    Mark C. Miller, Wed Jun 15 09:22:14 PDT 2016
+//    Added logic to support adding of block decomposition as a variable.
 // ****************************************************************************
 void
 avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
@@ -4654,6 +4746,14 @@ avtSiloFileFormat::BroadcastGlobalInfo(avtDatabaseMetaData *metadata)
     BroadcastInt(groupInfo.ndomains);
     BroadcastInt(groupInfo.numgroups);
     BroadcastIntVector(groupInfo.ids,  rank);
+
+    //
+    // Broadcast domainToBlockGrouping info
+    //
+    int dtbg_size = addBlockDecompositionAsVar ? (int) domainToBlockGrouping.size() : 0;
+    BroadcastInt(dtbg_size);
+    if (dtbg_size)
+        BroadcastIntVector(domainToBlockGrouping, rank);
 
     int ignore_extents = ignoreSpatialExtents;
     BroadcastInt(ignore_extents);
@@ -4971,6 +5071,7 @@ avtSiloFileFormat::GetConnectivityAndGroupInformation(DBfile *dbfile,
 #endif
        GetConnectivityAndGroupInformationFromFile(dbfile, ndomains, nneighbors,
                           extents, lneighbors, neighbors, numGroups, groupIds);
+
 #ifdef PARALLEL
     }
 
@@ -5124,6 +5225,9 @@ avtSiloFileFormat::GetConnectivityAndGroupInformation(DBfile *dbfile,
 //    Cyrus Harrison, Fri Sep  7 10:58:11 PDT 2007
 //    Added option for connectivity from the MultiMeshadj object.
 //
+//    Mark C. Miller, Wed Jun 15 09:22:14 PDT 2016
+//    Read the Domains_BlockNums data to support adding block decompposition
+//    as a variable.
 // ****************************************************************************
 
 void
@@ -5216,6 +5320,13 @@ avtSiloFileFormat::GetConnectivityAndGroupInformationFromFile(DBfile *dbfile,
                 FindStandardConnectivity(dbfile, ndomains, nneighbors, extents,
                                      lneighbors, neighbors, numGroups,groupIds,
                                      needConnectivityInfo, needGroupInfo);
+            }
+
+            /* While we're here, get domain-to-block mapping information too */
+            if (DBInqVarExists(dbfile, "Domains_BlockNums"))
+            {
+                domainToBlockGrouping.resize(ndomains);
+                DBReadVar(dbfile, "Domains_BlockNums", &domainToBlockGrouping[0]);
             }
 
             DBSetDir(dbfile, topDir.c_str());
@@ -5319,7 +5430,6 @@ avtSiloFileFormat::FindStandardConnectivity(DBfile *dbfile, int &ndomains,
     {
         useLocalDomainBoundries = true;
     }
-
 
     DBReadVar(dbfile, "NumDomains", &ndomains);
     if (needConnectivityInfo)
@@ -6739,6 +6849,9 @@ PaintNodesForAnnotIntFacelist(vtkBitArray *nlvar,
 //    regions, so this is a significant saving. CSG meshes with thousands
 //    of regions were exhausting memory in the previous scheme.
 //
+//    Mark C. Miller, Tue Feb  2 15:03:13 PST 2016
+//    Add logic to return immediately if the associated meshName is the name
+//    of an all-empty multi-mesh.
 // ****************************************************************************
 
 vtkDataArray *
@@ -6746,6 +6859,9 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
 {
     size_t i;
     string meshName = metadata->MeshForVar(listsname);
+
+    if (emptyObjectsList.find(meshName) != emptyObjectsList.end())
+        return 0;
 
     //
     // Look up the mesh in the cache.
@@ -6870,10 +6986,14 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
 
         if (um == NULL)
         {
-            char msg[256];
-            SNPRINTF(msg, sizeof(msg), "DBGetUcdmesh() failed for \"%s\" for domain %d to "
-                "paint \"%s\" variable", meshName.c_str(), domain, listsname.c_str());
-            EXCEPTION1(InvalidVariableException, msg);
+            if (!ignoreMissingBlocks)
+            {
+                char msg[256];
+                SNPRINTF(msg, sizeof(msg), "DBGetUcdmesh() failed for \"%s\" for domain %d to "
+                    "paint \"%s\" variable", meshName.c_str(), domain, listsname.c_str());
+                EXCEPTION1(InvalidVariableException, msg);
+            }
+            return 0;
         }
 
         //
@@ -6911,12 +7031,18 @@ avtSiloFileFormat::GetAnnotIntNodelistsVar(int domain, string listsname)
 //    regions, so this is a significant saving. CSG meshes with thousands
 //    of regions were exhausting memory in the previous scheme.
 //
+//    Mark C. Miller, Tue Feb  2 15:03:59 PST 2016
+//    Add logic to return immediately if the associated mesh is an all-empty
+//    multi-block mesh.
 // ****************************************************************************
 
 vtkDataArray *
 avtSiloFileFormat::GetMrgTreeNodelistsVar(int domain, string listsname)
 {
     string meshName = metadata->MeshForVar(listsname);
+
+    if (emptyObjectsList.find(meshName) != emptyObjectsList.end())
+        return 0;
 
     //
     // Look up the mesh in the cache.
@@ -7014,6 +7140,48 @@ avtSiloFileFormat::GetMrgTreeNodelistsVar(int domain, string listsname)
 }
 
 // ****************************************************************************
+//  Method: avtSiloFileFormat::GetBlockDecompositionVar
+//
+//  Mark C. Miller, Wed Jun 15 09:28:04 PDT 2016
+//
+// ****************************************************************************
+
+vtkDataArray *
+avtSiloFileFormat::GetBlockDecompositionAsVar(int domain, string meshName)
+{
+    if (emptyObjectsList.find(meshName) != emptyObjectsList.end())
+        return 0;
+
+    //
+    // Look up the mesh in the cache.
+    //
+    vtkDataSet *ds = (vtkDataSet *) cache->GetVTKObject(meshName.c_str(),
+                                            avtVariableCache::DATASET_NAME,
+                                            timestep, domain, "_all");
+    if (ds == 0)
+    {
+        char msg[256];
+        SNPRINTF(msg, sizeof(msg), "Cannot find cached mesh \"%s\" for domain %d to "
+            "paint \"block_nums\" variable", meshName.c_str(), domain);
+        EXCEPTION1(InvalidVariableException, msg);
+    }
+
+    debug5 << "Generating \"block_nums\" variable for domain " << domain << endl;
+
+    //
+    // Construct the return variable array
+    //
+    int ncells = ds->GetNumberOfCells();
+    vtkIntArray *bnvar = vtkIntArray::New();
+    bnvar->SetNumberOfComponents(1);
+    bnvar->SetNumberOfTuples(ncells);
+    for (int i = 0; i < ncells; i++)
+        bnvar->SetComponent(i, 0, domainToBlockGrouping[domain]);
+
+    return bnvar;
+}
+
+// ****************************************************************************
 //  Method: avtSiloFileFormat::GetVar
 //
 //  Purpose:
@@ -7083,11 +7251,18 @@ avtSiloFileFormat::GetMrgTreeNodelistsVar(int domain, string listsname)
 //    regions, so this is a significant saving. CSG meshes with thousands
 //    of regions were exhausting memory in the previous scheme.
 //
+//    Mark C. Miller, Tue Feb  2 15:03:59 PST 2016
+//    Add logic to return immediately if the var is an all-empty multi-var.
+//
+//    Mark C. Miller, Wed Jun 15 09:22:14 PDT 2016
+//    Added logic to support adding of block decomposition as a variable.
 // ****************************************************************************
 
 vtkDataArray *
 avtSiloFileFormat::GetVar(int domain, const char *v)
 {
+    if (emptyObjectsList.find(v) != emptyObjectsList.end()) return 0;
+
     // Use knowledge from MD to check if this is a label var because in that
     // case we'll actually want to use the GetXxxVectorVar routines
     bool isLabelVar = metadata->DetermineVarType(v, false) == AVT_LABEL_VAR;
@@ -7107,12 +7282,26 @@ avtSiloFileFormat::GetVar(int domain, const char *v)
         if (nlvar != 0)
             return nlvar;
     }
+
     // If the variable name begings with "nodesets_" or "facesets_"...
     if (string(v).find("nodesets_") == 0 || string(v).find("facesets_") == 0)
     {
         vtkDataArray *nlvar = GetMrgTreeNodelistsVar(domain, v);
         if (nlvar != 0)
             return nlvar;
+    }
+
+    // If the variable is the block decomposition as a variable
+    // domainToBlockGrouping size will be non-zero only when this feature
+    // is activated.
+    if (domainToBlockGrouping.size() && string(v).find("_block_nums") != string::npos)
+    {
+        string meshName = metadata->MeshForVar(v);
+        if (string(v) == meshName + "_block_nums")
+        {
+            vtkDataArray *bnvar = GetBlockDecompositionAsVar(domain, meshName);
+            if (bnvar) return bnvar;
+        }
     }
 
     int localdomain = domain;
@@ -7299,6 +7488,8 @@ avtSiloFileFormat::GetVar(int domain, const char *v)
 //    regions, so this is a significant saving. CSG meshes with thousands
 //    of regions were exhausting memory in the previous scheme.
 //
+//    Mark C. Miller, Tue Feb  2 15:03:59 PST 2016
+//    Add logic to return immediately if the var is an all-empty multi-var.
 // ****************************************************************************
 
 vtkDataArray *
@@ -7306,6 +7497,8 @@ avtSiloFileFormat::GetVectorVar(int domain, const char *v)
 {
     debug5 << "Reading in vector variable " << v << ", domain " << domain
            << endl;
+
+    if (emptyObjectsList.find(v) != emptyObjectsList.end()) return 0;
 
     int localdomain = domain;
     if (blocksForMultivar.count(v))
@@ -7670,7 +7863,11 @@ avtSiloFileFormat::GetUcdVectorVar(DBfile *dbfile, const char *vname,
     DBucdvar  *uv = DBGetUcdvar(dbfile, varname);
     if (uv == NULL)
     {
-        EXCEPTION1(InvalidVariableException, varname);
+        if (!ignoreMissingBlocks)
+        {
+            EXCEPTION1(InvalidVariableException, varname);
+        }
+        return 0;
     }
 
     //
@@ -7852,6 +8049,11 @@ avtSiloFileFormat::GetQuadVectorVar(DBfile *dbfile, const char *vname,
     if (qv == NULL)
     {
         EXCEPTION1(InvalidVariableException, varname);
+    }
+    else if (DBIsEmptyQuadvar(qv))
+    {
+        DBFreeQuadvar(qv);
+        return NULL;
     }
 
     const bool DoExpressions = true;
@@ -8151,6 +8353,8 @@ avtSiloFileFormat::GetMeshHelper(int domain, const char *m, DBmultimesh **_mm,
 //    regions, so this is a significant saving. CSG meshes with thousands
 //    of regions were exhausting memory in the previous scheme.
 //
+//    Mark C. Miller, Tue Feb  2 15:03:59 PST 2016
+//    Add logic to return immediately if the mesh is an all-empty multi-mesh.
 // ****************************************************************************
 
 vtkDataSet *
@@ -8161,6 +8365,8 @@ avtSiloFileFormat::GetMesh(int domain, const char *m)
     DBmultimesh *mm;
     DBfile *dbfile = GetFile(tocIndex);
     DBfile *domain_file = dbfile;
+
+    if (emptyObjectsList.find(m) != emptyObjectsList.end()) return 0;
 
     GetMeshHelper(domain, m, &mm, &type, &domain_file, directory_mesh);
 
@@ -8771,8 +8977,18 @@ avtSiloFileFormat::GetUcdVar(DBfile *dbfile, const char *vname,
     DBucdvar  *uv = DBGetUcdvar(dbfile, varname);
     if (uv == NULL)
     {
-        EXCEPTION1(InvalidVariableException, varname);
+        if (!ignoreMissingBlocks)
+        {
+            EXCEPTION1(InvalidVariableException, varname);
+        }
+        return 0;
     }
+    else if (DBIsEmptyUcdvar(uv))
+    {
+        DBFreeUcdvar(uv);
+        return NULL;
+    }
+
 
     //
     // If the region_pnames option is set, this variable is defined
@@ -8934,6 +9150,11 @@ avtSiloFileFormat::GetQuadVar(DBfile *dbfile, const char *vname,
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    else if (DBIsEmptyQuadvar(qv))
+    {
+        DBFreeQuadvar(qv);
+        return NULL;
+    }
 
     //
     // Populate the variable.  This assumes it is a scalar variable.
@@ -9047,6 +9268,11 @@ avtSiloFileFormat::GetPointVar(DBfile *dbfile, const char *vname)
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    else if (DBIsEmptyPointvar(mv))
+    {
+        DBFreePointvar(mv);
+        return NULL;
+    }
 
     if(mv->nvals > 1)
     {
@@ -9096,6 +9322,12 @@ avtSiloFileFormat::GetCsgVar(DBfile *dbfile, const char *vname)
     {
         EXCEPTION1(InvalidVariableException, varname);
     }
+    else if (DBIsEmptyCsgvar(csgv))
+    {
+        DBFreeCsgvar(csgv);
+        return NULL;
+    }
+
 
     //
     // Populate the variable.  This assumes it is a scalar variable.
@@ -9523,7 +9755,11 @@ avtSiloFileFormat::GetUnstructuredMesh(DBfile *dbfile, const char *mn,
     DBucdmesh  *um = DBGetUcdmesh(dbfile, meshname);
     if (um == NULL)
     {
-        EXCEPTION1(InvalidVariableException, meshname);
+        if (!ignoreMissingBlocks)
+        {
+            EXCEPTION1(InvalidVariableException, meshname);
+        }
+        return 0;
     }
     if (DBIsEmptyUcdmesh(um))
     {
@@ -10260,7 +10496,8 @@ avtSiloFileFormat::ReadInConnectivity(vtkUnstructuredGrid *ugrid,
                 j++;
                 continue;
             }
-            unsigned int ocdata[2] = {domain, i};
+            unsigned int ocdata[2] = {static_cast<unsigned int>(domain),
+                                      static_cast<unsigned int>(i)};
             oca->InsertNextTupleValue(ocdata);
             cellReMap->push_back(i);
         }
@@ -10944,7 +11181,8 @@ avtSiloFileFormat::ReadInArbConnectivity(const char *meshname,
         else
             fcnt = phzl->nodecnt[gz];
 
-        unsigned int ocdata[2] = {domain, gz+gzOffset};
+        unsigned int ocdata[2] = {static_cast<unsigned int>(domain), 
+                                  static_cast<unsigned int>(gz+gzOffset)};
 
         if (((nsdims == 3) && (fcnt == 3 || // Must be tri
                                fcnt == 4 || // Maybe tet or quad
@@ -13046,6 +13284,9 @@ avtSiloFileFormat::GetRelativeVarName(const char *initVar, const char *newVar,
 //    Limited support for Silo nameschemes, use new multi block cache data
 //    structures.
 //
+//    Mark C. Miller, Thu Jun  8 14:52:32 PDT 2017
+//    Fix logic seeking first non-empty block to not make more than 20 attempts
+//    in the namescheme'd (implicit) case.
 // ****************************************************************************
 
 string
@@ -13073,17 +13314,40 @@ avtSiloFileFormat::DetermineMultiMeshForSubVariable(DBfile *dbfile,
     int meshnum = 0;
     string mb_varname = obj->GenerateName(meshnum);
     int nblocks = obj->NumberOfBlocks();
-    while ( mb_varname  == "EMPTY")
+    
+    if (obj->IsExplicit())
     {
-        meshnum++;
-        if (meshnum >= nblocks)
+        while (mb_varname == "EMPTY")
         {
-            EXCEPTION1(InvalidVariableException,  name);
+            meshnum++;
+            if (meshnum >= nblocks)
+            {
+                EXCEPTION1(InvalidVariableException,  name);
+            }
+            mb_varname = obj->GenerateName(meshnum);
         }
-        mb_varname = obj->GenerateName(meshnum);
+        GetMeshname(dbfile, mb_varname.c_str(), subMesh);
     }
-
-    GetMeshname(dbfile, mb_varname.c_str(), subMesh);
+    else
+    {
+        while (GetMeshname(dbfile, mb_varname.c_str(), subMesh) != 0)
+        {
+            meshnum++;
+            if (meshnum >= nblocks)
+            {
+                EXCEPTION1(InvalidVariableException,  name);
+            }
+            else if (meshnum > 20)
+            {
+                char str[1024];
+                SNPRINTF(str, sizeof(str), "Giving up after 20 attempts to find first non-empty submesh "
+                    "of a namescheme'd multivar \"%s\". This typically leads to the variable being invalidated "
+                    "(grayed out) in the GUI.", name);
+                EXCEPTION1(SiloException, str);
+            }
+            mb_varname = obj->GenerateName(meshnum);
+        }
+    }
 
     //
     // The code involving subMeshTmp is to maintain backward compability
@@ -13183,48 +13447,6 @@ avtSiloFileFormat::DetermineMultiMeshForSubVariable(DBfile *dbfile,
     EXCEPTION1(SiloException, str);
 }
 
-
-// ****************************************************************************
-//  Method: avtSiloFileFormat::GetMeshtype
-//
-//  Purpose:
-//      Gets the mesh type for a variable, even if it is in a different file.
-//
-//  Arguments:
-//      dbfile    The dbfile that mesh came from.
-//      mesh      A mesh name, possibly with a prepended directory and filename
-//
-//  Programmer: Hank Childs
-//  Creation:   March 5, 2001
-//
-//  Modifications:
-//
-//    Sean Ahern, Fri Feb  8 13:57:12 PST 2002
-//    Added error checking.
-//
-//    Cyrus Harrison, Wed Dec 21 15:22:21 PST 2011
-//    Limited support for Silo nameschemes, use new multi block cache data
-//    structures.
-//
-// ****************************************************************************
-
-int
-avtSiloFileFormat::GetMeshtype(DBfile *dbfile, const char *mesh)
-{
-    string dirvar;
-    DBfile *correctFile = dbfile;
-    DetermineFileAndDirectory(mesh, "", correctFile, dirvar);
-    int rv = DBInqMeshtype(correctFile, dirvar.c_str());
-    if (rv < 0)
-    {
-        char str[1024];
-        sprintf(str, "Unable to determine mesh type for \"%s\".", mesh);
-        EXCEPTION1(SiloException, str);
-    }
-    return rv;
-}
-
-
 // ****************************************************************************
 //  Method: avtSiloFileFormat::GetMeshname
 //
@@ -13256,19 +13478,14 @@ avtSiloFileFormat::GetMeshtype(DBfile *dbfile, const char *mesh)
 //
 // ****************************************************************************
 
-void
+int
 avtSiloFileFormat::GetMeshname(DBfile *dbfile, const char *var, char *meshname)
 {
     string dirvar;
     DBfile *correctFile = dbfile;
     DetermineFileAndDirectory(var, "", correctFile, dirvar);
     int rv = DBInqMeshname(correctFile, dirvar.c_str(), meshname);
-    if (rv < 0)
-    {
-        char str[1024];
-        sprintf(str, "Unable to determine mesh for %s.", var);
-        EXCEPTION1(SiloException, str);
-    }
+    return rv;
 }
 
 
@@ -13377,6 +13594,10 @@ avtSiloFileFormat::GetAuxiliaryData(const char *var, int domain,
                               const char *type, void *, DestructorFunction &df)
 {
     void *rv = NULL;
+
+    // If the named object is known to be empty, return immediately
+    if (emptyObjectsList.find(var) != emptyObjectsList.end()) return rv;
+
     if (strcmp(type, AUXILIARY_DATA_MATERIAL) == 0)
     {
         rv = (void *) GetMaterial(domain, var);
@@ -13421,6 +13642,12 @@ avtSiloFileFormat::GetAuxiliaryData(const char *var, int domain,
         }
         rv = (void *) GetDataExtents(var);
         df = avtIntervalTree::Destruct;
+    }
+    else if (strcmp(type, AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION) == 0)
+    {
+        debug1  << "GetAuxiliaryData Local::AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION"  <<endl;
+        rv = GetLocalDomainBoundaryInfo(domain,var);
+        df = avtLocalStructuredDomainBoundaryList::Destruct;
     }
 
     //
@@ -13471,7 +13698,6 @@ avtSiloFileFormat::GetAuxiliaryData(const char *var, int domain,
 //    Cyrus Harrison, Wed Dec 21 15:22:21 PST 2011
 //    Limited support for Silo nameschemes, use new multi block cache data
 //    structures.
-//
 // ****************************************************************************
 
 avtMaterial *
@@ -13589,7 +13815,6 @@ avtSiloFileFormat::GetMaterial(int dom, const char *mat)
 //
 //    Cyrus Harrison, Tue Jan 24 11:56:17 PST 2012
 //    Fetch and catch multispec object if not already seen.
-//
 // ****************************************************************************
 
 avtSpecies *
@@ -13760,6 +13985,7 @@ avtSiloFileFormat::AllocAndDetermineMeshnameForUcdmesh(int dom, const char *mesh
     return meshname;
 }
 
+
 // ****************************************************************************
 //  Method: avtSiloFileFormat::GetExternalFacelist
 //
@@ -13795,7 +14021,6 @@ avtSiloFileFormat::AllocAndDetermineMeshnameForUcdmesh(int dom, const char *mesh
 //    Cyrus Harrison, Wed Dec 21 15:22:21 PST 2011
 //    Limited support for Silo nameschemes, use new multi block cache data
 //    structures.
-//
 // ****************************************************************************
 
 avtFacelist *
@@ -13829,6 +14054,7 @@ avtSiloFileFormat::GetExternalFacelist(int dom, const char *mesh)
     return rv;
 }
 
+
 // ****************************************************************************
 //  Method: avtSiloFileFormat::GetGlobalNodeIds
 //
@@ -13836,7 +14062,7 @@ avtSiloFileFormat::GetExternalFacelist(int dom, const char *mesh)
 //      Gets the global node ids from the Silo file
 //
 //  Programmer: Mark C. Miller
-//  Creation:   August 4, 2004 
+//  Creation:   August 4, 2004
 //
 //  Modifications:
 //    Mark C. Miller, Thu Oct 14 15:18:31 PDT 2004
@@ -13893,7 +14119,13 @@ avtSiloFileFormat::GetGlobalNodeIds(int dom, const char *mesh)
     DBucdmesh *um = DBGetUcdmesh(domain_file, directory_mesh.c_str());
     DBSetDataReadMask2(mask);
     if (um == NULL)
-        EXCEPTION1(InvalidVariableException, mesh);
+    {
+        if (!ignoreMissingBlocks)
+        {
+            EXCEPTION1(InvalidVariableException, mesh);
+        }
+        return 0;
+    }
 
     vtkDataArray *rv = NULL;
     if (um->gnodeno != NULL)
@@ -13912,6 +14144,90 @@ avtSiloFileFormat::GetGlobalNodeIds(int dom, const char *mesh)
     delete [] meshname;
 
     return rv;
+}
+
+
+// ****************************************************************************
+//  Method: avtSiloFileFormat::GetLocalDomainBoundaryInfo
+//
+//  Purpose:
+//      Constructs a neighbor list from a scalable format convention.
+//
+//  Programmer: Cyrus Harrison
+//  Creation:  Tue Apr 17 13:00:29 PDT 2012
+//
+//  Modifications:
+//
+//
+// ****************************************************************************
+
+avtLocalStructuredDomainBoundaryList *
+avtSiloFileFormat::GetLocalDomainBoundaryInfo(int domain, const char *var)
+{
+    debug5 << "Reading in domain " << domain << ", local boundary info for "
+           << var << endl;
+    debug5 << "Reading in from toc " << filenames[tocIndex] << endl;
+
+    string mmesh_name = metadata->MeshForVar(var);
+
+    debug5 << "Reading in domain " << domain
+           << ", local boundary info for " << var
+           << " mesh name = : " << mmesh_name << endl;
+
+    // now get the multimesh
+
+    int type;
+    DBfile *dbfile = GetFile(tocIndex);
+    string directory_mesh;
+    DBmultimesh *mm;
+    DBfile *domain_file = dbfile;
+
+    GetMeshHelper(domain, mmesh_name.c_str(), &mm, &type, &domain_file, directory_mesh);
+
+    int numdecomp_pack = 0;
+
+    string mesh_dir_parent(FileFunctions::Dirname(directory_mesh.c_str()));
+    ostringstream oss;
+    oss << mesh_dir_parent << "/" << "NumDecomp_pack";
+    if(!DBInqVarExists(domain_file,oss.str().c_str()))
+    {
+        debug5 << "Skipping read of local domain boundaries: "
+               << oss.str().c_str() << " does not exist."  <<endl;
+        return NULL;
+    }
+    DBReadVar(domain_file,oss.str().c_str(),&numdecomp_pack);
+    int *decomp = new int[numdecomp_pack];
+    oss.str("");
+    oss << mesh_dir_parent << "/" << "Decomp_pack";
+    if(!DBInqVarExists(domain_file,oss.str().c_str()))
+    {
+        debug5 << "Skipping read of local domain boundaries: "
+               << oss.str().c_str() << " does not exist." <<endl;
+        return NULL;
+    }
+    DBReadVar(domain_file,oss.str().c_str(),decomp);
+
+    //
+    // extract the packed info into a avtLocalStructuredDomainBoundaryList
+    //
+
+    int *dc_ptr = decomp;
+    int lid     = *dc_ptr++;
+    int nbnd    = *dc_ptr++;
+    avtLocalStructuredDomainBoundaryList *res =
+                    new avtLocalStructuredDomainBoundaryList(domain,dc_ptr);
+    dc_ptr+=6;
+    for (int i=0; i < nbnd; i++)
+    {
+        res->AddNeighbor(dc_ptr[0],   // nei id
+                         dc_ptr[1],   // match
+                         &dc_ptr[2],  // orient
+                         &dc_ptr[5]); // extents
+        dc_ptr += 11;
+    }
+
+    //res->Print(cout);
+    return res;
 }
 
 // ****************************************************************************
@@ -13976,7 +14292,13 @@ avtSiloFileFormat::GetGlobalZoneIds(int dom, const char *mesh)
     DBucdmesh *um = DBGetUcdmesh(domain_file, directory_mesh.c_str());
     DBSetDataReadMask2(mask);
     if (um == NULL)
-        EXCEPTION1(InvalidVariableException, mesh);
+    {
+        if (!ignoreMissingBlocks)
+        {
+            EXCEPTION1(InvalidVariableException, mesh);
+        }
+        return 0;
+    }
 
     vtkDataArray *rv = NULL;
     if (um->zones->gzoneno != NULL)
@@ -14226,6 +14548,8 @@ avtSiloFileFormat::GetDataExtents(const char *varName)
 //    I corrected a memory error where a buffer used to hold material names
 //    was underallocated. This resulted in crashes in some instances.
 //
+//    Mark C. Miller, Fri Nov  6 09:13:22 PST 2015
+//    Avert segv on deref of material_names in block level mat object.
 // ****************************************************************************
 
 avtMaterial *
@@ -14285,7 +14609,7 @@ avtSiloFileFormat::CalcMaterial(DBfile *dbfile, const char *matname, const char 
         {
             matnames[i] = buffer + (256+max_dlen)*i;
             int matno = silomat->matnos[i];
-            const char *matname = silomat->matnames[i];
+            const char *matname = silomat->matnames ? silomat->matnames[i] : 0;
             if (mm&&mm->matnos)
                 matno = mm->matnos[i];
             if (mm&&mm->material_names)
@@ -14521,7 +14845,14 @@ avtSiloFileFormat::CalcExternalFacelist(DBfile *dbfile, const char *mesh)
     DBSetDataReadMask2(mask);
     VisitMutexUnlock("avtSiloFileFormat::CalcExternalFacelist");
     if (um == NULL)
-        EXCEPTION1(InvalidVariableException, mesh);
+    {
+        if (!ignoreMissingBlocks)
+        {
+            EXCEPTION1(InvalidVariableException, mesh);
+        }
+        return 0;
+    }
+
     DBfacelist *fl = um->faces;
 
     if (fl == NULL)
@@ -14619,6 +14950,10 @@ avtSiloFileFormat::PopulateIOInformation(const std::string &meshname, avtIOInfor
 //    mesh name. Note that the mesh name is not currently used but the intent
 //    is to allow different ioInfo for different multi-meshes.
 //
+//    Cyrus Harrison, Mon Dec 21 11:35:05 PST 2015
+//    Remove n^2 algorithm when constructing map from filenames to domain id 
+//    lists. 
+//
 // ****************************************************************************
 
 bool
@@ -14692,31 +15027,44 @@ avtSiloFileFormat::PopulateIOInformationEx(const std::string &meshname, avtIOInf
             return false;
         }
 
-        vector<string> filenames;
+        //
+        // ioInfo needs a vector from each file's index, to a vector with a 
+        // list of domain ids it contains. 
+        // the groups vector holds this info.
         vector<vector<int> > groups;
+        
+        // use a map to avoid previous n^2 lookup implementation 
+        map<string,int> filename_index_map;
+
+        /// we know we need an entry for each domain, so init groups to the proper size
+        groups.resize(mm->nblocks);
+        
+        // loop over all domains and find which file (and file index) the domain is 
+        // associated with 
         for (i = 0 ; i < mm->nblocks ; i++)
         {
             string filename;
             string location;
             DetermineFilenameAndDirectory(mm_ent->GenerateName(i).c_str(),
                                           "", filename, location);
-            int index = -1;
-            for (j = 0 ; j < (int)filenames.size() ; j++)
+
+            // check if we have already seen this filename
+            int fname_index = -1;
+            map<string,int>::const_iterator itr = filename_index_map.find(filename);
+            if (itr != filename_index_map.end())
             {
-                if (filename == filenames[j])
-                {
-                    index = j;
-                    break;
-                }
+                // if found, use the index
+                fname_index = itr->second;
             }
-            if (index == -1)
+            else
             {
-                filenames.push_back(string(filename));
-                vector<int> newvector_placeholder;
-                groups.push_back(newvector_placeholder);
-                index = (int)filenames.size()-1;
+                // if not, assign it a new index
+                fname_index = filename_index_map.size();
+                filename_index_map[filename] = fname_index;
             }
-            groups[index].push_back(i);
+
+            /// add this domain id to the list of ids for the found filename
+            groups[fname_index].push_back(i);
         }
 
         ioInfo.SetNDomains(mm->nblocks);
@@ -14881,6 +15229,9 @@ avtSiloFileFormat::QueryMultiMesh(const char *path, const char *name)
 //
 //    Mark C. Miller, Wed Mar 13 23:02:58 PDT 2013
 //    Pass object's directory when creating a new CacheEntry.
+//
+//    Mark C. Miller, Tue Feb  2 15:14:08 PST 2016
+//    Adjust to track multi-meshes that have zero blocks (e.g. all empty)
 // ****************************************************************************
 
 void
@@ -14902,20 +15253,13 @@ avtSiloFileFormat::GetMultiMesh(const char *path, const char *name,
     DBmultimesh *mm = DBGetMultimesh(dbfile, full_path.c_str());
     if(mm != NULL)
     {
-        if(mm->nblocks > 0)
+        *cache_ent = new avtSiloMultiMeshCacheEntry(dbfile,
+            FileFunctions::Dirname(full_path.c_str()),mm);
+        if (mm->nblocks > 0 && (*cache_ent)->GenerateName(0) == "")
         {
-            *cache_ent = new avtSiloMultiMeshCacheEntry(dbfile,
-                 FileFunctions::Dirname(full_path.c_str()),mm);
-            if ((*cache_ent)->GenerateName(0) == "")
-            {
-                if (valid_var) *valid_var = false;
-            }
-            multimeshCache.AddEntry(full_path,*cache_ent);
+            if (valid_var) *valid_var = false;
         }
-        else
-        {
-            DBFreeMultimesh(mm);
-        }
+        multimeshCache.AddEntry(full_path,*cache_ent);
     }
     return;
 }
@@ -14974,6 +15318,9 @@ avtSiloFileFormat::QueryMultiVar(const char *path, const char *name)
 //
 //    Mark C. Miller, Wed Mar 13 23:02:58 PDT 2013
 //    Pass object's directory when creating a new CacheEntry.
+//
+//    Mark C. Miller, Tue Feb  2 15:15:49 PST 2016
+//    Adjust to track even multivars that have no blocks (e.g. all empty)
 // ****************************************************************************
 
 void
@@ -14996,22 +15343,13 @@ avtSiloFileFormat::GetMultiVar(const char *path, const char *name,
     DBmultivar *mv = DBGetMultivar(dbfile, full_path.c_str());
     if(mv != NULL)
     {
-        if(mv->nvars > 0)
+        *cache_ent = new avtSiloMultiVarCacheEntry(dbfile,
+            FileFunctions::Dirname(full_path.c_str()),mv);
+        if (mv->nvars > 0 && (*cache_ent)->GenerateName(0) == "")
         {
-            *cache_ent = new avtSiloMultiVarCacheEntry(dbfile,
-                FileFunctions::Dirname(full_path.c_str()),mv);
-            if ((*cache_ent)->GenerateName(0) == "")
-            {
-                if (valid_var) *valid_var = false;
-            }
-            multivarCache.AddEntry(full_path,*cache_ent);
+            if (valid_var) *valid_var = false;
         }
-        else
-        {
-            DBFreeMultivar(mv);
-        }
-
-        
+        multivarCache.AddEntry(full_path,*cache_ent);
     }
     return;
 }
@@ -15071,6 +15409,9 @@ avtSiloFileFormat::QueryMultiMat(const char *path, const char *name)
 //
 //    Mark C. Miller, Wed Mar 13 23:02:58 PDT 2013
 //    Pass object's directory when creating a new CacheEntry.
+//
+//    Mark C. Miller, Tue Feb  2 15:15:49 PST 2016
+//    Adjust to track even multimats that have no blocks (e.g. all empty)
 // ****************************************************************************
 
 void
@@ -15093,20 +15434,13 @@ avtSiloFileFormat::GetMultiMat(const char *path, const char *name,
     DBmultimat *mm = DBGetMultimat(dbfile, full_path.c_str());
     if(mm != NULL)
     {
-        if(mm->nmats > 0)
+        *cache_ent = new avtSiloMultiMatCacheEntry(dbfile,
+            FileFunctions::Dirname(full_path.c_str()),mm);
+        if (mm->nmats > 0 && (*cache_ent)->GenerateName(0) == "")
         {
-            *cache_ent = new avtSiloMultiMatCacheEntry(dbfile,
-                FileFunctions::Dirname(full_path.c_str()),mm);
-            if ((*cache_ent)->GenerateName(0) == "")
-            {
-                if (valid_var) *valid_var = false;
-            }
-            multimatCache.AddEntry(full_path,*cache_ent);
+            if (valid_var) *valid_var = false;
         }
-        else
-        {
-            DBFreeMultimat(mm);
-        }
+        multimatCache.AddEntry(full_path,*cache_ent);
     }
     return;
 }
@@ -15165,6 +15499,9 @@ avtSiloFileFormat::QueryMultiSpec(const char *path, const char *name)
 //
 //    Mark C. Miller, Wed Mar 13 23:02:58 PDT 2013
 //    Pass object's directory when creating a new CacheEntry.
+//
+//    Mark C. Miller, Tue Feb  2 15:15:49 PST 2016
+//    Adjust to track even multi-specs that have no blocks (e.g. all empty)
 // ****************************************************************************
 
 void
@@ -15187,20 +15524,13 @@ avtSiloFileFormat::GetMultiSpec(const char *path, const char *name,
     DBmultimatspecies *ms = DBGetMultimatspecies(dbfile, full_path.c_str());
     if(ms != NULL)
     {
-        if(ms->nspec > 0)
+        *cache_ent = new avtSiloMultiSpecCacheEntry(dbfile,
+            FileFunctions::Dirname(full_path.c_str()),ms);
+        if (ms->nspec > 0 && (*cache_ent)->GenerateName(0) == "")
         {
-            *cache_ent = new avtSiloMultiSpecCacheEntry(dbfile,
-                FileFunctions::Dirname(full_path.c_str()),ms);
-            if ((*cache_ent)->GenerateName(0) == "")
-            {
-                if (valid_var) *valid_var = false;
-            }
-            multispecCache.AddEntry(full_path,*cache_ent);
+            if (valid_var) *valid_var = false;
         }
-        else
-        {
-            DBFreeMultimatspecies(ms);
-        }
+        multispecCache.AddEntry(full_path,*cache_ent);
     }
     return;
 }
@@ -17023,4 +17353,88 @@ static string ResolveSiloIndObjAbsPath(
         indirect_objname_incl_any_abs_or_rel_path.c_str(), "/");
     retval = string(indobj_abspath);
     return retval;
+}
+
+// ****************************************************************************
+//  Function: FindFirstNonEmptyBlock
+//
+//  Purpose: Apply various algorithms, in order, to determine the first
+//  non-empty block of a multi-block object depending on how the object was
+//  constructed.
+//
+//  Creation: Mark C. Miller, Tue Feb  2 15:17:36 PST 2016
+// ****************************************************************************
+
+static int FindFirstNonEmptyBlock(char const *mbobj_name, int nblocks,
+    avtSiloMBObjectCacheEntry const *mb_ent,
+    int repr_block_idx, int empty_cnt, int const *empty_list)
+{
+    int const is_all_empty = -1;
+    int blocknum = 0;
+    if (nblocks == 0)
+    {
+        return is_all_empty;
+    }
+    else if (repr_block_idx >= 0)
+    {
+        if (repr_block_idx < nblocks)
+        { 
+            blocknum = repr_block_idx;
+            return blocknum;
+        }
+        else
+        {
+            debug1 << "Multi-block object \"" << mbobj_name
+                   << "\" is all empty." << endl;
+            return is_all_empty;
+        }
+    }
+    else if (empty_list)
+    {
+        if (empty_cnt == nblocks)
+        {
+            debug1 << "Multi-block object \"" << mbobj_name
+                   << "\" is all empty." << endl;
+            return is_all_empty;
+        }
+        else
+        {
+            int qq;
+            for (qq = 0; qq < empty_cnt; qq++)
+            {
+                if (empty_list[qq] != qq)
+                    return qq;
+            }
+            return is_all_empty;
+        }
+    }
+    while (mb_ent->GenerateName(blocknum) == "EMPTY")
+    {
+        blocknum++;
+        if (blocknum >= nblocks)
+        {
+            debug1 << "Multi-block object \"" << mbobj_name
+                   << "\" is all empty." << endl;
+            return is_all_empty;
+        }
+    }
+    return blocknum;
+}
+
+// Temporary: Replace with DBGetIndex after new Silo is available
+static int
+db_get_index(DBnamescheme const *ns, int natnum)
+{
+    char const *name_str = DBGetName(ns, natnum);
+    int i = 0;
+
+    if (!name_str) return -1;
+
+    while (name_str[i] && !(strchr("0123456789+-",      name_str[i  ]) &&
+                            strchr("0123456789.aAbBcCdDeEfFxX+-", name_str[i+1])))
+        i++;
+
+    if (!name_str[i]) return -1;
+
+    return (int) strtol(&name_str[i], 0, 10);
 }

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -107,8 +107,7 @@ GetDBPluginInfoRPCExecutor::Update(Subject *s)
 {
     GetDBPluginInfoRPC *rpc = (GetDBPluginInfoRPC *)s;
 
-    debug2 << "GetDBPluginInfoRPCExecutor::Update\n";
-    debug2.flush();
+    debug2 << "GetDBPluginInfoRPCExecutor::Update\n" << std::flush;
 
     TRY
     {

@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -55,6 +55,10 @@
 #   Force inclusion of SimV2 plugin sources here for static builds. We don't
 #   do it the normal way because we don't want that plugin in the engine.
 #
+#   David Camp, Thu Aug 27 09:25:33 PDT 2015
+#   Added the SaveSessionRPCExecutor.C and RestoreSessionRPCExecutor.C files.
+#   They are used for the remove save and load of session files.
+#
 #****************************************************************************/
 
 SET(MDSERVER_SOURCES
@@ -74,6 +78,8 @@ MDServerApplication.C
 MDServerConnection.C
 QuitRPCExecutor.C
 SetMFileOpenOptionsRPCExecutor.C
+SaveSessionRPCExecutor.C
+RestoreSessionRPCExecutor.C
 main.C
 )
 

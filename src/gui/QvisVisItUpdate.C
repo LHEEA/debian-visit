@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -63,7 +63,7 @@
 
 #define CURRENT_VERSION VISIT_VERSION
 
-#define NERSC_RELEASE_HTML   "http://portal.nersc.gov/svn/visit/trunk/releases/"
+#define NERSC_RELEASE_HTML   "http://visit.ilight.com/svn/visit/trunk/releases/"
 
 #define LLNL                 "https://wci.llnl.gov/"
 #define LLNL_EXECUTABLE_HTML LLNL "codes/visit/executables.html"

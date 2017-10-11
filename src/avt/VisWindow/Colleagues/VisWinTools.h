@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,6 +108,9 @@ class vtkHighlightActor2D;
 //   Jeremy Meredith, Wed May 19 11:00:51 EDT 2010
 //   Added support for 3D axis scaling.
 //
+//   Burlen Loring, Mon Sep 28 16:04:23 PDT 2015
+//   Added API for setting tool visibility
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinTools : public VisWinColleague
@@ -147,6 +150,8 @@ class VISWINDOW_API VisWinTools : public VisWinColleague
     virtual void     FullFrameOff(void);
 
     virtual void     Set3DAxisScalingFactors(bool scale, const double s[3]);
+
+    void             SetVisibility(int);
 
   protected:
     void                  ClearHighlight();

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,7 +108,7 @@ GetDirectoryRPCExecutor::Update(Subject *s)
 {
      GetDirectoryRPC *rpc = (GetDirectoryRPC *)s;
 #ifdef DEBUG
-     debug2 << "GetDirectoryRPCExecutor::Update\n"; debug2.flush();
+     debug2 << "GetDirectoryRPCExecutor::Update\n" << std::flush;
 #endif
      GetDirectoryRPC::DirectoryName dir;
      dir.name = parent->GetCurrentWorkingDirectory();

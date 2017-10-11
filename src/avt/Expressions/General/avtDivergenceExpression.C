@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -105,7 +105,7 @@ avtDivergenceExpression::GetMacro(std::vector<std::string> &args,
         do3D   = (atts.GetTopologicalDimension() == 3);
     }
 
-    int nargs = args.size();
+    size_t nargs = args.size();
 
     char new_expr[2048];
     if (do3D)

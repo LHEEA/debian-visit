@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,20 +47,21 @@
 //
 
 static const char *SourceType_strings[] = {
-"SpecifiedPoint", "SpecifiedLine"};
+"SpecifiedPoint", "PointList", "SpecifiedLine"
+};
 
 std::string
 PoincareAttributes::SourceType_ToString(PoincareAttributes::SourceType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 2) index = 0;
+    if(index < 0 || index >= 3) index = 0;
     return SourceType_strings[index];
 }
 
 std::string
 PoincareAttributes::SourceType_ToString(int t)
 {
-    int index = (t < 0 || t >= 2) ? 0 : t;
+    int index = (t < 0 || t >= 3) ? 0 : t;
     return SourceType_strings[index];
 }
 
@@ -68,7 +69,7 @@ bool
 PoincareAttributes::SourceType_FromString(const std::string &s, PoincareAttributes::SourceType &val)
 {
     val = PoincareAttributes::SpecifiedPoint;
-    for(int i = 0; i < 2; ++i)
+    for(int i = 0; i < 3; ++i)
     {
         if(s == SourceType_strings[i])
         {
@@ -678,6 +679,15 @@ void PoincareAttributes::Init()
     pointSource[0] = 0;
     pointSource[1] = 0;
     pointSource[2] = 0;
+    pointList.push_back(0);
+    pointList.push_back(0);
+    pointList.push_back(0);
+    pointList.push_back(1);
+    pointList.push_back(0);
+    pointList.push_back(0);
+    pointList.push_back(0);
+    pointList.push_back(1);
+    pointList.push_back(0);
     lineStart[0] = 0;
     lineStart[1] = 0;
     lineStart[2] = 0;
@@ -706,7 +716,6 @@ void PoincareAttributes::Init()
     overridePoloidalWinding = 0;
     windingPairConfidence = 0.9;
     rationalSurfaceFactor = 0.1;
-    adjustPlane = -1;
     overlaps = Remove;
     meshType = Curves;
     numberPlanes = 1;
@@ -743,6 +752,7 @@ void PoincareAttributes::Init()
     pathlinesPeriod = 0;
     pathlinesCMFE = POS_CMFE;
     issueTerminationWarnings = true;
+    issueStepsizeWarnings = true;
     issueStiffnessWarnings = true;
     issueCriticalPointsWarnings = true;
     criticalPointThreshold = 0.001;
@@ -782,6 +792,7 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
     pointSource[1] = obj.pointSource[1];
     pointSource[2] = obj.pointSource[2];
 
+    pointList = obj.pointList;
     lineStart[0] = obj.lineStart[0];
     lineStart[1] = obj.lineStart[1];
     lineStart[2] = obj.lineStart[2];
@@ -813,7 +824,6 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
     overridePoloidalWinding = obj.overridePoloidalWinding;
     windingPairConfidence = obj.windingPairConfidence;
     rationalSurfaceFactor = obj.rationalSurfaceFactor;
-    adjustPlane = obj.adjustPlane;
     overlaps = obj.overlaps;
     meshType = obj.meshType;
     numberPlanes = obj.numberPlanes;
@@ -852,6 +862,7 @@ void PoincareAttributes::Copy(const PoincareAttributes &obj)
     pathlinesPeriod = obj.pathlinesPeriod;
     pathlinesCMFE = obj.pathlinesCMFE;
     issueTerminationWarnings = obj.issueTerminationWarnings;
+    issueStepsizeWarnings = obj.issueStepsizeWarnings;
     issueStiffnessWarnings = obj.issueStiffnessWarnings;
     issueCriticalPointsWarnings = obj.issueCriticalPointsWarnings;
     criticalPointThreshold = obj.criticalPointThreshold;
@@ -1046,6 +1057,7 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             (puncturePlane == obj.puncturePlane) &&
             (sourceType == obj.sourceType) &&
             pointSource_equal &&
+            (pointList == obj.pointList) &&
             lineStart_equal &&
             lineEnd_equal &&
             (pointDensity == obj.pointDensity) &&
@@ -1068,7 +1080,6 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             (overridePoloidalWinding == obj.overridePoloidalWinding) &&
             (windingPairConfidence == obj.windingPairConfidence) &&
             (rationalSurfaceFactor == obj.rationalSurfaceFactor) &&
-            (adjustPlane == obj.adjustPlane) &&
             (overlaps == obj.overlaps) &&
             (meshType == obj.meshType) &&
             (numberPlanes == obj.numberPlanes) &&
@@ -1107,6 +1118,7 @@ PoincareAttributes::operator == (const PoincareAttributes &obj) const
             (pathlinesPeriod == obj.pathlinesPeriod) &&
             (pathlinesCMFE == obj.pathlinesCMFE) &&
             (issueTerminationWarnings == obj.issueTerminationWarnings) &&
+            (issueStepsizeWarnings == obj.issueStepsizeWarnings) &&
             (issueStiffnessWarnings == obj.issueStiffnessWarnings) &&
             (issueCriticalPointsWarnings == obj.issueCriticalPointsWarnings) &&
             (criticalPointThreshold == obj.criticalPointThreshold));
@@ -1165,7 +1177,7 @@ PoincareAttributes::TypeName() const
 //
 // Modifications:
 //    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
-//    Initial steps to unification with streamline attributes.
+//    Initial steps to unification with integral curve attributes.
 // ****************************************************************************
 
 bool
@@ -1206,7 +1218,7 @@ PoincareAttributes::CopyAttributes(const AttributeGroup *atts)
 //
 // Modifications:
 //    Jeremy Meredith, Wed Apr  8 16:48:05 EDT 2009
-//    Initial steps to unification with streamline attributes.
+//    Initial steps to unification with integral curve attributes.
 // ****************************************************************************
 
 AttributeSubject *
@@ -1290,6 +1302,7 @@ PoincareAttributes::SelectAll()
     Select(ID_puncturePlane,                     (void *)&puncturePlane);
     Select(ID_sourceType,                        (void *)&sourceType);
     Select(ID_pointSource,                       (void *)pointSource, 3);
+    Select(ID_pointList,                         (void *)&pointList);
     Select(ID_lineStart,                         (void *)lineStart, 3);
     Select(ID_lineEnd,                           (void *)lineEnd, 3);
     Select(ID_pointDensity,                      (void *)&pointDensity);
@@ -1312,7 +1325,6 @@ PoincareAttributes::SelectAll()
     Select(ID_overridePoloidalWinding,           (void *)&overridePoloidalWinding);
     Select(ID_windingPairConfidence,             (void *)&windingPairConfidence);
     Select(ID_rationalSurfaceFactor,             (void *)&rationalSurfaceFactor);
-    Select(ID_adjustPlane,                       (void *)&adjustPlane);
     Select(ID_overlaps,                          (void *)&overlaps);
     Select(ID_meshType,                          (void *)&meshType);
     Select(ID_numberPlanes,                      (void *)&numberPlanes);
@@ -1351,6 +1363,7 @@ PoincareAttributes::SelectAll()
     Select(ID_pathlinesPeriod,                   (void *)&pathlinesPeriod);
     Select(ID_pathlinesCMFE,                     (void *)&pathlinesCMFE);
     Select(ID_issueTerminationWarnings,          (void *)&issueTerminationWarnings);
+    Select(ID_issueStepsizeWarnings,             (void *)&issueStepsizeWarnings);
     Select(ID_issueStiffnessWarnings,            (void *)&issueStiffnessWarnings);
     Select(ID_issueCriticalPointsWarnings,       (void *)&issueCriticalPointsWarnings);
     Select(ID_criticalPointThreshold,            (void *)&criticalPointThreshold);
@@ -1456,6 +1469,12 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
     {
         addToParent = true;
         node->AddNode(new DataNode("pointSource", pointSource, 3));
+    }
+
+    if(completeSave || !FieldsEqual(ID_pointList, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("pointList", pointList));
     }
 
     if(completeSave || !FieldsEqual(ID_lineStart, &defaultObject))
@@ -1588,12 +1607,6 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
     {
         addToParent = true;
         node->AddNode(new DataNode("rationalSurfaceFactor", rationalSurfaceFactor));
-    }
-
-    if(completeSave || !FieldsEqual(ID_adjustPlane, &defaultObject))
-    {
-        addToParent = true;
-        node->AddNode(new DataNode("adjustPlane", adjustPlane));
     }
 
     if(completeSave || !FieldsEqual(ID_overlaps, &defaultObject))
@@ -1826,6 +1839,12 @@ PoincareAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool for
         node->AddNode(new DataNode("issueTerminationWarnings", issueTerminationWarnings));
     }
 
+    if(completeSave || !FieldsEqual(ID_issueStepsizeWarnings, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("issueStepsizeWarnings", issueStepsizeWarnings));
+    }
+
     if(completeSave || !FieldsEqual(ID_issueStiffnessWarnings, &defaultObject))
     {
         addToParent = true;
@@ -1948,7 +1967,7 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         if(node->GetNodeType() == INT_NODE)
         {
             int ival = node->AsInt();
-            if(ival >= 0 && ival < 2)
+            if(ival >= 0 && ival < 3)
                 SetSourceType(SourceType(ival));
         }
         else if(node->GetNodeType() == STRING_NODE)
@@ -1960,6 +1979,8 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
     }
     if((node = searchNode->GetNode("pointSource")) != 0)
         SetPointSource(node->AsDoubleArray());
+    if((node = searchNode->GetNode("pointList")) != 0)
+        SetPointList(node->AsDoubleVector());
     if((node = searchNode->GetNode("lineStart")) != 0)
         SetLineStart(node->AsDoubleArray());
     if((node = searchNode->GetNode("lineEnd")) != 0)
@@ -2074,8 +2095,6 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
         SetWindingPairConfidence(node->AsDouble());
     if((node = searchNode->GetNode("rationalSurfaceFactor")) != 0)
         SetRationalSurfaceFactor(node->AsDouble());
-    if((node = searchNode->GetNode("adjustPlane")) != 0)
-        SetAdjustPlane(node->AsInt());
     if((node = searchNode->GetNode("overlaps")) != 0)
     {
         // Allow enums to be int or string in the config file
@@ -2236,6 +2255,8 @@ PoincareAttributes::SetFromNode(DataNode *parentNode)
     }
     if((node = searchNode->GetNode("issueTerminationWarnings")) != 0)
         SetIssueTerminationWarnings(node->AsBool());
+    if((node = searchNode->GetNode("issueStepsizeWarnings")) != 0)
+        SetIssueStepsizeWarnings(node->AsBool());
     if((node = searchNode->GetNode("issueStiffnessWarnings")) != 0)
         SetIssueStiffnessWarnings(node->AsBool());
     if((node = searchNode->GetNode("issueCriticalPointsWarnings")) != 0)
@@ -2332,6 +2353,13 @@ PoincareAttributes::SetPointSource(const double *pointSource_)
     pointSource[1] = pointSource_[1];
     pointSource[2] = pointSource_[2];
     Select(ID_pointSource, (void *)pointSource, 3);
+}
+
+void
+PoincareAttributes::SetPointList(const doubleVector &pointList_)
+{
+    pointList = pointList_;
+    Select(ID_pointList, (void *)&pointList);
 }
 
 void
@@ -2492,13 +2520,6 @@ PoincareAttributes::SetRationalSurfaceFactor(double rationalSurfaceFactor_)
 {
     rationalSurfaceFactor = rationalSurfaceFactor_;
     Select(ID_rationalSurfaceFactor, (void *)&rationalSurfaceFactor);
-}
-
-void
-PoincareAttributes::SetAdjustPlane(int adjustPlane_)
-{
-    adjustPlane = adjustPlane_;
-    Select(ID_adjustPlane, (void *)&adjustPlane);
 }
 
 void
@@ -2768,6 +2789,13 @@ PoincareAttributes::SetIssueTerminationWarnings(bool issueTerminationWarnings_)
 }
 
 void
+PoincareAttributes::SetIssueStepsizeWarnings(bool issueStepsizeWarnings_)
+{
+    issueStepsizeWarnings = issueStepsizeWarnings_;
+    Select(ID_issueStepsizeWarnings, (void *)&issueStepsizeWarnings);
+}
+
+void
 PoincareAttributes::SetIssueStiffnessWarnings(bool issueStiffnessWarnings_)
 {
     issueStiffnessWarnings = issueStiffnessWarnings_;
@@ -2868,6 +2896,18 @@ double *
 PoincareAttributes::GetPointSource()
 {
     return pointSource;
+}
+
+const doubleVector &
+PoincareAttributes::GetPointList() const
+{
+    return pointList;
+}
+
+doubleVector &
+PoincareAttributes::GetPointList()
+{
+    return pointList;
 }
 
 const double *
@@ -3018,12 +3058,6 @@ double
 PoincareAttributes::GetRationalSurfaceFactor() const
 {
     return rationalSurfaceFactor;
-}
-
-int
-PoincareAttributes::GetAdjustPlane() const
-{
-    return adjustPlane;
 }
 
 PoincareAttributes::OverlapType
@@ -3273,6 +3307,12 @@ PoincareAttributes::GetIssueTerminationWarnings() const
 }
 
 bool
+PoincareAttributes::GetIssueStepsizeWarnings() const
+{
+    return issueStepsizeWarnings;
+}
+
+bool
 PoincareAttributes::GetIssueStiffnessWarnings() const
 {
     return issueStiffnessWarnings;
@@ -3298,6 +3338,12 @@ void
 PoincareAttributes::SelectPointSource()
 {
     Select(ID_pointSource, (void *)pointSource, 3);
+}
+
+void
+PoincareAttributes::SelectPointList()
+{
+    Select(ID_pointList, (void *)&pointList);
 }
 
 void
@@ -3372,6 +3418,7 @@ PoincareAttributes::GetFieldName(int index) const
     case ID_puncturePlane:                     return "puncturePlane";
     case ID_sourceType:                        return "sourceType";
     case ID_pointSource:                       return "pointSource";
+    case ID_pointList:                         return "pointList";
     case ID_lineStart:                         return "lineStart";
     case ID_lineEnd:                           return "lineEnd";
     case ID_pointDensity:                      return "pointDensity";
@@ -3394,7 +3441,6 @@ PoincareAttributes::GetFieldName(int index) const
     case ID_overridePoloidalWinding:           return "overridePoloidalWinding";
     case ID_windingPairConfidence:             return "windingPairConfidence";
     case ID_rationalSurfaceFactor:             return "rationalSurfaceFactor";
-    case ID_adjustPlane:                       return "adjustPlane";
     case ID_overlaps:                          return "overlaps";
     case ID_meshType:                          return "meshType";
     case ID_numberPlanes:                      return "numberPlanes";
@@ -3433,6 +3479,7 @@ PoincareAttributes::GetFieldName(int index) const
     case ID_pathlinesPeriod:                   return "pathlinesPeriod";
     case ID_pathlinesCMFE:                     return "pathlinesCMFE";
     case ID_issueTerminationWarnings:          return "issueTerminationWarnings";
+    case ID_issueStepsizeWarnings:             return "issueStepsizeWarnings";
     case ID_issueStiffnessWarnings:            return "issueStiffnessWarnings";
     case ID_issueCriticalPointsWarnings:       return "issueCriticalPointsWarnings";
     case ID_criticalPointThreshold:            return "criticalPointThreshold";
@@ -3472,6 +3519,7 @@ PoincareAttributes::GetFieldType(int index) const
     case ID_puncturePlane:                     return FieldType_enum;
     case ID_sourceType:                        return FieldType_enum;
     case ID_pointSource:                       return FieldType_doubleArray;
+    case ID_pointList:                         return FieldType_doubleVector;
     case ID_lineStart:                         return FieldType_doubleArray;
     case ID_lineEnd:                           return FieldType_doubleArray;
     case ID_pointDensity:                      return FieldType_int;
@@ -3494,7 +3542,6 @@ PoincareAttributes::GetFieldType(int index) const
     case ID_overridePoloidalWinding:           return FieldType_int;
     case ID_windingPairConfidence:             return FieldType_double;
     case ID_rationalSurfaceFactor:             return FieldType_double;
-    case ID_adjustPlane:                       return FieldType_int;
     case ID_overlaps:                          return FieldType_enum;
     case ID_meshType:                          return FieldType_enum;
     case ID_numberPlanes:                      return FieldType_int;
@@ -3533,6 +3580,7 @@ PoincareAttributes::GetFieldType(int index) const
     case ID_pathlinesPeriod:                   return FieldType_double;
     case ID_pathlinesCMFE:                     return FieldType_enum;
     case ID_issueTerminationWarnings:          return FieldType_bool;
+    case ID_issueStepsizeWarnings:             return FieldType_bool;
     case ID_issueStiffnessWarnings:            return FieldType_bool;
     case ID_issueCriticalPointsWarnings:       return FieldType_bool;
     case ID_criticalPointThreshold:            return FieldType_double;
@@ -3572,6 +3620,7 @@ PoincareAttributes::GetFieldTypeName(int index) const
     case ID_puncturePlane:                     return "enum";
     case ID_sourceType:                        return "enum";
     case ID_pointSource:                       return "doubleArray";
+    case ID_pointList:                         return "doubleVector";
     case ID_lineStart:                         return "doubleArray";
     case ID_lineEnd:                           return "doubleArray";
     case ID_pointDensity:                      return "int";
@@ -3594,7 +3643,6 @@ PoincareAttributes::GetFieldTypeName(int index) const
     case ID_overridePoloidalWinding:           return "int";
     case ID_windingPairConfidence:             return "double";
     case ID_rationalSurfaceFactor:             return "double";
-    case ID_adjustPlane:                       return "int";
     case ID_overlaps:                          return "enum";
     case ID_meshType:                          return "enum";
     case ID_numberPlanes:                      return "int";
@@ -3633,6 +3681,7 @@ PoincareAttributes::GetFieldTypeName(int index) const
     case ID_pathlinesPeriod:                   return "double";
     case ID_pathlinesCMFE:                     return "enum";
     case ID_issueTerminationWarnings:          return "bool";
+    case ID_issueStepsizeWarnings:             return "bool";
     case ID_issueStiffnessWarnings:            return "bool";
     case ID_issueCriticalPointsWarnings:       return "bool";
     case ID_criticalPointThreshold:            return "double";
@@ -3725,6 +3774,11 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
             pointSource_equal = (pointSource[i] == obj.pointSource[i]);
 
         retval = pointSource_equal;
+        }
+        break;
+    case ID_pointList:
+        {  // new scope
+        retval = (pointList == obj.pointList);
         }
         break;
     case ID_lineStart:
@@ -3850,11 +3904,6 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_rationalSurfaceFactor:
         {  // new scope
         retval = (rationalSurfaceFactor == obj.rationalSurfaceFactor);
-        }
-        break;
-    case ID_adjustPlane:
-        {  // new scope
-        retval = (adjustPlane == obj.adjustPlane);
         }
         break;
     case ID_overlaps:
@@ -4047,6 +4096,11 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (issueTerminationWarnings == obj.issueTerminationWarnings);
         }
         break;
+    case ID_issueStepsizeWarnings:
+        {  // new scope
+        retval = (issueStepsizeWarnings == obj.issueStepsizeWarnings);
+        }
+        break;
     case ID_issueStiffnessWarnings:
         {  // new scope
         retval = (issueStiffnessWarnings == obj.issueStiffnessWarnings);
@@ -4088,15 +4142,18 @@ PoincareAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
 bool
 PoincareAttributes::ChangesRequireRecalculation(const PoincareAttributes &obj) const
 {
-    return StreamlineAttsRequireRecalculation(obj) ||
+    std::cerr << IntegralCurveAttsRequireRecalculation(obj) << "  " 
+              << PoincareAttsRequireRecalculation(obj) << std::endl;
+              
+    return IntegralCurveAttsRequireRecalculation(obj) ||
            PoincareAttsRequireRecalculation(obj);
 }
 
 // ****************************************************************************
-// Method: PoincareAttributes::StreamlineAttsRequireRecalculation
+// Method: PoincareAttributes::IntegralCurveAttsRequireRecalculation
 //
 // Purpose: 
-//   Determine if streamline attribute changes require recalculation.
+//   Determine if integral curve attribute changes require recalculation.
 //
 // Programmer: Dave Pugmire
 // Creation:   Tues Oct 21 14:22:17 EDT 2008
@@ -4109,32 +4166,39 @@ PoincareAttributes::ChangesRequireRecalculation(const PoincareAttributes &obj) c
 #define POINT_DIFFERS(p1,p2) (PDIF(p1,p2,0) || PDIF(p1,p2,1) || PDIF(p1,p2,2))
 
 bool
-PoincareAttributes::StreamlineAttsRequireRecalculation(const PoincareAttributes &obj) const
+PoincareAttributes::IntegralCurveAttsRequireRecalculation(const PoincareAttributes &obj) const
 {
     // If we're in point source mode and the points differ, sourcePointsDiffer
     // evaluates to true.
     bool sourcePointsDiffer = ((sourceType == SpecifiedPoint) &&
                                POINT_DIFFERS(pointSource, obj.pointSource));
 
+    bool sourcePointListDiffer = false;
+
+    if (sourceType == PointList)
+    {
+        if (pointList.size() != obj.pointList.size())
+            sourcePointListDiffer = true;
+        else
+            for (size_t i = 0 ; i < pointList.size() ; i++)
+                if (pointList[i] != obj.pointList[i])
+                    sourcePointListDiffer = true;
+    }
+
     // If we're in line source mode and the line differs, sourceLineDiffers
     // evaluates to true.
     bool sourceLineDiffers = ((sourceType == SpecifiedLine) &&
                               (POINT_DIFFERS(lineStart, obj.lineStart) ||
-                               POINT_DIFFERS(lineEnd, obj.lineEnd)));
-    
-    // Other things need to be true before we start paying attention to
-    // point density.
-    bool densityMatters = ((sourceType == SpecifiedLine) &&
-                           (pointDensity != obj.pointDensity));
+                               POINT_DIFFERS(lineEnd, obj.lineEnd) ||
+                               pointDensity != obj.pointDensity));
 
     return (sourceType != obj.sourceType ||
             sourcePointsDiffer ||
+            sourcePointListDiffer ||
             sourceLineDiffers ||
 
             (fieldType == FlashField &&
              POINT_DIFFERS(velocitySource, obj.velocitySource)) ||
-
-            densityMatters ||
 
             minPunctures != obj.minPunctures ||
             maxPunctures != obj.maxPunctures ||
@@ -4201,8 +4265,6 @@ PoincareAttributes::PoincareAttsRequireRecalculation(const PoincareAttributes &o
            meshType != obj.meshType ||
            numberPlanes != obj.numberPlanes ||
            singlePlane != obj.singlePlane ||
-
-           adjustPlane != obj.adjustPlane ||
 
            showLines != obj.showLines ||
            showPoints != obj.showPoints;

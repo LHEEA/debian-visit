@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,13 +43,15 @@
 #ifndef AVT_IVPNEKTARPPTIMEVARYINGFIELD_H
 #define AVT_IVPNEKTARPPTIMEVARYINGFIELD_H
 
+#include "visit-config.h"
+
 #include <avtIVPField.h>
 #include <avtCellLocator.h>
 #include <ivp_exports.h>
 
 #include <vtkIntArray.h>
 
-#ifdef NEKTAR_PLUS_PLUS_FOUND
+#ifdef HAVE_NEKTAR_PP
 #include <MultiRegions/ExpList.h>
 #endif
 
@@ -66,7 +68,7 @@ class vtkDataArray;
 //
 //  Purpose:
 //    A wrapper class to allow the use of vtkDataSets as IVP fields for 
-//    streamline integration. Uses vtkInterpolatedVelocityField on top of 
+//    integral curve integration. Uses vtkInterpolatedVelocityField on top of 
 //    the supplied vtkDataSet. 
 //
 //  Programmer:  Christoph Garth
@@ -161,7 +163,7 @@ class IVP_API avtIVPNektarPPTimeVaryingField : public avtIVPField
     mutable vtkIdType               lastCell;
     mutable avtInterpolationWeights lastWeights;
 
-#ifdef NEKTAR_PLUS_PLUS_FOUND
+#ifdef HAVE_NEKTAR_PP
   // Nektar++ field
   Nektar::MultiRegions::ExpListSharedPtr nektar_field[2][3];
 #endif

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,6 +43,7 @@
 // Forward declarations
 class QComboBox;
 class QCheckBox;
+class QLabel;
 class QLineEdit;
 class QSpinBox;
 class QvisColorButton;
@@ -63,6 +64,9 @@ class QvisScreenPositionEdit;
 // Modifications:
 //   Brad Whitlock, Fri Sep 16 16:12:59 PDT 2011
 //   Remove width and use height.
+//
+//   Kathleen Biagas, Mon Jul 13 13:01:18 PDT 2015
+//   Add textColorLabel.
 //
 // ****************************************************************************
 
@@ -95,6 +99,7 @@ private:
     QvisScreenPositionEdit *positionEdit;
     QSpinBox               *heightSpinBox;
     QLineEdit              *textLineEdit;
+    QLabel                 *textColorLabel;
     QvisColorButton        *textColorButton;
     QvisOpacitySlider      *textColorOpacity;
     QComboBox              *fontFamilyComboBox;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,10 @@
 #include <ObserverToCallback.h>
 #include <ColorAttribute.h>
 
+// Functions that we need in visitmodule.C
+extern void UpdateAnnotationHelper(AnnotationObject *);
+extern bool DeleteAnnotationObjectHelper(AnnotationObject *);
+
 // ****************************************************************************
 // Module: PyLineObject
 //
@@ -59,10 +63,6 @@
 //
 // ****************************************************************************
 
-/* CUSTOM - Functions that we need in visitmodule.C */
-extern void UpdateAnnotationHelper(AnnotationObject *);
-extern bool DeleteAnnotationObjectHelper(AnnotationObject *);
-
 //
 // This struct contains the Python type information and a LineObject.
 //
@@ -77,15 +77,6 @@ struct LineObjectObject
 // Internal prototypes
 //
 static PyObject *NewLineObject();
-
-static PyObject *
-LineObject_Notify(PyObject *self, PyObject *args)
-{
-    LineObjectObject *obj = (LineObjectObject *)self;
-    obj->data->Notify();
-    Py_INCREF(Py_None);
-    return Py_None;
-}
 
 static PyObject *
 LineObject_SetVisible(PyObject *self, PyObject *args)
@@ -145,7 +136,6 @@ LineObject_SetPosition(PyObject *self, PyObject *args)
     LineObjectObject *obj = (LineObjectObject *)self;
 
     double *dvals = obj->data->GetPosition();
-/* CUSTOM - Had to make position dd, not ddd. */
     if(!PyArg_ParseTuple(args, "dd", &dvals[0], &dvals[1]))
     {
         PyObject     *tuple;
@@ -189,9 +179,9 @@ LineObject_GetPosition(PyObject *self, PyObject *args)
 {
     LineObjectObject *obj = (LineObjectObject *)self;
     // Allocate a tuple the with enough entries to hold the position.
-    PyObject *retval = PyTuple_New(3);
+    PyObject *retval = PyTuple_New(2);
     const double *position = obj->data->GetPosition();
-    for(int i = 0; i < 3; ++i)
+    for(int i = 0; i < 2; ++i)
         PyTuple_SET_ITEM(retval, i, PyFloat_FromDouble(double(position[i])));
     return retval;
 }
@@ -246,9 +236,9 @@ LineObject_GetPosition2(PyObject *self, PyObject *args)
 {
     LineObjectObject *obj = (LineObjectObject *)self;
     // Allocate a tuple the with enough entries to hold the position2.
-    PyObject *retval = PyTuple_New(3);
+    PyObject *retval = PyTuple_New(2);
     const double *position2 = obj->data->GetPosition2();
-    for(int i = 0; i < 3; ++i)
+    for(int i = 0; i < 2; ++i)
         PyTuple_SET_ITEM(retval, i, PyFloat_FromDouble(double(position2[i])));
     return retval;
 }
@@ -263,10 +253,7 @@ LineObject_SetWidth(PyObject *self, PyObject *args)
         return NULL;
 
     // Set the width in the object.
-/* CUSTOM */
-    obj->data->GetColor2().SetRed(ival);
-    //obj->data->SetWidth(ival);
-/*CUSTOM*/
+    obj->data->SetIntAttribute1(ival);
     UpdateAnnotationHelper(obj->data);
 
     Py_INCREF(Py_None);
@@ -277,9 +264,38 @@ static PyObject *
 LineObject_GetWidth(PyObject *self, PyObject *args)
 {
     LineObjectObject *obj = (LineObjectObject *)self;
-/* CUSTOM */
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetColor2().Red()));
-    //PyObject *retval = PyInt_FromLong(long(obj->data->GetWidth()));
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetIntAttribute1()));
+    return retval;
+}
+
+static PyObject *
+LineObject_SetStyle(PyObject *self, PyObject *args)
+{
+    LineObjectObject *obj = (LineObjectObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the style in the object.
+    if (ival >= 0 && ival <= 3)
+        obj->data->SetIntAttribute2(ival);
+    else
+        fprintf(stderr, "An invalid  value was given. "
+                "Valid values are in the range of [0,3]. "
+                "You can also use the following names: "
+                "\"SOLID\", \"DASH\", \"DOT\", \"DOTDASH\"\n");
+    UpdateAnnotationHelper(obj->data);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject *
+LineObject_GetStyle(PyObject *self, PyObject *args)
+{
+    LineObjectObject *obj = (LineObjectObject *)self;
+    PyObject *retval = PyInt_FromLong(long(obj->data->GetIntAttribute2()));
     return retval;
 }
 
@@ -360,6 +376,32 @@ LineObject_GetColor(PyObject *self, PyObject *args)
     PyTuple_SET_ITEM(retval, 1, PyInt_FromLong(long(color[1])));
     PyTuple_SET_ITEM(retval, 2, PyInt_FromLong(long(color[2])));
     PyTuple_SET_ITEM(retval, 3, PyInt_FromLong(long(color[3])));
+    return retval;
+}
+
+static PyObject *
+LineObject_SetUseForegroundForLineColor(PyObject *self, PyObject *args)
+{
+    LineObjectObject *obj = (LineObjectObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the useForegroundForTextColor in the object.
+    obj->data->SetUseForegroundForTextColor(ival != 0);
+
+    UpdateAnnotationHelper(obj->data);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject *
+LineObject_GetUseForegroundForLineColor(PyObject *self, PyObject *args)
+{
+    LineObjectObject *obj = (LineObjectObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetUseForegroundForTextColor()?1L:0L);
     return retval;
 }
 
@@ -469,7 +511,6 @@ LineObject_Delete(PyObject *self, PyObject *args)
 }
 
 static struct PyMethodDef LineObject_methods[] = {
-    {"Notify", LineObject_Notify, METH_VARARGS},
     {"SetVisible", LineObject_SetVisible, METH_VARARGS},
     {"GetVisible", LineObject_GetVisible, METH_VARARGS},
     {"SetActive", LineObject_SetActive, METH_VARARGS},
@@ -480,6 +521,8 @@ static struct PyMethodDef LineObject_methods[] = {
     {"GetPosition2", LineObject_GetPosition2, METH_VARARGS},
     {"SetWidth", LineObject_SetWidth, METH_VARARGS},
     {"GetWidth", LineObject_GetWidth, METH_VARARGS},
+    {"SetUseForegroundForLineColor", LineObject_SetUseForegroundForLineColor, METH_VARARGS},
+    {"GetUseForegroundForLineColor", LineObject_GetUseForegroundForLineColor, METH_VARARGS},
     {"SetColor", LineObject_SetColor, METH_VARARGS},
     {"GetColor", LineObject_GetColor, METH_VARARGS},
     {"SetOpacity", LineObject_SetOpacity, METH_VARARGS},
@@ -488,7 +531,6 @@ static struct PyMethodDef LineObject_methods[] = {
     {"GetBeginArrow", LineObject_GetBeginArrow, METH_VARARGS},
     {"SetEndArrow", LineObject_SetEndArrow, METH_VARARGS},
     {"GetEndArrow", LineObject_GetEndArrow, METH_VARARGS},
-/* CUSTOM - Added this... */
     {"Delete", LineObject_Delete, METH_VARARGS},
     {NULL, NULL}
 };
@@ -526,6 +568,19 @@ LineObject_getattr(PyObject *self, char *name)
         return LineObject_GetPosition2(self, NULL);
     if(strcmp(name, "width") == 0)
         return LineObject_GetWidth(self, NULL);
+    if(strcmp(name, "style") == 0)
+        return LineObject_GetStyle(self, NULL);
+    if(strcmp(name, "SOLID") == 0)
+        return PyInt_FromLong(long(0));
+    if(strcmp(name, "DASH") == 0)
+        return PyInt_FromLong(long(1));
+    if(strcmp(name, "DOT") == 0)
+        return PyInt_FromLong(long(2));
+    if(strcmp(name, "DOTDASH") == 0)
+        return PyInt_FromLong(long(3));
+
+    if(strcmp(name, "useForegroundForLineColor") == 0)
+        return LineObject_GetUseForegroundForLineColor(self, NULL);
     if(strcmp(name, "color") == 0)
         return LineObject_GetColor(self, NULL);
     if(strcmp(name, "opacity") == 0)
@@ -558,6 +613,10 @@ LineObject_setattr(PyObject *self, char *name, PyObject *args)
         retval = (LineObject_SetPosition2(self, tuple) != NULL);
     else if(strcmp(name, "width") == 0)
         retval = (LineObject_SetWidth(self, tuple) != NULL);
+    else if(strcmp(name, "style") == 0)
+        retval = (LineObject_SetStyle(self, tuple) != NULL);
+    else if(strcmp(name, "useForegroundForLineColor") == 0)
+        retval = (LineObject_SetUseForegroundForLineColor(self, tuple) != NULL);
     else if(strcmp(name, "color") == 0)
         retval = (LineObject_SetColor(self, tuple) != NULL);
     else if(strcmp(name, "opacity") == 0)
@@ -584,28 +643,21 @@ LineObject_print(PyObject *v, FILE *fp, int flags)
         fprintf(fp, "active = 1\n");
     else
         fprintf(fp, "active = 0\n");
-    {   const double *position = obj->data->GetPosition();
-        fprintf(fp, "position = (");
-        for(int i = 0; i < 2; ++i)
-        {
-            fprintf(fp, "%g", position[i]);
-            if(i < 1)
-                fprintf(fp, ", ");
-        }
-        fprintf(fp, ")\n");
+    {
+        const double *position = obj->data->GetPosition();
+        fprintf(fp, "position = (%g, %g)\n", position[0], position[1]);
     }
-    {   const double *position2 = obj->data->GetPosition2();
-        fprintf(fp, "position2 = (");
-        for(int i = 0; i < 2; ++i)
-        {
-            fprintf(fp, "%g", position2[i]);
-            if(i < 1)
-                fprintf(fp, ", ");
-        }
-        fprintf(fp, ")\n");
+    {
+        const double *position2 = obj->data->GetPosition2();
+        fprintf(fp, "position2 = (%g, %g)\n", position2[0], position2[1]);
     }
-/* CUSTOM - Next few lines. */
-    fprintf(fp, "width = %d\n", obj->data->GetColor2().Red());
+    fprintf(fp, "width = %d\n", obj->data->GetIntAttribute1());
+    const char *style_values[] = {"SOLID", "DASH", "DOT", "DOTDASH"};
+    fprintf(fp, "style = %s  # SOLID, DASH, DOT, DOTDASH\n", style_values[obj->data->GetIntAttribute2()]);
+    if (obj->data->GetUseForegroundForTextColor())
+        fprintf(fp, "useForegroundForLineColor = 1\n");
+    else 
+        fprintf(fp, "useForegroundForLineColor = 0\n");
     const unsigned char *color = obj->data->GetColor1().GetColor();
     fprintf(fp, "color = (%d, %d, %d, %d)\n", int(color[0]), int(color[1]), int(color[2]), int(color[3]));
     fprintf(fp, "opacity = %d\n", obj->data->GetColor1().Alpha());
@@ -632,41 +684,23 @@ PyLineObject_StringRepresentation(const AnnotationObject *atts)
     else
         SNPRINTF(tmpStr, 1000, "active = 0\n");
     str += tmpStr;
-    {   const double *position = atts->GetPosition();
-        SNPRINTF(tmpStr, 1000, "position = (");
-        str += tmpStr;
-        for(int i = 0; i < 2; ++i)
-        {
-            SNPRINTF(tmpStr, 1000, "%g", position[i]);
-            str += tmpStr;
-            if(i < 1)
-            {
-                SNPRINTF(tmpStr, 1000, ", ");
-                str += tmpStr;
-            }
-        }
-        SNPRINTF(tmpStr, 1000, ")\n");
-        str += tmpStr;
-    }
-    {   const double *position2 = atts->GetPosition2();
-        SNPRINTF(tmpStr, 1000, "position2 = (");
-        str += tmpStr;
-        for(int i = 0; i < 2; ++i)
-        {
-            SNPRINTF(tmpStr, 1000, "%g", position2[i]);
-            str += tmpStr;
-            if(i < 1)
-            {
-                SNPRINTF(tmpStr, 1000, ", ");
-                str += tmpStr;
-            }
-        }
-        SNPRINTF(tmpStr, 1000, ")\n");
-        str += tmpStr;
-    }
-/* CUSTOM - Next few lines. */
-    SNPRINTF(tmpStr, 1000, "width = %d\n", atts->GetColor2().Red());
+    const double *position = atts->GetPosition();
+    SNPRINTF(tmpStr, 1000, "position = (%g, %g)\n", position[0], position[1]);
     str += tmpStr;
+    const double *position2 = atts->GetPosition2();
+    SNPRINTF(tmpStr, 1000, "position2 = (%g, %g)\n", position2[0], position2[1]);
+    str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "width = %d\n", atts->GetIntAttribute1());
+    str += tmpStr;
+    const char *style_values[] = {"SOLID", "DASH", "DOT", "DOTDASH"};
+    SNPRINTF(tmpStr, 1000, "style = %s  # SOLID, DASH, DOT, DOTDASH\n", style_values[atts->GetIntAttribute2()]);
+    str += tmpStr;
+    if(atts->GetUseForegroundForTextColor())
+        SNPRINTF(tmpStr, 1000, "useForegroundForLineColor = 1\n");
+    else
+        SNPRINTF(tmpStr, 1000, "useForegroundForLineColor = 0\n");
+    str += tmpStr;
+ 
     const unsigned char *color = atts->GetColor1().GetColor();
     SNPRINTF(tmpStr, 1000, "color = (%d, %d, %d, %d)\n", int(color[0]), int(color[1]), int(color[2]), int(color[3]));
     str += tmpStr;
@@ -691,9 +725,9 @@ LineObject_str(PyObject *v)
 // The doc string for the class.
 //
 #if PY_MAJOR_VERSION > 2 || (PY_MAJOR_VERSION == 2 && PY_MINOR_VERSION >= 5)
-static const char *LineObject_Purpose = "Line Annotation Object";
+static const char *LineObject_Purpose = "This class defines defines an interface to a 2D line object.";
 #else
-static char *LineObject_Purpose = "Line Annotation Object";
+static char *LineObject_Purpose = "This class defines defines an interface to a 2D line object.";
 #endif
 
 //
@@ -745,8 +779,6 @@ static PyTypeObject LineObjectType =
 // Helper functions for object allocation.
 //
 
-static AnnotationObject *defaultAtts = 0;
-
 static PyObject *
 NewLineObject()
 {
@@ -754,22 +786,20 @@ NewLineObject()
     newObject = PyObject_NEW(LineObjectObject, &LineObjectType);
     if(newObject == NULL)
         return NULL;
-    if(defaultAtts)
-        newObject->data = new AnnotationObject(*defaultAtts);
-    else
-        newObject->data = new AnnotationObject;
+    newObject->data = new AnnotationObject;
+    newObject->data->SetObjectType(AnnotationObject::Line2D);
     newObject->owns = true;
     return (PyObject *)newObject;
 }
 
 static PyObject *
-WrapLineObject(const AnnotationObject *attr)
+WrapLineObject(AnnotationObject *annot)
 {
     LineObjectObject *newObject;
     newObject = PyObject_NEW(LineObjectObject, &LineObjectType);
     if(newObject == NULL)
         return NULL;
-    newObject->data = (AnnotationObject *)attr;
+    newObject->data = annot;
     newObject->owns = false;
     return (PyObject *)newObject;
 }
@@ -779,73 +809,6 @@ WrapLineObject(const AnnotationObject *attr)
 // Interface that is exposed to the VisIt module.
 //
 ///////////////////////////////////////////////////////////////////////////////
-
-PyObject *
-LineObject_new(PyObject *self, PyObject *args)
-{
-    if (!PyArg_ParseTuple(args, ""))
-        return NULL;
-    return (PyObject *)NewLineObject();
-}
-
-//
-// Plugin method table. These methods are added to the visitmodule's methods.
-//
-static PyMethodDef LineObjectMethods[] = {
-    {"LineObject", LineObject_new, METH_VARARGS},
-    {NULL,      NULL}        /* Sentinel */
-};
-
-static Observer *LineObjectObserver = 0;
-static bool LineObjectEnableLogging = true;
-
-static void
-PyLineObject_WriteLog(Subject *subj, void *data)
-{
-    AnnotationObject *atts = (AnnotationObject *)subj; (void) atts;
-    FILE *logFile = (FILE *)data;
-
-    if(!LineObjectEnableLogging || (logFile == NULL))
-        return;
-
-    fprintf(logFile, "# LineObject_WriteLog()\n");
-}
-
-void
-PyLineObject_StartUp(AnnotationObject *subj, FILE *logFile)
-{
-    if(subj == 0)
-        return;
-
-    PyLineObject_SetDefaults(subj);
-
-    //
-    // Create the observer that will be notified when the attributes change.
-    //
-    if(LineObjectObserver == 0)
-    {
-        LineObjectObserver = new ObserverToCallback(subj,
-            PyLineObject_WriteLog, (void *)logFile);
-    }
-
-    LineObjectEnableLogging = true;
-}
-
-void
-PyLineObject_CloseDown()
-{
-    delete defaultAtts;
-    defaultAtts = 0;
-    delete LineObjectObserver;
-    LineObjectObserver = 0;
-}
-
-PyMethodDef *
-PyLineObject_GetMethodTable(int *nMethods)
-{
-    *nMethods = 1;
-    return LineObjectMethods;
-}
 
 bool
 PyLineObject_Check(PyObject *obj)
@@ -867,22 +830,8 @@ PyLineObject_NewPyObject()
 }
 
 PyObject *
-PyLineObject_WrapPyObject(const AnnotationObject *attr)
+PyLineObject_WrapPyObject(AnnotationObject *annot)
 {
-    return WrapLineObject(attr);
+    return WrapLineObject(annot);
 }
 
-void
-PyLineObject_SetLogging(bool val)
-{
-    LineObjectEnableLogging = val;
-}
-
-void
-PyLineObject_SetDefaults(const AnnotationObject *atts)
-{
-    if(defaultAtts)
-        delete defaultAtts;
-
-    defaultAtts = new AnnotationObject(*atts);
-}

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -62,6 +62,9 @@ class avtAnnotationColleague;
 //   Brad Whitlock, Mon Mar  2 14:17:08 PST 2009
 //   I added SetTimeScaleAndOffset.
 //
+//   Burlen Loring, Mon Sep 28 16:04:23 PDT 2015
+//   Added API for setting visibility
+//
 // ****************************************************************************
 
 class VISWINDOW_API VisWinAnnotations : public VisWinColleague
@@ -106,6 +109,8 @@ public:
     void         CreateAnnotationObjectsFromList(const AnnotationObjectList &al);
 
     void         SetTimeScaleAndOffset(double,double);
+
+    void         SetVisibility(int val);
 private:
     void UpdateLegends();
 

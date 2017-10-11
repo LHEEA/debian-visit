@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -108,7 +108,11 @@ class avtNektarPPFileFormat : public avtMTSDFileFormat
     std::vector<int>    m_cycles;
     std::vector<double> m_times;
 
+    int m_refinement;
+    bool m_ignoreCurvedElements;
+
     std::string m_meshFile;
+    std::string m_fieldFile;
 
     std::string vectorVarComponents[3];
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -70,9 +70,7 @@ class avtGadgetFileFormat : public avtSTSDFileFormat
     virtual vtkDataSet    *GetMesh(const char *);
     virtual vtkDataArray  *GetVar(const char *);
     virtual vtkDataArray  *GetVectorVar(const char *);
-    virtual bool ReturnsValidCycle() const { return true; }
     virtual int GetCycle(void);
-    virtual bool ReturnsValidTime() const { return true; }
     virtual double GetTime(void);
     virtual int GetCycleFromFilename(const char *f) const
     {

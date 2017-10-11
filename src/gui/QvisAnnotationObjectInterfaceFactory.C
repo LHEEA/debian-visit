@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,6 +41,7 @@
 #include <QvisImageAnnotationInterface.h>
 #include <QvisLegendAttributesInterface.h>
 #include <QvisLine2DInterface.h>
+#include <QvisLine3DInterface.h>
 #include <QvisText2DInterface.h>
 #include <QvisText3DInterface.h>
 #include <QvisTimeSliderInterface.h>
@@ -153,6 +154,9 @@ QvisAnnotationObjectInterfaceFactory::CreateInterface(
         break;
     case AnnotationObject::Line2D:
         retval = new QvisLine2DInterface(parent);
+        break;
+    case AnnotationObject::Line3D:
+        retval = new QvisLine3DInterface(parent);
         break;
     case AnnotationObject::Arrow2D:
         // Nothing yet

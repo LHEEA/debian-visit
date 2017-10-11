@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -41,14 +41,17 @@
 // ************************************************************************* //
 
 #include <avtIVPVTKField.h>
-#include <iostream>
-#include <limits>
 
 #include <vtkUnsignedCharArray.h>
 #include <vtkDataSet.h>
 #include <vtkPointData.h>
 #include <vtkCellData.h>
+#include <vtkFieldData.h>
+#include <vtkDoubleArray.h>
 #include <vtkGenericCell.h>
+
+#include <limits>
+
 #include <DebugStream.h>
 
 // ****************************************************************************
@@ -68,7 +71,7 @@
 // ****************************************************************************
 
 avtIVPVTKField::avtIVPVTKField( vtkDataSet* dataset, avtCellLocator* locator ) 
-    : ds(dataset), loc(locator)
+  : ds(dataset), loc(locator)
 {
     if( ds )
         ds->Register( NULL );
@@ -85,14 +88,31 @@ avtIVPVTKField::avtIVPVTKField( vtkDataSet* dataset, avtCellLocator* locator )
         EXCEPTION1( ImproperUseException, "avtIVPVTKField: Can't locate vectors to interpolate." );
     }
 
+    directionless = false;
+
     lastCell = -1;
     lastPos.x = lastPos.y = lastPos.z =
-        std::numeric_limits<double>::quiet_NaN();
-    lastVel.x = lastVel.y = lastVel.z =
         std::numeric_limits<double>::quiet_NaN();
 
     std::fill( sclData, sclData+256, (vtkDataArray*)NULL );
     std::fill( sclCellBased, sclCellBased+256, false );
+
+    // Periodic boundaries are posible.
+    vtkFieldData *fieldData = ds->GetFieldData();
+
+    vtkDoubleArray *boundaries = 
+      (vtkDoubleArray *) fieldData->GetAbstractArray("Periodic Boundaries");
+    
+    if( boundaries )
+    {
+      hasPeriodicBoundaries = true;
+      periodic_boundary_x = boundaries->GetValue(0);
+      periodic_boundary_y = boundaries->GetValue(1);
+      periodic_boundary_z = boundaries->GetValue(2);
+    }
+    else
+      hasPeriodicBoundaries =
+        periodic_boundary_x = periodic_boundary_y = periodic_boundary_z = 0;
 }
 
 // ****************************************************************************
@@ -166,7 +186,33 @@ avtIVPVTKField::FindCell( const double& time, const avtVector& pos ) const
     if (pos != lastPos)
     {
         lastPos  = pos;
-        lastCell = loc->FindCell(&pos.x, &lastWeights, false);
+
+        if( hasPeriodicBoundaries )
+        {
+          avtVector pt = pos;
+
+          if( periodic_boundary_x > 0 )
+          {
+            while(                pt.x < 0    ) pt.x += periodic_boundary_x;
+            while( periodic_boundary_x < pt.x ) pt.x -= periodic_boundary_x;
+          }
+
+          if( periodic_boundary_y > 0 )
+          {
+            while(                pt.y < 0   ) pt.y += periodic_boundary_y;
+            while( periodic_boundary_y < pt.y ) pt.y -= periodic_boundary_y;
+          }
+
+          if( periodic_boundary_z > 0 )
+          {
+            while(                pt.z < 0    ) pt.z += periodic_boundary_z;
+            while( periodic_boundary_z < pt.z ) pt.z -= periodic_boundary_z;
+          }
+
+          lastCell = loc->FindCell(&pt.x, &lastWeights, false);
+        }
+        else
+          lastCell = loc->FindCell(&pos.x, &lastWeights, false);
     }
     
     return (lastCell != -1 ? OK : OUTSIDE_SPATIAL);
@@ -199,8 +245,8 @@ avtIVPVTKField::operator()(const double &t, const avtVector &p, avtVector &retV)
 {
     if (FindCell(t, p) != OK || !FindValue(velData, retV))
         return OUTSIDE_SPATIAL;
-    
-    return OK;
+    else
+        return OK;
 }
 
 // ****************************************************************************
@@ -217,10 +263,10 @@ avtIVPVTKField::operator()(const double &t, const avtVector &p, avtVector &retV)
 bool
 avtIVPVTKField::FindValue(vtkDataArray *vectorData, avtVector &vel) const
 {
-    vel.x = vel.y = vel.z = 0.0;
-
     if( directionless )
     {
+      avtVector lastVel = vel;  // Save obtaining the dot product.
+
       // Cell based with directionless field.
       if (velCellBased)
       {
@@ -235,25 +281,27 @@ avtIVPVTKField::FindValue(vtkDataArray *vectorData, avtVector &vel) const
       // Node based with directionless field.
       else
       {
+        vel.x = vel.y = vel.z = 0.0;
+
         for (avtInterpolationWeights::const_iterator wi=lastWeights.begin();
              wi!=lastWeights.end(); ++wi)
         {
           double tmp[3];
           vectorData->GetTuple( wi->i, tmp );
-          
+
           // For a directionless field orient each vector so that it is
           // in the same direction as the last vector.
-          if( tmp[0]*lastVel.x + tmp[1]*lastVel.y + tmp[2]*lastVel.z > 0 )
-          {
-            vel.x += wi->w * tmp[0];
-            vel.y += wi->w * tmp[1];
-            vel.z += wi->w * tmp[2];
-          }
-          else
+          if( tmp[0]*lastVel.x + tmp[1]*lastVel.y + tmp[2]*lastVel.z < 0 )
           {
             vel.x -= wi->w * tmp[0];
             vel.y -= wi->w * tmp[1];
             vel.z -= wi->w * tmp[2];
+          }
+          else
+          {
+            vel.x += wi->w * tmp[0];
+            vel.y += wi->w * tmp[1];
+            vel.z += wi->w * tmp[2];
           }
         }
       }
@@ -270,6 +318,8 @@ avtIVPVTKField::FindValue(vtkDataArray *vectorData, avtVector &vel) const
     // Node based with directional field.
     else
     {
+      vel.x = vel.y = vel.z = 0.0;
+
       for (avtInterpolationWeights::const_iterator wi=lastWeights.begin();
            wi!=lastWeights.end(); ++wi)
       {
@@ -284,52 +334,6 @@ avtIVPVTKField::FindValue(vtkDataArray *vectorData, avtVector &vel) const
 
     return true;
 }
-
-
-// ****************************************************************************
-//  Method: avtIVPVTKField::SetLastVelocity
-//
-//  Purpose: Sets the last velocity based on the nearest neighbor and
-//           is used for integrating directionless fields
-//
-//  Programmer: Allen Sanderson
-//  Creation:   March 5, 2015
-//
-// ****************************************************************************
-
-avtIVPField::Result
-avtIVPVTKField::SetLastVelocity(const double &t, const avtVector &p)
-{
-  if (FindCell(t, p) != OK )
-    return OUTSIDE_SPATIAL;
-
-  if (velCellBased)
-    velData->GetTuple(lastCell, &lastVel.x);
-  else
-  {
-    double tmp[3], w = std::numeric_limits<double>::max();
-
-    // Based on the weights find the closest neighbor and set it to be
-    // the last velocity value.
-    for (avtInterpolationWeights::const_iterator wi=lastWeights.begin();
-         wi!=lastWeights.end(); ++wi)
-    {
-      velData->GetTuple( wi->i, tmp );
-
-      if( w > wi->w )
-      {
-        w = wi->w;
-
-        lastVel.x = tmp[0];
-        lastVel.y = tmp[1];
-        lastVel.z = tmp[2];
-      }
-    }
-  }
-    
-  return OK;
-}
-
 
 // ****************************************************************************
 //  Method: avtIVPVTKField::ConvertToCartesian
@@ -572,4 +576,43 @@ avtIVPVTKField::GetTimeRange(double range[2]) const
 {
     range[0] = -std::numeric_limits<double>::infinity();
     range[1] =  std::numeric_limits<double>::infinity();
+}
+
+// ****************************************************************************
+//  Method: avtIVPVTKField::HasPeriodicBoundaries
+//
+//  Purpose:
+//      
+//
+//  Programmer: Allen Sanderson
+//  Creation:   April 16, 2015
+//
+// ****************************************************************************
+
+bool
+avtIVPVTKField::HasPeriodicBoundaries() const
+{
+  return hasPeriodicBoundaries;
+}
+
+
+// ****************************************************************************
+//  Method: avtIVPVTKField::HasPeriodicBoundaries
+//
+//  Purpose:
+//      
+//
+//  Programmer: Allen Sanderson
+//  Creation:   April 16, 2015
+//
+// ****************************************************************************
+
+void
+avtIVPVTKField::GetBoundaries( double& x,
+                               double& y,
+                               double& z) const
+{
+  x = periodic_boundary_x;
+  y = periodic_boundary_y;
+  z = periodic_boundary_z;
 }

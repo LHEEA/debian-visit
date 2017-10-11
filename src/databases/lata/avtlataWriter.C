@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -119,8 +119,9 @@ avtlataWriter::OpenFile(const string &stemname, int nb)
 
 void
 avtlataWriter::WriteHeaders(const avtDatabaseMetaData *md,
-                           vector<string> &scalars, vector<string> &vectors,
-                           vector<string> &materials)
+                            const vector<string> &scalars,
+                            const vector<string> &vectors,
+                            const vector<string> &materials)
 {
   cout<<"\n headers "<<__FILE__<<" "<<__LINE__<<" "<<stem<<endl;
   // WRITE OUT HEADER INFO

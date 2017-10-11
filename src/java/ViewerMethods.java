@@ -1,6 +1,6 @@
 // ****************************************************************************
 //
-// Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+// Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 // Produced at the Lawrence Livermore National Laboratory
 // LLNL-CODE-442911
 // All rights reserved.
@@ -145,7 +145,7 @@ public class ViewerMethods
     /**
      * Sets the active visualization window.
      *
-     * @param windowId The number of the visualization window >= 1.
+     * @param windowId The number of the visualization window gte 1.
      * @return true on success; false otherwise.
      */
     public boolean SetActiveWindow(int windowId)
@@ -277,7 +277,7 @@ public class ViewerMethods
      * @param database The name of the database to open -- a filename. If the
      *                 file exists on a remote computer, then you can supply a
      *                 name of the form:  host:/path/file.ext
-     * @param timeState The time state at which we're opening the database (>=0).
+     * @param timeState The time state at which we're opening the database (gte0).
      *                  Pass 0 if you don't prefer a later time state.
      * @return true on success; false otherwise.
      */
@@ -300,7 +300,7 @@ public class ViewerMethods
      * @param database The name of the database to open -- a filename. If the
      *                 file exists on a remote computer, then you can supply a
      *                 name of the form:  host:/path/file.ext
-     * @param timeState The time state at which we're opening the database (>=0).
+     * @param timeState The time state at which we're opening the database (gte0).
      *                  Pass 0 if you don't prefer a later time state.
      * @param addDefaultPlots True to add default plots if the database supports
      *                        them or false to prevent default plots from
@@ -411,7 +411,7 @@ public class ViewerMethods
      * @param database The name of the database to open -- a filename. If the
      *                 file exists on a remote computer, then you can supply a
      *                 name of the form:  host:/path/file.ext
-     * @param timeState The time state at which to open the database (>=0). Pass
+     * @param timeState The time state at which to open the database (gte0). Pass
      *                  0 if you don't prefer a later time state.
      * @return true on success; false otherwise.
      */
@@ -431,7 +431,7 @@ public class ViewerMethods
      * @param database The name of the database to open -- a filename. If the
      *                 file exists on a remote computer, then you can supply a
      *                 name of the form:  host:/path/file.ext
-     * @param timeState The time state at which to open the database (>=0). Pass
+     * @param timeState The time state at which to open the database (gte0). Pass
      *                  0 if you don't prefer a later time state.
      * @return true on success; false otherwise.
      */
@@ -453,7 +453,7 @@ public class ViewerMethods
      * @param database The name of the database to open -- a filename. If the
      *                 file exists on a remote computer, then you can supply a
      *                 name of the form:  host:/path/file.ext
-     * @param timeState The time state at which to open the database (>=0). You
+     * @param timeState The time state at which to open the database (gte0). You
      *                  can provide a time state since some databases can provide
      *                  different metadata depending on the time state. If you
      *                  don't know or don't care about the time state then pass
@@ -975,9 +975,9 @@ public class ViewerMethods
 
     /**
      * Set the name of the active time slider. This is the name of a database 
-     * correlation, which is often a host&path qualified database name. The valid
-     * time slider names for a visualization window are given in the timeSliders 
-     * member in the WindowInformation state object in ViewerState.
+     * correlation, which is often a host-and-path qualified database name.
+     * The valid time slider names for a visualization window are given in the
+     * timeSliders member in the WindowInformation state object in ViewerState.
      *
      * @param ts The name of the new active time slider.
      * @return true on success; false otherwise.
@@ -1054,7 +1054,7 @@ public class ViewerMethods
      * in pixels and usually correspond to the dimensions of the window's exterior
      * bounds, which includes the window decorations.
      *
-     * @param win The window id of the window to resize (>=1).
+     * @param win The window id of the window to resize (gte1).
      * @param w The new window width in pixels.
      * @param h The new window height in pixels.
      * @return true on success; false otherwise.
@@ -1072,7 +1072,7 @@ public class ViewerMethods
     /**
      * Move the specified visualization window to a location on the screen.
      *
-     * @param win The window id of the window to resize (>=1).
+     * @param win The window id of the window to resize (gte1).
      * @param x The new x location on the screen.
      * @param y The new y location on the screen.
      * @return true on success; false otherwise.
@@ -1091,7 +1091,7 @@ public class ViewerMethods
      * Move the specified visualization window to a location on the screen and also
      * resize it.
      *
-     * @param win The window id of the window to resize (>=1).
+     * @param win The window id of the window to resize (gte1).
      * @param x The new x location on the screen.
      * @param y The new y location on the screen.
      * @param w The new window width in pixels.
@@ -2383,54 +2383,66 @@ public class ViewerMethods
      * as all information needed to recreate the plots in all visualization windows in
      * future VisIt sessions.
      *
-     * @param filename The name of the local file to which the session information will be saved.
+     * @param filename The name of the local file to which the session
+     * information will be saved.
+     * @param hostname The name of the host where the session file will live
      * @return true on success; false otherwise.
      */
-    public boolean ExportEntireState(String filename)
+    public boolean ExportEntireState(String filename, String hostname)
     {
         GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_EXPORTENTIRESTATERPC);
         GetViewerState().GetViewerRPC().SetVariable(filename);
+        GetViewerState().GetViewerRPC().SetStringArg1(hostname);
         GetViewerState().GetViewerRPC().Notify();
         return Synchronize();
     }
 
     /**
-     * Restores a session file, which causes VisIt to delete all plots and recreate the
-     * plots described in the session file.
+     * Restores a session file, which causes VisIt to delete all plots and
+     * recreate the plots described in the session file.
      *
-     * @param filename The name of the local file from which the session information will be loaded.
-     * @param inVisItDir true if the session file exists in ~/.visit/; otherwise false and the
-     *                   filename must contain the entire path to the session file.
+     * @param filename The name of the local file from which the session
+     * information will be loaded.
+     * @param inVisItDir true if the session file exists in ~/.visit/;
+     * otherwise false and the filename must contain the entire path to the
+     * session file.
+     * @param hostname The name of the host where the session lives
      * @return true on success; false otherwise.
      */
-    public boolean ImportEntireState(String filename, boolean inVisItDir)
+    public boolean ImportEntireState(String filename, boolean inVisItDir, String hostname)
     {
         GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_IMPORTENTIRESTATERPC);
         GetViewerState().GetViewerRPC().SetVariable(filename);
         GetViewerState().GetViewerRPC().SetBoolFlag(inVisItDir);
+        GetViewerState().GetViewerRPC().SetStringArg1(hostname);
         GetViewerState().GetViewerRPC().Notify();
         return Synchronize();
     }
 
     /**
-     * Restores a session file, which causes VisIt to delete all plots and recreate the
-     * plots described in the session file but different databases will be used instead
-     * of the databases saved in the session file.
+     * Restores a session file, which causes VisIt to delete all plots and
+     * recreate the plots described in the session file but different databases
+     * will be used instead of the databases saved in the session file.
      *
-     * @param filename The name of the local file from which the session information will be loaded.
-     * @param inVisItDir true if the session file exists in ~/.visit/; otherwise false and the
-     *                   filename must contain the entire path to the session file.
-     * @param sources A vector of String objects containing the names of the databases that will
-     *                be used to restore the session. The vector must contain the same number of
-     *                sources as the session file for the session to be restored properly.
+     * @param filename The name of the local file from which the session
+     * information will be loaded.
+     * @param inVisItDir true if the session file exists in ~/.visit/;
+     * otherwise false and the filename must contain the entire path to the
+     * session file.
+     * @param sources A vector of String objects containing the names of the
+     * databases that will be used to restore the session. The vector must
+     * contain the same number of sources as the session file for the session
+     * to be restored properly.
+     * @param hostname The name of the host where the session lives
      * @return true on success; false otherwise.
      */
-    public boolean ImportEntireStateWithDifferentSources(String filename, boolean inVisItDir, Vector sources)
+    public boolean ImportEntireStateWithDifferentSources(String filename, boolean inVisItDir, Vector sources, String hostname)
     {
         GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_IMPORTENTIRESTATEWITHDIFFERENTSOURCESRPC);
         GetViewerState().GetViewerRPC().SetVariable(filename);
         GetViewerState().GetViewerRPC().SetBoolFlag(inVisItDir);
         GetViewerState().GetViewerRPC().SetProgramOptions(sources);
+        GetViewerState().GetViewerRPC().SetStringArg1(hostname);
         GetViewerState().GetViewerRPC().Notify();
         return Synchronize();
     }
@@ -2851,8 +2863,8 @@ public class ViewerMethods
     /**
      * Copies the view from one visualization window to another.
      *
-     * @param from Source visualization window (>=1).
-     * @param to   Destination visualization window (>=1), (from != to)
+     * @param from Source visualization window (gte1).
+     * @param to   Destination visualization window (gte1), (from != to)
      * @return true on success; false otherwise.
      */
     public boolean CopyViewToWindow(int from, int to)
@@ -2867,8 +2879,8 @@ public class ViewerMethods
     /**
      * Copies the lighting from one visualization window to another.
      *
-     * @param from Source visualization window (>=1).
-     * @param to   Destination visualization window (>=1), (from != to)
+     * @param from Source visualization window (gte1).
+     * @param to   Destination visualization window (gte1), (from != to)
      * @return true on success; false otherwise.
      */
     public boolean CopyLightingToWindow(int from, int to)
@@ -2883,8 +2895,8 @@ public class ViewerMethods
     /**
      * Copies the annotations from one visualization window to another.
      *
-     * @param from Source visualization window (>=1).
-     * @param to   Destination visualization window (>=1), (from != to)
+     * @param from Source visualization window (gte1).
+     * @param to   Destination visualization window (gte1), (from != to)
      * @return true on success; false otherwise.
      */
     public boolean CopyAnnotationsToWindow(int from, int to)
@@ -2899,8 +2911,8 @@ public class ViewerMethods
     /**
      * Copies the plots from one visualization window to another.
      *
-     * @param from Source visualization window (>=1).
-     * @param to   Destination visualization window (>=1), (from != to)
+     * @param from Source visualization window (gte1).
+     * @param to   Destination visualization window (gte1), (from != to)
      * @return true on success; false otherwise.
      */
     public boolean CopyPlotsToWindow(int from, int to)
@@ -3501,8 +3513,23 @@ public class ViewerMethods
         return Synchronize();
     }
 
-
-
+    /**
+     * Exports a host profile to a file.
+     *
+     * @param profile The nickname of the host profile to save.
+     * @param filename The name of the file to save the profile to.
+     * @param saveInUserDir Whether to save in the user's ~/.visit/hosts directory.
+     * @return true on success; false otherwise.
+     */
+    public boolean ExportHostProfile(String profile, String filename, boolean saveInUserDir)
+    {
+        GetViewerState().GetViewerRPC().SetRPCType(ViewerRPC.VIEWERRPCTYPE_EXPORTHOSTPROFILERPC);
+        GetViewerState().GetViewerRPC().SetStringArg1(profile);
+        GetViewerState().GetViewerRPC().SetStringArg2(filename);
+        GetViewerState().GetViewerRPC().SetBoolFlag(saveInUserDir);
+        GetViewerState().GetViewerRPC().Notify();
+        return Synchronize();
+    }
 
     //
     // Convenience methods

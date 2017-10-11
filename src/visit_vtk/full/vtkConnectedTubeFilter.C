@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -399,8 +399,8 @@ vtkConnectedTubeFilter::vtkConnectedTubeFilter()
 {
     this->Radius = 0.5;
     this->NumberOfSides = 3;
-    this->CreateNormals = 0;
-    this->Capping = 0;
+    this->CreateNormals = false;
+    this->Capping = false;
 
     pseqlist = NULL;
 }

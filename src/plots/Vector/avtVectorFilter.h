@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -102,8 +102,6 @@ class avtVectorFilter : public avtDataTreeIterator
     virtual const char       *GetType(void)   { return "avtVectorFilter"; };
     virtual const char       *GetDescription(void)
                                   { return "Creating vectors"; };
-
-    bool                      Equivalent(bool us, int red, bool orig);
 
     void                      SetStride(int);
     void                      SetNVectors(int);

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1593,5 +1593,59 @@ DBOptionsAttributes::IsObsolete(const std::string &name) const
             return true;
     }
     return false;
+}
+
+// ****************************************************************************
+//  Method: DBOptionsAttributes::Merge
+//
+//  Purpose: Merges options into this object.
+//
+//  Programmer: Brad Whitlock
+//  Creation:   Fri Aug 14 18:04:39 PDT 2015
+//
+// ****************************************************************************
+
+bool
+DBOptionsAttributes::Merge(const DBOptionsAttributes &obj)
+{
+    bool retval = true;
+
+    TRY
+    {
+        for(int i = 0; i < obj.GetNumberOfOptions(); ++i)
+        {
+            std::string name = obj.GetName(i);
+            OptionType type = obj.GetType(i);
+            switch(type)
+            {
+            case Bool:
+                SetBool(name, obj.GetBool(name));
+                break;
+            case Int:
+                SetInt(name, obj.GetInt(name));
+                break;
+            case Float:
+                SetFloat(name, obj.GetFloat(name));
+                break;
+            case Double:
+                SetDouble(name, obj.GetDouble(name));
+                break;
+            case String:
+                SetString(name, obj.GetString(name));
+                break;
+            case Enum:
+                SetEnum(name, obj.GetEnum(name));
+                SetEnumStrings(name, obj.GetEnumStrings(name));
+                break;
+            }
+        }
+    }
+    CATCHALL
+    {
+        retval = false;
+    }
+    ENDTRY
+
+    return retval;
 }
 

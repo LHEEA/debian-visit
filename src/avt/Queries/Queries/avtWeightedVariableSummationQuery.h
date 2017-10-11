@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -54,6 +54,7 @@ class     avtEdgeLength;
 class     avtRevolvedVolume;
 class     avtVMetricArea;
 class     avtVMetricVolume;
+class     avtConstantCreatorExpression;
 
 
 // ****************************************************************************
@@ -95,6 +96,7 @@ class QUERY_API avtWeightedVariableSummationQuery : public avtSummationQuery
     avtVMetricVolume            *volume;
     avtRevolvedVolume           *revolvedVolume;
     avtBinaryMultiplyExpression *multiply;
+    avtConstantCreatorExpression *constExpr;
 
     virtual avtDataObject_p    ApplyFilters(avtDataObject_p);
     virtual int                GetNFilters(void) { return 2; };

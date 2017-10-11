@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -39,7 +39,6 @@
 #include "QvisThresholdWindow.h"
 
 #include <ThresholdAttributes.h>
-#include <ViewerProxy.h>
 
 #include <QTableWidget>
 #include <QTableWidgetItem>
@@ -52,13 +51,8 @@
 #include <QButtonGroup>
 #include <QPushButton>
 #include <QRadioButton>
-#include <QLineEdit>
 #include <QvisVariableButton.h>
 
-#include <stdio.h>
-#include <string>
-
-using std::string;
 
 // ****************************************************************************
 // Method: QvisThresholdWindow::QvisThresholdWindow
@@ -223,44 +217,6 @@ QvisThresholdWindow::CreateWindowContents()
     connect(outputMeshType, SIGNAL(buttonClicked(int)),
             this, SLOT(outputMeshTypeChanged(int)));
     forAllVarsLayout->addWidget(outputMeshWidget, 1, 2, 1, 3);
-}
-
-// ****************************************************************************
-// Method: TrimTrailing
-//
-// Purpose:
-//   Trims trailing zero decimals from the string.
-//
-// Arguments:
-//   s : The input string.
-//
-// Returns:    
-//
-// Note:       
-//
-// Programmer: Brad Whitlock
-// Creation:   Mon Aug 18 12:34:16 PDT 2014
-//
-// Modifications:
-//
-// ****************************************************************************
-
-static QString
-TrimTrailing(const QString &s0)
-{
-    QString s(s0), ext("0000000000");
-    while(ext.count() >= 1)
-    {
-        if(s.endsWith(ext))
-        {
-            s = s.left(s.count() - ext.count());
-            break;
-        }
-        ext = ext.left(ext.count()-1);
-    }
-    if(s.endsWith("."))
-        s = s.left(s.count() - 1);
-    return s;
 }
 
 // ****************************************************************************

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -57,6 +57,7 @@
 void ViewerProperties::Init()
 {
     MasterProcess = true;
+    InSitu = false;
     nowin = false;
     windowFullScreen = 0;
     windowSmall = false;
@@ -72,6 +73,7 @@ void ViewerProperties::Init()
     forceSSHTunneling = false;
     inExecute = false;
     inLaunch = false;
+    decorateDebug = false;
 
     ViewerProperties::SelectAll();
 }
@@ -94,6 +96,7 @@ void ViewerProperties::Init()
 void ViewerProperties::Copy(const ViewerProperties &obj)
 {
     MasterProcess = obj.MasterProcess;
+    InSitu = obj.InSitu;
     nowin = obj.nowin;
     windowBorders = obj.windowBorders;
     windowShift = obj.windowShift;
@@ -117,6 +120,7 @@ void ViewerProperties::Copy(const ViewerProperties &obj)
     forceSSHTunneling = obj.forceSSHTunneling;
     inExecute = obj.inExecute;
     inLaunch = obj.inLaunch;
+    decorateDebug = obj.decorateDebug;
 
     ViewerProperties::SelectAll();
 }
@@ -275,6 +279,7 @@ ViewerProperties::operator == (const ViewerProperties &obj) const
 {
     // Create the return value
     return ((MasterProcess == obj.MasterProcess) &&
+            (InSitu == obj.InSitu) &&
             (nowin == obj.nowin) &&
             (windowBorders == obj.windowBorders) &&
             (windowShift == obj.windowShift) &&
@@ -297,7 +302,8 @@ ViewerProperties::operator == (const ViewerProperties &obj) const
             (bufferDebug == obj.bufferDebug) &&
             (forceSSHTunneling == obj.forceSSHTunneling) &&
             (inExecute == obj.inExecute) &&
-            (inLaunch == obj.inLaunch));
+            (inLaunch == obj.inLaunch) &&
+            (decorateDebug == obj.decorateDebug));
 }
 
 // ****************************************************************************
@@ -442,6 +448,7 @@ void
 ViewerProperties::SelectAll()
 {
     Select(ID_MasterProcess,           (void *)&MasterProcess);
+    Select(ID_InSitu,                  (void *)&InSitu);
     Select(ID_nowin,                   (void *)&nowin);
     Select(ID_windowBorders,           (void *)&windowBorders);
     Select(ID_windowShift,             (void *)&windowShift);
@@ -465,6 +472,7 @@ ViewerProperties::SelectAll()
     Select(ID_forceSSHTunneling,       (void *)&forceSSHTunneling);
     Select(ID_inExecute,               (void *)&inExecute);
     Select(ID_inLaunch,                (void *)&inLaunch);
+    Select(ID_decorateDebug,           (void *)&decorateDebug);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -476,6 +484,13 @@ ViewerProperties::SetMasterProcess(bool MasterProcess_)
 {
     MasterProcess = MasterProcess_;
     Select(ID_MasterProcess, (void *)&MasterProcess);
+}
+
+void
+ViewerProperties::SetInSitu(bool InSitu_)
+{
+    InSitu = InSitu_;
+    Select(ID_InSitu, (void *)&InSitu);
 }
 
 void
@@ -639,6 +654,13 @@ ViewerProperties::SetInLaunch(bool inLaunch_)
     Select(ID_inLaunch, (void *)&inLaunch);
 }
 
+void
+ViewerProperties::SetDecorateDebug(bool decorateDebug_)
+{
+    decorateDebug = decorateDebug_;
+    Select(ID_decorateDebug, (void *)&decorateDebug);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Get property methods
 ///////////////////////////////////////////////////////////////////////////////
@@ -647,6 +669,12 @@ bool
 ViewerProperties::GetMasterProcess() const
 {
     return MasterProcess;
+}
+
+bool
+ViewerProperties::GetInSitu() const
+{
+    return InSitu;
 }
 
 bool
@@ -839,6 +867,12 @@ bool
 ViewerProperties::GetInLaunch() const
 {
     return inLaunch;
+}
+
+bool
+ViewerProperties::GetDecorateDebug() const
+{
+    return decorateDebug;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

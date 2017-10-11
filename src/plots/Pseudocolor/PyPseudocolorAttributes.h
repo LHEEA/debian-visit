@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -44,7 +44,7 @@
 //
 // Functions exposed to the VisIt module.
 //
-#define PSEUDOCOLORATTRIBUTES_NMETH 90
+#define PSEUDOCOLORATTRIBUTES_NMETH 102
 void           PyPseudocolorAttributes_StartUp(PseudocolorAttributes *subj, void *data);
 void           PyPseudocolorAttributes_CloseDown();
 PyMethodDef *  PyPseudocolorAttributes_GetMethodTable(int *nMethods);

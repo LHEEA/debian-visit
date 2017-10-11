@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -47,8 +47,6 @@
 #include <iomanip>
 #include <VisItStreamUtil.h>
 
-using namespace std;
-
 static bool icDomainCompare(const avtIntegralCurve *icA, 
                             const avtIntegralCurve *icB)
 {
@@ -79,9 +77,6 @@ avtICAlgorithm::ICStatistics::operator << (std::ostream &out) const
 //   Dave Pugmire, Mon Mar 23 12:48:12 EDT 2009
 //   Change how timings are reported/calculated.
 //     
-//   Hank Childs, Sun Jun  6 12:25:31 CDT 2010
-//   Change reference from streamline filter to PICS filter.
-//
 //   Dave Pugmire, Mon Dec 15 11:00:23 EST 2014
 //   Add a #steps taken counter.
 //
@@ -103,6 +98,7 @@ avtICAlgorithm::avtICAlgorithm( avtPICSFilter *f ) :
     globalDomainLoadedMax = 0;
     avgDomainLoaded = 0.f;
     globalAvgDomainLoaded = 0.f;
+    allSeedsSentToAllProcs = false;
 }
 
 // ****************************************************************************
@@ -116,14 +112,19 @@ avtICAlgorithm::avtICAlgorithm( avtPICSFilter *f ) :
 //
 //  Modifications:
 //
-//   Hank Childs, Sun Jun  6 12:25:31 CDT 2010
-//   Change reference from streamline filter to PICS filter.
-//
 // ****************************************************************************
 
 avtICAlgorithm::~avtICAlgorithm()
 {
     picsFilter = NULL;
+}
+
+void
+avtICAlgorithm::PostRunAlgorithm()
+{
+    std::list<avtIntegralCurve *>::const_iterator s;
+    for (s=terminatedICs.begin(); s != terminatedICs.end(); ++s)
+        (*s)->Finalize();
 }
 
 // ****************************************************************************
@@ -146,17 +147,14 @@ avtICAlgorithm::~avtICAlgorithm()
 //   Hank Childs, Thu Jun  3 10:22:16 PDT 2010
 //   Use new name "GetCurrentLocation".
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:25:31 CDT 2010
-//   Change reference from streamline filter to PICS filter.
-//
 // ****************************************************************************
 
 vtkDataSet *
 avtICAlgorithm::GetDomain(avtIntegralCurve *ic)
 {
+  if( ic == NULL )
+    return NULL;
+
   if (!ic->blockList.empty())
   {
     avtVector pt = ic->CurrentLocation();
@@ -201,13 +199,6 @@ avtICAlgorithm::GetDomain(const BlockIDType &dom, const avtVector &pt)
 //
 //  Modifications:
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename this method to reflect the new emphasis in particle advection, as
-//   opposed to streamlines.
-//
 // ****************************************************************************
 
 void
@@ -250,16 +241,10 @@ avtICAlgorithm::AdvectParticle(avtIntegralCurve *s, vtkDataSet *ds, const BlockI
 //   Dave Pugmire, Mon Feb 23 13:38:49 EST 2009
 //   Initialize the initial domain load count and timer.  
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:25:31 CDT 2010
-//   Change reference from streamline filter to PICS filter.
-//
 // ****************************************************************************
 
 void
-avtICAlgorithm::Initialize(vector<avtIntegralCurve *> &seedPts)
+avtICAlgorithm::Initialize(std::vector<avtIntegralCurve *> &seedPts)
 {
     numSeedPoints = seedPts.size();
 
@@ -304,9 +289,6 @@ avtICAlgorithm::Execute()
 //   Dave Pugmire, Tue Mar 24 08:15:04 EDT 2009
 //   Report stats if timer is enabled.
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
 // ****************************************************************************
 
 void
@@ -316,7 +298,7 @@ avtICAlgorithm::PostExecute()
     {
         debug1<<"avtICAlgorithm::PostExecute()\n";
     }
-    vector<avtIntegralCurve *> v;
+    std::vector<avtIntegralCurve *> v;
     
     while (! terminatedICs.empty())
     {
@@ -337,7 +319,7 @@ avtICAlgorithm::PostExecute()
 //  Method: avtICAlgorithm::SortIntegralCurves
 //
 //  Purpose:
-//      Sort streamlines based on the domains they span.
+//      Sort integral curves based on the domains they span.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   June 16, 2008
@@ -350,23 +332,16 @@ avtICAlgorithm::PostExecute()
 //   Dave Pugmire, Tue Aug 11 13:44:44 EDT 2009
 //   Fix compiler warning.
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename this method to reflect the new emphasis in particle advection, as
-//   opposed to streamlines.
-//
 //   Dave Pugmire, Mon Oct 14 09:26:24 EDT 2013
 //   Check for empty domain list.
 //
 // ****************************************************************************
 
 void
-avtICAlgorithm::SortIntegralCurves(list<avtIntegralCurve *> &ic)
+avtICAlgorithm::SortIntegralCurves(std::list<avtIntegralCurve *> &ic)
 {
     int timerHandle = visitTimer->StartTimer();
-    list<avtIntegralCurve*>::iterator s;
+    std::list<avtIntegralCurve*>::iterator s;
 
     //Set sortkey to -domain. (So that loaded domains sort first).
     for (s=ic.begin(); s != ic.end(); ++s)
@@ -392,7 +367,7 @@ avtICAlgorithm::SortIntegralCurves(list<avtIntegralCurve *> &ic)
 //  Method: avtICAlgorithm::SortIntegralCurves
 //
 //  Purpose:
-//      Sort streamlines based on the domains they span.
+//      Sort integral curves based on the domains they span.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   June 16, 2008
@@ -402,23 +377,16 @@ avtICAlgorithm::SortIntegralCurves(list<avtIntegralCurve *> &ic)
 //   Dave Pugmire, Tue Mar 10 12:41:11 EDT 2009
 //   Generalized domain to include domain/time. Pathine cleanup.
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename this method to reflect the new emphasis in particle advection, as
-//   opposed to streamlines.
-//
 //   Dave Pugmire, Mon Oct 14 09:26:24 EDT 2013
 //   Check for empty domain list.
 //
 // ****************************************************************************
 
 void
-avtICAlgorithm::SortIntegralCurves(vector<avtIntegralCurve *> &ic)
+avtICAlgorithm::SortIntegralCurves(std::vector<avtIntegralCurve *> &ic)
 {
     int timerHandle = visitTimer->StartTimer();
-    vector<avtIntegralCurve*>::iterator s;
+    std::vector<avtIntegralCurve*>::iterator s;
 
     //Set sortkey to -domain. (So that loaded domains sort first).
     for (s=ic.begin(); s != ic.end(); ++s)
@@ -466,26 +434,19 @@ avtICAlgorithm::Sleep(long nanoSec) const
 //  Method: avtICAlgorithm::GetTerminatedICs
 //
 //  Purpose:
-//      Return an array of terminated streamlines.
+//      Return an array of terminated integral curves.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   Tue Aug 18 08:59:40 EDT 2009
 //
 //  Modifications:
 //
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename this method to reflect the new emphasis in particle advection, as
-//   opposed to streamlines.
-//
 // ****************************************************************************
 
 void
-avtICAlgorithm::GetTerminatedICs(vector<avtIntegralCurve *> &v)
+avtICAlgorithm::GetTerminatedICs(std::vector<avtIntegralCurve *> &v)
 {
-    list<avtIntegralCurve *>::const_iterator s;
+    std::list<avtIntegralCurve *>::const_iterator s;
     
     for (s=terminatedICs.begin(); s != terminatedICs.end(); ++s)
         v.push_back(*s);
@@ -496,19 +457,12 @@ avtICAlgorithm::GetTerminatedICs(vector<avtIntegralCurve *> &v)
 //  Method: avtICAlgorithm::DeleteIntegralCurves
 //
 //  Purpose:
-//      Delete streamlines.
+//      Delete integral curves.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   Tue May 25 10:15:35 EDT 2010
 //
 //  Modifications:
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename this method to reflect the new emphasis in particle advection, as
-//   opposed to streamlines.
 //
 //   Dave Pugmire, Fri Mar 11 12:57:08 EST 2011
 //   Fixed a crash. Iterator invalidated after erase.
@@ -518,8 +472,8 @@ avtICAlgorithm::GetTerminatedICs(vector<avtIntegralCurve *> &v)
 void
 avtICAlgorithm::DeleteIntegralCurves(std::vector<int> &icIDs)
 {
-    list<avtIntegralCurve *>::iterator s;
-    vector<int>::const_iterator i;
+    std::list<avtIntegralCurve *>::iterator s;
+    std::vector<int>::const_iterator i;
 
     for (i=icIDs.begin(); i != icIDs.end(); i++)
         for (s=terminatedICs.begin(); s != terminatedICs.end(); ++s)
@@ -569,9 +523,6 @@ avtICAlgorithm::CompileTimingStatistics()
 //
 //   Dave Pugmire, Thu Mar 26 12:02:27 EDT 2009
 //   Add counters for domain loading.
-//
-//   Hank Childs, Sun Jun  6 12:25:31 CDT 2010
-//   Change reference from streamline filter to PICS filter.
 //
 // ****************************************************************************
 
@@ -646,13 +597,13 @@ avtICAlgorithm::ComputeStatistic(ICStatistics &stats)
 
     int rank = PAR_Rank();
     int nProcs = PAR_Size();
-    float *input = new float[nProcs], *output = new float[nProcs];
+    double *input = new double[nProcs], *output = new double[nProcs];
 
     for (int i = 0; i < nProcs; i++)
         input[i] = 0.0;
     input[rank] = stats.value;
     
-    SumFloatArrayAcrossAllProcessors(input, output, nProcs);
+    SumDoubleArrayAcrossAllProcessors(input, output, nProcs);
     
     // A value of -1 means that there is no data to be calculated.
     // We need to remove these from the min/max/mean computation.
@@ -667,7 +618,7 @@ avtICAlgorithm::ComputeStatistic(ICStatistics &stats)
         }
     }
     if (nVals != 0)
-        stats.mean = stats.total / (float)nVals;
+        stats.mean = stats.total / (double)nVals;
     else
         stats.mean = stats.value;
 
@@ -682,7 +633,7 @@ avtICAlgorithm::ComputeStatistic(ICStatistics &stats)
     }
     if (nVals != 0)
     {
-        sum /= (float)nVals;
+        sum /= (double)nVals;
         if (sum > 0)
             stats.sigma = sqrt(sum);
         else
@@ -723,9 +674,6 @@ avtICAlgorithm::ComputeStatistic(ICStatistics &stats)
 //
 //   Dave Pugmire, Wed Apr  1 11:21:05 EDT 2009
 //   Compute avgDomainLoaded, instead of 1.0/avgDomainLoaded.
-//
-//   Hank Childs, Sun Jun  6 12:25:31 CDT 2010
-//   Change reference from streamline filter to PICS filter.
 //
 // ****************************************************************************
 
@@ -770,7 +718,7 @@ avtICAlgorithm::ComputeDomainLoadStatistic()
     }
 
     if (totDomainsLoaded > 0)
-        avgDomainLoaded = (float)totDomainsLoaded / (float)domainsUsed;
+        avgDomainLoaded = (double)totDomainsLoaded / (double)domainsUsed;
 
     if (DebugStream::Level1())
     {
@@ -819,7 +767,7 @@ avtICAlgorithm::ComputeDomainLoadStatistic()
     }
         
     if (globalTotDomainsLoaded > 0)
-        globalAvgDomainLoaded = (float)globalTotDomainsLoaded / (float)globalDomainsUsed;
+        globalAvgDomainLoaded = (double)globalTotDomainsLoaded / (double)globalDomainsUsed;
     delete [] sums;
 #else
     globalDomainsUsed = domainsUsed;
@@ -904,7 +852,7 @@ avtICAlgorithm::ReportStatistics()
 // ****************************************************************************
 
 void
-avtICAlgorithm::ReportStatistics(ostream &os)
+avtICAlgorithm::ReportStatistics(std::ostream &os)
 {
     int nCPUs = 1;
 #ifdef PARALLEL
@@ -912,7 +860,7 @@ avtICAlgorithm::ReportStatistics(ostream &os)
 #endif
     os<<endl;
     os<<"ReportBegin: ***********************************************"<<endl;
-    string db = picsFilter->GetInput()->GetInfo().GetAttributes().GetFullDBName();
+    std::string db = picsFilter->GetInput()->GetInfo().GetAttributes().GetFullDBName();
     os<<"File= "<<db<<endl;
     os<<"Method= "<<AlgoName()<<" nCPUs= "<<nCPUs<<" nDom= "<<numDomains;
     os<<" nPts= "<<numSeedPoints<<endl;
@@ -1019,13 +967,13 @@ avtICAlgorithm::ReportCounters(ostream &os, bool totals)
 //    Defend against FPE div by zero
 // ****************************************************************************
 void
-avtICAlgorithm::PrintTiming(ostream &os, 
+avtICAlgorithm::PrintTiming(std::ostream &os, 
                             const char *str, 
                             const ICStatistics &s,
                             const ICStatistics &t,
                             bool total)
 {
-    string strFmt = str;
+    std::string strFmt = str;
     strFmt.resize(10, ' ');
     os << (total ? "t_" : "l_");
     os<<strFmt<<" = ";
@@ -1041,14 +989,14 @@ avtICAlgorithm::PrintTiming(ostream &os,
 
         if (s.mean != 0.0)
         {
-            float v = s.sigma / s.mean;
+            double v = s.sigma / s.mean;
             os<<" [s/m"<<v<<"]";
         }
         os<<endl;
     }
     else
     {
-        float v = s.value;
+        double v = s.value;
         if (s.value < 0.0)
             v = 0.0;
         
@@ -1077,12 +1025,12 @@ avtICAlgorithm::PrintTiming(ostream &os,
 //
 // ****************************************************************************
 void
-avtICAlgorithm::PrintCounter(ostream &os, 
+avtICAlgorithm::PrintCounter(std::ostream &os, 
                              const char *str, 
                              const ICStatistics &s,
                              bool total)
 {
-    string strFmt = str;
+    std::string strFmt = str;
     strFmt.resize(10, ' ');
     os << (total ? "t_" : "l_");
     os<<strFmt<<" = ";
@@ -1094,7 +1042,7 @@ avtICAlgorithm::PrintCounter(ostream &os,
 
         if (s.mean != 0.0)
         {
-            float v = s.sigma / s.mean;
+            double v = s.sigma / s.mean;
             os<<" ["<<v<<"]";
         }
         os<<endl;
@@ -1104,7 +1052,7 @@ avtICAlgorithm::PrintCounter(ostream &os,
         {
             char f[128];
             sprintf(f, "%s_histogram.txt", str);
-            ofstream hos;
+            std::ofstream hos;
             hos.open(f, ios::out);
             for (size_t i = 0; i < s.histogram.size(); i++)
                 hos<<s.histogram[i]<<endl;
@@ -1114,14 +1062,14 @@ avtICAlgorithm::PrintCounter(ostream &os,
     }
     else
     {
-        float v = s.value;
+        double v = s.value;
         if (s.value < 0.0)
             v = 0.0;
-        float p = 0.0;
+        double p = 0.0;
         if (s.total > 0.0)
             p = s.value/s.total * 100.0;
 
-        float sd = 0.0;
+        double sd = 0.0;
         if (s.sigma != 0.0)
             sd = (v-s.mean) / s.sigma;
 
@@ -1148,7 +1096,8 @@ avtICAlgorithm::PrintCounter(ostream &os,
 void
 avtICAlgorithm::UpdateICsDomain( int curTimeSlice )
 {
-    list<avtIntegralCurve *>::const_iterator it;
+    std::list<avtIntegralCurve *>::const_iterator it;
+
     for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
     {
         if (!(*it)->blockList.empty())
@@ -1177,7 +1126,8 @@ bool
 avtICAlgorithm::CheckNextTimeStepNeeded(int curTimeSlice)
 {
     int cnt = 0;
-    list<avtIntegralCurve *>::const_iterator it;
+    std::list<avtIntegralCurve *>::const_iterator it;
+
     for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
     {
         if ((*it)->status.EncounteredTemporalBoundary())
@@ -1208,7 +1158,8 @@ avtICAlgorithm::CheckNextTimeStepNeeded(int curTimeSlice)
 void
 avtICAlgorithm::ActivateICsForNextTimeStep()
 {
-    list<avtIntegralCurve *>::iterator it = terminatedICs.begin();
+    std::list<avtIntegralCurve *>::iterator it = terminatedICs.begin();
+
     while (it != terminatedICs.end())
     {
         avtIntegralCurve *ic = *it;
@@ -1228,19 +1179,12 @@ avtICAlgorithm::ActivateICsForNextTimeStep()
 //  Method: avtICAlgorithm::ResetIntegralCurvesForContinueExecute
 //
 //  Purpose:
-//      Reset for continued streamline integration.
+//      Reset for continued integral curve integration.
 //
 //  Programmer: Dave Pugmire
 //  Creation:   Tue Aug 18 08:59:40 EDT 2009
 //
 //  Modifications:
-//
-//   Hank Childs, Fri Jun  4 19:58:30 CDT 2010
-//   Use avtStreamlines, not avtStreamlineWrappers.
-//
-//   Hank Childs, Sun Jun  6 12:21:30 CDT 2010
-//   Rename this method to reflect the new emphasis in particle advection, as 
-//   opposed to streamlines.
 //
 //   Dave Pugmire, Tue Nov 30 13:24:26 EST 2010
 //   Change IC status when ic to not-terminated.
@@ -1268,12 +1212,13 @@ avtICAlgorithm::ResetIntegralCurvesForContinueExecute()
 //****************************************************************************
 
 
-string
+std::string
 avtICAlgorithm::activeICInfo() const
 {
     std::ostringstream str;
     str<<"[";
-    list<avtIntegralCurve *>::const_iterator it;
+    std::list<avtIntegralCurve *>::const_iterator it;
+
     for (it = activeICs.begin(); it != activeICs.end(); it++)
     {
         avtIntegralCurve *ic = *it;
@@ -1296,12 +1241,13 @@ avtICAlgorithm::activeICInfo() const
 //
 //****************************************************************************
 
-string
+std::string
 avtICAlgorithm::inactiveICInfo() const
 {
     std::ostringstream str;
     str<<"[";
-    list<avtIntegralCurve *>::const_iterator it;
+    std::list<avtIntegralCurve *>::const_iterator it;
+
     for (it = inactiveICs.begin(); it != inactiveICs.end(); it++)
     {
         avtIntegralCurve *ic = *it;
@@ -1324,12 +1270,13 @@ avtICAlgorithm::inactiveICInfo() const
 //
 //****************************************************************************
 
-string
+std::string
 avtICAlgorithm::terminatedICInfo() const
 {
     std::ostringstream str;
     str<<"[";
-    list<avtIntegralCurve *>::const_iterator it;
+    std::list<avtIntegralCurve *>::const_iterator it;
+
     for (it = terminatedICs.begin(); it != terminatedICs.end(); it++)
     {
         avtIntegralCurve *ic = *it;

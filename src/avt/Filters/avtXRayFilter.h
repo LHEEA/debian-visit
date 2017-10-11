@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -102,6 +102,15 @@
 //    I added support for specifying background intensities on a per bin
 //    basis.
 //
+//    Eric Brugger, Thu May 21 12:20:04 PDT 2015
+//    I added support for debugging a ray.
+//
+//    Eric Brugger, Wed May 27 10:04:57 PDT 2015
+//    I modified the filter to also output the path length field.
+//
+//    Eric Brugger, Thu Jun  4 15:56:25 PDT 2015
+//    I added an option to enable outputting the ray bounds to a vtk file.
+//
 // ****************************************************************************
 
 class AVTFILTERS_API avtXRayFilter : public avtDatasetToDatasetFilter
@@ -135,6 +144,8 @@ class AVTFILTERS_API avtXRayFilter : public avtDatasetToDatasetFilter
     void                            SetDivideEmisByAbsorb(bool);
     void                            SetBackgroundIntensity(double);
     void                            SetBackgroundIntensities(double *, int);
+    void                            SetDebugRay(int);
+    void                            SetOutputRayBounds(bool);
 
   protected:
     std::string                     absVarName;
@@ -164,7 +175,8 @@ class AVTFILTERS_API avtXRayFilter : public avtDatasetToDatasetFilter
     int                             numPixels;
     int                             numPixelsPerIteration;
 
-    double                         *radBins;
+    double                         *intensityBins;
+    double                         *pathBins;
 
     int                             numBins;    //Used for radiation bins.
                                                 //Number is obtained from the
@@ -173,7 +185,8 @@ class AVTFILTERS_API avtXRayFilter : public avtDatasetToDatasetFilter
     int                             iFragment;
     int                             nImageFragments;
     int                            *imageFragmentSizes;
-    vtkDataArray                  **imageFragments;
+    vtkDataArray                  **intensityFragments;
+    vtkDataArray                  **pathLengthFragments;
 
     int                             iPass;
     int                             numPasses;
@@ -187,6 +200,7 @@ class AVTFILTERS_API avtXRayFilter : public avtDatasetToDatasetFilter
     int                             pixelsForLastPassLastProc;
 
     int                             debugRay;
+    bool                            outputRayBounds;
 
     virtual void                    Execute(void);
 
@@ -221,9 +235,10 @@ class AVTFILTERS_API avtXRayFilter : public avtDatasetToDatasetFilter
     void                            IntegrateLines(int, int, int *, double *,
                                         T *, T *);
     template <typename T>
-    void                            CollectImages(int, vtkDataArray *&);
-    void                            FillImageArray(int iBin,  
-                                                   vtkDataArray *&imageArray);
+    void                            CollectFragments(int, int, int*,
+                                        vtkDataArray **, vtkDataArray *&);
+    void                            MergeFragments(int iBin, vtkDataArray **,
+                                        vtkDataArray *&imageArray);
 
     void                            DumpRayHexIntersections(int, int,
                                         std::vector<int> &, std::vector<int> &,

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -49,8 +49,11 @@ class DBOptionsAttributes;
 
 namespace PixieDBOptions
 {
-    // Read options
+    enum PartitioningDirection {XSLAB=0, YSLAB, ZSLAB, KDTREE};
+
+  // Read options
     const char *const RDOPT_PARTITIONING = "Partitioning";
+    const char *const RDOPT_DUPLICATE    = "Duplicate data for particle advection (slower for all other techniques)";
 }
 
 // ****************************************************************************

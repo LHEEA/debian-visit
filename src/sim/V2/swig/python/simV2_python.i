@@ -238,6 +238,14 @@ int assignCallback(simV2_PyObject &dest, PyObject *src)
     $1 = pylibsim_invoke_v_F_i_pv;
 }
 
+/******************************************************************************
+ * used by: UI_textChanged, UI_cellChanged
+ ******************************************************************************/
+%typemap(in, fragment="util") (void (*cb)(char*,void*)) (simV2_PyObject callback) {
+    if (assignCallback(callback, $input)) { return NULL; }
+    $1 = pylibsim_invoke_v_F_pc_pv;
+}
+
 
 /******************************************************************************
  ******************************************************************************/
@@ -299,6 +307,7 @@ WRAP_ALLOC(VisIt_MaterialData_alloc)
 WRAP_ALLOC(VisIt_MaterialMetaData_alloc)
 WRAP_ALLOC(VisIt_MeshMetaData_alloc)
 WRAP_ALLOC(VisIt_NameList_alloc)
+WRAP_ALLOC(VisIt_OptionList_alloc)
 WRAP_ALLOC(VisIt_PointMesh_alloc)
 WRAP_ALLOC(VisIt_RectilinearMesh_alloc)
 WRAP_ALLOC(VisIt_SimulationMetaData_alloc)
@@ -330,37 +339,23 @@ void VisItFinalize() { pylibsim_VisItFinalize(); }
  * arrays. intercept calls passing data arrays into
  * VisIt to do so.
  */
-%typemap(in) double *dataarray { $1 = (double *)$input; }
-%typemap(in) float *dataarray { $1 = (float *)$input; }
-%typemap(in) int *dataarray { $1 = (int *)$input; }
-%typemap(in) char *dataarray { $1 = (char *)$input; }
-
-%rename(VisIt_VariableData_setDataC) pylibsim_VisIt_VariableData_setDataC;
-%rename(VisIt_VariableData_setDataI) pylibsim_VisIt_VariableData_setDataI;
-%rename(VisIt_VariableData_setDataF) pylibsim_VisIt_VariableData_setDataF;
-%rename(VisIt_VariableData_setDataD) pylibsim_VisIt_VariableData_setDataD;
-
+%typemap(in) PyObject *dataarray { $1 = (PyObject *)$input; }
+%rename(VisIt_VariableData_setDataC) pylibsim_VisIt_VariableData_setDataAsC;
+%rename(VisIt_VariableData_setDataI) pylibsim_VisIt_VariableData_setDataAsI;
+%rename(VisIt_VariableData_setDataF) pylibsim_VisIt_VariableData_setDataAsF;
+%rename(VisIt_VariableData_setDataD) pylibsim_VisIt_VariableData_setDataAsD;
 %inline %{
+int pylibsim_VisIt_VariableData_setDataAsC(
+          visit_handle obj, int owner, int nComps, int nTuples, PyObject *seq);
 
-int pylibsim_VisIt_VariableData_setDataC(visit_handle obj, int owner, int nComps, int nTuples, char *dataarray)
-{
-    return pylibsim_VisIt_VariableData_setDataAsC(obj, owner, nComps, nTuples, (PyObject*)dataarray);
-}
+int pylibsim_VisIt_VariableData_setDataAsI(
+          visit_handle obj, int owner, int nComps, int nTuples, PyObject *seq);
 
-int pylibsim_VisIt_VariableData_setDataI(visit_handle obj, int owner, int nComps, int nTuples, int *dataarray)
-{
-    return pylibsim_VisIt_VariableData_setDataAsI(obj, owner, nComps, nTuples, (PyObject*)dataarray);
-}
+int pylibsim_VisIt_VariableData_setDataAsF(
+          visit_handle obj, int owner, int nComps, int nTuples, PyObject *seq);
 
-int pylibsim_VisIt_VariableData_setDataF(visit_handle obj, int owner, int nComps, int nTuples, float *dataarray)
-{
-    return pylibsim_VisIt_VariableData_setDataAsF(obj, owner, nComps, nTuples, (PyObject*)dataarray);
-}
-
-int pylibsim_VisIt_VariableData_setDataD(visit_handle obj, int owner, int nComps, int nTuples, double *dataarray)
-{
-    return pylibsim_VisIt_VariableData_setDataAsD(obj, owner, nComps, nTuples, (PyObject*)dataarray);
-}
+int pylibsim_VisIt_VariableData_setDataAsD(
+          visit_handle obj, int owner, int nComps, int nTuples, PyObject *seq);
 %}
 
 /* This renaming injects some error handling code that forces VisItProcessEngineCommand
@@ -479,3 +474,58 @@ int pylibsim_VisIt_MaterialData_addMaterial(visit_handle obj, const char *matNam
 
 /* use the matnos rule to make VisIt_DomainNesting_set_nestingForPatch work. */
 %apply const int *matnos { const int *nesting };
+
+/**
+ * Used in VisItSetPlotOptions, VisItSetOperatorOptions vector set functions.
+ */
+#define VISITSETOPTIONS(CTYPE, PYVALIDATE, PYGETVALUE) \
+%typemap(in) const CTYPE *v (std::vector<CTYPE> values) { \
+  int i; \
+  if (!PySequence_Check($input)) { \
+    PyErr_SetString(PyExc_ValueError,"Expected a sequence"); \
+    return NULL; \
+  } \
+  if (PySequence_Length($input) < 1) { \
+    PyErr_SetString(PyExc_ValueError,"Sequence must have at least 1 element"); \
+    return NULL; \
+  } \
+  for (i = 0; i < PySequence_Length($input); i++) { \
+    PyObject *o = PySequence_GetItem($input,i); \
+    if (PYVALIDATE(o)) { \
+      values.push_back(PYGETVALUE(o)); \
+    } else { \
+      PyErr_SetString(PyExc_ValueError,"Sequence elements must be numbers"); \
+      return NULL; \
+    } \
+  } \
+  $1 = &values[0]; \
+}
+
+VISITSETOPTIONS(char,   PyNumber_Check, (char)PyInt_AsLong)
+VISITSETOPTIONS(unsigned char,   PyNumber_Check, (unsigned char)PyInt_AsLong)
+VISITSETOPTIONS(int,    PyNumber_Check, (int)PyInt_AsLong)
+VISITSETOPTIONS(long,   PyNumber_Check, PyInt_AsLong)
+VISITSETOPTIONS(double, PyNumber_Check, PyFloat_AsDouble)
+VISITSETOPTIONS(float,  PyNumber_Check, (float)PyFloat_AsDouble)
+
+%typemap(in) const char **sv (std::vector<const char*> values) {
+  int i;
+  if (!PySequence_Check($input)) {
+    PyErr_SetString(PyExc_ValueError,"Expected a sequence");
+    return NULL;
+  }
+  if (PySequence_Length($input) < 1) {
+    PyErr_SetString(PyExc_ValueError,"Sequence must have at least 1 element");
+    return NULL;
+  }
+  for (i = 0; i < PySequence_Length($input); i++) {
+    PyObject *o = PySequence_GetItem($input,i);
+    if (PyString_Check(o)) {
+      values.push_back(PyString_AsString(o));
+    } else {
+      PyErr_SetString(PyExc_ValueError,"Sequence elements must be strings");
+      return NULL;
+    }
+  }
+  $1 = const_cast<char **>(&values[0]);
+}

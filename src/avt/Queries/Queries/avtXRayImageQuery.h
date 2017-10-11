@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -97,6 +97,18 @@
 //    I added support for specifying background intensities on a per bin
 //    basis.
 //
+//    Eric Brugger, Thu May 21 12:15:18 PDT 2015
+//    I added support for debugging a ray.
+//
+//    Eric Brugger, Wed May 27 10:45:28 PDT 2015
+//    I modified the query to also output the path length field when
+//    outputting in bof or bov format.
+//
+//    Eric Brugger, Wed May 27 13:19:12 PDT 2015
+//    I added an option to family output files.
+//
+//    Eric Brugger, Thu Jun  4 16:07:06 PDT 2015
+//    I added an option to enable outputting the ray bounds to a vtk file.
 //
 // ****************************************************************************
 
@@ -128,6 +140,9 @@ class QUERY_API avtXRayImageQuery : public avtDatasetQuery
     void                      SetBackgroundIntensity(const double &intensity);
     void                      SetBackgroundIntensities(
                                   const doubleVector &intensities);
+    void                      SetDebugRay(const int &ray);
+    void                      SetOutputRayBounds(const bool &flag);
+    void                      SetFamilyFiles(const bool &flag);
     void                      SetOutputType(int type);
     void                      SetOutputType(const std::string &type);
 
@@ -136,6 +151,10 @@ class QUERY_API avtXRayImageQuery : public avtDatasetQuery
     double                    backgroundIntensity;
     double                   *backgroundIntensities;
     int                       nBackgroundIntensities;
+    int                       debugRay;
+    bool                      outputRayBounds;
+    bool                      familyFiles;
+    static int                iFileFamily;
     int                       outputType;
     bool                      useSpecifiedUpVector;
     bool                      useOldView;
@@ -171,12 +190,14 @@ class QUERY_API avtXRayImageQuery : public avtDatasetQuery
     virtual void              Execute(avtDataTree_p);
 
     template <typename T>
-    void                      WriteImage(int, int, T*);
+    void                      WriteImage(const char *, int, int, T*);
     template <typename T>
-    void                      WriteFloats(int, int, T*);
-    void                      WriteBOVHeader(int, int, int, const char *);
+    void                      WriteFloats(const char *, int, int, T*);
+    void                      WriteBOVHeader(const char *, const char *,
+                                  int, int, int, const char *);
 
     void                      ConvertOldImagePropertiesToNew();
+    void                      CheckData(vtkDataSet **, const int);
 };
 
 

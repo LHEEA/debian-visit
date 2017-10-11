@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -1914,7 +1914,7 @@ hid_t
 avtM3DC1FileFormat::NormalizeH5Type( hid_t type )
 {
     H5T_class_t tclass = H5Tget_class( type );
-    int size = H5Tget_size( type );
+    size_t size = H5Tget_size( type );
 
     switch ( tclass )
     {

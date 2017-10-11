@@ -1,6 +1,6 @@
 #*****************************************************************************
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -54,9 +54,6 @@
 #   Hank Childs, Mon Oct 31 09:38:27 PDT 2011
 #   Add ToroidalPoloidalProjection on behalf of Hari Krishnan.
 #
-#   Cyrus Harrison, Fri Apr  6 10:03:51 PDT 2012
-#   Renamed Ftle to FTLE.
-#
 #   Cyrus Harrison, Tue Sep 25 12:08:29 PDT 2012
 #   Added CartographicProjection (from Jean Favre)
 #
@@ -68,6 +65,12 @@
 #   subdir before adding it.  Call VISIT_SELECTED_PLUGIN_ERROR macro if
 #   necessary.
 #
+#   Kevin Griffin, Wed July 22 18:00:10 PDT 2015
+#   Add SPH Resample Operator 
+#
+#   Eric Brugger, Wed Mar 22 10:34:24 PDT 2017
+#   I moved the SubdivideQuads operator from optional to required.
+#
 #****************************************************************************/
 IF(NOT WIN32)
     SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${VISIT_PLUGIN_DIR}/operators)
@@ -77,6 +80,7 @@ ENDIF(NOT WIN32)
 
 SET(REQUIRED_OPERATOR_PLUGINS
 AMRStitchCell
+AxisAlignedSlice4D
 BoundaryOp
 Box
 Clip
@@ -108,6 +112,7 @@ InverseGhostZone
 Isosurface
 Isovolume
 Lagrangian
+LimitCycle
 Lineout
 LineSampler
 Merge
@@ -116,8 +121,8 @@ MultiresControl
 OnionPeel
 PDF
 PersistentParticles
+#ProgrammableOp
 Project
-RectilinearProject2D
 Reflect
 Replicate
 Resample
@@ -126,8 +131,10 @@ Revolve
 Slice
 Smooth
 SphereSlice
+SPHResample
 Stagger
 StatisticalTrends
+SubdivideQuads
 SurfaceNormal
 ThreeSlice
 Threshold
@@ -169,7 +176,6 @@ Context
 ConnCompReduce
 MetricThreshold
 RemoveCells
-SubdivideQuads
 SurfCompPrep
 )
 
@@ -192,17 +198,17 @@ ELSE()
     ENDIF(VISIT_BUILD_MINIMAL_PLUGINS)
 ENDIF()
 
-IF(HAVE_LIB_R)
-  IF(NOT DEFINED VISIT_SELECTED_OPERATOR_PLUGINS)
-      LIST(APPEND BUILD_PLUGINS ExtremeValueAnalysis)
-      LIST(APPEND BUILD_PLUGINS PeaksOverThreshold)
-      LIST(APPEND BUILD_PLUGINS ModelBasedClustering)
-  ENDIF()
-ELSE(HAVE_LIB_R)
-  VISIT_SELECTED_PLUGIN_ERROR(OPERATOR 
-      "ExtremeValueAnalysis;PeaksOverThreshold;ModelBasedClustering"
-      "R library not found")
-ENDIF(HAVE_LIB_R)
+#IF(HAVE_LIB_R)
+#  IF(NOT DEFINED VISIT_SELECTED_OPERATOR_PLUGINS)
+#      LIST(APPEND BUILD_PLUGINS ExtremeValueAnalysis)
+#      LIST(APPEND BUILD_PLUGINS PeaksOverThreshold)
+#      LIST(APPEND BUILD_PLUGINS ModelBasedClustering)
+#  ENDIF()
+#ELSE(HAVE_LIB_R)
+#  VISIT_SELECTED_PLUGIN_ERROR(OPERATOR 
+#      "ExtremeValueAnalysis;PeaksOverThreshold;ModelBasedClustering"
+#      "R library not found")
+#ENDIF(HAVE_LIB_R)
 
 # Add the plugin directories
 FOREACH(operator ${BUILD_PLUGINS})

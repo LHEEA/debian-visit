@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -3695,6 +3695,12 @@ ViewerPlotList::DeletePlot(ViewerPlot *whichOne, bool doUpdate)
 //  Purpose:
 //    Delete the active plots from the plot list.
 //
+//  Arguments:
+//    doUpdate      : Specifies whether or not an update should be performed after
+//                    the plot has been removed. Default value is true.
+//    considerPlots : Whether to consider the active plots when choosing the
+//                    name of the database to use. Default value is true.
+//
 //  Programmer: Eric Brugger
 //  Creation:   August 3, 2000
 //
@@ -3760,27 +3766,31 @@ ViewerPlotList::DeletePlot(ViewerPlot *whichOne, bool doUpdate)
 //    Brad Whitlock, Fri Aug 13 15:13:31 PDT 2010
 //    Added code to modify named selections.
 //
+//    Brad Whitlock, Fri Oct  2 12:34:09 PDT 2015
+//    Delete plot dependencies before deleting the plots because they may cause
+//    immediate updates that will malfunction if the plots don't exist. This
+//    can happen with batch in situ. Separating the dependency deletion from
+//    the plot deletion is safer.
+//
+//    Kevin Griffin, Wed May 11 16:47:05 PDT 2016
+//    Updated the call to UpdateExpressionList use the considerPlots
+//    argument.
+//
 // ****************************************************************************
 
 void
-ViewerPlotList::DeleteActivePlots(bool doUpdates)
+ViewerPlotList::DeleteActivePlots(bool doUpdates, bool considerPlots)
 {
     //
-    // Loop over the list deleting any active plots.  As it traverses
-    // the list it compresses out the deleted plots in place by copying
-    // any non-active plots into their new position.
+    // Delete plot dependencies and record which plots need to be removed.
+    // In certain situations (batch in situ), these may initiate immediate 
+    // updates that rely on the plots still existing.
     //
-    int       nPlotsNew;
-
-    nPlotsNew = 0;
     int nDeletedLegends = 0;
+    intVector remove;
     for (int i = 0; i < nPlots; i++)
     {
-        //
-        // If the plot is active or there is only one plot, delete the plot.
-        // Otherwise copy it down the list.
-        //
-        if (plots[i].active == true || nPlots == 1)
+        if (plots[i].active == true)
         {
             // If the plot provides legend, remove its annotation object from the list.
             if(plots[i].plot->ProvidesLegend())
@@ -3796,13 +3806,27 @@ ViewerPlotList::DeleteActivePlots(bool doUpdates)
 
             // Tell the query that this plot is being deleted. 
             ViewerQueryManager::Instance()->Delete(plots[i].plot);
-            delete plots[i].plot;
+
+            // Record that we need to remove this plot.
+            remove.push_back(i);
         }
-        else
-        {
-            plots[nPlotsNew] = plots[i];
-            nPlotsNew++;
-        }
+    }
+
+    // Delete the plots that were active.
+    for (size_t i = 0; i < remove.size(); i++)
+    {
+        delete plots[remove[i]].plot;
+        plots[remove[i]].plot = NULL;
+        plots[remove[i]].realized = false;
+        plots[remove[i]].active = false;
+    }
+
+    // Now, remove the empty slots from the plot list.
+    int nPlotsNew = 0;
+    for (int i = 0; i < nPlots; i++)
+    {
+        if(plots[i].plot != NULL)
+            plots[nPlotsNew++] = plots[i];
     }
     nPlots = nPlotsNew;
 
@@ -3839,7 +3863,7 @@ ViewerPlotList::DeleteActivePlots(bool doUpdates)
         UpdatePlotList();
         UpdatePlotAtts();
         UpdateSILRestrictionAtts();
-        UpdateExpressionList(true);
+        UpdateExpressionList(considerPlots);
 
         //
         // DBPluginInfo is currently expected to follow the selected plot's host.
@@ -4517,6 +4541,11 @@ ViewerPlotList::SetPlotOperatorAtts(const int operatorType,
 //    Kathleen Biagas, Wed Jul 3 11:42:39 MST 2013
 //    Update the expression list.
 //
+//    Kevin Griffin, Wed May 11 16:47:05 PDT 2016
+//    Updated the call to UpdateExpressionList to not consider active plots
+//    which caused invalid expression variables when multiple plots were
+//    active from different databases (See Bug #2528).
+//
 // ****************************************************************************
 
 void
@@ -4593,7 +4622,7 @@ ViewerPlotList::ActivateSource(const std::string &source, const EngineKey &ek)
         }
     } // end numstates > 1
 
-    UpdateExpressionList(true);
+    UpdateExpressionList(false, true);
 
     //
     // Update the window information since the source and active time
@@ -8048,45 +8077,6 @@ ViewerPlotList::UpdateExpressionList(bool considerPlots, bool update)
     GetViewerStateManager()->GetVariableMethods()->GetAllExpressions(newList, host, db, t);    
 
     //
-    // Update the expression list with the set of variables
-    // created by the operators in the active plots.
-    //
-
-    // First, remove the old ones since we're about to regenerate them.
-    for (int i=newList.GetNumExpressions()-1 ; i>=0; --i)
-    {
-        if (newList[i].GetFromOperator())
-        {
-            newList.RemoveExpressions(i);
-        }
-    }
-
-    // Then add everything created by any active plots' operators.
-    for (int i=0 ; i < nPlots ; i++)
-    {
-        if (!plots[i].active)
-            continue;
-
-        ViewerPlot *plot = plots[i].plot;
-        for (int j = 0 ; j < plot->GetNOperators() ; j++)
-        {
-            ViewerOperator *oper = plot->GetOperator(j);
-            const avtDatabaseMetaData *md = plot->GetMetaData();
-            ExpressionList *exprs = oper->GetCreatedVariables(md);
-            if (exprs != NULL)
-            {
-                for (int k = 0 ; k < exprs->GetNumExpressions() ; k++)
-                {
-                    Expression exp = exprs->GetExpressions(k);
-                    exp.SetFromOperator(true);
-                    newList.AddExpressions(exp);
-                }
-                delete exprs;
-            }
-        }
-    }
-
-    //
     // If the new expression list is different from the expression list
     // that we already have, save the new expression list and send it to
     // the client.
@@ -9629,13 +9619,18 @@ ViewerPlotList::GetEngineKey() const
 //  Programmer:  Mark C. Miller 
 //  Creation:    May 11, 2004
 //
+// Modifications:
+//
+//    Burlen Loring, Sun Sep  6 14:58:03 PDT 2015
+//    Changed the return type of GetNumberOfCells to long long
+//
 // ****************************************************************************
-int
+
+long long
 ViewerPlotList::GetNumberOfCells(bool polysOnly) const
 {
-    int i;
-    int sum = 0;
-    for (i = 0; i < nPlots; i++)
+    long long sum = 0;
+    for (int i = 0; i < nPlots; i++)
     {
         if (plots[i].realized)
         {

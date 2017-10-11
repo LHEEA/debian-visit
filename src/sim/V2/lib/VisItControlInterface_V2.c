@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -86,6 +86,92 @@
 #define SNPRINTF snprintf
 #endif
 
+/*******************************************************************************
+ * Simple dynamic string type
+ ******************************************************************************/
+typedef struct
+{
+    char   *str;
+    size_t size;
+    size_t buffer_size;
+    size_t allocation_increment;
+} visit_string;
+
+void
+visit_string_ctor(visit_string *obj, size_t incr)
+{
+    obj->str = NULL;
+    obj->size = 0;
+    obj->buffer_size = 0;
+    obj->allocation_increment = incr;
+}
+
+void
+visit_string_dtor(visit_string *obj)
+{
+    if(obj->str != NULL)
+        free(obj->str);
+    obj->str = NULL;
+    obj->size = 0;
+    obj->buffer_size = 0;
+}
+
+void
+visit_string_reserve(visit_string *obj, int len)
+{
+    if(obj->buffer_size < len)
+    {
+        obj->str = (char *)realloc(obj->str, len);
+        if(obj->str != NULL)   
+            obj->buffer_size = len;
+    }
+}
+
+int
+visit_string_append(visit_string *obj, const char *s, size_t len)
+{
+    size_t neededSize;
+
+    if(obj == NULL || s == NULL || len == 0)
+        return 0;
+
+    neededSize = obj->size + len + 1;
+
+    if(obj->buffer_size < neededSize)
+    {
+        /* Enlarge the buffer if needed. */
+        while(obj->buffer_size < neededSize)
+            obj->buffer_size += obj->allocation_increment;
+        obj->str = (char *)realloc(obj->str, obj->buffer_size);
+    }
+
+    /* Append the new string. */
+    memcpy(obj->str + obj->size, s, len);
+    obj->size += len;
+    obj->str[obj->size] = '\0';
+
+    return 1;
+}
+
+int
+visit_string_copy(visit_string *obj, const char *s)
+{
+    if(obj->str == s)
+        return 1;
+
+    obj->size = 0;
+    if(s == NULL)
+        return 1;
+
+    return visit_string_append(obj, s, strlen(s));
+}
+
+void
+visit_string_empty(visit_string *obj)
+{
+    obj->size = 0;
+}
+
 /* ****************************************************************************
  *  File:  VisItControlInterface.c
  *
@@ -122,6 +208,7 @@
 
 #define LIBSIM_MAX_STRING_SIZE      1024
 #define LIBSIM_MAX_STRING_LIST_SIZE 100
+#define LIBSIM_ENV_ALLOCATION_SIZE  10000
 
 static int BroadcastInt(int *value, int sender);
 
@@ -143,6 +230,7 @@ typedef struct
     int   (*save_window)(void*,const char *, int, int, int);
     void  (*debug_logs)(int,const char *);
     int   (*set_mpicomm)(void *);
+    int   (*set_mpicomm_f)(int *);
 
     int   (*add_plot)(void *, const char *, const char *);
     int   (*add_operator)(void *, const char *, int);
@@ -154,7 +242,7 @@ typedef struct
     int   (*set_operator_options)(void *, const char *, int, void *, int);
 
 
-    int   (*exportdatabase)(void *, const char *, const char *, visit_handle);
+    int   (*exportdatabase_with_options)(void *, const char *, const char *, visit_handle, visit_handle);
     int   (*restoresession)(void *, const char *);
 } control_callback_t;
 
@@ -200,6 +288,7 @@ static int         engineSocket = VISIT_INVALID_SOCKET;
 #endif
 
 static int         viewer_connected = 0;
+static int         libsim_runtime_loaded = 0;
 
 static int       (*BroadcastInt_internal)(int *value, int sender) = NULL;
 static int       (*BroadcastInt_internal2)(int *value, int sender, void *) = NULL;
@@ -232,6 +321,9 @@ static void        (*visit_slave_process_callback)(void) = NULL;
 static void        (*visit_slave_process_callback2)(void *) = NULL;
 static void         *visit_slave_process_callback2_data = NULL;
 static void         *visit_communicator = NULL;
+static int           visit_batch_mode = 0;
+static int          *visit_communicator_f = NULL;
+static visit_string visit_env = {NULL, 0, 0, LIBSIM_ENV_ALLOCATION_SIZE};
 
 /*******************************************************************************
  *******************************************************************************
@@ -240,6 +332,23 @@ static void         *visit_communicator = NULL;
  *******************************************************************************
  *******************************************************************************
  ******************************************************************************/
+
+static char es_buffer[100];
+static const char *es_VISIT_ERROR = "VISIT_ERROR";
+static const char *es_VISIT_OKAY = "VISIT_OKAY";
+
+static const char *
+ErrorToString(int err)
+{
+    if(err == VISIT_ERROR)
+        return es_VISIT_ERROR;
+    else if(err == VISIT_OKAY)
+        return es_VISIT_OKAY;
+    else
+        sprintf(es_buffer, "%d", err);
+    return es_buffer;
+}
+
 #ifdef _WIN32
 /*******************************************************************************
 * UTILITY FUNCTIONS
@@ -344,17 +453,17 @@ GetVisItDirectory(char *visitdir, int maxlen)
 *   Brad Whitlock, Fri Jul 25 12:11:16 PDT 2008
 *   Changed some types to remove warnings. Added trace information.
 *
+*   Brad Whitlock, Thu Jul  2 15:53:57 PDT 2015
+*   Change to use visit_string.
+*
 *******************************************************************************/
-#define ENV_BUF_SIZE 10000
 
-static int ReadEnvironmentFromCommand(const char *visitpath, char *output)
+static int ReadEnvironmentFromCommand(const char *visitpath, visit_string *output)
 {
    /* VisIt will tell us what variables to set. */
    /* (redirect stderr so it won't complain if it can't find visit) */
    ssize_t n;
-   size_t  lbuf;
-   char command[1024];
-   char *ptr;
+   char command[LIBSIM_MAX_STRING_SIZE], buf[LIBSIM_MAX_STRING_SIZE];
    FILE *file;
 
    LIBSIM_API_ENTER1(ReadEnvironmentFromCommand, "visitpath=%s", visitpath);
@@ -362,32 +471,87 @@ static int ReadEnvironmentFromCommand(const char *visitpath, char *output)
 #ifdef VISIT_COMPILER
 #define STR(s) STR2(s)
 #define STR2(s) #s
-   SNPRINTF(command, 1024, "%s -compiler %s %s -env -engine 2>/dev/null",
+   SNPRINTF(command, LIBSIM_MAX_STRING_SIZE, "%s -compiler %s %s -env -engine 2>/dev/null",
            visitpath, STR(VISIT_COMPILER), visit_options ? visit_options : "");
 #else
-   SNPRINTF(command, 1024, "%s %s -env -engine 2>/dev/null",
+   SNPRINTF(command, LIBSIM_MAX_STRING_SIZE, "%s %s -env -engine 2>/dev/null",
            visitpath, visit_options ? visit_options : "");
 #endif
 
    LIBSIM_MESSAGE1("command=%s", command);
 
    file = popen(command, "r");
-   ptr = output;
-   lbuf = ENV_BUF_SIZE;
-   while ((n = read(fileno(file), (void*)ptr, lbuf)) > 0)
+   visit_string_empty(output);
+   while ((n = read(fileno(file), (void*)buf, LIBSIM_MAX_STRING_SIZE)) > 0)
    {
-      ptr += n;
-      lbuf -= n;
+       visit_string_append(output, buf, (size_t)n);
    }
-   *ptr = '\0';
 
-   LIBSIM_MESSAGE1("Output=%s", output);
+   LIBSIM_MESSAGE1("Output=%s", output->str);
 
-   LIBSIM_API_LEAVE1(ReadEnvironmentFromCommand, "return %d", (int)(ptr-output));
-   return (ptr - output);
+   LIBSIM_API_LEAVE1(ReadEnvironmentFromCommand, "return %d", (int)output->size);
+   return output->size;
 }
 
 #endif
+
+/*******************************************************************************
+*
+* Name: GetEnvironment
+*
+* Purpose: Read the environment.
+*
+* Author: Brad Whitlock
+*
+* Modifications:
+*
+*******************************************************************************/
+
+static void
+GetEnvironment(visit_string *env)
+{
+/* We don't call this function on BG/Q or Win32. */
+#if !defined(VISIT_BLUE_GENE_Q) && !defined(_WIN32)
+    int done = 0;
+
+    visit_string_empty(env);
+
+    /* Try the one specified in by the visit_dir command first */
+    if (visit_directory)
+    {
+        char path[LIBSIM_MAX_STRING_SIZE];
+        sprintf(path, "%s/bin/visit", visit_directory);
+        done = ReadEnvironmentFromCommand(path, env);
+    }
+
+    /* Try the one in their VISIT_HOME environment var next */
+    if (!done)
+    {
+      if(getenv("VISIT_HOME") != NULL)
+      {
+        char path[LIBSIM_MAX_STRING_SIZE];
+        sprintf(path, "%s/bin/visit", getenv("VISIT_HOME"));
+        done = ReadEnvironmentFromCommand(path, env);
+      }
+    }
+
+    /* Try the one in their path next */
+    if (!done)
+    {
+        done = ReadEnvironmentFromCommand("visit", env);
+    }
+
+    /* If we still can't find it, try the LLNL path /usr/gapps/visit */
+    if (!done)
+    {
+        done = ReadEnvironmentFromCommand("/usr/gapps/visit/bin/visit", env);
+    }
+
+    /* We didn't get good values, empty the environment string. */
+    if(!done)
+        visit_string_dtor(env);
+#endif
+}
 
 static void
 VisItMkdir(const char *dir, int permissions)
@@ -846,7 +1010,7 @@ BroadcastInt(int *value, int sender)
 {
     int retval = 0;
 
-    if(sender==0)
+    if(sender==parallelRank)
     {
         LIBSIM_API_ENTER2(BroadcastInt, "value=%d, sender=%d", *value, sender);
     }
@@ -864,7 +1028,7 @@ BroadcastInt(int *value, int sender)
         LIBSIM_MESSAGE("BroadcastInt function not set.");
     }
 
-    LIBSIM_API_LEAVE1(BroadcastInt, "return %d", retval);
+    LIBSIM_API_LEAVE1(BroadcastInt, "return %s", ErrorToString(retval));
     return retval;
 }
 
@@ -888,7 +1052,7 @@ BroadcastString(char *str, int len, int sender)
 {
     int retval = 0;
 
-    if(sender==0)
+    if(sender==parallelRank)
     {
         LIBSIM_API_ENTER3(BroadcastString, "str=%s, len=%d, sender=%d",
                           str, len, sender);
@@ -907,7 +1071,27 @@ BroadcastString(char *str, int len, int sender)
         LIBSIM_MESSAGE("BroadcastString function not set.");
     }
 
-    LIBSIM_API_LEAVE1(BroadcastString, "return %d", retval);
+    LIBSIM_API_LEAVE1(BroadcastString, "return %s", ErrorToString(retval));
+    return retval;
+}
+
+static int
+BroadcastVisItString(visit_string *obj, int sender)
+{
+    int retval, len = obj->size + 1;
+    LIBSIM_API_ENTER(BroadcastVisItString);
+
+    /* Send the length of the buffer (including null terminator).*/
+    BroadcastInt(&len, sender);
+
+    /* If the destination string is not large enough, reserve sufficient space. */
+    visit_string_reserve(obj, len);
+
+    /* Broadcast the string contents. */
+    retval = BroadcastString(obj->str, len, sender);
+    obj->size = len-1;
+
+    LIBSIM_API_LEAVE1(BroadcastVisItString, "return %s", ErrorToString(retval));
     return retval;
 }
 
@@ -1099,7 +1283,7 @@ static int CreateEngine(int batch)
         if(engine == NULL)
         {
             /* get the engine */
-            LIBSIM_MESSAGE("Calling visit_engine");
+            LIBSIM_MESSAGE("  Calling simv2_get_engine");
             engine = (*callbacks->control.get_engine)();
             if (!engine)
             {
@@ -1153,34 +1337,47 @@ static int CreateEngine(int batch)
 #endif
             }
 
-            LIBSIM_MESSAGE_STRINGLIST("Calling visit_initialize: argv=",
-                                      engine_argc, engine_argv);
+            if(visit_communicator != NULL)
+            {
+                VisItSetMPICommunicator(visit_communicator);
+            }
+            else if(visit_communicator_f != NULL)
+            {
+                VisItSetMPICommunicator_f(visit_communicator_f);
+            }
+
             if(batch && callbacks->control.initialize_batch != NULL)
             {
+                LIBSIM_MESSAGE_STRINGLIST("Calling simv2_initialize_batch: argv=",
+                                          engine_argc, engine_argv);
                 if (!(*callbacks->control.initialize_batch)(engine, engine_argc, engine_argv))
                 {
                     VisItDisconnect();
                     LIBSIM_API_LEAVE1(CreateEngine,
-                                      "visit_initialize_batch failed. return %d",
-                                      VISIT_ERROR);
+                                      "simv2_initialize_batch failed. return %s",
+                                      ErrorToString(VISIT_ERROR));
                     return VISIT_ERROR;
                 }
+
+                visit_batch_mode = 1;
             }
             else
             {
+                LIBSIM_MESSAGE_STRINGLIST("Calling simv2_initialize: argv=",
+                                          engine_argc, engine_argv);
                 if (!(*callbacks->control.initialize)(engine, engine_argc, engine_argv))
                 {
                     VisItDisconnect();
                     LIBSIM_API_LEAVE1(CreateEngine,
-                                      "visit_initialize failed. return %d",
-                                      VISIT_ERROR);
+                                      "simv2_initialize failed. return %s",
+                                      ErrorToString(VISIT_ERROR));
                     return VISIT_ERROR;
                 }
             }
         }
     }
 
-    LIBSIM_API_LEAVE1(CreateEngine,"return %d", status);
+    LIBSIM_API_LEAVE1(CreateEngine,"return %s", ErrorToString(status));
     return status;
 }
 
@@ -1202,20 +1399,20 @@ static int ConnectToViewer(void)
 {
     LIBSIM_API_ENTER(ConnectToViewer);
 
-    LIBSIM_MESSAGE_STRINGLIST("Calling visit_connectviewer: argv",
+    LIBSIM_MESSAGE_STRINGLIST("Calling simv2_connect_viewer: argv",
                               engine_argc, engine_argv);
     if (!(*callbacks->control.connect_viewer)(engine, engine_argc, engine_argv))
     {
         VisItDisconnect();
         LIBSIM_API_LEAVE1(ConnectToViewer,
-                         "visit_connectviewer failed. return %d", 
-                         VISIT_ERROR);
+                         "simv2_connect_viewer failed. return %s", 
+                         ErrorToString(VISIT_ERROR));
         return VISIT_ERROR;
     }
 
     viewer_connected = 1;
 
-    LIBSIM_API_LEAVE1(ConnectToViewer,"return %d", VISIT_OKAY);
+    LIBSIM_API_LEAVE1(ConnectToViewer,"return %s", ErrorToString(VISIT_OKAY));
     return VISIT_OKAY;
 }
 
@@ -1242,7 +1439,7 @@ static int GetLocalhostName(void)
 
     LIBSIM_API_ENTER(GetLocalhostName);
 
-    LIBSIM_MESSAGE("Calling gethostname");
+    LIBSIM_MESSAGE("  Calling gethostname");
     if (gethostname(localhostStr, 256) == -1)
     {
         /* Couldn't get the hostname, it's probably invalid */
@@ -1252,7 +1449,7 @@ static int GetLocalhostName(void)
     }
     LIBSIM_MESSAGE1("gethostname returned %s\n", localhostStr);
 
-    LIBSIM_MESSAGE("Calling gethostbyname");
+    LIBSIM_MESSAGE("  Calling gethostbyname");
     localhostEnt = gethostbyname(localhostStr);
     if (localhostEnt == NULL)
     {
@@ -1341,7 +1538,7 @@ static int StartListening(void)
        return FALSE;
     }
 
-    LIBSIM_MESSAGE("Calling listen() on socket");
+    LIBSIM_MESSAGE("  Calling listen() on socket");
     err = listen(listenSocket, 5);
     if (err)
     {
@@ -1387,7 +1584,7 @@ static VISIT_SOCKET AcceptConnection(void)
 #endif
 #endif
         len = sizeof(struct sockaddr);
-        LIBSIM_MESSAGE("Calling accept()");
+        LIBSIM_MESSAGE("  Calling accept()");
         desc = accept(listenSocket, (struct sockaddr *)&listenSockAddr, &len);
     }
     while (desc == VISIT_INVALID_SOCKET
@@ -1425,6 +1622,11 @@ static VISIT_SOCKET AcceptConnection(void)
 *   HOME environment variable if it exists and then we back up to the old 
 *   method.
 *
+*   Brad Whitlock, Wed Aug 12 16:46:44 PDT 2015
+*   On BG/Q, getpwuid doesn't work reliably so we avoid calling it and return
+*   NULL instead. The BG/Q job will not have HOME set unless the batch scheduler
+*   set it. On cobalt, the user must pass --env HOME=$HOME to qsub.
+*    
 *******************************************************************************/
 static const char *GetHomeDirectory(void)
 {
@@ -1462,13 +1664,15 @@ static const char *GetHomeDirectory(void)
 
     LIBSIM_API_ENTER(GetHomeDirectory);
     home = getenv("HOME");
+#if !defined(VISIT_BLUE_GENE_Q)
     if(home == NULL)
     {
         struct passwd *users_passwd_entry = NULL;
         users_passwd_entry = getpwuid(getuid());
         home = users_passwd_entry->pw_dir;
     }
-    LIBSIM_API_LEAVE1(GetHomeDirectory, "homedir=%s", home);
+#endif
+    LIBSIM_API_LEAVE1(GetHomeDirectory, "homedir=%s", (home!=NULL) ? home : "NULL");
 
     return home;
 #endif
@@ -1486,27 +1690,37 @@ static const char *GetHomeDirectory(void)
 *   Brad Whitlock, Fri Jul 25 14:56:47 PDT 2008
 *   Trace information.
 *
+*   Brad Whitlock, Wed Aug 12 16:49:48 PDT 2015
+*   Work around unset home directory.
+*
 *******************************************************************************/
-static void EnsureSimulationDirectoryExists(void)
+static int EnsureSimulationDirectoryExists(void)
 {
+    int retval = 0;
     char str[1024];
+    const char *home = NULL;
     LIBSIM_API_ENTER(EnsureSimulationDirectoryExists);
 
+    if((home = GetHomeDirectory()) != NULL)
+    {
 #ifdef _WIN32
-    SNPRINTF(str, 1024, "%s/Simulations", GetHomeDirectory());
-    VisItMkdir(str, 7*64 + 7*8 + 7);
-    LIBSIM_MESSAGE1("mkdir %s", str);
+        SNPRINTF(str, 1024, "%s/Simulations", home);
+        VisItMkdir(str, 7*64 + 7*8 + 7);
+        LIBSIM_MESSAGE1("mkdir %s", str);
 #else
-    SNPRINTF(str, 1024, "%s/.visit", GetHomeDirectory());
-    VisItMkdir(str, 7*64 + 7*8 + 7);
-    LIBSIM_MESSAGE1("mkdir %s", str);
+        SNPRINTF(str, 1024, "%s/.visit", home);
+        VisItMkdir(str, 7*64 + 7*8 + 7);
+        LIBSIM_MESSAGE1("mkdir %s", str);
 
-    SNPRINTF(str, 1024, "%s/.visit/simulations", GetHomeDirectory());
-    VisItMkdir(str, 7*64 + 7*8 + 7);
-    LIBSIM_MESSAGE1("mkdir %s", str);
+        SNPRINTF(str, 1024, "%s/.visit/simulations", home);
+        VisItMkdir(str, 7*64 + 7*8 + 7);
+        LIBSIM_MESSAGE1("mkdir %s", str);
 #endif
+        retval = 1;
+    }
 
     LIBSIM_API_LEAVE(EnsureSimulationDirectoryExists);
+    return retval;
 }
 
 /*******************************************************************************
@@ -1618,8 +1832,8 @@ static int LoadVisItLibrary_Windows(void)
     {
         WCHAR msg[1024];
         va_list *va = 0;
-LIBSIM_MESSAGE1("Error: %d", GetLastError());
-LIBSIM_MESSAGE1("Error: %x", GetLastError());
+        LIBSIM_MESSAGE1("Error: %d", GetLastError());
+        LIBSIM_MESSAGE1("Error: %x", GetLastError());
         FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, 0, GetLastError(), 0,
                       msg, 1024, va);
         wprintf(L"Formatted message: %s\n", msg);
@@ -1777,6 +1991,8 @@ static void CloseVisItLibrary(void)
     dl_handle = NULL;
 #endif
 #endif
+
+    libsim_runtime_loaded = 0;
 }
 
 /*******************************************************************************
@@ -1893,6 +2109,7 @@ static int LoadVisItLibrary(void)
         CONTROL_DLSYM(save_window,                int,    (void*,const char *,int,int,int));
         CONTROL_DLSYM(debug_logs,                 void,   (int,const char *));
         CONTROL_DLSYM(set_mpicomm,                int,    (void *));
+        CONTROL_DLSYM(set_mpicomm_f,              int,    (int *));
 
         CONTROL_DLSYM_OPTIONAL(add_plot,             int,    (void *, const char *, const char *));
         CONTROL_DLSYM_OPTIONAL(add_operator,         int,    (void *, const char *, int));
@@ -1903,7 +2120,7 @@ static int LoadVisItLibrary(void)
         CONTROL_DLSYM_OPTIONAL(set_operator_options, int,    (void *, const char *, int, void *, int));
 
         CONTROL_DLSYM_OPTIONAL(initialize_batch,     int,    (void *, int, char **));
-        CONTROL_DLSYM_OPTIONAL(exportdatabase,       int,    (void *, const char *, const char *, visit_handle));
+        CONTROL_DLSYM_OPTIONAL(exportdatabase_with_options, int, (void *, const char *, const char *, visit_handle, visit_handle));
         CONTROL_DLSYM_OPTIONAL(restoresession,       int,    (void *, const char *));
 
         /* Get the data functions from the library. */
@@ -1947,6 +2164,8 @@ InitializeRuntime(int batch)
                           "CreateEngine failed. return %d", VISIT_ERROR);
         return VISIT_ERROR;
     }
+
+    libsim_runtime_loaded = 1;
 
     return VISIT_OKAY;
 }
@@ -2157,6 +2376,8 @@ void VisItSetOptions(char *o)
 * Author: Brad Whitlock, B Division, Lawrence Livermore National Laboratory
 *
 * Modifications:
+*   Brad Whitlock, Thu Jul  2 14:48:53 PDT 2015
+*   I moved code to a helper function. Return a copy of the environment.
 *
 *******************************************************************************/
 char *VisItGetEnvironment(void)
@@ -2166,45 +2387,12 @@ char *VisItGetEnvironment(void)
     LIBSIM_API_LEAVE1(VisItGetEnvironment, "return %s", "NULL");
     return NULL;
 #else
-    int done = 0;
-    char *new_env = NULL;
+    GetEnvironment(&visit_env);
 
-    LIBSIM_API_ENTER(VisItGetEnvironment);
-#if !defined(VISIT_BLUE_GENE_Q)
-    new_env = (char*)(malloc(ENV_BUF_SIZE));
-    memset(new_env, 0, ENV_BUF_SIZE * sizeof(char));
-
-    /* Try the one specified in by the visit_dir command first */
-    if (visit_directory)
-    {
-        char path[200];
-        sprintf(path, "%s/bin/visit", visit_directory);
-        done = ReadEnvironmentFromCommand(path, new_env);
-    }
-
-    /* Try the one in their path next */
-    if (!done)
-    {
-        done = ReadEnvironmentFromCommand("visit", new_env);
-    }
-
-    /* If we still can't find it, try the one in /usr/gapps/visit */
-    if (!done)
-    {
-        done = ReadEnvironmentFromCommand("/usr/gapps/visit/bin/visit", new_env);
-    }
-
-    /* We didn't get good values, arrange to return NULL. */
-    if(!done)
-    {
-        free(new_env);
-        new_env = NULL;
-    }
-#endif
     LIBSIM_API_LEAVE1(VisItGetEnvironment, "return %s", 
-                     (new_env ? new_env : "NULL"));
+                     (visit_env.str ? visit_env.str : "NULL"));
 
-    return new_env;
+    return visit_env.str ? strdup(visit_env.str) : NULL;
 #endif   
 }
 
@@ -2256,6 +2444,9 @@ int VisItSetupEnvironment(void)
 *  Brad Whitlock, Tue Apr 17 10:35:33 PDT 2012
 *  Add test for 2nd broadcast callback.
 *
+*  Brad Whitlock, Thu Jul  2 15:39:33 PDT 2015
+*  Changed how the environment gets read to support long environments.
+*
 *******************************************************************************/
 
 int VisItSetupEnvironment2(char *env)
@@ -2263,10 +2454,10 @@ int VisItSetupEnvironment2(char *env)
 #ifdef _WIN32
     WORD wVersionRequested;
     WSADATA wsaData;
-    char visitpath[1024], tmp[1024];
+    char visitpath[LIBSIM_MAX_STRING_SIZE], tmp[LIBSIM_MAX_STRING_SIZE];
 
     LIBSIM_API_ENTER(VisItSetupEnvironment2);
-    GetVisItDirectory(visitpath, 1024);
+    GetVisItDirectory(visitpath, LIBSIM_MAX_STRING_SIZE);
 
     /* Tell Windows that we want to get DLLs from this path. We DO need this
      * in order for dependent DLLs to be located.
@@ -2274,12 +2465,12 @@ int VisItSetupEnvironment2(char *env)
     SetDllDirectory(visitpath);
 
     /* Set the VisIt home dir. */
-    SNPRINTF(tmp, 1024, "VISITHOME=%s", visitpath);
+    SNPRINTF(tmp, LIBSIM_MAX_STRING_SIZE, "VISITHOME=%s", visitpath);
     LIBSIM_MESSAGE(tmp);
     putenv(tmp);
 
     /* Set the plugin dir. */
-    SNPRINTF(tmp, 1024, "VISITPLUGINDIR=%s", visitpath);
+    SNPRINTF(tmp, LIBSIM_MAX_STRING_SIZE, "VISITPLUGINDIR=%s", visitpath);
     LIBSIM_MESSAGE(tmp);
     putenv(tmp);
 
@@ -2287,20 +2478,13 @@ int VisItSetupEnvironment2(char *env)
     wVersionRequested = MAKEWORD(2,2);
     WSAStartup(wVersionRequested, &wsaData);
 #else
-   char *new_env = NULL;
    int done = 0, canBroadcast = 0, mustReadEnv = 1;
    char *ptr;
 
    LIBSIM_API_ENTER(VisItSetupEnvironment2);
 #if !defined(VISIT_BLUE_GENE_Q)
-   /* Make a copy of the input string. */
-   new_env = (char*)(malloc(ENV_BUF_SIZE));
-   memset(new_env, 0, ENV_BUF_SIZE * sizeof(char));
-   if(env != NULL)
-   {
-       strncpy(new_env, env, ENV_BUF_SIZE);
-       done = 1;
-   }
+   /* Make a copy of the input string & store into visit_env. */
+   done = visit_string_copy(&visit_env, env);
 
    /* Determine whether we can broadcast strings */
    canBroadcast = isParallel && 
@@ -2316,36 +2500,34 @@ int VisItSetupEnvironment2(char *env)
    /* Read the environment. */
    if(mustReadEnv)
    {
-       char *c = VisItGetEnvironment();
-       if(c != NULL)
-       {
-           free(new_env);
-           new_env = c;
+       done = 0;
+       GetEnvironment(&visit_env);
+       if(visit_env.size > 0)
            done = 1;
-       }
    }
 
    /* Use broadcast if we can. */
    if(canBroadcast)
    {
        /* Send the string to other processors */
-       BroadcastString(new_env, ENV_BUF_SIZE, 0);
+       BroadcastVisItString(&visit_env, 0);
+       LIBSIM_MESSAGE1("VisItSetupEnvironment2: After broadcast: %s\n", visit_env.str);
 
        /* We're done if the string was not empty. */
-       done = (new_env[0] != '\0');
+       done = (visit_env.str != NULL && visit_env.str[0] != '\0');
    }
 
    if (!done)
    {
        /* We're not using new_env for putenv so we can free it. */
-       free(new_env);
+       visit_string_dtor(&visit_env);
        LIBSIM_API_LEAVE1(VisItSetupEnvironment2, "return %d", FALSE);
        return FALSE;
    }
 
    /* Do a bunch of putenv calls; it should already be formatted correctly */
-   ptr = new_env;
-   while (ptr[0]!='\0')
+   ptr = visit_env.str;
+   while (ptr != NULL && ptr[0]!='\0')
    {
       int i = 0;
       while (ptr[i]!='\n')
@@ -2357,7 +2539,6 @@ int VisItSetupEnvironment2(char *env)
 
       ptr += i+1;
    }
-   /* free(new_env); <--- NO!  You are not supposed to free this memory! */
 #endif
 
 #endif
@@ -2410,14 +2591,21 @@ int VisItInitializeSocketAndDumpSimFile(const char *name,
 
     if ( !absoluteFilename )
     {
-        EnsureSimulationDirectoryExists();
-        SNPRINTF(simulationFileName, MAX_SIMULATION_FILENAME, 
+        if(EnsureSimulationDirectoryExists())
+        {
+            SNPRINTF(simulationFileName, MAX_SIMULATION_FILENAME, 
 #ifdef _WIN32
-                 "%s/Simulations/%012d.%s.sim2",
+                "%s/Simulations/%012d.%s.sim2",
 #else
-                 "%s/.visit/simulations/%012d.%s.sim2",
+                "%s/.visit/simulations/%012d.%s.sim2",
 #endif
-                 GetHomeDirectory(), (int)time(NULL), name);
+                GetHomeDirectory(), (int)time(NULL), name);
+        }
+        else
+        {
+            SNPRINTF(simulationFileName, MAX_SIMULATION_FILENAME, 
+                "%012d.%s.sim2", (int)time(NULL), name);
+        }
     }
     else
     {
@@ -3148,9 +3336,9 @@ int VisItAttemptToCompleteConnection(void)
     /* get the socket for listening from the viewer */
     if (parallelRank == 0)
     {
-        LIBSIM_MESSAGE("Calling visit_getdescriptor");
+        LIBSIM_MESSAGE("  Calling simv2_get_descriptor");
         engineSocket = callbacks->control.get_descriptor(engine);
-        LIBSIM_MESSAGE1("visit_getdescriptor returned %d", (int)engineSocket);
+        LIBSIM_MESSAGE1("simv2_get_descriptor returned %d", (int)engineSocket);
 #ifdef _WIN32
         /* Clear the value from VisItDetectInput so it can return a new value. */
         if(VisItDetectInput_return_value == 1)
@@ -3195,7 +3383,7 @@ int VisItAttemptToCompleteConnection(void)
 void VisItSetSlaveProcessCallback(void (*spic)(void))
 {
     LIBSIM_API_ENTER1(VisItSetSlaveProcessCallback, "spic=%p", (void*)spic);
-    LIBSIM_MESSAGE("Calling visit_set_slave_process_callback");
+    LIBSIM_MESSAGE("  Calling simv2_set_slave_process_callback");
     if(callbacks != NULL && callbacks->control.set_slave_process_callback)
     {
         visit_slave_process_callback = spic;
@@ -3230,7 +3418,7 @@ visit_slave_process_callback2_thunk(void)
 void VisItSetSlaveProcessCallback2(void (*spic)(void *), void *spicdata)
 {
     LIBSIM_API_ENTER1(VisItSetSlaveProcessCallback2, "spic=%p", (void*)spic);
-    LIBSIM_MESSAGE("Calling visit_set_slave_process_callback");
+    LIBSIM_MESSAGE("  Calling simv2_set_slave_process_callback");
     if(callbacks != NULL && callbacks->control.set_slave_process_callback)
     {
         visit_slave_process_callback = NULL;
@@ -3258,7 +3446,7 @@ void VisItSetCommandCallback(void (*scc)(const char*,const char*,void*),
     void *sccdata)
 {
     LIBSIM_API_ENTER1(VisItSetCommandCallback, "scc=%p", (void*)scc);
-    LIBSIM_MESSAGE("Calling visit_set_command_callback");
+    LIBSIM_MESSAGE("  Calling simv2_set_command_callback");
 
     visit_command_callback = scc;
     visit_command_callback_data = sccdata;
@@ -3296,7 +3484,7 @@ int VisItProcessEngineCommand(void)
     }
     else if (callbacks != NULL)
     {
-        LIBSIM_MESSAGE("Calling visit_processinput");
+        LIBSIM_MESSAGE("  Calling simv2_process_input");
 #ifdef _WIN32
         if(parallelRank == 0)
         {
@@ -3312,10 +3500,10 @@ int VisItProcessEngineCommand(void)
 #endif
         retval = ((*callbacks->control.process_input)(engine) == 1) ?
             VISIT_OKAY : VISIT_ERROR;
-        LIBSIM_MESSAGE1("visit_processinput returned: %d", retval);
+        LIBSIM_MESSAGE1("simv2_process_input returned: %d", retval);
     }
 
-    LIBSIM_API_LEAVE1(VisItProcessEngineCommand, "return %d", retval);
+    LIBSIM_API_LEAVE1(VisItProcessEngineCommand, "return %s", ErrorToString(retval));
     return retval;
 }
 
@@ -3338,7 +3526,7 @@ void VisItTimeStepChanged(void)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.time_step_changed)
     {
-        LIBSIM_MESSAGE("Calling visit_time_step_changed");
+        LIBSIM_MESSAGE("  Calling simv2_time_step_changed");
         (*callbacks->control.time_step_changed)(engine);
     }
     LIBSIM_API_LEAVE(VisItTimeStepChanged);
@@ -3364,7 +3552,7 @@ void VisItUpdatePlots(void)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.execute_command)
     {
-        LIBSIM_MESSAGE("Calling visit_execute_command: UpdatePlots");
+        LIBSIM_MESSAGE("  Calling simv2_execute_command: UpdatePlots");
         (*callbacks->control.execute_command)(engine, "UpdatePlots");
 
         if(visit_sync_enabled)
@@ -3397,7 +3585,7 @@ void VisItExecuteCommand(const char *command)
         command != NULL)
     {
         char *cmd2 = NULL;
-        LIBSIM_MESSAGE("Calling visit_execute_command");
+        LIBSIM_MESSAGE("  Calling simv2_execute_command");
         cmd2 = (char *)malloc(strlen(command) + 1 + 10);
         if(cmd2 != NULL)
         {
@@ -3431,7 +3619,7 @@ void VisItExecuteCommand(const char *command)
 void VisItDisconnect(void)
 {
     LIBSIM_API_ENTER(VisItDisconnect);
-    LIBSIM_MESSAGE("Calling visit_disconnect");
+    LIBSIM_MESSAGE("  Calling simv2_disconnect");
     if(callbacks != NULL)
     {
         if(callbacks->control.disconnect)
@@ -3474,6 +3662,22 @@ int VisItIsConnected(void)
 
 /*******************************************************************************
 *
+* Name: VisItIsRuntimeLoaded
+*
+* Purpose: Returns whether the Libsim runtime is loaded.
+*
+* Author: Brad Whitlock
+*
+* Modifications:
+*
+*******************************************************************************/
+int VisItIsRuntimeLoaded(void)
+{
+    return libsim_runtime_loaded;
+}
+
+/*******************************************************************************
+*
 * Name: VisItSaveImage
 *
 * Purpose: Tell VisIt to save the active network as an image.
@@ -3490,10 +3694,13 @@ int VisItSaveWindow(const char *filename, int w, int h, int format)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.save_window)
     {
-        LIBSIM_MESSAGE("Calling visit_save_window");
+        LIBSIM_MESSAGE("  Calling simv2_save_window");
         ret = (*callbacks->control.save_window)(engine, filename, w, h, format);
+        /* Synchronize in case we we're connected interactively. */
+        if(visit_batch_mode == 0 && visit_sync_enabled)
+            VisItSynchronize();
     }
-    LIBSIM_API_LEAVE(VisItSaveWindow);
+    LIBSIM_API_LEAVE1(VisItSaveWindow, "return %s", ErrorToString(ret));
     return ret;
 }
 
@@ -3578,16 +3785,16 @@ void VisItCloseTraceFile(void)
 int VisItSet##F(FR (*cb) FA, void *cbdata) \
 { \
     int retval = VISIT_ERROR; \
-    LIBSIM_API_ENTER(VisIt##F);\
+    LIBSIM_API_ENTER(VisItSet##F);\
     if (engine && callbacks != NULL && callbacks->data.set_##F)\
     {\
-        LIBSIM_MESSAGE("Calling VisIt"#F);\
+        LIBSIM_MESSAGE("  Calling simv2_set_"#F);\
         (*callbacks->data.set_##F)(cb, cbdata);\
         retval = VISIT_OKAY; \
     }\
     else\
-        fprintf(stderr, "VisIt"#F" should not be called until VisIt connects to the simulation.\n");\
-    LIBSIM_API_LEAVE(VisIt##F); \
+        fprintf(stderr, "VisItSet"#F" should not be called until VisIt connects to the simulation.\n");\
+    LIBSIM_API_LEAVE(VisItSet##F); \
     return retval;\
 }
 
@@ -3780,8 +3987,39 @@ VisItSetMPICommunicator(void *comm)
     LIBSIM_API_ENTER(VisItSetMPICommunicator);
     visit_communicator = comm;
     if(engine && callbacks != NULL && callbacks->control.set_mpicomm != NULL)
+    {
+        LIBSIM_MESSAGE("  Calling simv2_set_mpicomm");
         retval = (*callbacks->control.set_mpicomm)(comm);
-    LIBSIM_API_LEAVE(VisItSetMPICommunicator);
+    }
+    LIBSIM_API_LEAVE1(VisItSetMPICommunicator, "return %s", ErrorToString(retval));
+    return retval;
+}
+
+/******************************************************************************
+*
+* Name: VisItSetMPICommunicator_f
+*
+* Purpose: Let the Fortran user set the MPI communicator that VisIt will use.
+*
+* Programmer: William T. Jones
+* Date:       Fri Jul 12 18:13:24 EDT 2013
+*
+* Modifications:
+*
+******************************************************************************/
+
+int
+VisItSetMPICommunicator_f(int *comm)
+{
+    int retval = VISIT_OKAY;
+    LIBSIM_API_ENTER(VisItSetMPICommunicator_f);
+    visit_communicator_f = comm;
+    if(engine && callbacks != NULL && callbacks->control.set_mpicomm_f != NULL)
+    {
+        LIBSIM_MESSAGE("  Calling simv2_set_mpicomm_f");
+        retval = (*callbacks->control.set_mpicomm_f)(comm);
+    }
+    LIBSIM_API_LEAVE1(VisItSetMPICommunicator_f, "return %s", ErrorToString(retval));
     return retval;
 }
 
@@ -3801,7 +4039,11 @@ VisItSetMPICommunicator(void *comm)
 int
 VisItInitializeRuntime(void)
 {
-    return InitializeRuntime(1);
+    int retval = VISIT_ERROR;
+    LIBSIM_API_ENTER(VisItInitializeRuntime);
+    retval = InitializeRuntime(1);
+    LIBSIM_API_LEAVE1(VisItInitializeRuntime, "return %s", ErrorToString(retval));
+    return retval;
 }
 
 /******************************************************************************
@@ -3919,6 +4161,38 @@ VisItUI_valueChanged(const char *name, void (*cb)(int,void*), void *cbdata)
 }
 
 int
+VisItUI_textChanged(const char *name, void (*cb)(char*,void*), void *cbdata)
+{
+    int retval = VISIT_ERROR;
+    sim_ui_element *e = NULL;
+    LIBSIM_API_ENTER(VisItUI_textChanged);
+    if((e = sim_ui_get(name)) != NULL)
+    {
+        e->slot_textChanged = cb;
+        e->slot_textChanged_data = cbdata;
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_textChanged);
+    return retval;
+}
+
+int
+VisItUI_cellChanged(const char *name, void (*cb)(char*,void*), void *cbdata)
+{
+    int retval = VISIT_ERROR;
+    sim_ui_element *e = NULL;
+    LIBSIM_API_ENTER(VisItUI_cellChanged);
+    if((e = sim_ui_get(name)) != NULL)
+    {
+        e->slot_cellChanged = cb;
+        e->slot_cellChanged_data = cbdata;
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_cellChanged);
+    return retval;
+}
+
+int
 VisItUI_setValueI(const char *name, int value, int enabled)
 {
     int retval = VISIT_ERROR;
@@ -3928,7 +4202,25 @@ VisItUI_setValueI(const char *name, int value, int enabled)
     if (engine && callbacks != NULL && callbacks->control.execute_command)
     {
         char cmd[500];
-        sprintf(cmd, "SetUI:i:%s:%d:%d", name, value, enabled?1:0);
+        sprintf(cmd, "SetUI:s:%s:%d:%d", name, value, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setValueI)
+    return retval;
+}
+
+int
+VisItUI_setValueD(const char *name, double value, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setValueI);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:s:%s:%lf:%d", name, value, enabled?1:0);
         (*callbacks->control.execute_command)(engine, cmd);
         retval = VISIT_OKAY;
     }
@@ -3954,6 +4246,87 @@ VisItUI_setValueS(const char *name, const char *value, int enabled)
     return retval;
 }
 
+
+int
+VisItUI_setTableValueI(const char *name,
+                       int row, int column, int value, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setTableValueI);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:s:%s:%d | %d | %d :%d",
+                name, row, column, value, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setTableValueI)
+    return retval;
+}
+
+int
+VisItUI_setTableValueD(const char *name,
+                       int row, int column, double value, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setTableValueI);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:s:%s:%d | %d | %lf :%d",
+                name, row, column, value, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setTableValueI)
+    return retval;
+}
+
+int
+VisItUI_setTableValueV(const char *name,
+                       int row, int column, double x, double y, double z, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setTableValueV);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:s:%s:%d | %d | %lf,%lf,%lf :%d",
+                name, row, column, x, y, z, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setTableValueV)
+    return retval;
+}
+
+int
+VisItUI_setTableValueS(const char *name,
+                       int row, int column, const char *value, int enabled)
+{
+    int retval = VISIT_ERROR;
+
+    LIBSIM_API_ENTER(VisItUI_setTableValueS);
+    /* Make sure the function exists before using it. */
+    if (engine && callbacks != NULL && callbacks->control.execute_command)
+    {
+        char cmd[500];
+        sprintf(cmd, "SetUI:s:%s:%d | %d | %s :%d",
+                name, row, column, value, enabled?1:0);
+        (*callbacks->control.execute_command)(engine, cmd);
+        retval = VISIT_OKAY;
+    }
+    LIBSIM_API_LEAVE(VisItUI_setTableValueS)
+    return retval;
+}
+ 
 /***************************************************************************
 
                         EXPERIMENTAL PLOTTING CODE
@@ -3997,10 +4370,11 @@ VisItAddPlot(const char *plotType, const char *var)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.add_plot)
     {
+        LIBSIM_MESSAGE("  Calling simv2_add_plot");
         retval = (*callbacks->control.add_plot)(engine, plotType, var);
     }
 
-    LIBSIM_API_LEAVE(VisItAddPlot)
+    LIBSIM_API_LEAVE1(VisItAddPlot, "return %s", ErrorToString(retval))
     return retval;
 }
 
@@ -4034,9 +4408,10 @@ VisItAddOperator(const char *operatorType, int applyToAll)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.add_operator)
     {
+        LIBSIM_MESSAGE("  Calling simv2_add_operator");
         retval = (*callbacks->control.add_operator)(engine, operatorType, applyToAll);
     }
-    LIBSIM_API_LEAVE(VisItAddOperator)
+    LIBSIM_API_LEAVE1(VisItAddOperator, "return %s", ErrorToString(retval))
     return retval;
 }
 
@@ -4058,13 +4433,14 @@ VisItDrawPlots(void)
 {
     int retval = VISIT_ERROR;
 
-    LIBSIM_API_ENTER(VisItDrawPlot);
+    LIBSIM_API_ENTER(VisItDrawPlots);
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.draw_plots)
     {
+        LIBSIM_MESSAGE("  Calling simv2_draw_plots");
         retval = (*callbacks->control.draw_plots)(engine);
     }
-    LIBSIM_API_LEAVE(VisItDrawPlot)
+    LIBSIM_API_LEAVE1(VisItDrawPlots, "return %s", ErrorToString(retval))
     return retval;
 }
 
@@ -4090,9 +4466,10 @@ VisItDeleteActivePlots(void)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.delete_active_plots)
     {
+        LIBSIM_MESSAGE("  Calling simv2_delete_active_plots");
         retval = (*callbacks->control.delete_active_plots)(engine);
     }
-    LIBSIM_API_LEAVE(VisItDeleteActivePlots)
+    LIBSIM_API_LEAVE1(VisItDeleteActivePlots, "return %s", ErrorToString(retval))
     return retval;
 }
 
@@ -4118,9 +4495,10 @@ VisItSetActivePlots(const int *ids, int nids)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.set_active_plots)
     {
+        LIBSIM_MESSAGE("  Calling simv2_set_active_plots");
         retval = (*callbacks->control.set_active_plots)(engine, ids, nids);
     }
-    LIBSIM_API_LEAVE(VisItSetActivePlots)
+    LIBSIM_API_LEAVE1(VisItSetActivePlots, "return %s", ErrorToString(retval))
     return retval;
 }
 
@@ -4146,9 +4524,10 @@ PlotOpt(const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.set_plot_options)
     {
+        LIBSIM_MESSAGE("  Calling simv2_plot_options");
         retval = (*callbacks->control.set_plot_options)(engine, fieldName, fieldType, fieldVal, fieldLen);
     }
-    LIBSIM_API_LEAVE(VisItSetPlotOptions)
+    LIBSIM_API_LEAVE1(VisItSetPlotOptions, "return %s", ErrorToString(retval))
     return retval;
 }
 
@@ -4190,9 +4569,10 @@ OperatorOpt(const char *fieldName, int fieldType, void *fieldVal, int fieldLen)
     /* Make sure the function exists before using it. */
     if (engine && callbacks != NULL && callbacks->control.set_operator_options)
     {
+        LIBSIM_MESSAGE("  Calling simv2_operator_options");
         retval = (*callbacks->control.set_operator_options)(engine, fieldName, fieldType, fieldVal, fieldLen);
     }
-    LIBSIM_API_LEAVE(VisItSetOperatorOptions)
+    LIBSIM_API_LEAVE1(VisItSetOperatorOptions, "return %s", ErrorToString(retval))
     return retval;
 }
 
@@ -4215,7 +4595,7 @@ int VisItSetOperatorOptionsSv(const char *name,const char **v,int L){ return Ope
 
 /******************************************************************************
 *
-* Name: VisItExportDatabase
+* Name: VisItExportDatabase / VisItExportDatabaseWithOptions
 *
 * Purpose: Export the current plots to a database file.
 *
@@ -4227,18 +4607,29 @@ int VisItSetOperatorOptionsSv(const char *name,const char **v,int L){ return Ope
 ******************************************************************************/
 
 int
-VisItExportDatabase(const char *filename, const char *format, visit_handle varNames)
+VisItExportDatabaseWithOptions(const char *filename, const char *format, 
+    visit_handle varNames, visit_handle options)
 {
     int retval = VISIT_ERROR;
 
-    LIBSIM_API_ENTER(VisItExportDatabase);
+    LIBSIM_API_ENTER(VisItExportDatabaseWithOptions);
     /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.set_operator_options)
+    if (engine && callbacks != NULL && callbacks->control.exportdatabase_with_options)
     {
-        retval = (*callbacks->control.exportdatabase)(engine, filename, format, varNames);
+        LIBSIM_MESSAGE("  Calling simv2_exportdatabase_with_options");
+        retval = (*callbacks->control.exportdatabase_with_options)(engine, filename, format, varNames, options);
+        /* Synchronize in case we we're connected interactively. */
+        if(visit_batch_mode == 0 && visit_sync_enabled)
+            VisItSynchronize();
     }
-    LIBSIM_API_LEAVE(VisItExportDatabase)
+    LIBSIM_API_LEAVE1(VisItExportDatabaseWithOptions, "return %s", ErrorToString(retval))
     return retval;
+}
+
+int
+VisItExportDatabase(const char *filename, const char *format, visit_handle varNames)
+{
+    return VisItExportDatabaseWithOptions(filename, format, varNames, VISIT_INVALID_HANDLE);
 }
 
 /******************************************************************************
@@ -4259,12 +4650,13 @@ VisItRestoreSession(const char *filename)
 {
     int retval = VISIT_ERROR;
 
-    LIBSIM_API_ENTER(VisItExportDatabase);
+    LIBSIM_API_ENTER(VisItRestoreSession);
     /* Make sure the function exists before using it. */
-    if (engine && callbacks != NULL && callbacks->control.set_operator_options)
+    if (engine && callbacks != NULL && callbacks->control.restoresession)
     {
+        LIBSIM_MESSAGE("  Calling simv2_restoresession");
         retval = (*callbacks->control.restoresession)(engine, filename);
     }
-    LIBSIM_API_LEAVE(VisItExportDatabase)
+    LIBSIM_API_LEAVE1(VisItRestoreSession, "return %s", ErrorToString(retval))
     return retval;
 }

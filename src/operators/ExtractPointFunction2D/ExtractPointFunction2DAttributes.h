@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -84,14 +84,18 @@ public:
 
     // Property selection methods
     virtual void SelectAll();
+    void SelectI();
+    void SelectJ();
 
     // Property setting methods
-    void SetI(int I_);
-    void SetJ(int J_);
+    void SetI(const intVector &I_);
+    void SetJ(const intVector &J_);
 
     // Property getting methods
-    int GetI() const;
-    int GetJ() const;
+    const intVector &GetI() const;
+          intVector &GetI();
+    const intVector &GetJ() const;
+          intVector &GetJ();
 
     // Persistence methods
     virtual bool CreateNode(DataNode *node, bool completeSave, bool forceAdd);
@@ -113,13 +117,13 @@ public:
     };
 
 private:
-    int I;
-    int J;
+    intVector I;
+    intVector J;
 
     // Static class format string for type map.
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define EXTRACTPOINTFUNCTION2DATTRIBUTES_TMFS "ii"
+#define EXTRACTPOINTFUNCTION2DATTRIBUTES_TMFS "i*i*"
 
 #endif

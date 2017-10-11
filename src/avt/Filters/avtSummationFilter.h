@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -97,7 +97,7 @@ class AVTFILTERS_API avtSummationFilter : public avtDataTreeIterator
     virtual void                    PreExecute(void);
     virtual void                    PostExecute(void);
 
-    virtual vtkDataSet             *ExecuteData(vtkDataSet *, int,std::string);
+    virtual avtDataRepresentation  *ExecuteData(avtDataRepresentation *);
 };
 
 

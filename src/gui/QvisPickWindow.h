@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -182,6 +182,9 @@ public:
 //   Jonathan Byrd (Allinea Software), Sun Dec 18 2011
 //   Added slot for 'Focus DDT on Pick' button clicks. Added pickRecords array
 //
+//   Kathleen Biagas, Fri Mar 20 16:07:53 PDT 2015
+//   Added slot 'resetPickLetter'.
+//
 // ****************************************************************************
 
 class GUI_API QvisPickWindow : public QvisPostableWindowObserver
@@ -224,6 +227,7 @@ private slots:
     void displayIncElsToggled(bool val);
     void displayGlobalIdsToggled(bool val);
     void displayPickLetterToggled(bool val);
+    void displayPickHighlightToggled(bool val);
     void nodeIdToggled(bool val);
     void nodeDomLogToggled(bool val);
     void nodeBlockLogToggled(bool val);
@@ -243,6 +247,7 @@ private slots:
     void preserveCoordActivated(int);
     void timeCurveTypeActivated(int);
     void clearPicks();
+    void resetPickLetter();
     void redoPickClicked();
     void redoPickWithSpreadsheetClicked();
     void optionsTabSelected(int);
@@ -287,6 +292,7 @@ private:
     QCheckBox          *displayIncEls;
     QCheckBox          *displayGlobalIds;
     QCheckBox          *displayPickLetter;
+    QCheckBox          *displayPickHighlight;
 
     QCheckBox          *nodeId;
     QCheckBox          *nodePhysical;

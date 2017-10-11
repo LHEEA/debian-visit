@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -56,6 +56,7 @@
 #include <vector>
 
 #include <avtSiloMBObjectCache.h>
+#include <avtLocalStructuredDomainBoundaries.h>
 
 class     vtkUnstructuredGrid;
 
@@ -288,6 +289,13 @@ typedef struct _GroupInfo
 //    regions, so this is a significant saving. CSG meshes with thousands
 //    of regions were exhausting memory in the previous scheme.
 //
+//    Mark C. Miller, Tue Feb  2 14:48:25 PST 2016
+//    Added firstAllEmptyMultimesh and emptyObjectList to handle cases where
+//    a multi-mesh consists of all empty blocks.
+//
+//    Mark C. Miller, Wed Jun 15 09:16:56 PDT 2016
+//    Added support for loading the block decomposition as a variable
+//    under certain conditions.
 // ****************************************************************************
 
 class avtSiloFileFormat : public avtSTMDFileFormat
@@ -339,6 +347,9 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     bool                  metadataIsTimeVaryingChecked;
     bool                  hasDisjointElements;
     std::string           codeNameGuess;
+    bool                  addBlockDecompositionAsVar;
+    bool                  haveAddedBlockDecompositionAsVar;
+    bool                  ignoreMissingBlocks;
 
     bool                  ioInfoValid;
     avtIOInformation      ioInfo;
@@ -358,11 +369,16 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     avtSiloMBObjectCache multimatCache;
     avtSiloMBObjectCache multispecCache;
 
+    std::string                          firstAllEmptyMultimesh;
+    std::map<std::string, bool>          emptyObjectsList;
+
     std::map<std::string, std::string>   multivarToMultimeshMap;
 
     GroupInfo                       groupInfo;
     bool                            haveAmrGroupInfo;
     bool                            useLocalDomainBoundries;
+    std::vector<int>                domainToBlockGrouping;
+
 
     std::map<std::string, std::map<int, std::vector<int>* > > arbMeshCellReMap;
     std::map<std::string, std::map<int, std::vector<int>* > > arbMeshNodeReMap;
@@ -416,6 +432,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     vtkDataArray         *GetNodelistsVar(int);
     vtkDataArray         *GetAnnotIntNodelistsVar(int, std::string);
     vtkDataArray         *GetMrgTreeNodelistsVar(int, std::string);
+    vtkDataArray         *GetBlockDecompositionAsVar(int, std::string);
     vtkDataArray         *GetQuadVar(DBfile *, const char *, const char *,int);
     void                  ExpandUcdvar(DBucdvar *uv, const char *vname, const char *tvn,
                               int domain);
@@ -476,6 +493,9 @@ class avtSiloFileFormat : public avtSTMDFileFormat
     avtIntervalTree      *GetSpatialExtents(const char *);
     avtIntervalTree      *GetDataExtents(const char *);
 
+    avtLocalStructuredDomainBoundaryList *
+                          GetLocalDomainBoundaryInfo(int, const char *);
+
     void                  GetQuadGhostZones(DBquadmesh *, vtkDataSet *);
     void                  VerifyQuadmesh(DBquadmesh *, const char *);
 
@@ -496,8 +516,7 @@ class avtSiloFileFormat : public avtSTMDFileFormat
                                                            const char *name,
                                                            avtSiloMBObjectCacheEntry *obj,
                                                            const char *curdir);
-    int                   GetMeshtype(DBfile *, const char *);
-    void                  GetMeshname(DBfile *, const char *, char *);
+    int                   GetMeshname(DBfile *, const char *, char *);
     void                 *GetComponent(DBfile *, char *, const char *);
 
     void                  GetTimeVaryingInformation(DBfile *,

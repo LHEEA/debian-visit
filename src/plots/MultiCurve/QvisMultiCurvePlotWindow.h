@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -48,15 +48,11 @@ class QCheckBox;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
-class QSpinBox;
-class QVBox;
 class QvisColorButton;
 class QvisColorManagerWidget;
-class QvisColorTableButton;
 class QvisLineStyleWidget;
 class QvisLineWidthWidget;
 class QvisOpacitySlider;
-class QvisVariableButton;
 
 // ****************************************************************************
 // Class: QvisMultiCurvePlotWindow

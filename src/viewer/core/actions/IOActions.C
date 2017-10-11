@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -50,6 +50,10 @@
 
 #include <ExportDBAttributes.h>
 #include <avtColorTables.h>
+#include <HostProfileList.h>
+#include <MachineProfile.h>
+#include <InstallationFunctions.h>
+#include <SingleAttributeConfigManager.h>
 
 //
 // These methods were adapted from ViewerSubject handlers.
@@ -289,13 +293,72 @@ ExportDBAction::Execute()
 // Creation:   Fri Aug 22 10:57:49 PDT 2014
 //
 // Modifications:
+//    David Camp, Thu Aug 27 09:40:00 PDT 2015
+//    Added hostname to passed arguments.
 //   
 // ****************************************************************************
 
 void
 ExportEntireStateAction::Execute()
 {
-    GetViewerStateManager()->SaveSession(args.GetVariable());
+    GetViewerStateManager()->SaveSession(args.GetVariable(), 
+                                         args.GetStringArg1());
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+// Method: ExportHostProfileAction::Execute
+//
+// Purpose: 
+//   Execute ViewerRPC::ExportHostProfileRPC
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Jun  3 16:27:38 PDT 2016
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ExportHostProfileAction::Execute()
+{
+    std::string profileName(args.GetStringArg1());
+    std::string fileName(args.GetStringArg2());
+    bool saveInUserDir(args.GetBoolFlag());
+
+    std::string userdir = GetAndMakeUserVisItHostsDirectory();
+    HostProfileList *hpl = GetViewerState()->GetHostProfileList();
+
+    for (int i = 0; i < hpl->GetNumMachines(); ++i)
+    {
+        MachineProfile &pl = hpl->GetMachines(i);
+        std::string host = pl.GetHostNickname();
+
+        if(host != profileName) continue;
+
+        std::string name = "";
+
+        if(!saveInUserDir)
+            name = fileName;
+        else
+            name = userdir + VISIT_SLASH_STRING + fileName;
+
+        GetViewerMessaging()->Status(
+            TR("Host profile %1 exported to %2").
+               arg(host).
+               arg(name));
+
+        // Tell the user what happened.
+        GetViewerMessaging()->Message(
+            TR("VisIt exported host profile \"%1\" to the file: %2. ").
+               arg(host).
+               arg(name));
+
+        SingleAttributeConfigManager mgr(&pl);
+        mgr.Export(name);
+        break;
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -310,6 +373,8 @@ ExportEntireStateAction::Execute()
 // Creation:   Fri Aug 22 10:57:49 PDT 2014
 //
 // Modifications:
+//    David Camp, Thu Aug 27 09:40:00 PDT 2015
+//    Added hostname to argument list.
 //   
 // ****************************************************************************
 
@@ -319,7 +384,8 @@ ImportEntireStateAction::Execute()
     stringVector empty;
     GetViewerStateManager()->RestoreSession(args.GetVariable(),
                                             args.GetBoolFlag(),
-                                            empty);
+                                            empty,
+                                            args.GetStringArg1());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -334,6 +400,8 @@ ImportEntireStateAction::Execute()
 // Creation:   Fri Aug 22 10:57:49 PDT 2014
 //
 // Modifications:
+//    David Camp, Thu Aug 27 09:40:00 PDT 2015
+//    Added hostname to argument list.
 //   
 // ****************************************************************************
 
@@ -342,7 +410,8 @@ ImportEntireStateWithDifferentSourcesAction::Execute()
 {
     GetViewerStateManager()->RestoreSession(args.GetVariable(),
                                             args.GetBoolFlag(),
-                                            args.GetProgramOptions());
+                                            args.GetProgramOptions(),
+                                            args.GetStringArg1());
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -387,3 +456,4 @@ WriteConfigFileAction::Execute()
     GetViewerStateManager()->WriteConfigFile();
     GetViewerStateManager()->WriteHostProfiles();
 }
+

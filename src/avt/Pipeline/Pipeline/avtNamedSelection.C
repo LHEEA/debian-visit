@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -346,6 +346,38 @@ avtZoneIdNamedSelection::ModifyContract(avtContract_p contract) const
 
     return rv;
 }
+
+// ****************************************************************************
+//  Method: avtZoneIdNamedSelection::CreateSelection
+//
+//  Purpose:
+//      Creates an avtDataSelection for the database to read in only the data
+//      corresponding to this selection.
+//
+//  Programmer: Hank Childs
+//  Creation:   February 23, 2009
+//
+//  Modifications:
+//    Brad Whitlock, Thu Mar 15 14:15:13 PDT 2012
+//    Store the id variable in the data selection.
+//
+// ****************************************************************************
+
+avtDataSelection *
+avtZoneIdNamedSelection::CreateSelection(void)
+{
+    avtIdentifierSelection *rv = new avtIdentifierSelection;
+    rv->SetIdVariable(GetIdVariable());
+
+    // NOTE: the domains are not sent.
+    std::vector<double> ids(zoneId.size());    
+    for (size_t i = 0 ; i < zoneId.size() ; i++)
+      ids[i] = zoneId[i];
+    
+    rv->SetIdentifiers(ids);
+    return rv;
+}
+
 
 // ****************************************************************************
 //  Method: avtZoneIdNamedSelection::GetDomainList
@@ -1232,11 +1264,11 @@ avtLocationsNamedSelection::GetMatchingIds(vtkDataSet *ds, std::vector<vtkIdType
     vtkIdType cellId;
     
     vtkGenericCell *cell = vtkGenericCell::New();
-    int nLocs = locations.size();
+    size_t nLocs = locations.size();
     std::map<vtkIdType, int> idMap;
 
     //Use a map to ensure we don't get duplicate cells.
-    for (int i = 0; i < nLocs; i++)
+    for (size_t i = 0; i < nLocs; i++)
     {
         p[0] = locations[i].x;
         p[1] = locations[i].y;

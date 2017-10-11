@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -81,7 +81,9 @@ typedef vector<string> stringVector;
 #define ENDSWITHQUOTE(A) (A[strlen(A)-1] == '\'' || A[strlen(A)-1] == '\"')
 
 #define HASSPACE(A) (strstr(A, " ") != NULL)
-#define SQUOTEARG(A) (tmpArg = string("\'") + string(A) + string("\'"))
+#define HASANGLEBRACKET(A) (strstr(A, "<") != NULL || strstr(A, ">") != NULL)
+#define HASSPECIAL(A) (HASSPACE(A) || HASANGLEBRACKET(A))
+#define DQUOTEARG(A) (tmpArg = string("\"") + string(A) + string("\""))
 
 
 /*
@@ -283,6 +285,15 @@ static bool EndsWith(const char *s, const char *suffix)
  *
  *   Kathleen Biagas, Wed Dec 19 17:35:21 MST 2012
  *   Return '0' instead of '1' when only printing environment.
+ *
+ *   Kathleen Biagas, Tue Sep 29 15:51:12 MST 2015
+ *   Add movie args before any others when running -movie.
+ *
+ *   Kathleen Biagas, Tue Dec 15 13:30:47 MST 2015
+ *   Add '<' and '>' to the list of special characters that indicate an
+ *   argument needs to be re-surrounded by quotes when passing along to
+ *   visit's components.  Use double-quotes when re-surrounding instead of
+ *   single.
  *
  *****************************************************************************/
 
@@ -508,9 +519,9 @@ VisItLauncherMain(int argc, char *argv[])
         }
         else
         {
-            if (!BEGINSWITHQUOTE(argv[i]) && HASSPACE(argv[i]))
+            if (!BEGINSWITHQUOTE(argv[i]) && HASSPECIAL(argv[i]))
             {
-                SQUOTEARG(argv[i]); 
+                DQUOTEARG(argv[i]);
                 componentArgs.push_back(tmpArg);
             }
             else if (BEGINSWITHQUOTE(argv[i]) && !ENDSWITHQUOTE(argv[i]))
@@ -658,6 +669,13 @@ VisItLauncherMain(int argc, char *argv[])
         command.push_back(program);
     }
 
+    if(addMovieArguments)
+    {
+        command.push_back("-s");
+        command.push_back(quote + visitpath + string("\\makemoviemain.py") + quote);
+        command.push_back("-nowin");
+    }
+
     for(size_t i = 0; i < componentArgs.size(); ++i)
     {
         if((componentArgs[i] == "-host") && !noloopback)
@@ -667,9 +685,9 @@ VisItLauncherMain(int argc, char *argv[])
         }
 
         if (!BEGINSWITHQUOTE(componentArgs[i].c_str()) && 
-            HASSPACE(componentArgs[i].c_str()))
+            HASSPECIAL(componentArgs[i].c_str()))
         {
-            SQUOTEARG(componentArgs[i].c_str());
+            DQUOTEARG(componentArgs[i].c_str());
             command.push_back(tmpArg);
         }
         else
@@ -689,12 +707,6 @@ VisItLauncherMain(int argc, char *argv[])
             eArgs.append(engineArgs[i]);
         }
         command.push_back(eArgs);
-    }
-    if(addMovieArguments)
-    {
-        command.push_back("-s");
-        command.push_back(quote + visitpath + string("\\makemoviemain.py") + quote);
-        command.push_back("-nowin");
     }
 
     //
@@ -941,6 +953,9 @@ ReadKey(const char *key, char **keyval)
  *   Kathleen Biagas, Thu Nov  1 11:03:09 PDT 2012
  *   Set PYTHONHOME so cli still works if Python installed on system.
  *
+ *   Kathleen Biagas, Fri Jan 6 18:30:12 MST 2017
+ *   Allow user to specify their own HOME via VISITUSERHOME env var.
+ * 
  *****************************************************************************/
 
 std::string 
@@ -1027,36 +1042,83 @@ GetVisItEnvironment(stringVector &env, bool useShortFileName, bool addPluginVars
      * Determine visit user path (Path to My Documents).
      */
     {
-        char visituserpath[MAX_PATH], expvisituserpath[MAX_PATH];
-        bool haveVISITUSERHOME=0;
-        TCHAR szPath[MAX_PATH];
-        struct _stat fs;
-        if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 
-                                 SHGFP_TYPE_CURRENT, szPath))) 
+        // Test for user-specified VISITUSERHOME
+        string personalUserHome = WinGetEnv("VISITUSERHOME");
+        if (!personalUserHome.empty())
         {
-            SNPRINTF(visituserpath, 512, "%s\\VisIt", szPath);
-            haveVISITUSERHOME = true;
-        }
-
-        if (haveVISITUSERHOME)
-        {
-            ExpandEnvironmentStrings(visituserpath,expvisituserpath,512);
-            if (_stat(expvisituserpath, &fs) == -1)
+            /* User specified path, check if writeable */
+            struct _stat fs;
+            if (_stat(personalUserHome.c_str(), &fs) == -1)
             {
-                _mkdir(expvisituserpath);
+                char tmp[1024];
+                SNPRINTF(tmp, 1024, "VISITUSERHOME is set in your environment"
+                            " but the specified path does not exist.\n"
+                            "(%s)\n"
+                            "Please specify a valid path for VISITUSERHOME"
+                            " before running VisIt again.\n",
+                            personalUserHome.c_str());
+#ifdef VISIT_WINDOWS_APPLICATION
+                MessageBox(NULL, tmp, "", MB_OK);
+#else
+                fprintf(stderr, tmp);
+#endif
+                exit(0);
+            }
+            if (! (fs.st_mode & _S_IFDIR))
+            {
+                char tmp[1024];
+                SNPRINTF(tmp,1024, "VISITUSERHOME is set in your environment"
+                            " but the specified value is not a folder:\n"
+                            "(%s)\n"
+                            "Please specify a valid folder path for "
+                            "VISITUSERHOME before running VisIt again.\n",
+                            personalUserHome.c_str());
+#ifdef VISIT_WINDOWS_APPLICATION
+                MessageBox(NULL, tmp, "", MB_OK);
+#else
+                fprintf(stderr, tmp);
+#endif
+                exit(0);
+            }
+            sprintf(tmpdir, "%s\\My images", personalUserHome.c_str());
+            if (_stat(tmpdir, &fs) == -1)
+            {
+                _mkdir(tmpdir);
             }
         }
         else
         {
-            strcpy(expvisituserpath, visitpath);
+            char visituserpath[MAX_PATH], expvisituserpath[MAX_PATH];
+            bool haveVISITUSERHOME=0;
+            TCHAR szPath[MAX_PATH];
+            struct _stat fs;
+            if(SUCCEEDED(SHGetFolderPath(NULL, CSIDL_PERSONAL, NULL, 
+                                     SHGFP_TYPE_CURRENT, szPath))) 
+            {
+                SNPRINTF(visituserpath, 512, "%s\\VisIt", szPath);
+                haveVISITUSERHOME = true;
+            }
+
+            if (haveVISITUSERHOME)
+            {
+                ExpandEnvironmentStrings(visituserpath,expvisituserpath,512);
+                if (_stat(expvisituserpath, &fs) == -1)
+                {
+                    _mkdir(expvisituserpath);
+                }
+            }
+            else
+            {
+                strcpy(expvisituserpath, visitpath);
+            }
+            sprintf(tmpdir, "%s\\My images", expvisituserpath);
+            if (_stat(tmpdir, &fs) == -1)
+            {
+                _mkdir(tmpdir);
+            }
+            sprintf(tmp, "VISITUSERHOME=%s", expvisituserpath);
+            env.push_back(tmp);
         }
-        sprintf(tmpdir, "%s\\My images", expvisituserpath);
-        if (_stat(tmpdir, &fs) == -1)
-        {
-            _mkdir(tmpdir);
-        }
-        sprintf(tmp, "VISITUSERHOME=%s", expvisituserpath);
-        env.push_back(tmp);
     }
 
     /* 
@@ -1139,10 +1201,9 @@ GetVisItEnvironment(stringVector &env, bool useShortFileName, bool addPluginVars
      */
     if (!usingdev)
     {
-        sprintf(tmp, "PYTHONPATH=%s\\lib;%s\\lib\\Python\\lib", 
-                visitpath, visitpath);
+        sprintf(tmp, "PYTHONPATH=%s\\lib", visitpath);
         env.push_back(tmp);
-        sprintf(tmp, "PYTHONHOME=%s",visitpath);
+        sprintf(tmp, "PYTHONHOME=%s\\lib\\python",visitpath);
         env.push_back(tmp);
     }
     else 

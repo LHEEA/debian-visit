@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -132,6 +132,9 @@ typedef void                   (*InitializeProgressCallback)(void *, int);
 //    Hank Childs, Tue Dec 11 14:39:58 PST 2012
 //    Add method for getting last data selections.
 //
+//    Kathleen Biagas, Mon Jun  5 16:41:17 PDT 2017
+//    Added ResetAllExtents.
+//
 // ****************************************************************************
 
 class PIPELINE_API avtOriginatingSource : virtual public avtQueryableSource
@@ -174,6 +177,7 @@ class PIPELINE_API avtOriginatingSource : virtual public avtQueryableSource
                                                         void_ref_ptr);
 
     virtual bool                   Update(avtContract_p);
+    virtual void                   ResetAllExtents(void);
     virtual bool                   CanDoStreaming(avtContract_p) {return true;}
 
     static void                    SetLoadBalancer(LoadBalanceFunction,void *);
@@ -191,7 +195,7 @@ class PIPELINE_API avtOriginatingSource : virtual public avtQueryableSource
 
     // Define this so derived types don't have to.
     virtual void                   Query(PickAttributes *){;};
-    virtual avtSIL                *GetSIL(int timestep){return NULL;};
+    virtual avtSIL                *GetSIL(int){return NULL;};
     virtual bool                   FindElementForPoint(const char*, const int, 
                                        const int, const char*, double[3], int &)
                                        { return false;};
@@ -200,7 +204,7 @@ class PIPELINE_API avtOriginatingSource : virtual public avtQueryableSource
     virtual bool                   QueryCoords(const std::string &, const int, 
                                        const int, const int, double[3],
                                        const bool, const bool = false, const char *mn=NULL)
-                                       { return false;};
+                                       { (void)mn; return false;};
 
   protected:
     avtMetaData                   *metadata;

@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * All rights reserved.
 *
@@ -40,7 +40,6 @@
 #include <ParallelCoordinatesAttributes.h>
 #include <ViewerProxy.h>
 
-#include <QButtonGroup>
 #include <QCheckBox>
 #include <QGroupBox>
 #include <QComboBox>
@@ -49,23 +48,13 @@
 #include <QLineEdit>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
-#include <QRadioButton>
 #include <QSlider>
-#include <QSpinBox>
 #include <QWidget>
 #include <QNarrowLineEdit.h>
-#include <QvisColorTableButton.h>
-#include <QvisOpacitySlider.h>
 #include <QvisColorButton.h>
-#include <QvisLineStyleWidget.h>
-#include <QvisLineWidthWidget.h>
 #include <QvisVariableButton.h>
 
 #include <math.h>
-#include <stdio.h>
-#include <string>
-
-using std::string;
 
 // ****************************************************************************
 // Method: QvisParallelCoordinatesPlotWindow::QvisParallelCoordinatesPlotWindow
@@ -670,7 +659,7 @@ QvisParallelCoordinatesPlotWindow::UpdateWindow(bool doAll)
 void
 QvisParallelCoordinatesPlotWindow::GetCurrentValues(int which_widget)
 {
-    bool okay, doAll = (which_widget == -1);
+    bool doAll = (which_widget == -1);
     QString msg, temp;
 
     // Do contextGamma

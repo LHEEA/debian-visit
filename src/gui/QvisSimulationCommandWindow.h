@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -40,6 +40,7 @@
 #include <QvisPostableWindow.h>
 
 class QButtonGroup;
+class QGridLayout;
 class QGroupBox;
 class QLabel;
 class QLineEdit;
@@ -57,7 +58,9 @@ class QPushButton;
 // Creation:   Tue Jul  8 13:26:51 PDT 2008
 //
 // Modifications:
-//   
+//    Brad Whitlock, Wed Aug  5 17:25:48 PDT 2015
+//    Let the window have an arbitrary number of simulation command buttons.
+//
 // ****************************************************************************
 
 class QvisSimulationCommandWindow : public QvisPostableWindow
@@ -70,17 +73,23 @@ public:
     virtual ~QvisSimulationCommandWindow();
     virtual void CreateEntireWindow();
 
-    void setButtonCommand(int index, const QString &cmd);
-    void setButtonEnabled(int index, bool);
-    void setCustomButton(int index);
+    int  numCommandButtons() const;
+    bool setButtonCommand(int index, const QString &cmd);
+    bool setButtonEnabled(int index, bool enabled, bool clearText);
+    void setCustomButtonEnabled(bool);
     void setTimeValues(bool timeRanging, 
                        const QString &start, 
                        const QString &stop,
                        const QString &step);
 
+    void setTimeRanging(bool timeRanging);
+    void setTimeStart(const QString &start);
+    void setTimeStep(const QString &step);
+    void setTimeStop(const QString &stop);
+
 signals:
     void executeButtonCommand(const QString &cmd);
-    void showCommandWindow();
+    void showCustomUIWindow();
     void timeRangingToggled(const QString &);
     void executeStart(const QString &);
     void executeStop(const QString &);
@@ -90,12 +99,13 @@ public slots:
     void unpost();
 private slots:
     void handleTimeRanging(bool);
-    void handleStart();
-    void handleStop();
-    void handleStep();
+    void handleStart(const QString&);
+    void handleStop(const QString&);
+    void handleStep(const QString&);
     void handleCommandButton(int);
 protected:
     virtual void CreateWindowContents();
+    bool EnsureButtonExists(int index, bool &added);
 private:
     QGroupBox          *timeGroup;
     QLineEdit          *startCycle;
@@ -105,9 +115,11 @@ private:
     QLabel             *stopLabel;
     QLabel             *stepLabel;
 
-    int                 commandButtonIndex;
+    QGroupBox          *commandGroupBox;
+    QWidget            *commandButtonParent;
     QButtonGroup       *commandGroup;
-    QPushButton        *cmdButtons[6];
+    QGridLayout        *commandButtonLayout;
+    QPushButton        *activateCustomGUI;
 };
 
 #endif

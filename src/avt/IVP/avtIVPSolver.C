@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -43,7 +43,6 @@
 #include <avtIVPSolver.h>
 #include <avtIVPStateHelper.h>
 
-
 // ****************************************************************************
 //  Method: avtIVPSolver::GetState
 //
@@ -55,9 +54,15 @@
 //
 // ****************************************************************************
 
-avtIVPSolver::avtIVPSolver() : convertToCartesian(false), convertToCylindrical(false),
-                               order(1), yCur(avtVector()), h(1e-5), h_max(1e-5),
-                               tol(1e-8), t(0.0), period(0), baseTime(0), maxTime(1),
+avtIVPSolver::avtIVPSolver() : convertToCartesian(false),
+                               convertToCylindrical(false),
+                               order(1),
+                               yCur(avtVector()), vCur(avtVector()),
+                               h(1e-5), h_max(1e-5), tol(1e-8), t(0.0),
+                               periodic_boundary_x(0.),
+                               periodic_boundary_y(0.),
+                               periodic_boundary_z(0.),
+                               period(0), baseTime(0), maxTime(1),
                                direction(DIRECTION_BACKWARD)
 {
 }
@@ -77,8 +82,29 @@ avtIVPSolver::avtIVPSolver() : convertToCartesian(false), convertToCylindrical(f
 avtVector 
 avtIVPSolver::GetCurrentY() const
 {
-    return yCur;
+    avtVector pt = yCur;
+
+    if( periodic_boundary_x > 0 )
+    {
+      while(                pt.x < 0    ) pt.x += periodic_boundary_x;
+      while( periodic_boundary_x < pt.x ) pt.x -= periodic_boundary_x;
+    }
+
+    if( periodic_boundary_y > 0 )
+    {
+      while(                pt.y < 0    ) pt.y += periodic_boundary_y;
+      while( periodic_boundary_y < pt.y ) pt.y -= periodic_boundary_y;
+    }
+
+    if( periodic_boundary_z > 0 )
+    {
+      while(                pt.z < 0    ) pt.z += periodic_boundary_z;
+      while( periodic_boundary_z < pt.z ) pt.z -= periodic_boundary_z;
+    }
+
+    return pt;
 }
+
 
 // ****************************************************************************
 //  Method: avtIVPSolver::SetCurrentY
@@ -95,6 +121,42 @@ void
 avtIVPSolver::SetCurrentY(const avtVector &newY)
 {
     yCur = newY;
+}
+
+
+// ****************************************************************************
+//  Method: avtIVPSolver::GetCurrentV
+//
+//  Purpose:
+//      Gets the current V.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 5, 2008
+//
+// ****************************************************************************
+
+avtVector 
+avtIVPSolver::GetCurrentV() const
+{
+    return vCur;
+}
+
+
+// ****************************************************************************
+//  Method: avtIVPSolver::SetCurrentV
+//
+//  Purpose:
+//      Sets the current V.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   August 5, 2008
+//
+// ****************************************************************************
+
+void
+avtIVPSolver::SetCurrentV(const avtVector &newV)
+{
+    vCur = newV;
 }
 
 
@@ -343,6 +405,45 @@ avtIVPSolver::SetToCylindrical(bool val)
 
 
 // ****************************************************************************
+//  Method: avtIVPSolver::GetBoundary
+//
+//  Purpose:
+//      Gets the periodic boundary.
+//
+//  Programmer: Allen Sanderson
+//  Creation:   April 16, 2015
+//
+// ****************************************************************************
+
+void
+avtIVPSolver::GetBoundaries(double &x, double &y, double &z ) const
+{
+  x = periodic_boundary_x;
+  y = periodic_boundary_y;
+  z = periodic_boundary_z;
+}
+
+// ****************************************************************************
+//  Method: avtIVPSolver::SetBoundary
+//
+//  Purpose:
+//      Sets for periodic boundary.
+//
+//  Programmer: Allen Sanderson
+//  Creation:   April 16, 2015
+//
+// ****************************************************************************
+
+void
+avtIVPSolver::SetBoundaries(const double &x, const double &y, const double &z )
+{
+  periodic_boundary_x = x;
+  periodic_boundary_y = y;
+  periodic_boundary_z = z;
+}
+
+
+// ****************************************************************************
 //  Method: avtIVPSolver::GetPeriod
 //
 //  Purpose:
@@ -395,6 +496,7 @@ avtIVPSolver::GetBaseTime() const
     return baseTime;
 }
 
+
 // ****************************************************************************
 //  Method: avtIVPSolver::SetBaseTime
 //
@@ -430,6 +532,7 @@ avtIVPSolver::GetDirection() const
 {
     return direction;
 }
+
 
 // ****************************************************************************
 //  Method: avtIVPSolver::SetDirection
@@ -491,6 +594,49 @@ avtIVPSolver::PutState(const avtIVPState& state)
     this->AcceptStateVisitor(aiss);
 }
 
+// ****************************************************************************
+//  Method: avtIVPSolver::AcceptStateVisitor
+//
+//  Purpose:
+//      Loads the state into the state helper.
+//
+//  Programmer: Allen Sanderson
+//  Creation:   August 13, 2015
+//
+// ****************************************************************************
+
+void
+avtIVPSolver::AcceptStateVisitor(avtIVPStateHelper& aiss)
+{
+    aiss.Accept(order)
+        .Accept(yCur)
+        .Accept(vCur)
+        .Accept(h)
+        .Accept(h_max)
+        .Accept(tol)
+        .Accept(t)
+        .Accept(direction)
+        .Accept(periodic_boundary_x)
+        .Accept(periodic_boundary_y)
+        .Accept(periodic_boundary_z)
+        .Accept(period)
+        .Accept(baseTime)
+        .Accept(maxTime)
+        .Accept(convertToCartesian)
+        .Accept(convertToCylindrical);
+}
+
+// ****************************************************************************
+//  Method: avtIVPSolver::ConvertResult
+//
+//  Purpose:
+//      Converts the restult from the avtIVPField world to the
+//      avtIVPSolver world.
+//
+//  Programmer: Dave Pugmire
+//  Creation:   June 13, 2012
+//
+// ****************************************************************************
 
 avtIVPSolver::Result
 avtIVPSolver::ConvertResult(const avtIVPField::Result &res) const

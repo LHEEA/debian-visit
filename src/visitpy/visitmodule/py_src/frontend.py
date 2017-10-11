@@ -1,6 +1,6 @@
 ###############################################################################
 #
-# Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+# Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 # Produced at the Lawrence Livermore National Laboratory
 # LLNL-CODE-442911
 # All rights reserved.
@@ -247,7 +247,8 @@ class VisItModuleState(object):
     @classmethod
     def __read_visit_env(cls,vcmd):
         if sys.platform.startswith("win"):
-            pcmd = [vcmd, "-env"]
+            pcmd = vcmd.strip().split(' ')
+            pcmd.append("-env")
         else:
             pcmd = vcmd + " -env"
         p = subprocess.Popen(pcmd,

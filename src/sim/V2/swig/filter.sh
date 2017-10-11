@@ -3,7 +3,8 @@
 # the get methods from the data objects since we don't really need them.
 #
 
-cat ../lib/VisIt_CommandMetaData.h \
+cat \
+../lib/VisIt_CommandMetaData.h \
 ../lib/VisIt_CSGMesh.h \
 ../lib/VisIt_CurveData.h \
 ../lib/VisIt_CurveMetaData.h \
@@ -16,6 +17,7 @@ cat ../lib/VisIt_CommandMetaData.h \
 ../lib/VisIt_MaterialMetaData.h \
 ../lib/VisIt_MeshMetaData.h \
 ../lib/VisIt_NameList.h \
+../lib/VisIt_OptionList.h \
 ../lib/VisIt_PointMesh.h \
 ../lib/VisIt_RectilinearMesh.h \
 ../lib/VisIt_SimulationMetaData.h \

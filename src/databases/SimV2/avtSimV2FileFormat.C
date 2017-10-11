@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -67,6 +67,8 @@
 
 #include <visitstream.h>
 
+#include "vtkComponentDataArray.h"
+
 #include <vtkCellArray.h>
 #include <vtkCellData.h>
 #include <vtkFieldData.h>
@@ -101,6 +103,7 @@ using std::ostringstream;
 #include <simv2_ExpressionMetaData.h>
 #include <simv2_MaterialMetaData.h>
 #include <simv2_MeshMetaData.h>
+#include <simv2_MessageMetaData.h>
 #include <simv2_NameList.h>
 #include <simv2_SimulationMetaData.h>
 #include <simv2_SpeciesMetaData.h>
@@ -118,14 +121,15 @@ using std::ostringstream;
 #include <simv2_DeleteEventObserver.h>
 #include <simv2_UnstructuredMesh.h>
 
-vtkDataSet *SimV2_GetMesh_Curvilinear(visit_handle h);
-vtkDataSet *SimV2_GetMesh_Rectilinear(visit_handle h);
-vtkDataSet *SimV2_GetMesh_Unstructured(int, visit_handle h, avtPolyhedralSplit **);
-vtkDataSet *SimV2_GetMesh_Point(visit_handle h);
-vtkDataSet *SimV2_GetMesh_CSG(visit_handle h);
+#include "SimV2GetMesh.h"
 
 const char *AUXILIARY_DATA_POLYHEDRAL_SPLIT = "POLYHEDRAL_SPLIT";
 #endif
+
+int zc_getvoidpointer()
+{
+    return 0;
+}
 
 // ****************************************************************************
 //  Method: avtSimV2 constructor
@@ -581,16 +585,7 @@ AddVariableMetaData(avtDatabaseMetaData *md, visit_handle h)
 
                 // See if the mesh for this variable has a material so we can
                 // potentially restrict this variable to certain material regions.
-                const avtMaterialMetaData *mmd = NULL;
-                TRY
-                {
-                    std::string matObjectName = md->MaterialOnMesh(meshName);
-                    mmd = md->GetMaterial(matObjectName);
-                }
-                CATCHALL
-                {
-                }
-                ENDTRY
+                const avtMaterialMetaData *mmd = md->GetMaterialOnMesh(meshName);
 
                 // Create the appropriate metadata based on the variable type.
                 if(type == VISIT_VARTYPE_SCALAR)
@@ -1017,6 +1012,44 @@ CommandMetaDataToCommandSpec(visit_handle h, avtSimulationCommandSpecification &
         scs.SetArgumentType(avtSimulationCommandSpecification::CmdArgNone);
         free(name);
     }
+
+    int enabled = 1;
+
+    if(simv2_CommandMetaData_getEnabled(h, &enabled) == VISIT_OKAY)
+    {
+        scs.SetEnabled(enabled);
+    }
+}
+
+
+// ****************************************************************************
+// Method: MessageMetaDataToString
+//
+// Purpose:
+//   Populates string from MessageMetaData.
+//
+// Arguments:
+//
+// Returns:
+//
+// Note:
+//
+// Programmer: Brad Whitlock
+// Creation:   Tue Mar  9 13:46:29 PST 2010
+//
+// Modifications:
+//
+// ****************************************************************************
+
+void
+MessageMetaDataToString(visit_handle h, std::string &str)
+{
+    char *name = NULL;
+    if(simv2_MessageMetaData_getName(h, &name) == VISIT_OKAY)
+    {
+        str = std::string(name);
+        free(name);
+    }
 }
 #endif
 
@@ -1273,6 +1306,25 @@ avtSimV2FileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
         }
     }
 
+
+    //
+    // Add simulation messages.
+    //
+    int numMessages = 0;
+    simv2_SimulationMetaData_getNumMessages(h, numMessages);
+
+    for (int i=0; i < numMessages; i++)
+    {
+        visit_handle cHandle = VISIT_INVALID_HANDLE;
+        if(simv2_SimulationMetaData_getMessage(h, i, cHandle) == VISIT_OKAY)
+        {
+            std::string message;
+            MessageMetaDataToString(cHandle, message);
+            md->GetSimInfo().SetMessage(message);
+        }
+    }
+
+
     if (DebugStream::Level4())
     {
         debug4 << mName << "Returning meta data:" << endl;
@@ -1304,28 +1356,45 @@ avtSimV2FileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 //
 // ****************************************************************************
 
-static vtkIntArray *
+static vtkDataArray *
 PackageGlobalIdArray(visit_handle global, const char *name)
 {
-    vtkIntArray *arr = NULL;
+    vtkDataArray *arr = NULL;
     // Get the global cell id information
-    int owner, dataType, nComps, nTuples = 0;
+    int memory, owner, dataType, nComponents = 0, nTuples = 0, offset = 0, stride = 0;
     void *data = 0;
-    if(simv2_VariableData_getData(global, owner, dataType, nComps, nTuples, data))
+    if(simv2_VariableData_getArrayData(global, 0, memory, owner, dataType, nComponents, nTuples, offset, stride, data))
     {
-        arr = vtkIntArray::New();
-        arr->SetName(name);
-        arr->SetNumberOfTuples(nTuples);
-        if(dataType == VISIT_DATATYPE_INT)
-            memcpy(arr->GetVoidPointer(0), data, sizeof(int) * nTuples);
+        vtkIntArray *a = vtkIntArray::New();
+        a->SetName(name);
+        if(memory == VISIT_MEMORY_CONTIGUOUS && dataType == VISIT_DATATYPE_INT)
+        {
+            // Zero copy.
+            int saveArray = ((owner == VISIT_OWNER_SIM) ? 1 : 0);
+            a->SetArray(static_cast<int *>(data), nComponents*nTuples, saveArray);
+        }
         else
         {
-            int *iptr = (int *)arr->GetVoidPointer(0);
-            const long *lptr = (const long *)data;
-            for(int i = 0; i < nTuples; ++i)
-                iptr[i] = lptr[i];
+            debug5 << "Requesting " << name << " from simulation and converting "
+                      "to int due to assumptions in AVT." << endl;
+
+            // Copy to int. We have to copy to int because AVT has some assumptions
+            // that the global ids will be a vtkIntArray.
+            a->SetName(name);
+            a->SetNumberOfTuples(nTuples);
+            int *iptr = (int *)a->GetVoidPointer(0);
+            switch(dataType)
+            {
+            simV2TemplateMacro(
+                const simV2_TT::cppType *src = reinterpret_cast<const simV2_TT::cppType *>(data);
+                for(int i = 0; i < nTuples; ++i)
+                    iptr[i] = static_cast<int>(src[i]);
+            );
+            }
         }
+        arr = a;
     }
+
     return arr;
 }
 
@@ -1351,10 +1420,10 @@ PackageGlobalIdArray(visit_handle global, const char *name)
 //
 // ****************************************************************************
 
-static vtkIntArray *
+static vtkDataArray *
 CreateUnstructuredMeshGlobalCellIds(visit_handle h)
 {
-    vtkIntArray *retval = NULL;
+    vtkDataArray *retval = NULL;
     visit_handle globalCells = VISIT_INVALID_HANDLE;
     if(simv2_UnstructuredMesh_getGlobalCellIds(h, &globalCells) == VISIT_OKAY)
     {
@@ -1386,10 +1455,10 @@ CreateUnstructuredMeshGlobalCellIds(visit_handle h)
 //
 // ****************************************************************************
 
-static vtkIntArray *
+static vtkDataArray *
 CreateUnstructuredMeshGlobalNodeIds(visit_handle h)
 {
-    vtkIntArray *retval = NULL;
+    vtkDataArray *retval = NULL;
     visit_handle globalNodes = VISIT_INVALID_HANDLE;
     if(simv2_UnstructuredMesh_getGlobalNodeIds(h, &globalNodes) == VISIT_OKAY)
     {
@@ -1430,10 +1499,10 @@ vtkDataSet *
 avtSimV2FileFormat::GetMesh(int domain, const char *meshname)
 {
 #ifdef MDSERVER
+    (void)domain;
     (void)meshname;
     return NULL;
 #else
-
     if (curveMeshes.count(meshname))
     {
         return GetCurve(meshname);
@@ -1477,7 +1546,7 @@ avtSimV2FileFormat::GetMesh(int domain, const char *meshname)
             {
                 // Try and add the global ids if we have not split the mesh.
 
-                vtkIntArray *globalCellIds = CreateUnstructuredMeshGlobalCellIds(h);
+                vtkDataArray *globalCellIds = CreateUnstructuredMeshGlobalCellIds(h);
                 if(globalCellIds != NULL)
                 {
                     void_ref_ptr vr = void_ref_ptr(globalCellIds, avtVariableCache::DestructVTKObject);
@@ -1485,7 +1554,7 @@ avtSimV2FileFormat::GetMesh(int domain, const char *meshname)
                                         domain, vr);
                 }
 
-                vtkIntArray *globalNodeIds = CreateUnstructuredMeshGlobalNodeIds(h);
+                vtkDataArray *globalNodeIds = CreateUnstructuredMeshGlobalNodeIds(h);
                 if(globalNodeIds != NULL)
                 {
                     void_ref_ptr vr = void_ref_ptr(globalNodeIds, avtVariableCache::DestructVTKObject);
@@ -1544,15 +1613,24 @@ avtSimV2FileFormat::GetMesh(int domain, const char *meshname)
 //   Brad Whitlock, Tue Jan 18 00:14:15 PST 2011
 //   I added code to use the array from the simulation directly.
 //
+//   Brad Whitlock, Mon Jul 20 16:58:17 PDT 2015
+//   I removed the copy case since that's handled differently now.
+//
+//   Burlen Loring, Sat Sep 12 15:32:21 PDT 2015
+//   I added an error report if VISIT_OWNER_EX is used without a
+//   callback
+//
 // ****************************************************************************
 
 template <class ARR, class T>
 void
 StoreVariableData(ARR *array, T *src, int nComponents, int nTuples,
-   int owner, void(*callback)(void*), void *callbackData)
+    const char *varname, int owner, void(*callback)(void*), void *callbackData)
 {
     if (nComponents == 2)
     {
+        debug5 << "StoreVariableData: copy 2D vector to 3D vector." << endl;
+
         // make 3d vectors as VTK requires
         array->SetNumberOfComponents(3);
         array->SetNumberOfTuples(nTuples);
@@ -1571,6 +1649,16 @@ StoreVariableData(ARR *array, T *src, int nComponents, int nTuples,
         array->SetNumberOfComponents(nComponents);
         if (owner == VISIT_OWNER_VISIT_EX)
         {
+            debug5 << "StoreVariableData: zero copy with supplied deletion callback." << endl;
+
+            if (!callback)
+            {
+                ostringstream oss;
+                oss << "Attempt to use VISIT_OWNER_VISIT_EX without a callback"
+                    << " for variable " << (varname ? varname : "unnamed");
+                EXCEPTION1(ImproperUseException, oss.str().c_str());
+             }
+
             // zero-copy
             // we observe VTK data array's DeleteEvent and invoke the user
             // provided callback in repsonse. it's the callbacks duty to free
@@ -1580,22 +1668,17 @@ StoreVariableData(ARR *array, T *src, int nComponents, int nTuples,
             simV2_DeleteEventObserver *observer = simV2_DeleteEventObserver::New();
             observer->Observe(array, callback, callbackData);
             // this is not a leak, the observer is Delete'd after it's invoked.
-
         }
         else
         if ((owner == VISIT_OWNER_VISIT) || (owner == VISIT_OWNER_SIM))
         {
+            debug5 << "StoreVariableData: zero copy." << endl;
+
             // zero-copy
             // VTK assumes ownership for VISIT_OWNER_VISIT. for VISIT_OWNER_SIM
             // the sim must ensure that data persists while VTK is using it, 
             int saveArray = ((owner == VISIT_OWNER_SIM) ? 1 : 0);
             array->SetArray(src, nComponents*nTuples, saveArray);
-        }
-        else
-        {
-            // copy
-            array->SetNumberOfTuples(nTuples);
-            memcpy(array->GetVoidPointer(0), src, sizeof(T)*nTuples*nComponents);
         }
     }
 }
@@ -1901,6 +1984,224 @@ avtSimV2FileFormat::ExpandVariable(vtkDataArray *array, avtMixedVariable **mv,
 #endif
 }
 
+#ifndef MDSERVER
+// ****************************************************************************
+// Method: SimV2_GetVar_Single
+//
+// Purpose:
+//   Get a vtkDataArray that wraps data from a VisIt_VariableData object that
+//   has a single underlying array.
+//
+// Arguments:
+//   hvar : A handle to a VisIt_VariableData object.
+//
+// Returns:    A vtkDataArray that wraps the VisIt_VariableData's data.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Jul 20 16:35:54 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+vtkDataArray *
+SimV2_GetVar_Single(visit_handle hvar, const char *varname)
+{
+    vtkDataArray *array = NULL;
+    int owner, dataType, nComponents, memory, offset, stride;
+    void *data = NULL;
+
+    // Get the data from the opaque object.
+    int nTuples;
+    int err = simv2_VariableData_getArrayData(hvar, 0, memory,
+                                              owner, dataType,
+                                              nComponents, nTuples,
+                                              offset, stride,
+                                              data);
+    if (err == VISIT_ERROR)
+    {
+        ostringstream oss;
+        oss << "Failed to get data for " << varname;
+        EXCEPTION1(InvalidVariableException, oss.str().c_str());
+    }
+
+    // This is okay. A domain can return NULL for no-data.
+    if (nTuples < 1)
+        return NULL;
+
+    if (!simV2_ValidDataType(dataType))
+    {
+        ostringstream oss;
+        oss << "Unsupported data type for " << varname;
+        EXCEPTION1(InvalidVariableException, oss.str().c_str());
+    }
+
+    if(memory == VISIT_MEMORY_CONTIGUOUS)
+    {
+        debug5 << "SimV2_GetVar_Single: contiguous data" << endl;
+
+        // Get the callback.
+        void (*callback)(void*) = NULL;
+        void *callbackData = NULL;
+        simv2_VariableData_getDeletionCallback(hvar, callback, callbackData);
+
+        // Zero-copy, single component, use VTK data array types.
+        switch (dataType)
+        {
+        simV2TemplateMacro(
+            simV2_TT::vtkType *da = simV2_TT::vtkType::New();
+            StoreVariableData(da, static_cast<simV2_TT::cppType*>(data),
+                nComponents, nTuples, varname, owner, callback, callbackData);
+            array = da;
+        );
+        }
+    }
+    else if(memory == VISIT_MEMORY_STRIDED)
+    {
+        debug5 << "SimV2_GetVar_Single: zero copy of strided data" << endl;
+
+        // Zero-copy, single component, use component data array type.
+        bool owns = (owner == VISIT_OWNER_VISIT);
+        switch (dataType)
+        {
+        simV2TemplateMacro(
+            vtkComponentDataArray<simV2_TT::cppType> *da = vtkComponentDataArray<simV2_TT::cppType>::New();
+            da->SetNumberOfTuples(nTuples);
+            da->SetComponentData(0, vtkArrayComponentStride(data, offset, stride, simV2_TT::vtkEnum, owns));
+            array = da;
+        );
+        }
+    }
+    else
+    {
+        ostringstream oss;
+        oss << "Unsupported memory layout for " << varname;
+        EXCEPTION1(InvalidVariableException, oss.str().c_str());
+    }
+
+    return array;
+}
+
+// ****************************************************************************
+// Method: SimV2_GetVar_Multiple
+//
+// Purpose:
+//   Assemble a vtkDataArray out of a VariableData object that consists of 
+//   multiple arrays.
+//
+// Arguments:
+//   hvar : A handle to the VisIt_VariableData object.
+//
+// Returns:    A vtkDataArray object that wraps the data.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Jul 20 16:58:44 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+vtkDataArray *
+SimV2_GetVar_Multiple(visit_handle hvar, const char *varname, int nArrs)
+{
+    vtkDataArray *array = NULL;
+    int owner, dataType, nComponents, memory, offset, stride;
+    void *data = NULL;
+
+    // Zero-copy, multiple component
+    int *nTuples = new int[nArrs];
+    vtkComponentDataArray<float> *da = vtkComponentDataArray<float>::New();
+    da->SetNumberOfComponents(nArrs);
+    for(int i = 0; i < nArrs; ++i)
+    {
+        // Get the data from the opaque object.
+        int err = simv2_VariableData_getArrayData(hvar, i, memory,
+                                                  owner, dataType,
+                                                  nComponents, nTuples[i],
+                                                  offset, stride,
+                                                  data);
+        if (err == VISIT_ERROR)
+        {
+            delete [] nTuples;
+            da->Delete();
+            ostringstream oss;
+            oss << "Failed to get component " << i << " data for " << varname;
+            EXCEPTION1(InvalidVariableException, oss.str().c_str());
+        }
+
+        if(i == 0)
+            da->SetNumberOfTuples(nTuples[i]);
+
+        bool owns = (owner == VISIT_OWNER_VISIT);
+        int vtktype = SimV2_GetVTKType(dataType);
+        da->SetComponentData(i, vtkArrayComponentStride(data, offset, stride, vtktype, owns));
+    }
+
+    for(int i = 1; i < nArrs; ++i)
+    {
+        if(nTuples[0] != nTuples[i])
+        {
+            da->Delete();
+            ostringstream oss;
+            oss << "The number of tuples is not the same for the tuples of " << varname;
+            EXCEPTION1(InvalidVariableException, oss.str().c_str());
+        }
+    }
+    delete [] nTuples;
+
+    array = da;
+
+    return array;
+}
+
+// ****************************************************************************
+// Method: SimV2_GetVar
+//
+// Purpose:
+//   Returns a vtkDataArray representation of the VisIt_VariableData object.
+//
+// Arguments:
+//   hvar : A handle to a VisIt_VariableData object.
+//
+// Returns:    A vtkDataArray that wraps the variable data's data.
+//
+// Note:       
+//
+// Programmer: Brad Whitlock
+// Creation:   Mon Jul 20 16:31:26 PDT 2015
+//
+// Modifications:
+//
+// ****************************************************************************
+
+static vtkDataArray *
+SimV2_GetVar(visit_handle hvar, const char *varname)
+{
+    vtkDataArray *array = NULL;
+    debug5 << "SimV2_GetVar" << endl;
+
+    // Get the number of arrays.
+    int nArrs = 1;
+    if (simv2_VariableData_getNumArrays(hvar, &nArrs) == VISIT_ERROR)
+    {
+        ostringstream oss;
+        oss << "Failed to get number of arrays for " << varname;
+        EXCEPTION1(InvalidVariableException, oss.str().c_str());
+    }
+
+    if(nArrs > 1)
+        array = SimV2_GetVar_Multiple(hvar, varname, nArrs);
+    else
+        array = SimV2_GetVar_Single(hvar, varname);
+
+    return array;
+}
+#endif
+
 // ****************************************************************************
 //  Method: avtSimV2FileFormat::GetVar
 //
@@ -1931,6 +2232,9 @@ avtSimV2FileFormat::ExpandVariable(vtkDataArray *array, avtMixedVariable **mv,
 //    * zero-copy support
 //    * bug/leak fix, only malloc mixvar once
 //
+//    Brad Whitlock, Mon Jun 29 11:15:57 PDT 2015
+//    Added per-component strided memory access.
+//    
 // ****************************************************************************
 
 vtkDataArray *
@@ -1942,7 +2246,6 @@ avtSimV2FileFormat::GetVar(int domain, const char *varname)
     return NULL;
 #else
 
-
     visit_handle hvar = simv2_invoke_GetVariable(domain, varname);
     if (hvar == VISIT_INVALID_HANDLE)
     {
@@ -1952,53 +2255,25 @@ avtSimV2FileFormat::GetVar(int domain, const char *varname)
         return NULL;
     }
 
-    // Get the data from the opaque object.
-    int owner, dataType, nComponents, nTuples;
-    void *data = NULL;
-    void (*callback)(void*) = NULL;
-    void *callbackData = NULL;
+    // Get the variable.
+    vtkDataArray *array = SimV2_GetVar(hvar, varname);
 
-    int err = simv2_VariableData_getDataEx(hvar, owner, dataType, nComponents,
-                                        nTuples, data, callback, callbackData);
-
-    if (err == VISIT_ERROR)
-    {
-        ostringstream oss;
-        oss << "Failed to get data for " << varname;
-        EXCEPTION1(InvalidVariableException, oss.str().c_str());
-    }
-    
-    if (nTuples < 1)
-        return NULL;
-
-    if (!simV2_ValidDataType(dataType))
-    {
-        ostringstream oss;
-        oss << "Unsupported data type for " << varname;
-        EXCEPTION1(InvalidVariableException, oss.str().c_str());
-    }
-
-    vtkDataArray *array = NULL;
-    switch (dataType)
-    {
-    simV2TemplateMacro(
-        simV2_TT::vtkType *da = simV2_TT::vtkType::New();
-        StoreVariableData(da, static_cast<simV2_TT::cppType*>(data),
-            nComponents, nTuples, owner, callback, callbackData);
-        array = da;
-        );
-    }
+    // We've wrapped the data from the sim at this point. Clear out the VariableData object.
     simv2_VariableData_nullData(hvar);
     simv2_VariableData_free(hvar);
 
+    int owner, dataType, nComponents;
+    void *data = NULL;
     // Get the mixed variable.
     avtMixedVariable *mv = NULL;
     hvar = simv2_invoke_GetMixedVariable(domain, varname);
     int nMixVarComponents = 1;
     if (hvar != VISIT_INVALID_HANDLE)
     {
-        err = simv2_VariableData_getData(hvar, owner, dataType, nComponents,
-                                         nTuples, data);
+// TODO: Use SimV2_GetVar (would handle strided data) and convert to avtMixedVariable.
+        int nTuples = 1;
+        int err = simv2_VariableData_getData(hvar, owner, dataType, nComponents,
+                                             nTuples, data);
 
         if ( (err != VISIT_ERROR) && (nTuples > 0) 
           && simV2_ValidDataType(dataType) )
@@ -2422,12 +2697,12 @@ avtSimV2FileFormat::GetCurve(const char *name)
 
     vtkRectilinearGrid *rg = 0;
 
-    int owner[2], dataType[2], nComps[2], nTuples[2];
+    int memory[2], owner[2], dataType[2], nComps[2], nTuples[2], offset[2], stride[2];
     void *data[2] = {0, 0};
     for(int i = 0; i < 2; ++i)
     {
-        if(simv2_VariableData_getData(cHandles[i], owner[i], dataType[i],
-            nComps[i], nTuples[i], data[i]) == VISIT_ERROR)
+        if(simv2_VariableData_getArrayData(cHandles[i], 0, memory[i], owner[i], dataType[i],
+            nComps[i], nTuples[i], offset[i], stride[i], data[i]) == VISIT_ERROR)
         {
             simv2_FreeObject(h);
             EXCEPTION1(ImproperUseException,
@@ -2459,16 +2734,20 @@ avtSimV2FileFormat::GetCurve(const char *name)
             arr->Delete();
         }
         float *pArr = arr->GetPointer(0);
-
+#define COPYTOPARR(INDEX, SRCVAL) pArr[INDEX] = static_cast<float>(SRCVAL)
+        bool err = true;
         switch (dataType[i])
         {
         // copy the data into float array
         simV2TemplateMacro(
-            simV2_TT::cppType *src = static_cast<simV2_TT::cppType*>(data[i]);
-            for(int j = 0; j < nTuples[i]; ++j)
-                { pArr[j] = static_cast<float>(src[j]); }
+            simV2MemoryCopyMacro(COPYTOPARR, memory[i], nTuples[i], offset[i], stride[i], simV2_TT::cppType, data[i], err)
             );
         }
+        if(err)
+        {
+            debug5 << "Error with curve coordinates." << endl;
+        }
+#undef COPYTOPARR
     }
 
     simv2_FreeObject(h);
@@ -2711,6 +2990,8 @@ avtSimV2FileFormat::PopulateIOInformation(const std::string &meshname,
     simv2_FreeObject(h);
     return true;
 #else
+    (void)meshname;
+    (void)ioInfo;
     return false;
 #endif
 }

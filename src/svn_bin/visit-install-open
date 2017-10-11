@@ -71,6 +71,27 @@
 #   Eric Brugger, Thu Feb 19 09:14:29 PST 2015
 #   I removed redsky.
 #
+#   Kathleen Biagas, Thu May  7 09:35:34 PDT 2015
+#   Added vulcan, changed rzuseq bank to wbronze.
+#
+#   Eric Brugger, Thu Sep 24 09:17:41 PDT 2015
+#   I removed sidious.
+#
+#   Eric Brugger, Tue Nov 22 16:23:56 PST 2016
+#   I added quartz.
+#
+#   Eric Brugger, Mon Jan  9 13:50:10 PST 2017
+#   I replaced aztec with surface.
+#
+#   Eric Brugger, Tue Feb  7 10:42:05 PST 2017
+#   I added rztrona.
+#
+#   Eric Brugger, Fri Feb 17 12:16:04 PST 2017
+#   I changed the bank for all the LLNL systems from bdivp to wbronze.
+#
+#   Eric Brugger, Wed Jun 21 11:23:41 PDT 2017
+#   I replaced surface with cab.
+#
 #-----------------------------------------------------------------------
 
 test=no
@@ -112,14 +133,16 @@ esac
 # Parse the execute line, providing default values for error checking.
 #
 kickit=true
-sidious=false
 ubuntu1104_64=false
 ubuntu1404_64=false
-aztec=true
+cab=true
+quartz=true
+rztrona=true
 rzzeus=true
 rzuseq=false
 carver=true
 glory=false
+vulcan=false
 
 ver=undefined
 
@@ -133,10 +156,11 @@ do
    case $1 in
       -none)
          kickit=false
-         sidious=false
          ubuntu1104_64=false
          ubuntu1404_64=false
-         aztec=false
+         cab=false
+         quartz=false
+         rztrona=false
          rzzeus=false
          carver=false
          glory=false
@@ -148,14 +172,6 @@ do
          ;;
       +kickit)
          kickit=true
-         shift
-         ;;
-      -sidious)
-         sidious=false
-         shift
-         ;;
-      +sidious)
-         sidious=true
          shift
          ;;
       -ubuntu1104_64)
@@ -174,12 +190,28 @@ do
          ubuntu1404_64=true
          shift
          ;;
-      -aztec)
-         aztec=false
+      -cab)
+         cab=false
          shift
          ;;
-      +aztec)
-         aztec=true
+      +cab)
+         cab=true
+         shift
+         ;;
+      -quartz)
+         quartz=false
+         shift
+         ;;
+      +quartz)
+         quartz=true
+         shift
+         ;;
+      -rztrona)
+         rztrona=false
+         shift
+         ;;
+      +rztrona)
+         rztrona=true
          shift
          ;;
       -rzzeus)
@@ -212,6 +244,14 @@ do
          ;;
       +glory)
          glory=true
+         shift
+         ;;
+      -vulcan)
+         vulcan=false
+         shift
+         ;;
+      +vulcan)
+         vulcan=true
          shift
          ;;
       -v)
@@ -248,7 +288,7 @@ ver=`echo $ver2 | tr "_" "."`
 rm -f kickit
 cat <<EOF > kickit
 #!/bin/sh
-./visit-install -private -c llnl_open -g visit -b bdivp -gw -l $ver linux-x86_64-rhel5 /usr/gapps/visit > installlog 2>&1
+./visit-install -private -c llnl_open -g visit -b wbronze -gw -l $ver linux-x86_64-rhel7 /usr/gapps/visit > installlog 2>&1
 rm -f resultlog
 echo "        install of visit on kickit"          > resultlog 2>&1
 echo "       ----------------------------"         >> resultlog 2>&1
@@ -269,46 +309,12 @@ if [ $kickit = true ]
 then
    if [ $test = no ]
    then
-      scp kickit:/scratch/$user/kickit/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-rhel5.tar.gz
-      scp visit$ver2.linux-x86_64-rhel5.tar.gz kickit:visit$ver2.linux-x86_64-rhel5.tar.gz
+      scp kickit:/scratch/$user/kickit/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-rhel7.tar.gz
+      scp kickit:/scratch/$user/kickit/visitbuild/visit$ver2.linux-x86_64-wmesa.tar.gz visit$ver2.linux-x86_64-rhel7-wmesa.tar.gz
+      scp visit$ver2.linux-x86_64-rhel7.tar.gz kickit:visit$ver2.linux-x86_64-rhel7.tar.gz
       scp visit-install kickit:
       scp kickit kickit:kickit_install
       ssh kickit "chmod 750 kickit_install;./kickit_install"
-   fi
-fi
-
-#
-# Install on sidious.
-#
-rm -f sidious
-cat <<EOF > sidious
-#!/bin/sh
-./visit-install -private -c llnl_open -g visit -b bdivp -gw -l $ver linux-x86_64-rhel5 /usr/gapps/visit > installlog 2>&1
-rm -f resultlog
-echo "        install of visit on sidious"         > resultlog 2>&1
-echo "       -----------------------------"        >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-df -k /usr/gapps/visit                             >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-ls -l /usr/gapps/visit/$ver+/linux-x86_64/bin      >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
-echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
-echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
-echo ""                                            >> resultlog 2>&1
-echo "The database plugins:"                       >> resultlog 2>&1
-ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-x86_64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-EOF
-
-if [ $sidious = true ]
-then
-   if [ $test = no ]
-   then
-      scp sidious:/tmp/$user/sidious/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-rhel5.tar.gz
-      scp visit$ver2.linux-x86_64-rhel5.tar.gz sidious:visit$ver2.linux-x86_64-rhel5.tar.gz
-      scp visit-install sidious:
-      scp sidious sidious:sidious_install
-      ssh sidious "chmod 750 sidious_install;./sidious_install"
    fi
 fi
 
@@ -318,7 +324,7 @@ fi
 rm -f ubuntu1104_64
 cat <<EOF > ubuntu1104_64
 #!/bin/sh
-./visit-install -private -c llnl_open -g visit -b bdivp -gw -l $ver linux-x86_64-ubuntu11 /home/visit/visit > installlog 2>&1
+./visit-install -private -c llnl_open -g visit -b wbronze -gw -l $ver linux-x86_64-ubuntu11 /home/visit/visit > installlog 2>&1
 rm -f resultlog
 echo "      install of visit on ubuntu1104_64"      > resultlog 2>&1
 echo "     -----------------------------------"    >> resultlog 2>&1
@@ -340,7 +346,8 @@ then
    if [ $test = no ]
    then
       cp /home/visit/ubuntu1104_64/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-ubuntu11.tar.gz
-      scp ubuntu1104_64 ubuntu1104_64_install
+      cp /home/visit/ubuntu1104_64/visitbuild/visit$ver2.linux-x86_64-wmesa.tar.gz visit$ver2.linux-x86_64-ubuntu11-wmesa.tar.gz
+      cp ubuntu1104_64 ubuntu1104_64_install
       chmod 750 ubuntu1104_64_install;./ubuntu1104_64_install
    fi
 fi
@@ -351,48 +358,49 @@ fi
 rm -f ubuntu1404_64
 cat <<EOF > ubuntu1404_64
 #!/bin/sh
-./visit-install -private -c llnl_open -g visit -b bdivp -gw -l $ver linux-x86_64-ubuntu14 /home/visit/visit > installlog 2>&1
+./visit-install -private -c llnl_open -g visit -b wbronze -gw -l $ver linux-x86_64-ubuntu14 /home/brugger1/visit > installlog 2>&1
 rm -f resultlog
 echo "      install of visit on ubuntu1404_64"      > resultlog 2>&1
 echo "     -----------------------------------"    >> resultlog 2>&1
 echo ""                                            >> resultlog 2>&1
-df -k /home/visit/visit                            >> resultlog 2>&1
+df -k /home/brugger1/visit                         >> resultlog 2>&1
 echo ""                                            >> resultlog 2>&1
-ls -l /home/visit/visit/$ver+/linux-x86_64/bin     >> resultlog 2>&1
+ls -l /home/brugger1/visit/$ver+/linux-x86_64/bin  >> resultlog 2>&1
 echo ""                                            >> resultlog 2>&1
-echo "number of database plugins = "\`ls /home/visit/visit/$ver+/linux-x86_64/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
-echo "number of operator plugins = "\`ls /home/visit/visit/$ver+/linux-x86_64/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
-echo "number of plot plugins = "\`ls /home/visit/visit/$ver+/linux-x86_64/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo "number of database plugins = "\`ls /home/brugger1/visit/$ver+/linux-x86_64/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /home/brugger1/visit/$ver+/linux-x86_64/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /home/brugger1/visit/$ver+/linux-x86_64/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
 echo ""                                            >> resultlog 2>&1
 echo "The database plugins:"                       >> resultlog 2>&1
-ls /home/visit/visit/$ver+/linux-x86_64/plugins/databases/libI* | sed "s/\/home\/visit\/visit\/$ver+\/linux-x86_64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+ls /home/brugger1/visit/$ver+/linux-x86_64/plugins/databases/libI* | sed "s/\/home\/brugger1\/visit\/$ver+\/linux-x86_64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
 EOF
 
 if [ $ubuntu1404_64 = true ]
 then
    if [ $test = no ]
    then
-      cp /home/visit/ubuntu1404_64/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-ubuntu14.tar.gz
-      scp ubuntu1404_64 ubuntu1404_64_install
+      cp /home/brugger1/ubuntu1404_64/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-ubuntu14.tar.gz
+      cp /home/brugger1/ubuntu1404_64/visitbuild/visit$ver2.linux-x86_64-wmesa.tar.gz visit$ver2.linux-x86_64-ubuntu14-wmesa.tar.gz
+      cp ubuntu1404_64 ubuntu1404_64_install
       chmod 750 ubuntu1404_64_install;./ubuntu1404_64_install
    fi
 fi
 
 #
-# Install on aztec.
+# Install on cab.
 #
-rm -f aztec
-cat <<EOF > aztec
+rm -f cab
+cat <<EOF > cab
 #!/bin/sh
-./visit-install -private -c llnl_open_cz -g visit -b bdivp -gw -l $ver linux-aztec /usr/gapps/visit > installlog 2>&1
+./visit-install -private -c llnl_open_cz -g visit -b wbronze -gw -l $ver linux-cab /usr/gapps/visit > installlog 2>&1
 cp /usr/gapps/visit/nvidia304-libs/*.304.54 /usr/gapps/visit/$ver+/linux-x86_64/lib
 ln -s libGL.so.304.54 /usr/gapps/visit/$ver+/linux-x86_64/lib/libGL.so
 ln -s libGL.so.304.54 /usr/gapps/visit/$ver+/linux-x86_64/lib/libGL.so.1
 chmod 775 /usr/gapps/visit/$ver+/linux-x86_64/lib/*.304.54
 chgrp visit /usr/gapps/visit/$ver+/linux-x86_64/lib/*.304.54
 rm -f resultlog
-echo "        install of visit on aztec"           > resultlog 2>&1
-echo "       ---------------------------"          >> resultlog 2>&1
+echo "        install of visit on cab"             > resultlog 2>&1
+echo "       -------------------------"            >> resultlog 2>&1
 echo ""                                            >> resultlog 2>&1
 df -k /usr/gapps/visit                             >> resultlog 2>&1
 echo ""                                            >> resultlog 2>&1
@@ -404,18 +412,118 @@ echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64/plugins
 echo ""                                            >> resultlog 2>&1
 echo "The database plugins:"                       >> resultlog 2>&1
 ls /usr/gapps/visit/$ver+/linux-x86_64/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-x86_64\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
-mail -s "VisIt install ($ver): aztec" $emailName < resultlog
+mail -s "VisIt install ($ver): cab" $emailName < resultlog
 EOF
 
-if [ $aztec = true ]
+if [ $cab = true ]
 then
    if [ $test = no ]
    then
-      scp aztec3:/usr/tmp/$user/aztec/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-aztec.tar.gz
-      scp visit$ver2.linux-aztec.tar.gz aztec:
-      scp visit-install aztec:
-      scp aztec aztec:aztec_install
-      ssh aztec "chmod 750 aztec_install;./aztec_install"
+      scp cab689:/usr/tmp/$user/cab/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-cab.tar.gz
+      scp visit$ver2.linux-cab.tar.gz cab:
+      scp visit-install cab:
+      scp cab cab:cab_install
+      ssh cab "chmod 750 cab_install;./cab_install"
+   fi
+fi
+
+#
+# Install on quartz.
+#
+rm -f quartz
+cat <<EOF > quartz
+#!/bin/sh
+rm -rf /usr/gapps/visit/toss3
+./visit-install -private -c llnl_open_cz -g visit -b wbronze -gw -l $ver linux-x86_64-quartz /usr/gapps/visit/toss3 > installlog 2>&1
+mv /usr/gapps/visit/toss3/$ver+/linux-x86_64 /usr/gapps/visit/$ver+/linux-x86_64-toss3
+rm -rf /usr/gapps/visit/toss3
+sed -i "/arch = \"linux-x86_64\"/ i 16SPACESif GETENV(\"SYS_TYPE\") == \"toss_3_x86_64_ib\" or GETENV(\"SYS_TYPE\") == \"toss_3_x86_64\":" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "/arch = \"linux-x86_64\"/ i 20SPACESarch = \"linux-x86_64-toss3\"" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "/arch = \"linux-x86_64\"/ i 16SPACESelse:" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "s/arch = \"linux-x86_64\"/    arch = \"linux-x86_64\"/" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "s/16SPACES/                /" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "s/20SPACES/                    /" /usr/gapps/visit/$ver+/bin/internallauncher
+cp /usr/gapps/visit/nvidia304-libs/*.304.54 /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib
+ln -s libGL.so.304.54 /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib/libGL.so
+ln -s libGL.so.304.54 /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib/libGL.so.1
+chmod 775 /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib/*.304.54
+chgrp visit /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib/*.304.54
+rm -f resultlog
+echo ""                                              > resultlog 2>&1
+echo "        install of visit on quartz"            >> resultlog 2>&1
+echo "       ----------------------------"           >> resultlog 2>&1
+echo ""                                              >> resultlog 2>&1
+df -k /usr/gapps/visit                               >> resultlog 2>&1
+echo ""                                              >> resultlog 2>&1
+ls -l /usr/gapps/visit/$ver+/linux-x86_64-toss3/bin  >> resultlog 2>&1
+echo ""                                              >> resultlog 2>&1
+echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-toss3/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-toss3/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-toss3/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                              >> resultlog 2>&1
+echo "The database plugins:"                         >> resultlog 2>&1
+ls /usr/gapps/visit/$ver+/linux-x86_64-toss3/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-x86_64-toss3\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mv resultlog resultlog.quartz
+EOF
+
+if [ $quartz = true ]
+then
+   if [ $test = no ]
+   then
+      scp quartz386:/usr/tmp/$user/quartz/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-x86_64-quartz.tar.gz
+      scp visit$ver2.linux-x86_64-quartz.tar.gz quartz:
+      scp visit-install quartz:
+      scp quartz quartz:quartz_install
+      ssh quartz "chmod 750 quartz_install;./quartz_install"
+   fi
+fi
+
+#
+# Install on rztrona.
+#
+rm -f rztrona
+cat <<EOF > rztrona
+#!/bin/sh
+./visit-install -private -c llnl_open_rz -g visit -b wbronze -gw -l $ver linux-rztrona /usr/gapps/visit/toss3 > installlog 2>&1
+mv /usr/gapps/visit/toss3/$ver+/linux-x86_64 /usr/gapps/visit/$ver+/linux-x86_64-toss3
+rm -rf /usr/gapps/visit/toss3
+sed -i "/arch = \"linux-x86_64\"/ i 16SPACESif GETENV(\"SYS_TYPE\") == \"toss_3_x86_64_ib\" or GETENV(\"SYS_TYPE\") == \"toss_3_x86_64\":" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "/arch = \"linux-x86_64\"/ i 20SPACESarch = \"linux-x86_64-toss3\"" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "/arch = \"linux-x86_64\"/ i 16SPACESelse:" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "s/arch = \"linux-x86_64\"/    arch = \"linux-x86_64\"/" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "s/16SPACES/                /" /usr/gapps/visit/$ver+/bin/internallauncher
+sed -i "s/20SPACES/                    /" /usr/gapps/visit/$ver+/bin/internallauncher
+cp /usr/gapps/visit/nvidia304-libs/*.304.54 /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib
+ln -s libGL.so.304.54 /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib/libGL.so
+ln -s libGL.so.304.54 /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib/libGL.so.1
+chmod 775 /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib/*.304.54
+chgrp visit /usr/gapps/visit/$ver+/linux-x86_64-toss3/lib/*.304.54
+rm -f resultlog
+echo "        install of visit on rztrona"          > resultlog 2>&1
+echo "       -----------------------------"         >> resultlog 2>&1
+echo ""                                             >> resultlog 2>&1
+df -k /usr/gapps/visit                              >> resultlog 2>&1
+echo ""                                             >> resultlog 2>&1
+ls -l /usr/gapps/visit/$ver+/linux-x86_64-toss3/bin >> resultlog 2>&1
+echo ""                                             >> resultlog 2>&1
+echo "number of database plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-toss3/plugins/databases/libI* | wc -l\` >> resultlog 2>&1
+echo "number of operator plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-toss3/plugins/operators/libI* | wc -l\` >> resultlog 2>&1
+echo "number of plot plugins = "\`ls /usr/gapps/visit/$ver+/linux-x86_64-toss3/plugins/plots/libI* | wc -l\` >> resultlog 2>&1
+echo ""                                             >> resultlog 2>&1
+echo "The database plugins:"                        >> resultlog 2>&1
+ls /usr/gapps/visit/$ver+/linux-x86_64-toss3/plugins/databases/libI* | sed "s/\/usr\/gapps\/visit\/$ver+\/linux-x86_64-toss3\/plugins\/databases\/libI//" | sed "s/Database.so//" >> resultlog 2>&1
+mail -s "VisIt install ($ver): rztrona" $emailName < resultlog
+EOF
+
+if [ $rztrona = true ]
+then
+   if [ $test = no ]
+   then
+      scp rztrona5:/usr/tmp/$user/rztrona/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-rztrona.tar.gz
+      scp visit$ver2.linux-rztrona.tar.gz rztrona:
+      scp visit-install rztrona:
+      scp rztrona rztrona:rztrona_install
+      ssh rztrona "chmod 750 rztrona_install;./rztrona_install"
    fi
 fi
 
@@ -425,7 +533,7 @@ fi
 rm -f rzzeus
 cat <<EOF > rzzeus
 #!/bin/sh
-./visit-install -private -c llnl_open_rz -g visit -b bdivp -gw -l $ver linux-rzzeus /usr/gapps/visit > installlog 2>&1
+./visit-install -private -c llnl_open_rz -g visit -b wbronze -gw -l $ver linux-rzzeus /usr/gapps/visit > installlog 2>&1
 cp /usr/gapps/visit/nvidia304-libs/*.304.54 /usr/gapps/visit/$ver+/linux-x86_64/lib
 ln -s libGL.so.304.54 /usr/gapps/visit/$ver+/linux-x86_64/lib/libGL.so
 ln -s libGL.so.304.54 /usr/gapps/visit/$ver+/linux-x86_64/lib/libGL.so.1
@@ -466,7 +574,7 @@ fi
 rm -f rzuseq
 cat <<EOF > rzuseq
 #!/bin/sh
-./visit-install -private -c llnl_open_rz -g visit -b bdivp -gw -l $ver linux-ppc64-BGQ /usr/gapps/visit > installlog 2>&1
+./visit-install -private -c llnl_open_rz -g visit -b wbronze -gw -l $ver linux-ppc64-BGQ /usr/gapps/visit > installlog 2>&1
 rm -f resultlog
 echo "        install of visit on rzuseq"          > resultlog 2>&1
 echo "       ----------------------------"         >> resultlog 2>&1
@@ -499,7 +607,7 @@ fi
 rm -f carver
 cat <<EOF > carver
 #!/bin/sh
-./visit-install -private -c nersc -b bdivp $ver linux-carver visit > installlog 2>&1
+./visit-install -private -c nersc $ver linux-carver visit > installlog 2>&1
 rm -f resultlog
 echo "        install of visit on carver"          > resultlog 2>&1
 echo "       ----------------------------"         >> resultlog 2>&1
@@ -564,9 +672,42 @@ then
 fi
 
 #
+# Install on vulcan.
+#
+rm -f vulcan
+cat <<EOF > vulcan
+#!/bin/sh
+./visit-install -private -c llnl_open_rz -g visit -b wbronze -gw -l $ver linux-ppc64-BGQ /usr/gapps/visit > installlog 2>&1
+rm -f resultlog
+echo "        install of visit on vulcan"          > resultlog 2>&1
+echo "       ----------------------------"         >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+df -k /usr/gapps/visit                             >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+ls -l /usr/gapps/visit/$ver+/linux-ppc64/bin       >> resultlog 2>&1
+echo ""                                            >> resultlog 2>&1
+echo "number of database plugins = (statically linked)" >> resultlog 2>&1
+echo "number of operator plugins = (statically linked)" >> resultlog 2>&1
+echo "number of plot plugins = (statically linked)" >> resultlog 2>&1
+mail -s "VisIt install ($ver): vulcan" $emailName < resultlog
+EOF
+
+if [ $vulcan = true ]
+then
+   if [ $test = no ]
+   then
+      scp vulcanlac4:/usr/tmp/$user/vulcan/visitbuild/visit$ver2.linux-x86_64.tar.gz visit$ver2.linux-ppc64-BGQ.tar.gz
+      scp visit$ver2.linux-ppc64-BGQ.tar.gz vulcanlac4:
+      scp visit-install vulcanlac4:
+      scp vulcan vulcanlac4:vulcan_install
+      ssh vulcanlac4 "chmod 750 vulcan_install;./vulcan_install"
+   fi
+fi
+
+#
 # Clean up.
 #
 if [ $test = no ]
 then
-   rm -f kickit sidious ubuntu1104_64 ubuntu1404_64 aztec rzuseq rzzeus carver glory
+   rm -f kickit ubuntu1104_64 ubuntu1404_64 cab quartz rztrona rzzeus rzuseq carver glory vulcan
 fi
