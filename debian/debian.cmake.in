@@ -36,7 +36,6 @@ VISIT_OPTION_DEFAULT(VISIT_CXX_FLAGS " -fvisibility=hidden -DVTK_EXCLUDE_STRSTRE
 # The following should not be needed. The build process should search in the usual directories
 # (e.g. /usr , from /etc/ld.so.conf), that way multiarch will just work.
 
-VISIT_OPTION_DEFAULT(VISIT_MESA_DIR ${BUILD_PREFIX})
 VISIT_OPTION_DEFAULT(VISIT_VTK_DIR ${BUILD_PREFIX})
 VISIT_OPTION_DEFAULT(VISIT_TCMALLOC_DIR ${BUILD_PREFIX})
 VISIT_OPTION_DEFAULT(VISIT_CFITSIO_DIR ${BUILD_PREFIX})
