@@ -1,4 +1,4 @@
-visit (2.9.1-1) UNRELEASED; urgency=low
+visit (2.12.3-1) UNRELEASED; urgency=low
 
   [ Alastair McKinstry ]
   * Initial release. (Closes: #395573).
