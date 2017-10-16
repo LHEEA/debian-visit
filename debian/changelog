@@ -6,5 +6,6 @@ visit (2.12.3-1) UNRELEASED; urgency=low
   [ Adrien Grellier ]
   * update dependencies for stretch
   * drop all patches
+  * build with QT5
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 08 May 2015 18:38:07 +0100

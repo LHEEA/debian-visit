@@ -1,1 +1,2 @@
 cmake_find_vtk_python.patch
+cmake_find_qwt.patch

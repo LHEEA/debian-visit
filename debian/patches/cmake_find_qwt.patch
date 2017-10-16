@@ -1,0 +1,13 @@
+Index: visit/src/CMake/FindQwt.cmake
+===================================================================
+--- visit.orig/src/CMake/FindQwt.cmake
++++ visit/src/CMake/FindQwt.cmake
+@@ -54,7 +54,7 @@ ELSEIF (APPLE)
+     SET(QWT_LIBRARY ${QWT_LIBRARY_DIR}/${QWT_LIB}/qwt)
+   ENDIF(VISIT_STATIC)
+ ELSE (WIN32)
+-  SET_UP_THIRD_PARTY(QWT lib include qwt)
++  SET_UP_THIRD_PARTY(QWT lib include qwt-qt5)
+   SET(QWT_LIBRARY ${QWT_LIB} CACHE STRING "name of qwt library" FORCE)
+ ENDIF (WIN32)
+ 

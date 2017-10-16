@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
 
+export QT_SELECT=5
 # The magic debhelper rule:
 %:
 	dh $@ --with python2 --sourcedirectory=src/ --builddirectory=obj-x86_64-linux-gnu/
