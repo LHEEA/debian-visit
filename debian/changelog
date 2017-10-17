@@ -7,5 +7,7 @@ visit (2.12.3-1) UNRELEASED; urgency=low
   * update dependencies for stretch
   * drop all patches
   * build with QT5
+  * libvisit-dev should go in Section libdevel
+  * Update to std policy 3.9.8 (no change) 
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 08 May 2015 18:38:07 +0100
