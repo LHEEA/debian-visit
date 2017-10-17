@@ -11,5 +11,6 @@ visit (2.12.3-1) UNRELEASED; urgency=low
   * Update to std policy 3.9.8 (no change) 
   * update Debhelper compat to 10 
   * disable HDF4 because of conflicts with other third party dependencies  
+  * patch to fix compilation errors
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 08 May 2015 18:38:07 +0100

@@ -1,0 +1,32 @@
+Index: visit/src/vtkqt/CMakeLists.txt
+===================================================================
+--- visit.orig/src/vtkqt/CMakeLists.txt
++++ visit/src/vtkqt/CMakeLists.txt
+@@ -64,9 +64,9 @@ ADD_LIBRARY(vtkqt ${VTKQT_SOURCES})
+ 
+ # Specify the libraries to link against on Windows & Mac
+ IF(HAVE_LIB_R)
+-    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
++    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
+ ELSE(HAVE_LIB_R)
+-    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
++    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
+ ENDIF(HAVE_LIB_R)
+ # Add vtk definitions
+ ADD_TARGET_DEFINITIONS(vtkqt "${VTK_DEFINITIONS}")
+Index: visit/src/tools/annotations/CMakeLists.txt
+===================================================================
+--- visit.orig/src/tools/annotations/CMakeLists.txt
++++ visit/src/tools/annotations/CMakeLists.txt
+@@ -54,9 +54,9 @@ ADD_EXECUTABLE(time_annotation time_anno
+ # Specify the libraries to link against
+ TARGET_LINK_LIBRARIES(text2polys vtkIOLegacy)
+ IF(HAVE_LIB_R)
+-TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkRenderingFreeTypeOpenGL vtkInteractionStyle vtkFiltersStatisticsGnuR vtksys vtkIOImage)
++	TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtkFiltersStatisticsGnuR vtksys ${VTK_LIBRARIES})
+ ELSE(HAVE_LIB_R)
+-TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkRenderingFreeTypeOpenGL vtkInteractionStyle vtksys vtkIOImage)
++	TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtksys ${VTK_LIBRARIES})
+ ENDIF(HAVE_LIB_R)
+ # add vtk definitions
+ ADD_TARGET_DEFINITIONS(time_annotation "${VTK_DEFINITIONS}")

@@ -7,3 +7,4 @@ cmake_find_netcdf.patch
 cmake_find_silo.patch
 cmake_find_boxlib.patch
 cmake_find_gfortran.patch
+fix_compilation.patch
