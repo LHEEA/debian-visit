@@ -1,3 +1,4 @@
+remove_reference_to_vtkStructuredVisibilityConstaint.patch
 cmake_find_adios.patch
 cmake_find_vtk_python.patch
 cmake_find_qwt.patch
@@ -7,4 +8,6 @@ cmake_find_netcdf.patch
 cmake_find_silo.patch
 cmake_find_boxlib.patch
 cmake_find_gfortran.patch
+remove_reference_to_vtkRenderingFreeTypeOpenGL.patch
+remove_MAXIMUM_NUMBER_OF_PIECES.patch
 fix_compilation.patch

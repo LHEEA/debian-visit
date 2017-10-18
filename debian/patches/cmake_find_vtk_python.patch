@@ -2,14 +2,6 @@ Index: visit/src/CMake/FindVisItVTK.cmake
 ===================================================================
 --- visit.orig/src/CMake/FindVisItVTK.cmake
 +++ visit/src/CMake/FindVisItVTK.cmake
-@@ -109,7 +109,6 @@ SET(REQ_VTK_MODS
-         vtkIOXML
-         vtkInteractionStyle
-         vtkRenderingAnnotation
--        vtkRenderingFreeTypeOpenGL 
-         vtkRenderingOpenGL)
- 
- IF(R_FOUND)
 @@ -234,7 +233,7 @@ ENDIF(VISIT_VTK_SKIP_INSTALL)
  
  # check for python wrappers

@@ -1,0 +1,95 @@
+Index: visit/src/visit_vtk/full/vtkVisItProbeFilter.C
+===================================================================
+--- visit.orig/src/visit_vtk/full/vtkVisItProbeFilter.C
++++ visit/src/visit_vtk/full/vtkVisItProbeFilter.C
+@@ -193,36 +193,6 @@ int vtkVisItProbeFilter::RequestInformat
+   outInfo->Set(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(),
+                inInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT()),
+                6);
+-  outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
+-               inInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES()));
+-
+-  if (this->SpatialMatch)
+-    {
+-    int m1 = inInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES());
+-    int m2 = sourceInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES());
+-    if (m1 < 0 && m2 < 0)
+-      {
+-      outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
+-                   -1);
+-      }
+-    else
+-      {
+-      if (m1 < -1)
+-        {
+-        m1 = VTK_INT_MAX;
+-        }
+-      if (m2 < -1)
+-        {
+-        m2 = VTK_INT_MAX;
+-        }
+-      if (m2 < m1)
+-        {
+-        m1 = m2;
+-        }
+-      outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
+-                   m1);
+-      }
+-    }
+ 
+   // A variation of the bug fix from John Biddiscombe.
+   // Make sure that the scalar type and number of components
+Index: visit/src/databases/OpenFOAM/visit_vtkPOpenFOAMReader.cxx
+===================================================================
+--- visit.orig/src/databases/OpenFOAM/visit_vtkPOpenFOAMReader.cxx
++++ visit/src/databases/OpenFOAM/visit_vtkPOpenFOAMReader.cxx
+@@ -43,7 +43,6 @@ visit_vtkPOpenFOAMReader::visit_vtkPOpen
+   this->ProcessId = 0;
+   this->CaseType = RECONSTRUCTED_CASE;
+   this->MTimeOld = 0;
+-  this->MaximumNumberOfPieces = 1;
+ }
+ 
+ //-----------------------------------------------------------------------------
+@@ -57,8 +56,6 @@ void visit_vtkPOpenFOAMReader::PrintSelf
+   this->Superclass::PrintSelf(os, indent);
+   os << indent << "Case Type: " << this->CaseType << endl;
+   os << indent << "MTimeOld: " << this->MTimeOld << endl;
+-  os << indent << "Maximum Number of Pieces: " << this->MaximumNumberOfPieces
+-      << endl;
+   os << indent << "Number of Processes: " << this->NumProcesses << endl;
+   os << indent << "Process Id: " << this->ProcessId << endl;
+ }
+@@ -242,8 +239,6 @@ int visit_vtkPOpenFOAMReader::RequestInf
+       timeValues->Delete();
+       }
+ 
+-    this->MaximumNumberOfPieces = procNames->GetNumberOfTuples();
+-
+     // create reader instances for other processor subdirectories
+     // skip processor0 since it's already created
+     for (int procI = (this->ProcessId ? this->ProcessId : this->NumProcesses); procI
+@@ -272,11 +267,6 @@ int visit_vtkPOpenFOAMReader::RequestInf
+     this->Superclass::Refresh = false;
+     }
+ 
+-  // it seems MAXIMUM_NUMBER_OF_PIECES must be returned every time
+-  // RequestInformation() is called
+-  outputVector->GetInformationObject(0)->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
+-      this->MaximumNumberOfPieces);
+-
+   return 1;
+ }
+ 
+Index: visit/src/databases/OpenFOAM/visit_vtkPOpenFOAMReader.h
+===================================================================
+--- visit.orig/src/databases/OpenFOAM/visit_vtkPOpenFOAMReader.h
++++ visit/src/databases/OpenFOAM/visit_vtkPOpenFOAMReader.h
+@@ -59,7 +59,6 @@ protected:
+ private:
+   caseType CaseType;
+   unsigned long MTimeOld;
+-  int MaximumNumberOfPieces;
+   int NumProcesses;
+   int ProcessId;
+ 

@@ -1,48 +1,3 @@
-Index: visit/src/vtkqt/CMakeLists.txt
-===================================================================
---- visit.orig/src/vtkqt/CMakeLists.txt
-+++ visit/src/vtkqt/CMakeLists.txt
-@@ -64,9 +64,9 @@ ADD_LIBRARY(vtkqt ${VTKQT_SOURCES})
- 
- # Specify the libraries to link against on Windows & Mac
- IF(HAVE_LIB_R)
--    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
-+    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
- ELSE(HAVE_LIB_R)
--    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
-+    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
- ENDIF(HAVE_LIB_R)
- # Add vtk definitions
- ADD_TARGET_DEFINITIONS(vtkqt "${VTK_DEFINITIONS}")
-Index: visit/src/tools/annotations/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/annotations/CMakeLists.txt
-+++ visit/src/tools/annotations/CMakeLists.txt
-@@ -54,9 +54,9 @@ ADD_EXECUTABLE(time_annotation time_anno
- # Specify the libraries to link against
- TARGET_LINK_LIBRARIES(text2polys vtkIOLegacy)
- IF(HAVE_LIB_R)
--TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkRenderingFreeTypeOpenGL vtkInteractionStyle vtkFiltersStatisticsGnuR vtksys vtkIOImage)
-+	TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtkFiltersStatisticsGnuR vtksys ${VTK_LIBRARIES})
- ELSE(HAVE_LIB_R)
--TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkRenderingFreeTypeOpenGL vtkInteractionStyle vtksys vtkIOImage)
-+	TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtksys ${VTK_LIBRARIES})
- ENDIF(HAVE_LIB_R)
- # add vtk definitions
- ADD_TARGET_DEFINITIONS(time_annotation "${VTK_DEFINITIONS}")
-Index: visit/src/avt/View/CMakeLists.txt
-===================================================================
---- visit.orig/src/avt/View/CMakeLists.txt
-+++ visit/src/avt/View/CMakeLists.txt
-@@ -56,7 +56,7 @@ ${VTK_INCLUDE_DIRS}
- LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS})
- 
- ADD_LIBRARY(avtview ${AVTVIEW_SOURCES})
--TARGET_LINK_LIBRARIES(avtview visitcommon vtkRenderingOpenGL vtkRenderingFreeType vtkRenderingFreeTypeOpenGL vtkInteractionStyle)
-+TARGET_LINK_LIBRARIES(avtview visitcommon vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle)
- 
- # Add vtk definitions
- ADD_TARGET_DEFINITIONS(avtview "${VTK_DEFINITIONS}")
 Index: visit/src/gui/CMakeLists.txt
 ===================================================================
 --- visit.orig/src/gui/CMakeLists.txt
@@ -55,73 +10,274 @@ Index: visit/src/gui/CMakeLists.txt
  )
  
  LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY}
-Index: visit/src/visit_vtk/full/vtkVisItProbeFilter.C
+Index: visit/src/tools/annotations/CMakeLists.txt
 ===================================================================
---- visit.orig/src/visit_vtk/full/vtkVisItProbeFilter.C
-+++ visit/src/visit_vtk/full/vtkVisItProbeFilter.C
-@@ -193,36 +193,36 @@ int vtkVisItProbeFilter::RequestInformat
-   outInfo->Set(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT(),
-                inInfo->Get(vtkStreamingDemandDrivenPipeline::WHOLE_EXTENT()),
-                6);
--  outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
--               inInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES()));
-+  // outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
-+               // inInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES()));
+--- visit.orig/src/tools/annotations/CMakeLists.txt
++++ visit/src/tools/annotations/CMakeLists.txt
+@@ -54,9 +54,9 @@ ADD_EXECUTABLE(time_annotation time_anno
+ # Specify the libraries to link against
+ TARGET_LINK_LIBRARIES(text2polys vtkIOLegacy)
+ IF(HAVE_LIB_R)
+-TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtkFiltersStatisticsGnuR vtksys vtkIOImage)
++	TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtkFiltersStatisticsGnuR vtksys ${VTK_LIBRARIES})
+ ELSE(HAVE_LIB_R)
+-TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtksys vtkIOImage)
++	TARGET_LINK_LIBRARIES(time_annotation vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtksys ${VTK_LIBRARIES})
+ ENDIF(HAVE_LIB_R)
+ # add vtk definitions
+ ADD_TARGET_DEFINITIONS(time_annotation "${VTK_DEFINITIONS}")
+Index: visit/src/visit_vtk/full/CMakeLists.txt
+===================================================================
+--- visit.orig/src/visit_vtk/full/CMakeLists.txt
++++ visit/src/visit_vtk/full/CMakeLists.txt
+@@ -130,9 +130,9 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECT
+ ADD_LIBRARY(visit_vtk ${VISIT_VTK_SOURCES})
  
--  if (this->SpatialMatch)
--    {
--    int m1 = inInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES());
--    int m2 = sourceInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES());
--    if (m1 < 0 && m2 < 0)
--      {
--      outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
--                   -1);
--      }
--    else
--      {
--      if (m1 < -1)
--        {
--        m1 = VTK_INT_MAX;
--        }
--      if (m2 < -1)
--        {
--        m2 = VTK_INT_MAX;
--        }
--      if (m2 < m1)
--        {
--        m1 = m2;
--        }
--      outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
--                   m1);
--      }
--    }
-+  // if (this->SpatialMatch)
-+    // {
-+    // int m1 = inInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES());
-+    // int m2 = sourceInfo->Get(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES());
-+    // if (m1 < 0 && m2 < 0)
-+      // {
-+      // outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
-+                   // -1);
-+      // }
-+    // else
-+      // {
-+      // if (m1 < -1)
-+        // {
-+        // m1 = VTK_INT_MAX;
-+        // }
-+      // if (m2 < -1)
-+        // {
-+        // m2 = VTK_INT_MAX;
-+        // }
-+      // if (m2 < m1)
-+        // {
-+        // m1 = m2;
-+        // }
-+      // outInfo->Set(vtkStreamingDemandDrivenPipeline::MAXIMUM_NUMBER_OF_PIECES(),
-+                   // m1);
-+      // }
-+    // }
+ IF(HAVE_LIB_R)
+-    TARGET_LINK_LIBRARIES(visit_vtk lightweight_visit_vtk vtkFiltersExtraction vtkFiltersFlowPaths vtkImagingHybrid vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtktiff vtkFiltersStatisticsGnuR)
++    TARGET_LINK_LIBRARIES(visit_vtk lightweight_visit_vtk vtkFiltersExtraction vtkFiltersFlowPaths vtkImagingHybrid vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtkFiltersStatisticsGnuR)
+ ELSE(HAVE_LIB_R)
+-    TARGET_LINK_LIBRARIES(visit_vtk lightweight_visit_vtk vtkFiltersExtraction vtkFiltersFlowPaths vtkImagingHybrid vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle vtktiff)
++    TARGET_LINK_LIBRARIES(visit_vtk lightweight_visit_vtk vtkFiltersExtraction vtkFiltersFlowPaths vtkImagingHybrid vtkRenderingOpenGL vtkRenderingFreeType vtkInteractionStyle)
+ ENDIF(HAVE_LIB_R)
+ # Add vtk definitions
+ ADD_TARGET_DEFINITIONS(visit_vtk "${VTK_DEFINITIONS}")
+Index: visit/src/tools/imagetools/CMakeLists.txt
+===================================================================
+--- visit.orig/src/tools/imagetools/CMakeLists.txt
++++ visit/src/tools/imagetools/CMakeLists.txt
+@@ -62,10 +62,10 @@ ${VISIT_SOURCE_DIR}/visit_vtk/full
+ )
  
-   // A variation of the bug fix from John Biddiscombe.
-   // Make sure that the scalar type and number of components
+ ADD_EXECUTABLE(visit_composite  ${VISIT_COMPOSITE_SOURCES})
+-target_link_libraries(visit_composite vtkIOImage visit_vtk)
++target_link_libraries(visit_composite ${VTK_LIBRARIES} visit_vtk)
+ 
+ ADD_EXECUTABLE(visit_transition ${VISIT_TRANSITION_SOURCES})
+-target_link_libraries(visit_transition vtkIOImage visit_vtk)
++target_link_libraries(visit_transition ${VTK_LIBRARIES} visit_vtk)
+ 
+ # Installation targets
+ VISIT_INSTALL_TARGETS(visit_composite visit_transition)
+Index: visit/src/mdserver/main/CMakeLists.txt
+===================================================================
+--- visit.orig/src/mdserver/main/CMakeLists.txt
++++ visit/src/mdserver/main/CMakeLists.txt
+@@ -141,10 +141,7 @@ TARGET_LINK_LIBRARIES(mdserver
+     visit_verdict 
+     vtkCommonCore
+     vtkIOCore 
+-    vtktiff
+-    ${VTKZLIB_LIB}
+-    vtkpng
+-    vtkjpeg
++	${VTK_LIBRARIES}
+     ${ZLIB_LIB} 
+     ${CMAKE_THREAD_LIBS} 
+     ${DL_LIB}
+Index: visit/src/tools/dataserver/CMakeLists.txt
+===================================================================
+--- visit.orig/src/tools/dataserver/CMakeLists.txt
++++ visit/src/tools/dataserver/CMakeLists.txt
+@@ -70,10 +70,7 @@ ${VTK_LIBRARY_DIRS}
+ )
+ 
+ SET(VTK_EXTRA_LIBS
+-vtktiff
+-vtkjpeg
+-vtkpng
+-${VTKZLIB_LIB}
++${VTK_LIBRARIES}
+ ${VTK_FREETYPE_LIBRARIES}
+ vtkftgl
+ )
+Index: visit/src/avt/IVP/CMakeLists.txt
+===================================================================
+--- visit.orig/src/avt/IVP/CMakeLists.txt
++++ visit/src/avt/IVP/CMakeLists.txt
+@@ -126,12 +126,12 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECT
+ 
+ #********************************* SERIAL ************************************
+ ADD_LIBRARY(avtivp_ser ${AVTIVP_SOURCES})
+-TARGET_LINK_LIBRARIES(avtivp_ser avtfilters_ser lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_ser avtdatabase_ser avtdbatts visitcommon vtkCommonCore vtkFiltersCore nek5000_interp ${NEKTAR++_LIB} ${NEKTAR++_LIBRARIES} ${NEKTAR++_TP_LIBRARIES})
++TARGET_LINK_LIBRARIES(avtivp_ser avtfilters_ser lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_ser avtdatabase_ser avtdbatts visitcommon vtkCommonCore vtkFiltersCore nek5000_interp ${NEKTAR++_LIB} ${NEKTAR++_LIBRARIES} ${NEKTAR++_TP_LIBRARIES} ${VTK_LIBRARIES})
+ VISIT_INSTALL_TARGETS(avtivp_ser)
+ 
+ #********************************* PARALLEL **********************************
+ IF(VISIT_PARALLEL)
+     ADD_PARALLEL_LIBRARY(avtivp_par ${AVTIVP_SOURCES})
+-    TARGET_LINK_LIBRARIES(avtivp_par avtfilters_par lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_par avtdatabase_par avtdbatts visitcommon vtkCommonCore vtkFiltersCore nek5000_interp ${NEKTAR++_LIB} ${NEKTAR++_LIBRARIES} ${NEKTAR++_TP_LIBRARIES})
++	TARGET_LINK_LIBRARIES(avtivp_par avtfilters_par lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_par avtdatabase_par avtdbatts visitcommon vtkCommonCore vtkFiltersCore nek5000_interp ${NEKTAR++_LIB} ${NEKTAR++_LIBRARIES} ${NEKTAR++_TP_LIBRARIES} ${VTK_LIBRARIES})
+     VISIT_INSTALL_TARGETS(avtivp_par)
+ ENDIF(VISIT_PARALLEL)
+Index: visit/src/tools/protocol/CMakeLists.txt
+===================================================================
+--- visit.orig/src/tools/protocol/CMakeLists.txt
++++ visit/src/tools/protocol/CMakeLists.txt
+@@ -76,12 +76,8 @@ ${ALL_THIRDPARTY_IO_LIBRARY_DIR}
+ )
+ 
+ SET(VTK_EXTRA_LIBS
+-vtktiff
+-vtkjpeg
+-vtkpng
+-${VTKZLIB_LIB}
++${VTK_LIBRARIES}
+ ${VTK_FREETYPE_LIBRARIES}
+-vtkftgl
+ )
+ 
+ ADD_EXECUTABLE(visitprotocol dump_protocol.C ${STATIC_SOURCES})
+Index: visit/src/tools/avtexamples/CMakeLists.txt
+===================================================================
+--- visit.orig/src/tools/avtexamples/CMakeLists.txt
++++ visit/src/tools/avtexamples/CMakeLists.txt
+@@ -103,6 +103,7 @@ visitcommon
+ visit_vtk
+ ${ALL_THIRDPARTY_IO_LIB} 
+ ${VTK_EXTRA_LIBS}
++${VTK_LIBRARIES}
+ ${MESA_LIBS}
+ ${GL_LIBS}
+ ${CMAKE_THREAD_LIBS} 
+@@ -129,6 +130,7 @@ visitcommon
+ visit_vtk
+ ${ALL_THIRDPARTY_IO_LIB} 
+ ${VTK_EXTRA_LIBS}
++${VTK_LIBRARIES}
+ ${MESA_LIBS}
+ ${GL_LIBS}
+ ${CMAKE_THREAD_LIBS} 
+@@ -151,6 +153,7 @@ visitcommon
+ visit_vtk
+ ${ALL_THIRDPARTY_IO_LIB} 
+ ${VTK_EXTRA_LIBS}
++${VTK_LIBRARIES}
+ ${MESA_LIBS}
+ ${GL_LIBS}
+ ${CMAKE_THREAD_LIBS} 
+@@ -177,6 +180,7 @@ visitcommon
+ visit_vtk
+ ${ALL_THIRDPARTY_IO_LIB} 
+ ${VTK_EXTRA_LIBS}
++${VTK_LIBRARIES}
+ ${MESA_LIBS}
+ ${GL_LIBS}
+ ${CMAKE_THREAD_LIBS} 
+@@ -204,6 +208,7 @@ visitcommon
+ visit_vtk
+ ${ALL_THIRDPARTY_IO_LIB} 
+ ${VTK_EXTRA_LIBS}
++${VTK_LIBRARIES}
+ ${MESA_LIBS}
+ ${GL_LIBS}
+ ${CMAKE_THREAD_LIBS} 
+Index: visit/src/tools/convert/CMakeLists.txt
+===================================================================
+--- visit.orig/src/tools/convert/CMakeLists.txt
++++ visit/src/tools/convert/CMakeLists.txt
+@@ -105,11 +105,8 @@ ${ICET_LIBRARY_DIR}
+ )
+ 
+ SET(VTK_EXTRA_LIBS
+-vtkjpeg
+-vtkpng
+-${VTKZLIB_LIB}
++${VTK_LIBRARIES}
+ ${VTK_FREETYPE_LIBRARIES}
+-vtkftgl
+ )
+ 
+ IF(VISIT_STATIC)
+Index: visit/src/viewer/main/CMakeLists.txt
+===================================================================
+--- visit.orig/src/viewer/main/CMakeLists.txt
++++ visit/src/viewer/main/CMakeLists.txt
+@@ -297,11 +297,8 @@ TARGET_LINK_LIBRARIES(viewer_exe
+     ${viewer_exe_IPlot}
+     ${viewer_exe_VPlot}
+     viewer
+-    vtkpng
+-    vtkjpeg
+-    ${VTKZLIB_LIB}
+     ${VTK_FREETYPE_LIBRARIES}
+-    vtkftgl
++	${VTK_LIBRARIES}
+ )
+ 
+ # If we're building statically then the viewer can't be linked until the plugin
+Index: visit/src/sim/V2/runtime/CMakeLists.txt
+===================================================================
+--- visit.orig/src/sim/V2/runtime/CMakeLists.txt
++++ visit/src/sim/V2/runtime/CMakeLists.txt
+@@ -160,7 +160,7 @@ ${ICET_LIBRARY_DIR}
+ )
+ 
+ ADD_LIBRARY(simV2runtime_ser ${LIBSIM_RUNTIME_SOURCES} ${LIBSIM_STATIC_SOURCES})
+-TARGET_LINK_LIBRARIES(simV2runtime_ser engine_ser ${LIBSIM_RUNTIME_VIEWER_LIBS_SER})
++TARGET_LINK_LIBRARIES(simV2runtime_ser engine_ser ${LIBSIM_RUNTIME_VIEWER_LIBS_SER} ${VTK_LIBRARIES})
+ 
+ IF(NOT APPLE)
+     SET_TARGET_PROPERTIES(simV2runtime_ser PROPERTIES INSTALL_RPATH "$ORIGIN")
+Index: visit/src/engine/main/CMakeLists.txt
+===================================================================
+--- visit.orig/src/engine/main/CMakeLists.txt
++++ visit/src/engine/main/CMakeLists.txt
+@@ -194,11 +194,8 @@ TARGET_LINK_LIBRARIES(engine_ser_exe
+     ${engine_ser_exe_EPlot_ser}
+     engine_ser 
+     visit_verdict 
+-    vtkjpeg
+-    vtkpng
+-    ${VTKZLIB_LIB}
+     ${VTK_FREETYPE_LIBRARIES}
+-    vtkftgl
++    ${VTK_LIBRARIES}
+     ${ALL_THIRDPARTY_IO_LIB}
+     ${TCMALLOC_LIB}
+     ${CMAKE_THREAD_LIBS} 
+@@ -297,11 +294,8 @@ IF(VISIT_PARALLEL)
+         ${engine_par_exe_EPlot_par}
+         engine_par
+         visit_verdict 
+-        vtkjpeg
+-        vtkpng
+-        ${VTKZLIB_LIB}
++        ${VTK_LIBRAIRIES}
+         ${VTK_FREETYPE_LIBRARIES}
+-        vtkftgl
+         ${ALL_THIRDPARTY_IO_LIB}
+         ${ICET_STATIC_LIB}
+         ${TCMALLOC_LIB}
+Index: visit/src/tools/embedviewer/CMakeLists.txt
+===================================================================
+--- visit.orig/src/tools/embedviewer/CMakeLists.txt
++++ visit/src/tools/embedviewer/CMakeLists.txt
+@@ -180,6 +180,7 @@ visit_verdict
+ visit_vtk
+ vtkqt
+ ${VIEWER_QT_LIBS}
++${VTK_LIBRARIES}
+ )
+ 
+ TARGET_LINK_LIBRARIES(embedded ${EMBEDDED_VIEWER_LIBS})
+Index: visit/src/tools/mcurvit/CMakeLists.txt
+===================================================================
+--- visit.orig/src/tools/mcurvit/CMakeLists.txt
++++ visit/src/tools/mcurvit/CMakeLists.txt
+@@ -108,14 +108,7 @@ ${QT_QTGUI_INCLUDE_DIR}
+ ${QT_QTXML_INCLUDE_DIR}
+ )
+ 
+-SET(VTK_EXTRA_LIBS
+-vtktiff
+-vtkjpeg
+-vtkpng
+-${VTKZLIB_LIB}
+-${VTK_FREETYPE_LIBRARIES}
+-vtkftgl
+-)
++SET(VTK_EXTRA_LIBS ${VTK_LIBRARIES})
+ 
+ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${QT_LIBRARY_DIR} ${MESA_LIBRARY_DIR} ${GLEW_LIBRARY_DIR} ${EAVL_LIBRARY_DIR} ${VTK_LIBRARY_DIRS})
+ 
