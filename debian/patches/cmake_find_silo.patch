@@ -1,0 +1,20 @@
+Index: visit/src/CMake/FindSilo.cmake
+===================================================================
+--- visit.orig/src/CMake/FindSilo.cmake
++++ visit/src/CMake/FindSilo.cmake
+@@ -105,13 +105,13 @@ IF (WIN32)
+ ELSE (WIN32)
+     FIND_LIBRARY(SILOH5_LIBRARY_EXISTS
+       NAME siloh5
+-      PATHS ${SILO_DIR}/lib
++      PATHS ${SILO_DIR}/lib/x86_64-linux-gnu
+       NO_DEFAULT_PATH
+       NO_CMAKE_ENVIRONMENT_PATH
+       NO_CMAKE_PATH
+       NO_SYSTEM_ENVIRONMENT_PATH)
+     IF(SILOH5_LIBRARY_EXISTS)
+-        SET_UP_THIRD_PARTY(SILO lib include siloh5)
++        SET_UP_THIRD_PARTY(SILO lib/x86_64-linux-gnu include siloh5)
+     ELSE(SILOH5_LIBRARY_EXISTS)
+         SET_UP_THIRD_PARTY(SILO lib include silo)
+     ENDIF(SILOH5_LIBRARY_EXISTS)

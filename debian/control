@@ -2,7 +2,8 @@ Source: visit
 Section: science
 Priority: optional
 Maintainer: Alastair McKinstry <mckinstry@debian.org>
-Build-Depends: debhelper (>= 10), libgl1-mesa-dev, python-all-dev, python3-all-dev, libvtk6-dev (>= 5.8.0~), libgdal-dev, libhdf5-serial-dev | libhdf5-dev, libcfitsio-dev, libcgns-dev, libnetcdf-dev, libgoogle-perftools-dev, imagemagick, gfortran, libosmesa6-dev, libsilo-dev, cmake (>= 2.8.0), python-vtk6, libxdmf-dev,libadios-dev, dh-python,
+Build-Depends: debhelper (>= 10), libgl1-mesa-dev, python-all-dev, python3-all-dev, libvtk6-dev (>= 5.8.0~), libgdal-dev, libhdf5-serial-dev | libhdf5-dev, libcfitsio-dev, libcgns-dev, libnetcdf-dev, libnetcdf-c++4-dev, libgoogle-perftools-dev, imagemagick, gfortran, libosmesa6-dev, libsilo-dev, cmake (>= 2.8.0), python-vtk6, libxdmf-dev,libadios-dev, dh-python,
+ libbox-dev,
  qt5-qmake, libqt5opengl5-dev, libqt5x11extras5-dev, qttools5-dev, libvtk6-qt-dev,
  libqwt-qt5-dev
 Standards-Version: 3.9.8

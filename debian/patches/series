@@ -1,2 +1,7 @@
+cmake_find_adios.patch
 cmake_find_vtk_python.patch
 cmake_find_qwt.patch
+cmake_find_cfitsio.patch
+cmake_fing_cgns.patch
+cmake_find_netcdf.patch
+cmake_find_silo.patch

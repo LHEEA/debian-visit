@@ -1,0 +1,11 @@
+Index: visit/src/CMake/FindCFITSIO.cmake
+===================================================================
+--- visit.orig/src/CMake/FindCFITSIO.cmake
++++ visit/src/CMake/FindCFITSIO.cmake
+@@ -44,5 +44,5 @@
+ 
+ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
+ 
+-SET_UP_THIRD_PARTY(CFITSIO lib include cfitsio)
++SET_UP_THIRD_PARTY(CFITSIO lib/x86_64-linux-gnu include cfitsio)
+ 

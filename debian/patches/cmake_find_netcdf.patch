@@ -1,0 +1,16 @@
+Index: visit/src/CMake/FindNetcdf.cmake
+===================================================================
+--- visit.orig/src/CMake/FindNetcdf.cmake
++++ visit/src/CMake/FindNetcdf.cmake
+@@ -44,9 +44,9 @@
+ 
+ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
+ 
+-SET_UP_THIRD_PARTY(NETCDF lib include netcdf)
++SET_UP_THIRD_PARTY(NETCDF lib/x86_64-linux-gnu include netcdf)
+ 
+ SET (NETCDF_CXX_DIR ${NETCDF_DIR})
+ 
+-SET_UP_THIRD_PARTY(NETCDF_CXX lib include netcdf_c++)
++SET_UP_THIRD_PARTY(NETCDF_CXX lib/x86_64-linux-gnu include netcdf_c++)
+ 

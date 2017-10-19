@@ -1,0 +1,12 @@
+Index: visit/src/CMake/FindCGNS.cmake
+===================================================================
+--- visit.orig/src/CMake/FindCGNS.cmake
++++ visit/src/CMake/FindCGNS.cmake
+@@ -50,6 +50,6 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpT
+ IF (WIN32)
+   SET_UP_THIRD_PARTY(CGNS lib include cgnsdll)
+ ELSE (WIN32)
+-  SET_UP_THIRD_PARTY(CGNS lib include cgns)
++  SET_UP_THIRD_PARTY(CGNS lib/x86_64-linux-gnu include cgns)
+ ENDIF (WIN32)
+ 
