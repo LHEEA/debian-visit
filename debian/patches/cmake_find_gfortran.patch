@@ -1,0 +1,10 @@
+Index: visit/src/CMake/FindGFortran.cmake
+===================================================================
+--- visit.orig/src/CMake/FindGFortran.cmake
++++ visit/src/CMake/FindGFortran.cmake
+@@ -42,4 +42,4 @@
+ 
+ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)
+ 
+-SET_UP_THIRD_PARTY(GFORTRAN lib include gfortran quadmath gcc_s.1)
++SET_UP_THIRD_PARTY(GFORTRAN lib/gcc/x86_64-linux-gnu/6 include gfortran quadmath gcc_s)

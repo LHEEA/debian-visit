@@ -1,0 +1,13 @@
+Index: visit/src/CMake/FindBoxlib.cmake
+===================================================================
+--- visit.orig/src/CMake/FindBoxlib.cmake
++++ visit/src/CMake/FindBoxlib.cmake
+@@ -60,7 +60,7 @@ INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpT
+ IF (WIN32)
+   SET_UP_THIRD_PARTY(BOXLIB lib include BoxLib2D BoxLib3D)
+ ELSE (WIN32)
+-  SET_UP_THIRD_PARTY(BOXLIB lib include box2D box3D)
++  SET_UP_THIRD_PARTY(BOXLIB lib/x86_64-linux-gnu include box2d box3d)
+ ENDIF (WIN32)
+ 
+ IF(BOXLIB_FOUND)

@@ -5,3 +5,5 @@ cmake_find_cfitsio.patch
 cmake_fing_cgns.patch
 cmake_find_netcdf.patch
 cmake_find_silo.patch
+cmake_find_boxlib.patch
+cmake_find_gfortran.patch

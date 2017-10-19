@@ -10,6 +10,6 @@ visit (2.12.3-1) UNRELEASED; urgency=low
   * libvisit-dev should go in Section libdevel
   * Update to std policy 3.9.8 (no change) 
   * update Debhelper compat to 10 
-  * disable HDF4 because of conflicts with other third party dependencies 
+  * disable HDF4 because of conflicts with other third party dependencies  
 
  -- Alastair McKinstry <mckinstry@debian.org>  Fri, 08 May 2015 18:38:07 +0100
