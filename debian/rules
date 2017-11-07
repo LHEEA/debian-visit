@@ -20,3 +20,6 @@ override_dh_auto_configure:
 override_dh_auto_clean:
 	rm -rf src/config-site/debian.cmake
 	dh_auto_clean
+
+override_dh_install:
+	dh_install --list-missing
