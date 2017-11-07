@@ -15,6 +15,7 @@ Vcs-Git: git://git.debian.org/git/debian-science/packages/visit.git
 Package: visit
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}, ${python:Depends}
+Recommends: ksh | mksh | pdksh | zsh
 Description: interactive parallel visualization and graphical analysis tool
  VisIt is a free interactive parallel visualization and graphical
  analysis tool for viewing scientific data.  Users can quickly generate
