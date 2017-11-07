@@ -27,19 +27,3 @@ Description: interactive parallel visualization and graphical analysis tool
  VisIt was designed to handle very large data set sizes in the terascale
  range and yet can also handle small data sets in the kilobyte range.
 
-Package: libvisit-dev
-Section: libdevel
-Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}
-Description: Development files for the VisIt visualisation tool
- This package contains libraries and header files needed to build against
- VisIt.
-
-
-Package: python-visit
-Section: python
-Architecture: any
-Depends: ${misc:Depends}, ${shlibs:Depends}
-Description: Python files for the VisIt visualisation tool
- This package contains libraries and header files needed to build against
- VisIt.
