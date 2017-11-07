@@ -4,15 +4,15 @@ Source: https://wci.llnl.gov/simulation/computer-codes/visit/downloads
 
 Files: *
 Copyright: 2000-2017 Lawrence Livermore National Security, LLC.
-License: BSD
+License: BSD-3-clause
 
-Files: debian/
+Files: debian/*
 Copyright: 2011-2017 Alastair McKinstry <mckinstry@debian.org>
            2017 Adrien Grellier <adrien.grellier@ec-nantes.fr>
-License: BSD
+License: BSD-3-clause
 
 
-License: BSD
+License: BSD-3-clause
                            Copyright (c) 2000 - 2011
                    Lawrence Livermore National Security, LLC.
              Produced at the Lawrence Livermore National Laboratory
