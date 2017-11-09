@@ -1,4 +1,4 @@
-visit (2.12.3-1) unstable; urgency=low
+visit (2.12.3-1~bpo9+1) stretch; urgency=low
 
   [ Alastair McKinstry ]
   * Initial release. (Closes: #395573).
