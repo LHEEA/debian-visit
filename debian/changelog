@@ -1,3 +1,9 @@
+visit (2.12.3-1~bpo9+2) UNRELEASED; urgency=medium
+
+  * Enable hardening flags 
+
+ -- Adrien Grellier <adrien.grellier@ec-nantes.fr>  Wed, 14 Feb 2018 14:25:45 +0100
+
 visit (2.12.3-1~bpo9+1) stretch; urgency=low
 
   [ Alastair McKinstry ]
