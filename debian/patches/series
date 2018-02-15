@@ -11,3 +11,4 @@ cmake_find_gfortran.patch
 remove_reference_to_vtkRenderingFreeTypeOpenGL.patch
 remove_MAXIMUM_NUMBER_OF_PIECES.patch
 fix_compilation.patch
+fix_gdal_priv_header.patch

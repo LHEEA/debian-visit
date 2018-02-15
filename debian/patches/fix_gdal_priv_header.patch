@@ -1,0 +1,11 @@
+--- a/src/databases/GDAL/avtGDALFileFormat.h
++++ b/src/databases/GDAL/avtGDALFileFormat.h
+@@ -47,7 +47,7 @@
+ #include <avtSTMDFileFormat.h>
+ #include <string>
+ #include <map>
+-#include <gdal_priv.h>
++#include <gdal/gdal_priv.h>
+ 
+ class vtkFloatArray;
+ class vtkUnsignedCharArray;
