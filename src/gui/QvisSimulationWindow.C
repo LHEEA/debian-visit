@@ -271,7 +271,7 @@ QvisSimulationWindow::CreateWindowContents()
     // Create the strip chart manager and post it to the notepad.
     int index = GetEngineListIndex(activeEngine);
     stripChartMgr = 
-      new QvisStripChartMgr(0, GetViewerProxy(), engines, index, notepadAux);
+      new QvisStripChartMgr(this, GetViewerProxy(), engines, index, notepadAux);
     stripChartMgr->post();
 
     // Make sure we show the commands page.
@@ -719,27 +719,26 @@ QvisSimulationWindow::UpdateUIComponent(QWidget *window, const QString &name,
 
             tWidget->setEnabled(true);
 
-            char val[128];
             unsigned int row, column;
+            std::string text;
 
-            getTableCMD( value.toStdString().c_str(), row, column, val );
+            parseCompositeCMD( value.toStdString(), row, column, text );
 
             debug5 << "found QTableWidget " << name.toStdString()
                    << " row = " << row << " column = " << column
-                   << " with value = " << val
-                   << std::endl;
+                   << " with value = " << text << std::endl;
 
-            if( strcmp(val,"CLEAR_TABLE") == 0)
+            if( text == std::string("CLEAR_TABLE") )
             {
               while( tWidget->rowCount() )
                 tWidget->removeRow( tWidget->rowCount() - 1);
             }                                 
-            else if( strcmp(val,"REMOVE_ROW") == 0 &&
+            else if( text == std::string("REMOVE_ROW") &&
                      row < tWidget->rowCount() )
             {
               tWidget->removeRow( row );
             }                                 
-            else if( strcmp(val,"REMOVE_COLUMN") == 0 &&
+            else if( text == std::string("REMOVE_COLUMN") &&
                      column < tWidget->columnCount() )
             {
               tWidget->removeColumn( column );
@@ -752,12 +751,12 @@ QvisSimulationWindow::UpdateUIComponent(QWidget *window, const QString &name,
               if( item )
               {
                 // Update the text
-                item->setText(tr("%1").arg(val));
+                item->setText(tr("%1").arg(text.c_str()));
               }
               else
               {
                 // Create a new item and make sure there is room for it.
-                item = new QTableWidgetItem(tr("%1").arg(val));
+                item = new QTableWidgetItem(tr("%1").arg(text.c_str()));
                 
                 if( tWidget->rowCount() <= row )
                   tWidget->setRowCount(row+1);
@@ -984,7 +983,9 @@ QvisSimulationWindow::UpdateWindow(bool doAll)
       // currently looking at, update the status widgets.
       if (key == activeEngine)
       {
-          debug5 << "uiValues being updated" << endl;
+          debug5 << "uiValues being updated "
+                 << uiValues->GetName() << "  " << uiValues->GetSvalue()
+                 << std::endl;
           
           if(uiValues->GetName() == "SIMULATION_ENABLE_BUTTON")
           {
@@ -1080,23 +1081,58 @@ QvisSimulationWindow::UpdateWindow(bool doAll)
             clearMessages();
           }
           
+          else if(uiValues->GetName() == "STRIP_CHART_CLEAR_ALL")
+          {
+            stripChartMgr->clearAll();
+          }
+          
+          else if(uiValues->GetName() == "STRIP_CHART_CLEAR_MENU")
+          {
+            stripChartMgr->clearMenu();
+          }
+          
+          else if(uiValues->GetName() == "STRIP_CHART_ADD_MENU_ITEM")
+          {
+            stripChartMgr->addMenuItem( uiValues->GetSvalue().c_str() );
+          }
+          
           else if(uiValues->GetName() == "STRIP_CHART_CLEAR")
           {
-            int index = atoi( uiValues->GetSvalue().c_str() );
-            stripChartMgr->clear( index );
+            unsigned int chart = atoi( uiValues->GetSvalue().c_str() );
+            stripChartMgr->clear( chart );
+          }
+          
+          else if(uiValues->GetName() == "STRIP_CHART_SET_NAME_OLD")
+          {
+            unsigned int chart, index;
+            std::string text;
+            
+            parseCompositeCMD( uiValues->GetSvalue(), chart, index, text );
+            
+            if( index == 0 )
+              stripChartMgr->setTabLabel(chart, text.c_str() );
+            else
+              stripChartMgr->setCurveTitle(chart, index-1, text.c_str() );
           }
           
           else if(uiValues->GetName() == "STRIP_CHART_SET_NAME")
           {
-            unsigned int chart, index;
-            char name[128];
+            unsigned int chart;
+            std::string text;
             
-            getTableCMD( uiValues->GetSvalue().c_str(), chart, index, name );
+            parseCompositeCMD( uiValues->GetSvalue(), chart, text );
             
-            if( index == 0 )
-              stripChartMgr->setTabLabel(chart, name );
-            else
-              stripChartMgr->setCurveTitle(chart, index-1, name );
+            stripChartMgr->setTabLabel(chart, text.c_str() );
+          }
+
+          else if(uiValues->GetName() == "STRIP_CHART_SET_CURVE_NAME")
+          {
+            unsigned int chart, curve;
+            std::string text;
+            
+            parseCompositeCMD( uiValues->GetSvalue(), chart, curve, text );
+            
+            stripChartMgr->setCurveTitle(chart, curve, text.c_str() );
           }
           
           else if(uiValues->GetName() == "STRIP_CHART_ADD_POINT")
@@ -1104,7 +1140,7 @@ QvisSimulationWindow::UpdateWindow(bool doAll)
             unsigned int chart, curve;
             double x, y;
             
-            getTableCMD( uiValues->GetSvalue().c_str(), chart, curve, x, y);
+            parseCompositeCMD( uiValues->GetSvalue(), chart, curve, x, y );
             
             stripChartMgr->addDataPoint(chart, curve, x, y);
           }
@@ -1777,10 +1813,39 @@ QvisSimulationWindow::GetUIFile(const QString &key) const
 }
 
 // ****************************************************************************
-// Method: QvisSimulationWindow::getTableCMD
+// Method: QvisSimulationWindow::parseCompositeCMD
 //
 // Purpose:
-//   This method is called to parse the table cmd to get the
+//   This method is called to parse a composite cmd to get the
+//   index and name.
+//
+// Arguments:
+//   cmd      : The properly form command string.
+//
+// Programmer: Allen Sanderson
+// Creation:   6 May 2016
+//
+// Modifications:
+//
+// ****************************************************************************
+void
+QvisSimulationWindow::parseCompositeCMD( const std::string cmd,
+                                         unsigned int &index,
+                                         std::string &text )
+{
+  std::string strcmd(cmd);
+
+  std::string str = getNextString( strcmd, " | " );
+  index = atoi( str.c_str() );
+
+  text = getNextString( strcmd, " | " );
+}
+
+// ****************************************************************************
+// Method: QvisSimulationWindow::parseCompositeCMD
+//
+// Purpose:
+//   This method is called to parse a composite cmd to get the
 //   row, column, and name.
 //
 // Arguments:
@@ -1793,9 +1858,10 @@ QvisSimulationWindow::GetUIFile(const QString &key) const
 //
 // ****************************************************************************
 void
-QvisSimulationWindow::getTableCMD( const char *cmd,
-                                   unsigned int &row, unsigned int &column,
-                                   char *name )
+QvisSimulationWindow::parseCompositeCMD( const std::string cmd,
+                                         unsigned int &row,
+                                         unsigned int &column,
+                                         std::string &text )
 {
   std::string strcmd(cmd);
 
@@ -1805,15 +1871,14 @@ QvisSimulationWindow::getTableCMD( const char *cmd,
   str = getNextString( strcmd, " | " );
   column = atoi( str.c_str() );
 
-  str = getNextString( strcmd, " | " );
-  strcpy( name, str.c_str() );
+  text = getNextString( strcmd, " | " );
 }
 
 // ****************************************************************************
-// Method: QvisSimulationWindow::getTableCMD
+// Method: QvisSimulationWindow::parseCompositeCMD
 //
 // Purpose:
-//   This method is called to parse the table cmd to get the
+//   This method is called to parse a composite cmd to get the
 //   row, column, x, and y values.
 //
 // Arguments:
@@ -1826,9 +1891,10 @@ QvisSimulationWindow::getTableCMD( const char *cmd,
 //
 // ****************************************************************************
 void
-QvisSimulationWindow::getTableCMD( const char *cmd,
-                                   unsigned int &row, unsigned int &column,
-                                   double &x, double &y )
+QvisSimulationWindow::parseCompositeCMD( const std::string cmd,
+                                         unsigned int &row,
+                                         unsigned int &column,
+                                         double &x, double &y )
 {
   std::string strcmd(cmd);
 
@@ -1852,9 +1918,6 @@ QvisSimulationWindow::getTableCMD( const char *cmd,
 //   This method is called to get the next string value and return
 //   the remaining part.
 //
-//   NOTE: it is assumed that there is a space on both sides of the delimiter
-//   EXAMPLE: string | string string | string
-//
 // Arguments:
 //   cmd      : the properly form command string.
 //   delimiter: the sentinal that separtates the strings.
@@ -1874,8 +1937,6 @@ std::string QvisSimulationWindow::getNextString( std::string &cmd,
 
   if( delim != std::string::npos)
   {
-    // str.erase(delim-1, std::string::npos);  
-    // cmd.erase(0, delim+2);
     str.erase(delim, std::string::npos);  
     cmd.erase(0, delim+delimiter.length());
   }
@@ -2011,6 +2072,8 @@ QvisSimulationWindow::closeEngine()
                              QMessageBox::Ok | QMessageBox::Cancel) ==
         QMessageBox::Ok)
     {
+        stripChartMgr->clearAll();
+      
         // Close the engine.
         GetViewerMethods()->CloseComputeEngine(host, sim);
     }
@@ -2135,6 +2198,8 @@ QvisSimulationWindow::executePushButtonCommand(const QString &btncmd)
                                QMessageBox::Ok | QMessageBox::Cancel) ==
           QMessageBox::Cancel)
         return;
+      else
+        stripChartMgr->clearAll();
     }
 
     QString cmd(btncmd);
@@ -2260,5 +2325,36 @@ QvisSimulationWindow::executeStopCommand(const QString &value)
 
     QString cmd("StopCycle");
     QString args(QString("returnedPressed();%1;QLineEdit;Simulations;%2").arg(cmd).arg(value));
+    GetViewerMethods()->SendSimulationCommand(host, sim, cmd.toStdString(), args.toStdString()); 
+}
+
+// ****************************************************************************
+// Method: QvisSimulationWindow::setStripChartVar()
+//
+// Purpose:
+//   This method is called when the types into the stop text box for time
+//   range control.
+//
+// Programmer: Shelly Prevost
+// Creation:   December 21, 2005
+//
+// Modifications:
+//    Shelly Prevost Fri Dec  1 10:36:07 PST 2006
+//    Corrected the widget name being passed to the simulation in the
+//    command string.
+//
+// ****************************************************************************
+void 
+QvisSimulationWindow::setStripChartVar(const QString &value)
+{
+    int index = GetEngineListIndex(activeEngine);
+    if (index < 0)
+        return;
+
+    std::string host = engines->GetEngineName()[index];
+    std::string sim  = engines->GetSimulationName()[index];
+
+    QString cmd("StripChartVar");
+    QString args(QString("triggered();%1;QMenu;Simulations;%2").arg(cmd).arg(value));
     GetViewerMethods()->SendSimulationCommand(host, sim, cmd.toStdString(), args.toStdString()); 
 }

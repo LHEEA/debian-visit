@@ -59,7 +59,7 @@ import java.lang.Double;
 
 public class PickAttributes extends AttributeSubject
 {
-    private static int PickAttributes_numAdditionalAtts = 72;
+    private static int PickAttributes_numAdditionalAtts = 77;
 
     // Enum values
     public final static int PICKTYPE_ZONE = 0;
@@ -68,6 +68,8 @@ public class PickAttributes extends AttributeSubject
     public final static int PICKTYPE_CURVENODE = 3;
     public final static int PICKTYPE_DOMAINZONE = 4;
     public final static int PICKTYPE_DOMAINNODE = 5;
+    public final static int PICKTYPE_ZONELABEL = 6;
+    public final static int PICKTYPE_NODELABEL = 7;
 
     public final static int COORDINATETYPE_XY = 0;
     public final static int COORDINATETYPE_RZ = 1;
@@ -150,16 +152,21 @@ public class PickAttributes extends AttributeSubject
         elementIsGhost = false;
         requiresGlyphPick = false;
         locationSuccessful = false;
+        useLabelAsPickLetter = false;
         showGlobalIds = false;
         globalElement = -1;
         globalIncidentElements = new Vector();
         elementIsGlobal = false;
         showPickLetter = true;
+        hasRangeOutput = false;
+        rangeOutput = new MapNode();
+        elementLabel = new String("");
         reusePickLetter = false;
         ghostType = 0;
         hasMixedGhostTypes = -1;
         linesData = false;
         showPickHighlight = false;
+        notifyEnabled = true;
         inputTopoDim = -1;
         meshCoordType = COORDINATETYPE_XY;
         createSpreadsheet = false;
@@ -244,16 +251,21 @@ public class PickAttributes extends AttributeSubject
         elementIsGhost = false;
         requiresGlyphPick = false;
         locationSuccessful = false;
+        useLabelAsPickLetter = false;
         showGlobalIds = false;
         globalElement = -1;
         globalIncidentElements = new Vector();
         elementIsGlobal = false;
         showPickLetter = true;
+        hasRangeOutput = false;
+        rangeOutput = new MapNode();
+        elementLabel = new String("");
         reusePickLetter = false;
         ghostType = 0;
         hasMixedGhostTypes = -1;
         linesData = false;
         showPickHighlight = false;
+        notifyEnabled = true;
         inputTopoDim = -1;
         meshCoordType = COORDINATETYPE_XY;
         createSpreadsheet = false;
@@ -267,7 +279,7 @@ public class PickAttributes extends AttributeSubject
 
     public PickAttributes(PickAttributes obj)
     {
-        super(PickAttributes_numAdditionalAtts);
+        super(obj);
 
         int i;
 
@@ -399,6 +411,7 @@ public class PickAttributes extends AttributeSubject
         elementIsGhost = obj.elementIsGhost;
         requiresGlyphPick = obj.requiresGlyphPick;
         locationSuccessful = obj.locationSuccessful;
+        useLabelAsPickLetter = obj.useLabelAsPickLetter;
         showGlobalIds = obj.showGlobalIds;
         globalElement = obj.globalElement;
         globalIncidentElements = new Vector();
@@ -409,11 +422,15 @@ public class PickAttributes extends AttributeSubject
         }
         elementIsGlobal = obj.elementIsGlobal;
         showPickLetter = obj.showPickLetter;
+        hasRangeOutput = obj.hasRangeOutput;
+        rangeOutput = new MapNode(obj.rangeOutput);
+        elementLabel = new String(obj.elementLabel);
         reusePickLetter = obj.reusePickLetter;
         ghostType = obj.ghostType;
         hasMixedGhostTypes = obj.hasMixedGhostTypes;
         linesData = obj.linesData;
         showPickHighlight = obj.showPickHighlight;
+        notifyEnabled = obj.notifyEnabled;
         inputTopoDim = obj.inputTopoDim;
         meshCoordType = obj.meshCoordType;
         createSpreadsheet = obj.createSpreadsheet;
@@ -646,16 +663,21 @@ public class PickAttributes extends AttributeSubject
                 (elementIsGhost == obj.elementIsGhost) &&
                 (requiresGlyphPick == obj.requiresGlyphPick) &&
                 (locationSuccessful == obj.locationSuccessful) &&
+                (useLabelAsPickLetter == obj.useLabelAsPickLetter) &&
                 (showGlobalIds == obj.showGlobalIds) &&
                 (globalElement == obj.globalElement) &&
                 globalIncidentElements_equal &&
                 (elementIsGlobal == obj.elementIsGlobal) &&
                 (showPickLetter == obj.showPickLetter) &&
+                (hasRangeOutput == obj.hasRangeOutput) &&
+                (rangeOutput.equals(obj.rangeOutput)) &&
+                (elementLabel.equals(obj.elementLabel)) &&
                 (reusePickLetter == obj.reusePickLetter) &&
                 (ghostType == obj.ghostType) &&
                 (hasMixedGhostTypes == obj.hasMixedGhostTypes) &&
                 (linesData == obj.linesData) &&
                 (showPickHighlight == obj.showPickHighlight) &&
+                (notifyEnabled == obj.notifyEnabled) &&
                 (inputTopoDim == obj.inputTopoDim) &&
                 (meshCoordType == obj.meshCoordType) &&
                 (createSpreadsheet == obj.createSpreadsheet) &&
@@ -1030,118 +1052,148 @@ public class PickAttributes extends AttributeSubject
         Select(52);
     }
 
+    public void SetUseLabelAsPickLetter(boolean useLabelAsPickLetter_)
+    {
+        useLabelAsPickLetter = useLabelAsPickLetter_;
+        Select(53);
+    }
+
     public void SetShowGlobalIds(boolean showGlobalIds_)
     {
         showGlobalIds = showGlobalIds_;
-        Select(53);
+        Select(54);
     }
 
     public void SetGlobalElement(int globalElement_)
     {
         globalElement = globalElement_;
-        Select(54);
+        Select(55);
     }
 
     public void SetGlobalIncidentElements(Vector globalIncidentElements_)
     {
         globalIncidentElements = globalIncidentElements_;
-        Select(55);
+        Select(56);
     }
 
     public void SetElementIsGlobal(boolean elementIsGlobal_)
     {
         elementIsGlobal = elementIsGlobal_;
-        Select(56);
+        Select(57);
     }
 
     public void SetShowPickLetter(boolean showPickLetter_)
     {
         showPickLetter = showPickLetter_;
-        Select(57);
+        Select(58);
+    }
+
+    public void SetHasRangeOutput(boolean hasRangeOutput_)
+    {
+        hasRangeOutput = hasRangeOutput_;
+        Select(59);
+    }
+
+    public void SetRangeOutput(MapNode rangeOutput_)
+    {
+        rangeOutput = rangeOutput_;
+        Select(60);
+    }
+
+    public void SetElementLabel(String elementLabel_)
+    {
+        elementLabel = elementLabel_;
+        Select(61);
     }
 
     public void SetReusePickLetter(boolean reusePickLetter_)
     {
         reusePickLetter = reusePickLetter_;
-        Select(58);
+        Select(62);
     }
 
     public void SetGhostType(int ghostType_)
     {
         ghostType = ghostType_;
-        Select(59);
+        Select(63);
     }
 
     public void SetHasMixedGhostTypes(int hasMixedGhostTypes_)
     {
         hasMixedGhostTypes = hasMixedGhostTypes_;
-        Select(60);
+        Select(64);
     }
 
     public void SetLinesData(boolean linesData_)
     {
         linesData = linesData_;
-        Select(61);
+        Select(65);
     }
 
     public void SetShowPickHighlight(boolean showPickHighlight_)
     {
         showPickHighlight = showPickHighlight_;
-        Select(62);
+        Select(66);
+    }
+
+    public void SetNotifyEnabled(boolean notifyEnabled_)
+    {
+        notifyEnabled = notifyEnabled_;
+        Select(67);
     }
 
     public void SetInputTopoDim(int inputTopoDim_)
     {
         inputTopoDim = inputTopoDim_;
-        Select(63);
+        Select(68);
     }
 
     public void SetMeshCoordType(int meshCoordType_)
     {
         meshCoordType = meshCoordType_;
-        Select(64);
+        Select(69);
     }
 
     public void SetCreateSpreadsheet(boolean createSpreadsheet_)
     {
         createSpreadsheet = createSpreadsheet_;
-        Select(65);
+        Select(70);
     }
 
     public void SetSubsetName(String subsetName_)
     {
         subsetName = subsetName_;
-        Select(66);
+        Select(71);
     }
 
     public void SetFloatFormat(String floatFormat_)
     {
         floatFormat = floatFormat_;
-        Select(67);
+        Select(72);
     }
 
     public void SetTimePreserveCoord(boolean timePreserveCoord_)
     {
         timePreserveCoord = timePreserveCoord_;
-        Select(68);
+        Select(73);
     }
 
     public void SetTimeCurveType(int timeCurveType_)
     {
         timeCurveType = timeCurveType_;
-        Select(69);
+        Select(74);
     }
 
     public void SetTimeOptions(MapNode timeOptions_)
     {
         timeOptions = timeOptions_;
-        Select(70);
+        Select(75);
     }
 
     public void SetPlotRequested(MapNode plotRequested_)
     {
         plotRequested = plotRequested_;
-        Select(71);
+        Select(76);
     }
 
     // Property getting methods
@@ -1198,16 +1250,21 @@ public class PickAttributes extends AttributeSubject
     public boolean  GetElementIsGhost() { return elementIsGhost; }
     public boolean  GetRequiresGlyphPick() { return requiresGlyphPick; }
     public boolean  GetLocationSuccessful() { return locationSuccessful; }
+    public boolean  GetUseLabelAsPickLetter() { return useLabelAsPickLetter; }
     public boolean  GetShowGlobalIds() { return showGlobalIds; }
     public int      GetGlobalElement() { return globalElement; }
     public Vector   GetGlobalIncidentElements() { return globalIncidentElements; }
     public boolean  GetElementIsGlobal() { return elementIsGlobal; }
     public boolean  GetShowPickLetter() { return showPickLetter; }
+    public boolean  GetHasRangeOutput() { return hasRangeOutput; }
+    public MapNode  GetRangeOutput() { return rangeOutput; }
+    public String   GetElementLabel() { return elementLabel; }
     public boolean  GetReusePickLetter() { return reusePickLetter; }
     public int      GetGhostType() { return ghostType; }
     public int      GetHasMixedGhostTypes() { return hasMixedGhostTypes; }
     public boolean  GetLinesData() { return linesData; }
     public boolean  GetShowPickHighlight() { return showPickHighlight; }
+    public boolean  GetNotifyEnabled() { return notifyEnabled; }
     public int      GetInputTopoDim() { return inputTopoDim; }
     public int      GetMeshCoordType() { return meshCoordType; }
     public boolean  GetCreateSpreadsheet() { return createSpreadsheet; }
@@ -1335,42 +1392,52 @@ public class PickAttributes extends AttributeSubject
         if(WriteSelect(52, buf))
             buf.WriteBool(locationSuccessful);
         if(WriteSelect(53, buf))
-            buf.WriteBool(showGlobalIds);
+            buf.WriteBool(useLabelAsPickLetter);
         if(WriteSelect(54, buf))
-            buf.WriteInt(globalElement);
+            buf.WriteBool(showGlobalIds);
         if(WriteSelect(55, buf))
-            buf.WriteIntVector(globalIncidentElements);
+            buf.WriteInt(globalElement);
         if(WriteSelect(56, buf))
-            buf.WriteBool(elementIsGlobal);
+            buf.WriteIntVector(globalIncidentElements);
         if(WriteSelect(57, buf))
-            buf.WriteBool(showPickLetter);
+            buf.WriteBool(elementIsGlobal);
         if(WriteSelect(58, buf))
-            buf.WriteBool(reusePickLetter);
+            buf.WriteBool(showPickLetter);
         if(WriteSelect(59, buf))
-            buf.WriteInt(ghostType);
+            buf.WriteBool(hasRangeOutput);
         if(WriteSelect(60, buf))
-            buf.WriteInt(hasMixedGhostTypes);
+            rangeOutput.Write(buf);
         if(WriteSelect(61, buf))
-            buf.WriteBool(linesData);
+            buf.WriteString(elementLabel);
         if(WriteSelect(62, buf))
-            buf.WriteBool(showPickHighlight);
+            buf.WriteBool(reusePickLetter);
         if(WriteSelect(63, buf))
-            buf.WriteInt(inputTopoDim);
+            buf.WriteInt(ghostType);
         if(WriteSelect(64, buf))
-            buf.WriteInt(meshCoordType);
+            buf.WriteInt(hasMixedGhostTypes);
         if(WriteSelect(65, buf))
-            buf.WriteBool(createSpreadsheet);
+            buf.WriteBool(linesData);
         if(WriteSelect(66, buf))
-            buf.WriteString(subsetName);
+            buf.WriteBool(showPickHighlight);
         if(WriteSelect(67, buf))
-            buf.WriteString(floatFormat);
+            buf.WriteBool(notifyEnabled);
         if(WriteSelect(68, buf))
-            buf.WriteBool(timePreserveCoord);
+            buf.WriteInt(inputTopoDim);
         if(WriteSelect(69, buf))
-            buf.WriteInt(timeCurveType);
+            buf.WriteInt(meshCoordType);
         if(WriteSelect(70, buf))
-            timeOptions.Write(buf);
+            buf.WriteBool(createSpreadsheet);
         if(WriteSelect(71, buf))
+            buf.WriteString(subsetName);
+        if(WriteSelect(72, buf))
+            buf.WriteString(floatFormat);
+        if(WriteSelect(73, buf))
+            buf.WriteBool(timePreserveCoord);
+        if(WriteSelect(74, buf))
+            buf.WriteInt(timeCurveType);
+        if(WriteSelect(75, buf))
+            timeOptions.Write(buf);
+        if(WriteSelect(76, buf))
             plotRequested.Write(buf);
     }
 
@@ -1548,60 +1615,75 @@ public class PickAttributes extends AttributeSubject
             SetLocationSuccessful(buf.ReadBool());
             break;
         case 53:
-            SetShowGlobalIds(buf.ReadBool());
+            SetUseLabelAsPickLetter(buf.ReadBool());
             break;
         case 54:
-            SetGlobalElement(buf.ReadInt());
+            SetShowGlobalIds(buf.ReadBool());
             break;
         case 55:
-            SetGlobalIncidentElements(buf.ReadIntVector());
+            SetGlobalElement(buf.ReadInt());
             break;
         case 56:
-            SetElementIsGlobal(buf.ReadBool());
+            SetGlobalIncidentElements(buf.ReadIntVector());
             break;
         case 57:
-            SetShowPickLetter(buf.ReadBool());
+            SetElementIsGlobal(buf.ReadBool());
             break;
         case 58:
-            SetReusePickLetter(buf.ReadBool());
+            SetShowPickLetter(buf.ReadBool());
             break;
         case 59:
-            SetGhostType(buf.ReadInt());
+            SetHasRangeOutput(buf.ReadBool());
             break;
         case 60:
-            SetHasMixedGhostTypes(buf.ReadInt());
+            rangeOutput.Read(buf);
             break;
         case 61:
-            SetLinesData(buf.ReadBool());
+            SetElementLabel(buf.ReadString());
             break;
         case 62:
-            SetShowPickHighlight(buf.ReadBool());
+            SetReusePickLetter(buf.ReadBool());
             break;
         case 63:
-            SetInputTopoDim(buf.ReadInt());
+            SetGhostType(buf.ReadInt());
             break;
         case 64:
-            SetMeshCoordType(buf.ReadInt());
+            SetHasMixedGhostTypes(buf.ReadInt());
             break;
         case 65:
-            SetCreateSpreadsheet(buf.ReadBool());
+            SetLinesData(buf.ReadBool());
             break;
         case 66:
-            SetSubsetName(buf.ReadString());
+            SetShowPickHighlight(buf.ReadBool());
             break;
         case 67:
-            SetFloatFormat(buf.ReadString());
+            SetNotifyEnabled(buf.ReadBool());
             break;
         case 68:
-            SetTimePreserveCoord(buf.ReadBool());
+            SetInputTopoDim(buf.ReadInt());
             break;
         case 69:
-            SetTimeCurveType(buf.ReadInt());
+            SetMeshCoordType(buf.ReadInt());
             break;
         case 70:
-            timeOptions.Read(buf);
+            SetCreateSpreadsheet(buf.ReadBool());
             break;
         case 71:
+            SetSubsetName(buf.ReadString());
+            break;
+        case 72:
+            SetFloatFormat(buf.ReadString());
+            break;
+        case 73:
+            SetTimePreserveCoord(buf.ReadBool());
+            break;
+        case 74:
+            SetTimeCurveType(buf.ReadInt());
+            break;
+        case 75:
+            timeOptions.Read(buf);
+            break;
+        case 76:
             plotRequested.Read(buf);
             break;
         }
@@ -1635,6 +1717,10 @@ public class PickAttributes extends AttributeSubject
             str = str + "PICKTYPE_DOMAINZONE";
         if(pickType == PICKTYPE_DOMAINNODE)
             str = str + "PICKTYPE_DOMAINNODE";
+        if(pickType == PICKTYPE_ZONELABEL)
+            str = str + "PICKTYPE_ZONELABEL";
+        if(pickType == PICKTYPE_NODELABEL)
+            str = str + "PICKTYPE_NODELABEL";
         str = str + "\n";
         str = str + intToString("domain", domain, indent) + "\n";
         str = str + intToString("elementNumber", elementNumber, indent) + "\n";
@@ -1685,16 +1771,21 @@ public class PickAttributes extends AttributeSubject
         str = str + boolToString("elementIsGhost", elementIsGhost, indent) + "\n";
         str = str + boolToString("requiresGlyphPick", requiresGlyphPick, indent) + "\n";
         str = str + boolToString("locationSuccessful", locationSuccessful, indent) + "\n";
+        str = str + boolToString("useLabelAsPickLetter", useLabelAsPickLetter, indent) + "\n";
         str = str + boolToString("showGlobalIds", showGlobalIds, indent) + "\n";
         str = str + intToString("globalElement", globalElement, indent) + "\n";
         str = str + intVectorToString("globalIncidentElements", globalIncidentElements, indent) + "\n";
         str = str + boolToString("elementIsGlobal", elementIsGlobal, indent) + "\n";
         str = str + boolToString("showPickLetter", showPickLetter, indent) + "\n";
+        str = str + boolToString("hasRangeOutput", hasRangeOutput, indent) + "\n";
+        str = str + indent + "rangeOutput = " + rangeOutput.toString(indent);
+        str = str + stringToString("elementLabel", elementLabel, indent) + "\n";
         str = str + boolToString("reusePickLetter", reusePickLetter, indent) + "\n";
         str = str + intToString("ghostType", ghostType, indent) + "\n";
         str = str + intToString("hasMixedGhostTypes", hasMixedGhostTypes, indent) + "\n";
         str = str + boolToString("linesData", linesData, indent) + "\n";
         str = str + boolToString("showPickHighlight", showPickHighlight, indent) + "\n";
+        str = str + boolToString("notifyEnabled", notifyEnabled, indent) + "\n";
         str = str + intToString("inputTopoDim", inputTopoDim, indent) + "\n";
         str = str + indent + "meshCoordType = ";
         if(meshCoordType == COORDINATETYPE_XY)
@@ -1807,16 +1898,21 @@ public class PickAttributes extends AttributeSubject
     private boolean  elementIsGhost;
     private boolean  requiresGlyphPick;
     private boolean  locationSuccessful;
+    private boolean  useLabelAsPickLetter;
     private boolean  showGlobalIds;
     private int      globalElement;
     private Vector   globalIncidentElements; // vector of Integer objects
     private boolean  elementIsGlobal;
     private boolean  showPickLetter;
+    private boolean  hasRangeOutput;
+    private MapNode  rangeOutput;
+    private String   elementLabel;
     private boolean  reusePickLetter;
     private int      ghostType;
     private int      hasMixedGhostTypes;
     private boolean  linesData;
     private boolean  showPickHighlight;
+    private boolean  notifyEnabled;
     private int      inputTopoDim;
     private int      meshCoordType;
     private boolean  createSpreadsheet;

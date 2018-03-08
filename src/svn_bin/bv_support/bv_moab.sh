@@ -1,19 +1,16 @@
 function bv_moab_initialize
 {
     export DO_MOAB="no"
-    export ON_MOAB="off"
 }
 
 function bv_moab_enable
 {
     DO_MOAB="yes"
-    ON_MOAB="on"
 }
 
 function bv_moab_disable
 {
     DO_MOAB="no"
-    ON_MOAB="off"
 }
 
 function bv_moab_depends_on
@@ -49,12 +46,6 @@ function bv_moab_print
 function bv_moab_print_usage
 {
     printf "%-15s %s [%s]\n" "--moab" "Build moab support" "$DO_MOAB"
-}
-
-function bv_moab_graphical
-{
-    local graphical_out="moab     $MOAB_VERSION($MOAB_FILE)      $ON_MOAB"
-    echo "$graphical_out"
 }
 
 function bv_moab_host_profile
@@ -147,7 +138,7 @@ function build_moab
         fi
 
         cf_prefix_arg="--prefix=$VISITDIR/moab${cf_par_suffix}/$MOAB_VERSION/$VISITARCH"
-        cf_common_args="--with-pic --disable-fortran --disable-imesh"
+        cf_common_args="--with-pic --disable-fortran --disable-imesh --disable-cgns"
 
         if [[ "DO_STATIC_BUILD" == "yes" ]]; then
             cf_static_args="--enable-static --disable-shared"

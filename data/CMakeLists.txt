@@ -89,6 +89,10 @@
 #   properly.  Reworked the create_data_examples targets so things work
 #   correctly on Windows.
 #
+#   Eric Brugger, Wed Sep 20 17:35:37 PDT 2017
+#   Modify the script to untar files of the name "*test_data*.tar.gz" instead
+#   of just "*test_data.tar.gz".
+#
 #****************************************************************************/
 
 cmake_minimum_required(VERSION 2.8)
@@ -142,10 +146,10 @@ FUNCTION(BUILD_DATA_TARGET_IMPL target_name do_parallel)
 
     # cmake gymnastics to implement optional argument sections:
     FOREACH(ARG ${ARGN})
-        IF("${ARG}" STREQUAL "INCLUDE_DIRS" OR
-           "${ARG}" STREQUAL "LIB_DIRS" OR
-           "${ARG}" STREQUAL "LIBS" OR
-           "${ARG}" STREQUAL "DEFS")
+        IF(${ARG} STREQUAL "INCLUDE_DIRS" OR
+           ${ARG} STREQUAL "LIB_DIRS" OR
+           ${ARG} STREQUAL "LIBS" OR
+           ${ARG} STREQUAL "DEFS")
             #switch var name to extend
             SET(ARG_VAR target_${ARG})
         ELSE()
@@ -245,6 +249,7 @@ SET(SILO_TARGETS
 arbpoly
 bigsil
 bounce
+big_quads
 csg
 emptydomains
 fullframe
@@ -263,6 +268,7 @@ multi_test
 multidir
 noise
 noise2d
+non_conforming
 one_quad
 quad_disk
 sid97
@@ -425,7 +431,7 @@ ENDIF(NOT WIN32)
 # of the source tarball. This makes tracking the dependencies simple.
 #
 #-----------------------------------------------------------------------------
-FILE(GLOB ARCHIVED_TARGETS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *test_data.tar.gz)
+FILE(GLOB ARCHIVED_TARGETS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} *test_data*.tar.gz)
 
 #-----------------------------------------------------------------------------
 # Add a custom command to extract each archived dataset & collect

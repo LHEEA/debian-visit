@@ -415,6 +415,9 @@
 #    Move setting of HAVE_LIBxxx to SetUpThirdParty or FindXXX in the case
 #    where a special HAVE_XXX is neeeded.
 #
+#    Eric Brugger, Wed May 17 16:53:48 PDT 2017
+#    I added support for the LLVM and OpenSWR packages.
+#
 #****************************************************************************/
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.0 FATAL_ERROR)
@@ -816,7 +819,8 @@ VISIT_3RDPARTY_VAR(CONDUIT_DIR   "Path containing the Conduit library's include 
 VISIT_3RDPARTY_VAR(CONDUIT_LIBDEP "Conduit library dependencies")
 VISIT_3RDPARTY_VAR(DAMARIS_DIR   "Path containing the Damaris library's include and lib")
 VISIT_3RDPARTY_VAR(EAVL_DIR      "Path containing the eavl library's include and lib")
-VISIT_3RDPARTY_VAR(FASTBIT_DIR   "Path containing the Fastbit library's include and lib")
+VISIT_3RDPARTY_VAR(FASTBIT_DIR   "Path containing the FastBit library's include and lib")
+VISIT_3RDPARTY_VAR(FASTQUERY_DIR   "Path containing the FastQuery library's include and lib")
 VISIT_3RDPARTY_VAR(GDAL_DIR      "Path containing the GDAL library's include and lib")
 VISIT_3RDPARTY_VAR(GFORTRAN_DIR  "Path containing the GFortran library's include and lib")
 VISIT_3RDPARTY_VAR(HDF4_DIR      "Path containing the HDF4 library's include and lib")
@@ -827,6 +831,7 @@ VISIT_3RDPARTY_VAR(HDF5_MPI_DIR  "Path containing the parallel HDF5 library's in
 VISIT_3RDPARTY_DEP(HDF5_MPI_LIBDEP "HDF5 parallel library dependencies")
 VISIT_3RDPARTY_VAR(H5PART_DIR    "Path containing the H5Part library's include and lib")
 VISIT_3RDPARTY_DEP(H5PART_LIBDEP "H5Part library dependencies")
+VISIT_3RDPARTY_VAR(LLVM_DIR      "Path containing the LLVM library's include and lib")
 VISIT_3RDPARTY_VAR(MFEM_DIR      "Path containing the mfem library's include and lib")
 VISIT_3RDPARTY_VAR(MILI_DIR      "Path containing the Mili library's include and lib")
 VISIT_3RDPARTY_VAR(NEKTAR++_DIR  "Path containing the Nektar++ library's include and lib")
@@ -834,11 +839,13 @@ VISIT_3RDPARTY_DEP(NEKTAR++_LIBDEP "Nektar++ library dependencies")
 VISIT_3RDPARTY_VAR(OPENGL_DIR    "Path containing the OpenGL library's include and lib")
 VISIT_3RDPARTY_VAR(NETCDF_DIR    "Path containing the NETCDF library's include and lib")
 VISIT_3RDPARTY_DEP(NETCDF_LIBDEP "NETCDF library dependencies")
+VISIT_3RDPARTY_VAR(OPENSWR_DIR   "Path containing the OpenSWR library's include and lib")
 VISIT_3RDPARTY_VAR(PYSIDE_DIR    "Path containing the PySide installation")
 VISIT_3RDPARTY_VAR(R_DIR         "Path containing the R library's include and lib")
 VISIT_3RDPARTY_VAR(SILO_DIR      "Path containing the Silo library's include and lib")
 VISIT_3RDPARTY_DEP(SILO_LIBDEP   "Silo library dependencies")
 VISIT_3RDPARTY_VAR(UINTAH_DIR    "Path containing the Uintah library's include and lib")
+VISIT_3RDPARTY_VAR(PIDX_DIR      "Path containing the PIDX library's include and lib")
 VISIT_3RDPARTY_VAR(VISUS_DIR     "Path containing the Visus library's include and lib")
 VISIT_3RDPARTY_VAR(VTKM_DIR      "Path containing the VTKm library's include and lib")
 VISIT_3RDPARTY_VAR(XDMF_DIR      "Path containing the Xdmf library's include and lib")
@@ -1112,9 +1119,9 @@ CHECK_INCLUDE_FILES (zlib.h      HAVE_ZLIB_H)
 CHECK_INCLUDE_FILES (stdbool.h   HAVE_STDBOOL_H)
 
 # Configure Mesa support.
-IF(NOT WIN32 AND VISIT_MESA_DIR AND NOT VISIT_DBIO_ONLY)
+IF(NOT WIN32 AND (VISIT_MESA_DIR OR VISIT_OPENSWR_DIR) AND NOT VISIT_DBIO_ONLY)
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisItMesa.cmake)
-ENDIF(NOT WIN32 AND VISIT_MESA_DIR AND NOT VISIT_DBIO_ONLY)
+ENDIF(NOT WIN32 AND (VISIT_MESA_DIR OR VISIT_OPENSWR_DIR) AND NOT VISIT_DBIO_ONLY)
 
 # Configure OpenGL support.
 IF(NOT VISIT_DBIO_ONLY)
@@ -1122,21 +1129,37 @@ IF(NOT VISIT_DBIO_ONLY)
         SET(OPENGL_FOUND ON)
         SET(OPENGL_GLU_FOUND ON)
         SET(OPENGL_INCLUDE_DIR ${VISIT_OPENGL_DIR}/include)
-        # Hack for BG/Q.
-        IF(BLUEGENEQ)
-            SET(LIBGL OSMesa)
-        ELSE(BLUEGENEQ)
-            SET(LIBGL GL)
-        ENDIF(BLUEGENEQ)
-        IF(VISIT_STATIC)
-            SET(OPENGL_gl_LIBRARY ${VISIT_OPENGL_DIR}/lib/lib${LIBGL}.a)
-            SET(OPENGL_glu_LIBRARY ${VISIT_OPENGL_DIR}/lib/libGLU.a)
-        ELSE(VISIT_STATIC)
-            SET(OPENGL_gl_LIBRARY ${VISIT_OPENGL_DIR}/lib/lib${LIBGL}.so)
-            SET(OPENGL_glu_LIBRARY ${VISIT_OPENGL_DIR}/lib/libGLU.so)
-        ENDIF(VISIT_STATIC)
+
+        IF(VISIT_OPENGL_LIBRARY)
+            SET(OPENGL_gl_LIBRARY ${VISIT_OPENGL_LIBRARY})
+        ELSE(VISIT_OPENGL_LIBRARY)
+            # Hack for BG/Q.
+            IF(BLUEGENEQ)
+                SET(LIBGL OSMesa)
+            ELSE(BLUEGENEQ)
+                SET(LIBGL GL)
+            ENDIF(BLUEGENEQ)
+            IF(VISIT_STATIC)
+                SET(OPENGL_gl_LIBRARY ${VISIT_OPENGL_DIR}/lib/lib${LIBGL}.a)
+            ELSE(VISIT_STATIC)
+                SET(OPENGL_gl_LIBRARY ${VISIT_OPENGL_DIR}/lib/lib${LIBGL}.so)
+            ENDIF(VISIT_STATIC)
+        ENDIF(VISIT_OPENGL_LIBRARY)
+
+        IF(VISIT_GLU_LIBRARY)
+            SET(OPENGL_glu_LIBRARY ${VISIT_GLU_LIBRARY})
+        ELSE(VISIT_GLU_LIBRARY)
+            IF(VISIT_STATIC)
+                SET(OPENGL_glu_LIBRARY ${VISIT_OPENGL_DIR}/lib/libGLU.a)
+            ELSE(VISIT_STATIC)
+                SET(OPENGL_glu_LIBRARY ${VISIT_OPENGL_DIR}/lib/libGLU.so)
+            ENDIF(VISIT_STATIC)
+        ENDIF(VISIT_GLU_LIBRARY)
+
         SET(OPENGL_LIBRARIES ${OPENGL_gl_LIBRARY} ${OPENGL_glu_LIBRARY})
+
         MESSAGE(STATUS "Found OpenGL ${OPENGL_gl_LIBRARY}")
+        MESSAGE(STATUS "Found GLU ${OPENGL_glu_LIBRARY}")
     ELSE(VISIT_OPENGL_DIR)
         INCLUDE(${CMAKE_ROOT}/Modules/FindOpenGL.cmake)
     ENDIF(VISIT_OPENGL_DIR)
@@ -1227,18 +1250,12 @@ IF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS
 ENDIF(NOT VISIT_DBIO_ONLY AND NOT VISIT_ENGINE_ONLY AND NOT VISIT_SERVER_COMPONENTS_ONLY)
 
 # Configure PySide Support
-# But not for Qt5 yet..
-IF(NOT VISIT_QT5)
-    IF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
-                              AND NOT VISIT_DBIO_ONLY
-                              AND NOT VISIT_ENGINE_ONLY
-                              AND NOT VISIT_SERVER_COMPONENTS_ONLY)
-        INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPySide.cmake)
-    ENDIF(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
-                                 AND NOT VISIT_DBIO_ONLY
-                                 AND NOT VISIT_ENGINE_ONLY
-                                 AND NOT VISIT_SERVER_COMPONENTS_ONLY)
-ENDIF(NOT VISIT_QT5)
+if(VISIT_PYTHON_SCRIPTING AND PYTHONLIBS_FOUND
+                          AND NOT VISIT_DBIO_ONLY
+                          AND NOT VISIT_ENGINE_ONLY
+                          AND NOT VISIT_SERVER_COMPONENTS_ONLY)
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPySide.cmake)
+endif()
 
 # Treat GLEW as a 3rd party builtin.
 IF(VISIT_USE_GLEW)
@@ -1324,8 +1341,11 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
     # Configure eavl support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindEAVL.cmake)
 
-    # Configure Fastbit support.
+    # Configure FastBit support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindFastBit.cmake)
+
+    # Configure FastQuery support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindFastQuery.cmake)
 
     # Configure gdal support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindGDAL.cmake)
@@ -1365,6 +1385,9 @@ IF(NOT VISIT_BUILD_MINIMAL_PLUGINS OR VISIT_SELECTED_DATABASE_PLUGINS)
 
     # Configure Uintah support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindUintah.cmake)
+
+    # Configure PIDX support.
+    INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindPIDX.cmake)
 
     # Configure Visus support.
     INCLUDE(${VISIT_SOURCE_DIR}/CMake/FindVisus.cmake)
@@ -1627,7 +1650,7 @@ FUNCTION(ADD_PARALLEL_EXECUTABLE target)
     # PARALLEL_TARGET_LINK_LIBRARIES function to actually link the
     # target with MPI.
     IF(NOT VISIT_NOLINK_MPI_WITH_LIBRARIES) # This is a new if test
-        TARGET_LINK_LIBRARIES(${target} ${VISIT_PARALLEL_LIBS})
+        TARGET_LINK_LIBRARIES(${target} ${VISIT_EXE_LINKER_FLAGS} ${VISIT_PARALLEL_LIBS})
     ENDIF(NOT VISIT_NOLINK_MPI_WITH_LIBRARIES)
 ENDFUNCTION(ADD_PARALLEL_EXECUTABLE)
 
@@ -1663,7 +1686,7 @@ FUNCTION(ADD_PARALLEL_FORTRAN_EXECUTABLE target)
             )
         ENDIF(VISIT_PARALLEL_RPATH)
         ENDIF(VISIT_PARALLEL_FORTRAN_LINKER_FLAGS)
-        TARGET_LINK_LIBRARIES(${target} ${VISIT_PARALLEL_FORTRAN_LIBS})
+        TARGET_LINK_LIBRARIES(${target} ${VISIT_EXE_LINKER_FLAGS} ${VISIT_PARALLEL_FORTRAN_LIBS})
     ENDIF(VISIT_PARALLEL_FORTRAN_FLAGS)
 ENDFUNCTION(ADD_PARALLEL_FORTRAN_EXECUTABLE)
 
@@ -1671,7 +1694,11 @@ FUNCTION(PARALLEL_EXECUTABLE_LINK_LIBRARIES target)
     IF(VISIT_NOLINK_MPI_WITH_LIBRARIES)
         TARGET_LINK_LIBRARIES(${target} ${ARGN} link_mpi_libs)
     ELSE(VISIT_NOLINK_MPI_WITH_LIBRARIES)
-        TARGET_LINK_LIBRARIES(${target} ${ARGN})
+        IF(VISIT_STATIC)
+            TARGET_LINK_LIBRARIES(${target} ${ARGN} ${VISIT_PARALLEL_LIBS})
+        ELSE(VISIT_STATIC)
+            TARGET_LINK_LIBRARIES(${target} ${ARGN})
+        ENDIF(VISIT_STATIC)
     ENDIF(VISIT_NOLINK_MPI_WITH_LIBRARIES)
 ENDFUNCTION(PARALLEL_EXECUTABLE_LINK_LIBRARIES)
 
@@ -1717,9 +1744,9 @@ ENDFUNCTION(MAC_NIB_INSTALL)
 #dummy revision, in case commands fail
 SET(VISIT_SVN_REVISION "Unknown")
 # Get the subversion revision number
-IF(EXISTS SVN_REVISION)
-    FILE(STRINGS SVN_REVISION VISIT_SVN_REVISION)
-ELSE(EXISTS SVN_REVISION)
+IF(EXISTS ${VISIT_SOURCE_DIR}/SVN_REVISION)
+    FILE(STRINGS ${VISIT_SOURCE_DIR}/SVN_REVISION VISIT_SVN_REVISION)
+ELSE(EXISTS ${VISIT_SOURCE_DIR}/SVN_REVISION)
     IF (EXISTS ${VISIT_SOURCE_DIR}/.svn)
         # Only try and determine the version number if it looks like
         # we're in a working copy (a .svn directory should be present)
@@ -1737,7 +1764,7 @@ ELSE(EXISTS SVN_REVISION)
             ENDIF(WIN32)
         ENDIF(Subversion_FOUND)
     ENDIF (EXISTS ${VISIT_SOURCE_DIR}/.svn)
-ENDIF(EXISTS SVN_REVISION)
+ENDIF(EXISTS ${VISIT_SOURCE_DIR}/SVN_REVISION)
 
 #-----------------------------------------------------------------------------
 # Set up resource files for Windows applications.
@@ -2580,7 +2607,6 @@ ELSE (NOT WIN32)
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE}
                     /DINSTALL_PREFIX=${CIP_NATIVE}
                     /DBIN_DIR=${CBD_NATIVE}
-                    /DCL_64=${CMAKE_CL_64}
                     /DQT5=${VISIT_QT5}
                     ${VISIT_WINDOWS_DIR}/distribution/installation/CreateDBSections.nsi
             COMMAND ${MAKENSIS}
@@ -2589,8 +2615,8 @@ ELSE (NOT WIN32)
                     /DVISIT_SOURCE_DIR=${VSD_NATIVE}
                     /DINSTALL_PREFIX=${CIP_NATIVE}
                     /DBIN_DIR=${CBD_NATIVE}
-                    /DCL_64=${CMAKE_CL_64}
                     /DQT5=${VISIT_QT5}
+                    /DMPI_VERSION=${VISIT_MSMPI_VERSION}
                     ${VISIT_WINDOWS_DIR}/distribution/installation/binaryinstallation.nsi
             DEPENDS ${VISIT_WINDOWS_DIR}/distribution/installation/CreateDBSections.nsi
                     ${VISIT_WINDOWS_DIR}/distribution/installation/binaryinstallation.nsi

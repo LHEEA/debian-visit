@@ -24,6 +24,9 @@
     </Field>
     <Field name="source" label="The source of data that defines the selection. This is a plot name or a database name." type="string">
     </Field>
+    <Field name="host" label="The host of data that defines the selection." type="string">
+      localhost
+    </Field>
     <Field name="selectionType" label="Selection type" type="enum" subtype="SelectionType">
       BasicSelection
     </Field>
@@ -55,6 +58,9 @@
     </Field>
     <Field name="histogramNumBins" label="Number of bins for histogram display" type="int">
       10
+    </Field>
+    <Field name="histogramAutoScaleNumBins" label="Automatically scale the number of bins for histogram display" type="bool">
+      false
     </Field>
     <Field name="histogramStartBin" label="Starting bin for histogram selection" type="int">
       0

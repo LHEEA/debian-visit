@@ -64,8 +64,6 @@
 // These methods were adapted from ViewerSubject handlers.
 //
 
-///////////////////////////////////////////////////////////////////////////////
-
 // ****************************************************************************
 // Method: SelectionActionBase::GetNamedSelectionEngineKey
 //
@@ -91,49 +89,58 @@
 
 bool
 SelectionActionBase::GetNamedSelectionEngineKey(const std::string &selName,
-    EngineKey &ek)
+                                                EngineKey &engineKey)
 {
-    bool retval = false;
-
-    int index = GetViewerState()->GetSelectionList()->GetSelection(selName);
-    if(index != -1)
+    int selIndex = GetViewerState()->GetSelectionList()->GetSelection(selName);
+    if(selIndex < 0)
     {
-        std::string source(GetViewerState()->GetSelectionList()->
-              GetSelections(index).GetOriginatingPlot());
+        GetViewerMessaging()->Error(
+            TR("VisIt cannot get an engine key for %1 named selection because "
+               "it does not exist").arg(selName));
+        return false;
+    }
 
-        // Look for the plot whose name is the same as the originating plot.
-        // If we find a match, use the plot's engine key.
-        std::vector<ViewerWindow *> windows = windowMgr->GetWindows();
-        for(size_t i = 0; i < windows.size(); ++i)
+    // Look for the plot whose name is the same as the originating plot.
+    // If we find a match, use the plot's engine key.
+    std::vector<ViewerWindow *> windows = windowMgr->GetWindows();
+    
+    std::string selSource(GetViewerState()->GetSelectionList()->
+                          GetSelections(selIndex).GetOriginatingPlot());
+
+    for(size_t i = 0; i < windows.size(); ++i)
+    {
+        ViewerPlotList *plist = windows[i]->GetPlotList();
+        for(int j = 0; j < plist->GetNumPlots(); ++j)
         {
-            ViewerPlotList *plist = windows[i]->GetPlotList();
-            for(int j = 0; j < plist->GetNumPlots(); ++j)
+            ViewerPlot *plot = plist->GetPlot(j);
+            if(plot->GetPlotName() == selSource)
             {
-                ViewerPlot *plot = plist->GetPlot(j);
-                if(plot->GetPlotName() == source)
-                {
-                    ek = plot->GetEngineKey();
-                    return true;
-                }
+                engineKey = plot->GetEngineKey();
+                return true;
             }
-        }
-
-        // There was no plot with the selection's source name. Assume that
-        // it is a database.
-        std::string host, db, sim;
-        GetViewerFileServer()->ExpandDatabaseName(source, host, db);
-        const avtDatabaseMetaData *md = GetViewerFileServer()->GetMetaData(host, db);
-        if (md != NULL)
-        {
-            if(md->GetIsSimulation())
-                sim = db;
-            ek = EngineKey(host, sim);
-            retval = true;
         }
     }
 
-    return retval;
+    // There was no plot with the selection's source name. Assume
+    // that it is a database.
+    std::string host(GetViewerState()->GetSelectionList()->
+                     GetSelections(selIndex).GetHost());
+    
+    std::string db(GetViewerState()->GetSelectionList()->
+                   GetSelections(selIndex).GetSource());
+    
+    const avtDatabaseMetaData *md =
+      GetViewerFileServer()->GetMetaData(host, db);
+    
+    std::string sim;
+    if (md != NULL && md->GetIsSimulation())
+        sim = db;
+    
+    engineKey = EngineKey(host, sim);
+
+    return true;
 }
+
 
 // ****************************************************************************
 // Method: SelectionActionBase::ReplaceNamedSelection
@@ -168,6 +175,7 @@ SelectionActionBase::ReplaceNamedSelection(const EngineKey &engineKey,
     // Replace the selection in all plots that use it.
     std::vector<ViewerWindow *> windows = windowMgr->GetWindows();
     bool *plotlistsChanged = new bool[windows.size()+1];
+
     for(size_t i = 0; i < windows.size(); ++i)
     {
         plotlistsChanged[i] = false;
@@ -207,7 +215,6 @@ SelectionActionBase::ReplaceNamedSelection(const EngineKey &engineKey,
     delete [] plotlistsChanged;
 }
 
-///////////////////////////////////////////////////////////////////////////////
 
 // ****************************************************************************
 // Method: ApplyNamedSelectionAction::Execute
@@ -227,71 +234,92 @@ ApplyNamedSelectionAction::Execute()
 {
     std::string selName = args.GetStringArg1();
 
-    //
-    // Get some information about the selection.
-    //
-    std::string originatingPlot;
-    if(selName != "")
+    if( selName.empty() )
     {
-        int selIndex = GetViewerState()->GetSelectionList()->GetSelection(selName);
-        if(selIndex < 0)
-        {
-            GetViewerMessaging()->Error(
-                TR("An invalid selection name was provided. No selection was applied."));
-            return;
-        }
-        originatingPlot = GetViewerState()->GetSelectionList()->GetSelections(selIndex).GetOriginatingPlot();
+      ClearNamedSelection();
+      return;
+    }
+    
+    EngineKey engineKey;
+    bool okay = GetNamedSelectionEngineKey(selName, engineKey);
+    if(!okay)
+    {
+        GetViewerMessaging()->Error(
+            TR("VisIt could not determine the source or plot that creates "
+               "the %1 named selection.").arg(selName));
+        return;
     }
 
-    // 
+    int selIndex = GetViewerState()->GetSelectionList()->GetSelection(selName);
+        
+    if(selIndex < 0)
+    {
+        GetViewerMessaging()->Error(
+            TR("An invalid named selection %1 was provided to VisIt "
+               "No named selection was applied. ").arg(selName));
+        return;
+    }
+
+    // Get some information about the selection.
+    std::string originatingPlot = GetViewerState()->GetSelectionList()->
+      GetSelections(selIndex).GetOriginatingPlot();
+
     // Get the indices of the plots to which the selection may be applied.
-    //
     ViewerPlotList *plist = GetWindow()->GetPlotList();
     intVector plotIDs;
+
     if(GetViewerState()->GetGlobalAttributes()->GetApplySelection())
     {
-        // If we're applying selection to all plots, get all plot ids.
+        // If applying the selection to all plots, get all plot ids.
         for(int i = 0; i < plist->GetNumPlots(); ++i)
             plotIDs.push_back(i);
     }
     else
         plist->GetActivePlotIDs(plotIDs, false);
+
     if (plotIDs.size() <= 0)
     {
         GetViewerMessaging()->Error(
-            TR("To apply a named selection, you must have an active "
-               "plot.  No named selection was applied."));
+            TR("To apply a named selection %1, you must have an active "
+               "plot.  No named selection was applied.").arg(selName));
         return;
     }
 
-    //
-    // Make sure that all of the named selections being applied are for
-    // the same engine as the first plot. Also exclude the plot if it
-    // is the originating plot for a selection since we can't apply a
-    // selection to the plot that generates it.
-    //
+    // Make sure that the named selection being applied being applied
+    // is one the same engine as the plots. Also exclude the plot if
+    // it is the originating plot for a selection as it can not be
+    // applied to itself.
     intVector ePlotIDs;
-    ViewerPlot *plot0 = plist->GetPlot(plotIDs[0]);
-    const EngineKey &engineKey = plot0->GetEngineKey();
-    for (size_t i = 0 ; i < plotIDs.size() ; i++)
+    
+    for (size_t i = 0 ; i < plotIDs.size() ; ++i)
     {
         ViewerPlot *plot = plist->GetPlot(plotIDs[i]);
+        
         if (plot->GetEngineKey() != engineKey)
         {
             GetViewerMessaging()->Error(
-                TR("All plots involving a named selection must come from "
-                   "the same engine.  No named selection was applied."));
+                TR("Named selections are engine specific. The plot %1 on "
+                   "the engine %2 involving named selection %3 must be "
+                   "on the engine %4.  No named selection was applied.")
+                .arg(plot->GetPlotDescription())
+                .arg(plot->GetHostName())
+                .arg(selName)
+                .arg(engineKey.HostName()));
             return;
         }
-        else if(plot->GetPlotName() != originatingPlot)
+        else if(plot->GetPlotName() == originatingPlot)
         {
-            ePlotIDs.push_back(plotIDs[i]);
+            GetViewerMessaging()->Error(
+                TR("Can not apply named selection %1 to the plot %2 because "
+                   "the named selection originates from it. No named"
+                   "selection was applied.").arg(selName).arg(originatingPlot));
+            return;
         }
+        else
+            ePlotIDs.push_back(plotIDs[i]);
     }
 
-    //
     // Apply the named selection.
-    //
     TRY
     {
         for(size_t i = 0; i < ePlotIDs.size(); ++i)
@@ -304,7 +332,8 @@ ApplyNamedSelectionAction::Execute()
         plist->UpdatePlotList();
 
         if(!selName.empty())
-            GetViewerMessaging()->Message(TR("Applied named selection"));
+            GetViewerMessaging()->Message(TR("Applied named selection %1.")
+                                          .arg(selName));
     }
     CATCH2(VisItException, e)
     {
@@ -316,7 +345,68 @@ ApplyNamedSelectionAction::Execute()
     ENDTRY
 }
 
-///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+// Method: ApplyNamedSelectionAction::ClearNamedSelection
+//
+// Purpose: 
+//   Clears a named selection
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 22 10:57:49 PDT 2014
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+ApplyNamedSelectionAction::ClearNamedSelection()
+{
+    // Get the indices of the plots to which the selection may be applied.
+    ViewerPlotList *plist = GetWindow()->GetPlotList();
+    intVector plotIDs;
+
+    if(GetViewerState()->GetGlobalAttributes()->GetApplySelection())
+    {
+        // If applying the clear selection to all plots, get all plot ids.
+        for(int i = 0; i < plist->GetNumPlots(); ++i)
+            plotIDs.push_back(i);
+    }
+    else
+        plist->GetActivePlotIDs(plotIDs, false);
+
+    if (plotIDs.size() <= 0)
+    {
+        GetViewerMessaging()->Error(
+            TR("To apply a named selection, you must have an active "
+               "plot.  No named selection was applied."));
+        return;
+    }
+
+    // Clear the named selection.
+    TRY
+    {
+        for(size_t i = 0; i < plotIDs.size(); ++i)
+        {
+            ViewerPlot *plot = plist->GetPlot(plotIDs[i]);
+            plot->SetNamedSelection("");
+            plot->ClearActors();
+        }
+        plist->RealizePlots(false);
+        plist->UpdatePlotList();
+
+        GetViewerMessaging()->Message(TR("Cleared named selection."));
+    }
+    CATCH2(VisItException, e)
+    {
+        GetViewerMessaging()->Error(
+            ViewerText("(%1): %2\n").
+            arg(e.GetExceptionType()).
+            arg(e.Message()));
+    }
+    ENDTRY
+}
+
 
 // ****************************************************************************
 // Method: CreateNamedSelectionAction::Execute
@@ -339,18 +429,19 @@ CreateNamedSelectionAction::Execute()
     bool useCurrentPlot = args.GetBoolFlag();
 
     debug1 << mName << "0: selName=" << selName << endl;
+
     SelectionList *selList = GetViewerState()->GetSelectionList();
-    SelectionProperties &currentProps = *GetViewerState()->GetSelectionProperties();
+    SelectionProperties &currentProps =
+      *GetViewerState()->GetSelectionProperties();
 
     // We'll fill in these properties to get the selection properties we send 
     // down to the engine to create the selection.
     int         networkId = -1;
     EngineKey   engineKey;
+    std::string selHost;
     std::string selSource;
 
-    //
     // Look up some information from the originating plot
-    //
     if(useCurrentPlot)
     {
         ViewerPlotList *plist = GetWindow()->GetPlotList();
@@ -359,10 +450,11 @@ CreateNamedSelectionAction::Execute()
         if (plotIDs.size() <= 0)
         {
             GetViewerMessaging()->Error(
-                TR("To create a named selection, you must have an active "
-                   "plot that has been drawn.  No named selection was created."));
+                TR("To create a named selection, you must have an active plot "
+                   "that has been drawn.  No named selection was created."));
             return;
         }
+
         if (plotIDs.size() > 1)
         {
             GetViewerMessaging()->Error(
@@ -374,47 +466,56 @@ CreateNamedSelectionAction::Execute()
         ViewerPlot *plot = plist->GetPlot(plotIDs[0]);
         networkId = plot->GetNetworkID();
         engineKey = plot->GetEngineKey();
+        selHost   = plot->GetHostName();
         selSource = plot->GetPlotName();
     }
     else
     {
-        //
-        // Turn the current selection source into a db and engine key.
-        //
-        std::string host, db, sim;
-        GetViewerFileServer()->ExpandDatabaseName(currentProps.GetSource(), host, db);
+        // Turn the current selection source into a host and a db.
+        std::string host, db;
+        GetViewerFileServer()->ExpandDatabaseName(currentProps.GetSource(),
+                                                  host, db);
 
-        const avtDatabaseMetaData *md = GetViewerFileServer()->GetMetaData(host, db);
+        const avtDatabaseMetaData *md =
+          GetViewerFileServer()->GetMetaData(host, db);
+        
+        std::string sim;
         if (md != NULL && md->GetIsSimulation())
             sim = db;
-
+        
+        // Create an engine key for the expressions.
         engineKey = EngineKey(host, sim);
-        selSource = db;
 
-        // We're doing a selection based directly on the database. We need to
-        // send the expression definitions to the engine since we haven't yet
-        // created any plots.
+        // Doing a selection based directly on the database so send
+        // the expression definitions to the engine because there is
+        // no associated plot.
         ExpressionList exprList;
         GetViewerStateManager()->GetVariableMethods()->GetAllExpressions(
             exprList, host, db, ViewerFileServerInterface::ANY_STATE);
         GetViewerEngineManager()->UpdateExpressions(engineKey, exprList);
+
+        // Note: The source must be just the database name sans the
+        // host name.
+        selHost = host;
+        selSource = db;
     }
 
     TRY
     {
         SelectionProperties props;
-        int index = -1;
+        int selIndex = -1;
         if(currentProps.GetName() == selName)
         {
             props = currentProps;
         }
         else
         {
-            index = selList->GetSelection(selName);
-            if(index >= 0)
+            selIndex = selList->GetSelection(selName);
+
+            if(selIndex >= 0)
             {
-                // We found an existing definition in the list so use it.
-                props = selList->GetSelections(index);
+                // Found an existing definition in the list so use it.
+                props = selList->GetSelections(selIndex);
             }
             else
             {
@@ -422,16 +523,17 @@ CreateNamedSelectionAction::Execute()
             }
         }
 
-        // Set the source for the selection.
+        // Set the host and source for the selection.
+        props.SetHost  (selHost);
         props.SetSource(selSource);
 
         // Remove the summary if it is there.
-        int sindex = GetViewerState()->GetSelectionList()->
-                     GetSelectionSummary(props.GetName());
-        if(sindex >= 0)
-            GetViewerState()->GetSelectionList()->RemoveSelectionSummary(sindex);
-
-        debug1 << mName << "1" << endl;
+        int sumIndex = GetViewerState()->GetSelectionList()->
+            GetSelectionSummary(props.GetName());
+        
+        if(sumIndex >= 0)
+            GetViewerState()->GetSelectionList()->
+              RemoveSelectionSummary(sumIndex);
 
         SelectionSummary summary;
         if (GetViewerEngineManager()->CreateNamedSelection(engineKey, 
@@ -439,19 +541,17 @@ CreateNamedSelectionAction::Execute()
         {
             GetViewerState()->GetSelectionList()->AddSelectionSummary(summary);
  
-            GetViewerMessaging()->Message(TR("Created named selection"));
-            debug1 << mName << "2" << endl;
-
             // Add a new selection to the selection list.
-            if(index < 0)
+            if(selIndex < 0)
                 selList->AddSelections(props);
 
-            debug1 << mName << "3" << endl;
-            currentProps = props;
+            GetViewerMessaging()->Message(TR("Created named selection")
+                                        .arg(selName));
         }
         else
         {
-            GetViewerMessaging()->Error(TR("Unable to create named selection."));
+            GetViewerMessaging()->Error(TR("Unable to create named selection %1.")
+                                        .arg(selName));
         }
     }
     CATCH2(VisItException, e)
@@ -463,15 +563,126 @@ CreateNamedSelectionAction::Execute()
     }
     ENDTRY
 
-    debug1 << mName << "4" << endl;
-
     // Send list of selections to the clients.
     selList->Notify();
-
-    debug1 << mName << "5" << endl;
 }
 
-///////////////////////////////////////////////////////////////////////////////
+
+// ****************************************************************************
+// Method: LoadNamedSelectionAction::Execute
+//
+// Purpose: 
+//   Execute ViewerRPC::LoadNamedSelectionRPC
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 22 10:57:49 PDT 2014
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+LoadNamedSelectionAction::Execute()
+{
+    // Get the RPC arguments.
+    std::string selName = args.GetStringArg1();
+    const std::string &hostName = args.GetProgramHost();
+    const std::string &simName  = args.GetProgramSim();
+
+    EngineKey engineKey(hostName, simName);
+
+    // Perform the RPC.
+    TRY
+    {
+        if (GetViewerEngineManager()->LoadNamedSelection(engineKey, selName))
+        {
+            // Remove any selection that may already exist by this name.
+            int selIndex =
+              GetViewerState()->GetSelectionList()->GetSelection(selName);
+            
+            if(selIndex >= 0)
+                GetViewerState()->GetSelectionList()->
+                  RemoveSelections(selIndex);
+
+            // Add a new selection to the selection list. Just set the
+            // name so it will not have an originating plot.
+            SelectionProperties props;
+            props.SetName(selName);
+            GetViewerState()->GetSelectionList()->AddSelections(props);
+            GetViewerState()->GetSelectionList()->Notify();
+
+            GetViewerMessaging()->Message(TR("Loaded named selection %")
+                                          .arg(selName));
+        }
+        else
+        {
+            GetViewerMessaging()->Error(TR("Unable to load named selection %1.")
+                                        .arg(selName));
+        }
+    }
+    CATCH2(VisItException, e)
+    {
+        GetViewerMessaging()->Error(
+            ViewerText("(%1): %2\n").
+            arg(e.GetExceptionType()).
+            arg(e.Message()));
+    }
+    ENDTRY
+}
+
+
+// ****************************************************************************
+// Method: SaveNamedSelectionAction::Execute
+//
+// Purpose: 
+//   Execute ViewerRPC::SaveNamedSelectionRPC
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 22 10:57:49 PDT 2014
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+SaveNamedSelectionAction::Execute()
+{
+    // Get the RPC arguments.
+    std::string selName = args.GetStringArg1();
+
+    EngineKey engineKey;
+    bool okay = GetNamedSelectionEngineKey(selName, engineKey);
+    if(!okay)
+    {
+        GetViewerMessaging()->Error(
+            TR("VisIt could not determine the source or plot that creates "
+               "the named selection %1.").arg(selName));
+        return;
+    }
+    
+    // Perform the RPC.
+    TRY
+    {
+        okay = GetViewerEngineManager()->SaveNamedSelection(engineKey,
+                                                            selName);
+
+        if (okay)
+            GetViewerMessaging()->Message(TR("Saved named selection %1.")
+                                          .arg(selName));
+        else
+          GetViewerMessaging()->Error(TR("Unable to save named selection %1.")
+                                      .arg(selName));
+    }
+    CATCH2(VisItException, e)
+    {
+        GetViewerMessaging()->Error(
+            ViewerText("(%1): %2\n").
+            arg(e.GetExceptionType()).
+            arg(e.Message()));
+    }
+    ENDTRY
+}
+
 
 // ****************************************************************************
 // Method: DeleteNamedSelectionAction::Execute
@@ -489,30 +700,41 @@ CreateNamedSelectionAction::Execute()
 void
 DeleteNamedSelectionAction::Execute()
 {
-    //
-    // Get the rpc arguments.
-    //
+    // Get the RPC arguments.
     std::string selName(args.GetStringArg1());
 
-    //
     // Perform the RPC.
-    //
-    bool okay = false;
     EngineKey engineKey;
+    bool okay = GetNamedSelectionEngineKey(selName, engineKey);
+    if(!okay)
+    {
+        GetViewerMessaging()->Error(
+            TR("VisIt could not determine the source or plot that creates "
+               "the %1 selection.").arg(selName));
+        return;
+    }
 
     TRY
     {
-        // Actually delete the selection.
-        okay = GetNamedSelectionEngineKey(selName, engineKey);
-        if(okay)
-        {
-            // Remove the summary if it is there.
-            int sindex = GetViewerState()->GetSelectionList()->GetSelectionSummary(selName);
-            if(sindex >= 0)
-                 GetViewerState()->GetSelectionList()->RemoveSelectionSummary(sindex);
+        // Remove the summary if it is there.
+        int sumIndex = GetViewerState()->GetSelectionList()->
+            GetSelectionSummary(selName);
+            
+        if(sumIndex >= 0)
+            GetViewerState()->GetSelectionList()->
+              RemoveSelectionSummary(sumIndex);
 
-            okay = GetViewerEngineManager()->DeleteNamedSelection(engineKey, selName);
-        }
+        // Delete the selection.
+        okay = GetViewerEngineManager()->DeleteNamedSelection(engineKey,
+                                                              selName);
+
+        if (okay)
+            GetViewerMessaging()->Message(TR("Deleted named selection %1.")
+                                          .arg(selName));
+
+        else
+            GetViewerMessaging()->Error(TR("Unable to delete named selection %1.")
+                                        .arg(selName));
     }
     CATCH2(VisItException, e)
     {
@@ -527,21 +749,16 @@ DeleteNamedSelectionAction::Execute()
     // them redraw.
     ReplaceNamedSelection(engineKey, selName, "");
 
-    if(okay)
-        GetViewerMessaging()->Message(TR("Deleted named selection"));
-    else
-        GetViewerMessaging()->Error(TR("Unable to delete named selection"));
-
     // Remove the selection from the selection list.
-    int index = GetViewerState()->GetSelectionList()->GetSelection(selName);
-    if(index != -1)
+    int selIndex = GetViewerState()->GetSelectionList()->GetSelection(selName);
+
+    if(selIndex != -1)
     {
-        GetViewerState()->GetSelectionList()->RemoveSelections(index);
+        GetViewerState()->GetSelectionList()->RemoveSelections(selIndex);
         GetViewerState()->GetSelectionList()->Notify();
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
 
 // ****************************************************************************
 // Method: InitializeNamedSelectionVariablesAction::Execute
@@ -564,23 +781,35 @@ InitializeNamedSelectionVariablesAction::Execute()
     EngineKey engineKey;
     bool okay = GetNamedSelectionEngineKey(selName, engineKey);
     if(!okay)
+    {
+        GetViewerMessaging()->Error(
+            TR("VisIt could not determine the source or plot that creates "
+               "the %1 selection.").arg(selName));
         return;
-
+    }
+    
     int selIndex = GetViewerState()->GetSelectionList()->GetSelection(selName);
     if(selIndex < 0)
+    {
+        GetViewerMessaging()->Error(
+            TR("VisIt cannot update the named selection %1 because it does "
+               "not exist").arg(selName));
         return;
+    }
+
     SelectionProperties &props = GetViewerState()->GetSelectionList()->
         GetSelections(selIndex);
     std::string originatingPlot = props.GetOriginatingPlot();
 
     bool notHandled = true;
     std::vector<ViewerWindow *> windows = windowMgr->GetWindows();
+
     for(size_t w = 0; w < windows.size() && notHandled; ++w)
     {
         ViewerPlotList *pL = windows[w]->GetPlotList();
         for(int i = 0; i < pL->GetNumPlots() && notHandled; ++i)
         {
-            // We found the originating plot
+            // Found the originating plot
             if(pL->GetPlot(i)->GetPlotName() == originatingPlot)
             {
                 AttributeSubject *vr = pL->GetPlot(i)->GetPlotAtts()->
@@ -589,7 +818,8 @@ InitializeNamedSelectionVariablesAction::Execute()
                     dynamic_cast<AxisRestrictionAttributes *>(vr);
                 if(varRanges != NULL)
                 {
-                    // Override the variables and ranges with the ones from the plot.
+                    // Override the variables and ranges with the ones
+                    // from the plot.
                     props.SetVariables(varRanges->GetNames());
                     props.SetVariableMins(varRanges->GetMinima());
                     props.SetVariableMaxs(varRanges->GetMaxima());
@@ -607,145 +837,6 @@ InitializeNamedSelectionVariablesAction::Execute()
     }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-
-// ****************************************************************************
-// Method: LoadNamedSelectionAction::Execute
-//
-// Purpose: 
-//   Execute ViewerRPC::LoadNamedSelectionRPC
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Aug 22 10:57:49 PDT 2014
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-LoadNamedSelectionAction::Execute()
-{
-    //
-    // Get the rpc arguments.
-    //
-    std::string selName = args.GetStringArg1();
-    const std::string &hostName = args.GetProgramHost();
-    const std::string &simName  = args.GetProgramSim();
-
-    EngineKey engineKey(hostName, simName);
-
-    //
-    // Perform the RPC.
-    //
-    TRY
-    {
-        if (GetViewerEngineManager()->LoadNamedSelection(engineKey, selName))
-        {
-            GetViewerMessaging()->Message(TR("Loaded named selection"));
-
-            // Remove any selection that may already exist by this name.
-            int index = GetViewerState()->GetSelectionList()->GetSelection(selName);
-            if(index >= 0)
-                GetViewerState()->GetSelectionList()->RemoveSelections(index);
-
-            // Add a new selection to the selection list. Just set the name so
-            // it will not have an originating plot.
-            SelectionProperties props;
-            props.SetName(selName);
-            GetViewerState()->GetSelectionList()->AddSelections(props);
-            GetViewerState()->GetSelectionList()->Notify();
-        }
-        else
-        {
-            GetViewerMessaging()->Error(TR("Unable to load named selection"));
-        }
-    }
-    CATCH2(VisItException, e)
-    {
-        GetViewerMessaging()->Error(
-            ViewerText("(%1): %2\n").
-            arg(e.GetExceptionType()).
-            arg(e.Message()));
-    }
-    ENDTRY
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-// ****************************************************************************
-// Method: SaveNamedSelectionAction::Execute
-//
-// Purpose: 
-//   Execute ViewerRPC::SaveNamedSelectionRPC
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Aug 22 10:57:49 PDT 2014
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-SaveNamedSelectionAction::Execute()
-{
-    //
-    // Get the rpc arguments.
-    //
-    std::string selName = args.GetStringArg1();
-
-    //
-    // Perform the RPC.
-    //
-    TRY
-    {
-        EngineKey engineKey;
-        bool okay = GetNamedSelectionEngineKey(selName, engineKey);
-
-        if(okay)
-            okay = GetViewerEngineManager()->SaveNamedSelection(engineKey, selName);
-
-        if (okay)
-        {
-            GetViewerMessaging()->Message(TR("Saved named selection"));
-        }
-        else
-        {
-            GetViewerMessaging()->Error(TR("Unable to save named selection"));
-        }
-    }
-    CATCH2(VisItException, e)
-    {
-        GetViewerMessaging()->Error(
-            ViewerText("(%1): %2\n").
-            arg(e.GetExceptionType()).
-            arg(e.Message()));
-    }
-    ENDTRY
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-// ****************************************************************************
-// Method: SetNamedSelectionAutoApplyAction::Execute
-//
-// Purpose: 
-//   Execute ViewerRPC::SetNamedSelectionAutoApplyRPC
-//
-// Programmer: Brad Whitlock
-// Creation:   Fri Aug 22 10:57:49 PDT 2014
-//
-// Modifications:
-//   
-// ****************************************************************************
-
-void
-SetNamedSelectionAutoApplyAction::Execute()
-{
-    GetViewerState()->GetSelectionList()->SetAutoApplyUpdates(args.GetBoolFlag());
-    GetViewerState()->GetSelectionList()->Notify();
-}
-
-///////////////////////////////////////////////////////////////////////////////
 
 // ****************************************************************************
 // Method: UpdateNamedSelectionAction::Execute
@@ -768,9 +859,17 @@ UpdateNamedSelectionAction::Execute()
     // Poke the new selection properties into the selection list.
     if(args.GetBoolFlag())
     {
-        int selIndex = GetViewerState()->GetSelectionList()->GetSelection(selName);
+        int selIndex =
+            GetViewerState()->GetSelectionList()->GetSelection(selName);
+        
         if(selIndex < 0)
-            return;
+        {
+          GetViewerMessaging()->Error(
+              TR("VisIt cannot update the named selection %1 because it does "
+                 "not exist").arg(selName));
+          return;
+        }
+
         SelectionProperties &props = GetViewerState()->GetSelectionList()->
             GetSelections(selIndex);
         props = *GetViewerState()->GetSelectionProperties();
@@ -781,6 +880,7 @@ UpdateNamedSelectionAction::Execute()
 
     UpdateNamedSelection(selName, updatePlots, allowCache);
 }
+
 
 // ****************************************************************************
 // Method: UpdateNamedSelectionAction::UpdateNamedSelection
@@ -818,7 +918,8 @@ UpdateNamedSelectionAction::Execute()
 
 void
 UpdateNamedSelectionAction::UpdateNamedSelection(const std::string &selName,
-    bool updatePlots, bool allowCache)
+                                                 bool updatePlots,
+                                                 bool allowCache)
 {
     EngineKey engineKey;
     bool okay = GetNamedSelectionEngineKey(selName, engineKey);
@@ -826,8 +927,7 @@ UpdateNamedSelectionAction::UpdateNamedSelection(const std::string &selName,
     {
         GetViewerMessaging()->Error(
             TR("VisIt could not determine the source or plot that creates "
-               "the %1 selection.").
-            arg(selName));
+               "the %1 selection.").arg(selName));
         return;
     }
 
@@ -835,18 +935,16 @@ UpdateNamedSelectionAction::UpdateNamedSelection(const std::string &selName,
     if(selIndex < 0)
     {
         GetViewerMessaging()->Error(
-            TR("VisIt cannot update the %1 selection because it does "
-               "not exist").
-            arg(selName));
+            TR("VisIt cannot update the named selection %1 because it does "
+               "not exist").arg(selName));
         return;
     }
+
     const SelectionProperties &props = GetViewerState()->GetSelectionList()->
         GetSelections(selIndex);
     std::string originatingPlot = props.GetOriginatingPlot();
 
-    //
     // Get the network id of the originating plot.
-    //
     int networkId = -1;
     std::vector<ViewerWindow *> windows = windowMgr->GetWindows();
     stringVector plotNames;
@@ -865,19 +963,24 @@ UpdateNamedSelectionAction::UpdateNamedSelection(const std::string &selName,
     // to the engine.
     if(networkId == -1)
     {
+        std::string host(props.GetHost());
+        std::string db(props.GetSource());
+
+        // Doing a selection based directly on the database so send
+        // the expression definitions to the engine because there is
+        // no associated plot.
         ExpressionList exprList;
-        std::string host, db, sim, src(props.GetSource());
-        GetViewerFileServer()->ExpandDatabaseName(src, host, db);
         GetViewerStateManager()->GetVariableMethods()->GetAllExpressions(
             exprList, host, db, ViewerFileServerInterface::ANY_STATE);
         GetViewerEngineManager()->UpdateExpressions(engineKey, exprList);
     }
 
     // Remove the named selection summary.
-    int sindex = GetViewerState()->GetSelectionList()->
+    int sumIndex = GetViewerState()->GetSelectionList()->
                      GetSelectionSummary(props.GetName());
-    if(sindex >= 0)
-        GetViewerState()->GetSelectionList()->RemoveSelectionSummary(sindex);
+
+    if(sumIndex >= 0)
+        GetViewerState()->GetSelectionList()->RemoveSelectionSummary(sumIndex);
 
     // Create the named selection again and reapply it to plots that use it.
     SelectionSummary summary;
@@ -893,5 +996,26 @@ UpdateNamedSelectionAction::UpdateNamedSelection(const std::string &selName,
 
     // Send list of selections to the clients so the selection summary is 
     // sent back.
+    GetViewerState()->GetSelectionList()->Notify();
+}
+
+
+// ****************************************************************************
+// Method: SetNamedSelectionAutoApplyAction::Execute
+//
+// Purpose: 
+//   Execute ViewerRPC::SetNamedSelectionAutoApplyRPC
+//
+// Programmer: Brad Whitlock
+// Creation:   Fri Aug 22 10:57:49 PDT 2014
+//
+// Modifications:
+//   
+// ****************************************************************************
+
+void
+SetNamedSelectionAutoApplyAction::Execute()
+{
+    GetViewerState()->GetSelectionList()->SetAutoApplyUpdates(args.GetBoolFlag());
     GetViewerState()->GetSelectionList()->Notify();
 }

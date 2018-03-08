@@ -82,6 +82,7 @@ public class QueryList extends AttributeSubject
     public final static int WINDOWTYPE_PICK = 14;
     public final static int WINDOWTYPE_LINEOUT = 15;
     public final static int WINDOWTYPE_COMPACTNESS = 16;
+    public final static int WINDOWTYPE_COMPACTNESSVAR = 17;
 
     public final static int GROUPS_CURVERELATED = 0;
     public final static int GROUPS_MESHRELATED = 1;
@@ -131,7 +132,7 @@ public class QueryList extends AttributeSubject
 
     public QueryList(QueryList obj)
     {
-        super(QueryList_numAdditionalAtts);
+        super(obj);
 
         int i;
 

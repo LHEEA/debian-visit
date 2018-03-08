@@ -62,26 +62,12 @@ import java.util.Vector;
 
 public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
 {
-    private static int FilledBoundaryAttributes_numAdditionalAtts = 22;
+    private static int FilledBoundaryAttributes_numAdditionalAtts = 20;
 
     // Enum values
-    public final static int BOUNDARY_TYPE_DOMAIN = 0;
-    public final static int BOUNDARY_TYPE_GROUP = 1;
-    public final static int BOUNDARY_TYPE_MATERIAL = 2;
-    public final static int BOUNDARY_TYPE_UNKNOWN = 3;
-
     public final static int COLORINGMETHOD_COLORBYSINGLECOLOR = 0;
     public final static int COLORINGMETHOD_COLORBYMULTIPLECOLORS = 1;
     public final static int COLORINGMETHOD_COLORBYCOLORTABLE = 2;
-
-    public final static int POINTTYPE_BOX = 0;
-    public final static int POINTTYPE_AXIS = 1;
-    public final static int POINTTYPE_ICOSAHEDRON = 2;
-    public final static int POINTTYPE_OCTAHEDRON = 3;
-    public final static int POINTTYPE_TETRAHEDRON = 4;
-    public final static int POINTTYPE_SPHEREGEOMETRY = 5;
-    public final static int POINTTYPE_POINT = 6;
-    public final static int POINTTYPE_SPHERE = 7;
 
 
     public FilledBoundaryAttributes()
@@ -91,14 +77,12 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         colorType = COLORINGMETHOD_COLORBYMULTIPLECOLORS;
         colorTableName = new String("Default");
         invertColorTable = false;
-        filledFlag = true;
         legendFlag = true;
         lineStyle = 0;
         lineWidth = 0;
         singleColor = new ColorAttribute();
         multiColor = new ColorAttributeList();
         boundaryNames = new Vector();
-        boundaryType = BOUNDARY_TYPE_UNKNOWN;
         opacity = 1;
         wireframe = false;
         drawInternal = false;
@@ -106,7 +90,7 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         cleanZonesOnly = false;
         mixedColor = new ColorAttribute(255, 255, 255);
         pointSize = 0.05;
-        pointType = POINTTYPE_POINT;
+        pointType = 6;
         pointSizeVarEnabled = false;
         pointSizeVar = new String("default");
         pointSizePixels = 2;
@@ -119,14 +103,12 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         colorType = COLORINGMETHOD_COLORBYMULTIPLECOLORS;
         colorTableName = new String("Default");
         invertColorTable = false;
-        filledFlag = true;
         legendFlag = true;
         lineStyle = 0;
         lineWidth = 0;
         singleColor = new ColorAttribute();
         multiColor = new ColorAttributeList();
         boundaryNames = new Vector();
-        boundaryType = BOUNDARY_TYPE_UNKNOWN;
         opacity = 1;
         wireframe = false;
         drawInternal = false;
@@ -134,7 +116,7 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         cleanZonesOnly = false;
         mixedColor = new ColorAttribute(255, 255, 255);
         pointSize = 0.05;
-        pointType = POINTTYPE_POINT;
+        pointType = 6;
         pointSizeVarEnabled = false;
         pointSizeVar = new String("default");
         pointSizePixels = 2;
@@ -142,14 +124,13 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
 
     public FilledBoundaryAttributes(FilledBoundaryAttributes obj)
     {
-        super(FilledBoundaryAttributes_numAdditionalAtts);
+        super(obj);
 
         int i;
 
         colorType = obj.colorType;
         colorTableName = new String(obj.colorTableName);
         invertColorTable = obj.invertColorTable;
-        filledFlag = obj.filledFlag;
         legendFlag = obj.legendFlag;
         lineStyle = obj.lineStyle;
         lineWidth = obj.lineWidth;
@@ -159,7 +140,6 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         for(i = 0; i < obj.boundaryNames.size(); ++i)
             boundaryNames.addElement(new String((String)obj.boundaryNames.elementAt(i)));
 
-        boundaryType = obj.boundaryType;
         opacity = obj.opacity;
         wireframe = obj.wireframe;
         drawInternal = obj.drawInternal;
@@ -202,14 +182,12 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         return ((colorType == obj.colorType) &&
                 (colorTableName.equals(obj.colorTableName)) &&
                 (invertColorTable == obj.invertColorTable) &&
-                (filledFlag == obj.filledFlag) &&
                 (legendFlag == obj.legendFlag) &&
                 (lineStyle == obj.lineStyle) &&
                 (lineWidth == obj.lineWidth) &&
                 (singleColor == obj.singleColor) &&
                 (multiColor.equals(obj.multiColor)) &&
                 boundaryNames_equal &&
-                (boundaryType == obj.boundaryType) &&
                 (opacity == obj.opacity) &&
                 (wireframe == obj.wireframe) &&
                 (drawInternal == obj.drawInternal) &&
@@ -245,132 +223,118 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         Select(2);
     }
 
-    public void SetFilledFlag(boolean filledFlag_)
-    {
-        filledFlag = filledFlag_;
-        Select(3);
-    }
-
     public void SetLegendFlag(boolean legendFlag_)
     {
         legendFlag = legendFlag_;
-        Select(4);
+        Select(3);
     }
 
     public void SetLineStyle(int lineStyle_)
     {
         lineStyle = lineStyle_;
-        Select(5);
+        Select(4);
     }
 
     public void SetLineWidth(int lineWidth_)
     {
         lineWidth = lineWidth_;
-        Select(6);
+        Select(5);
     }
 
     public void SetSingleColor(ColorAttribute singleColor_)
     {
         singleColor = singleColor_;
-        Select(7);
+        Select(6);
     }
 
     public void SetMultiColor(ColorAttributeList multiColor_)
     {
         multiColor = multiColor_;
-        Select(8);
+        Select(7);
     }
 
     public void SetBoundaryNames(Vector boundaryNames_)
     {
         boundaryNames = boundaryNames_;
-        Select(9);
-    }
-
-    public void SetBoundaryType(int boundaryType_)
-    {
-        boundaryType = boundaryType_;
-        Select(10);
+        Select(8);
     }
 
     public void SetOpacity(double opacity_)
     {
         opacity = opacity_;
-        Select(11);
+        Select(9);
     }
 
     public void SetWireframe(boolean wireframe_)
     {
         wireframe = wireframe_;
-        Select(12);
+        Select(10);
     }
 
     public void SetDrawInternal(boolean drawInternal_)
     {
         drawInternal = drawInternal_;
-        Select(13);
+        Select(11);
     }
 
     public void SetSmoothingLevel(int smoothingLevel_)
     {
         smoothingLevel = smoothingLevel_;
-        Select(14);
+        Select(12);
     }
 
     public void SetCleanZonesOnly(boolean cleanZonesOnly_)
     {
         cleanZonesOnly = cleanZonesOnly_;
-        Select(15);
+        Select(13);
     }
 
     public void SetMixedColor(ColorAttribute mixedColor_)
     {
         mixedColor = mixedColor_;
-        Select(16);
+        Select(14);
     }
 
     public void SetPointSize(double pointSize_)
     {
         pointSize = pointSize_;
-        Select(17);
+        Select(15);
     }
 
     public void SetPointType(int pointType_)
     {
         pointType = pointType_;
-        Select(18);
+        Select(16);
     }
 
     public void SetPointSizeVarEnabled(boolean pointSizeVarEnabled_)
     {
         pointSizeVarEnabled = pointSizeVarEnabled_;
-        Select(19);
+        Select(17);
     }
 
     public void SetPointSizeVar(String pointSizeVar_)
     {
         pointSizeVar = pointSizeVar_;
-        Select(20);
+        Select(18);
     }
 
     public void SetPointSizePixels(int pointSizePixels_)
     {
         pointSizePixels = pointSizePixels_;
-        Select(21);
+        Select(19);
     }
 
     // Property getting methods
     public int                GetColorType() { return colorType; }
     public String             GetColorTableName() { return colorTableName; }
     public boolean            GetInvertColorTable() { return invertColorTable; }
-    public boolean            GetFilledFlag() { return filledFlag; }
     public boolean            GetLegendFlag() { return legendFlag; }
     public int                GetLineStyle() { return lineStyle; }
     public int                GetLineWidth() { return lineWidth; }
     public ColorAttribute     GetSingleColor() { return singleColor; }
     public ColorAttributeList GetMultiColor() { return multiColor; }
     public Vector             GetBoundaryNames() { return boundaryNames; }
-    public int                GetBoundaryType() { return boundaryType; }
     public double             GetOpacity() { return opacity; }
     public boolean            GetWireframe() { return wireframe; }
     public boolean            GetDrawInternal() { return drawInternal; }
@@ -378,7 +342,7 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
     public boolean            GetCleanZonesOnly() { return cleanZonesOnly; }
     public ColorAttribute     GetMixedColor() { return mixedColor; }
     public double             GetPointSize() { return pointSize; }
-    public int                GetPointType() { return pointType; }
+    public int GetPointType() { return pointType; }
     public boolean            GetPointSizeVarEnabled() { return pointSizeVarEnabled; }
     public String             GetPointSizeVar() { return pointSizeVar; }
     public int                GetPointSizePixels() { return pointSizePixels; }
@@ -393,42 +357,38 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         if(WriteSelect(2, buf))
             buf.WriteBool(invertColorTable);
         if(WriteSelect(3, buf))
-            buf.WriteBool(filledFlag);
-        if(WriteSelect(4, buf))
             buf.WriteBool(legendFlag);
-        if(WriteSelect(5, buf))
+        if(WriteSelect(4, buf))
             buf.WriteInt(lineStyle);
-        if(WriteSelect(6, buf))
+        if(WriteSelect(5, buf))
             buf.WriteInt(lineWidth);
-        if(WriteSelect(7, buf))
+        if(WriteSelect(6, buf))
             singleColor.Write(buf);
-        if(WriteSelect(8, buf))
+        if(WriteSelect(7, buf))
             multiColor.Write(buf);
-        if(WriteSelect(9, buf))
+        if(WriteSelect(8, buf))
             buf.WriteStringVector(boundaryNames);
-        if(WriteSelect(10, buf))
-            buf.WriteInt(boundaryType);
-        if(WriteSelect(11, buf))
+        if(WriteSelect(9, buf))
             buf.WriteDouble(opacity);
-        if(WriteSelect(12, buf))
+        if(WriteSelect(10, buf))
             buf.WriteBool(wireframe);
-        if(WriteSelect(13, buf))
+        if(WriteSelect(11, buf))
             buf.WriteBool(drawInternal);
-        if(WriteSelect(14, buf))
+        if(WriteSelect(12, buf))
             buf.WriteInt(smoothingLevel);
-        if(WriteSelect(15, buf))
+        if(WriteSelect(13, buf))
             buf.WriteBool(cleanZonesOnly);
-        if(WriteSelect(16, buf))
+        if(WriteSelect(14, buf))
             mixedColor.Write(buf);
-        if(WriteSelect(17, buf))
+        if(WriteSelect(15, buf))
             buf.WriteDouble(pointSize);
-        if(WriteSelect(18, buf))
+        if(WriteSelect(16, buf))
             buf.WriteInt(pointType);
-        if(WriteSelect(19, buf))
+        if(WriteSelect(17, buf))
             buf.WriteBool(pointSizeVarEnabled);
-        if(WriteSelect(20, buf))
+        if(WriteSelect(18, buf))
             buf.WriteString(pointSizeVar);
-        if(WriteSelect(21, buf))
+        if(WriteSelect(19, buf))
             buf.WriteInt(pointSizePixels);
     }
 
@@ -446,63 +406,57 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
             SetInvertColorTable(buf.ReadBool());
             break;
         case 3:
-            SetFilledFlag(buf.ReadBool());
-            break;
-        case 4:
             SetLegendFlag(buf.ReadBool());
             break;
-        case 5:
+        case 4:
             SetLineStyle(buf.ReadInt());
             break;
-        case 6:
+        case 5:
             SetLineWidth(buf.ReadInt());
             break;
-        case 7:
+        case 6:
             singleColor.Read(buf);
+            Select(6);
+            break;
+        case 7:
+            multiColor.Read(buf);
             Select(7);
             break;
         case 8:
-            multiColor.Read(buf);
-            Select(8);
-            break;
-        case 9:
             SetBoundaryNames(buf.ReadStringVector());
             break;
-        case 10:
-            SetBoundaryType(buf.ReadInt());
-            break;
-        case 11:
+        case 9:
             SetOpacity(buf.ReadDouble());
             break;
-        case 12:
+        case 10:
             SetWireframe(buf.ReadBool());
             break;
-        case 13:
+        case 11:
             SetDrawInternal(buf.ReadBool());
             break;
-        case 14:
+        case 12:
             SetSmoothingLevel(buf.ReadInt());
             break;
-        case 15:
+        case 13:
             SetCleanZonesOnly(buf.ReadBool());
             break;
-        case 16:
+        case 14:
             mixedColor.Read(buf);
-            Select(16);
+            Select(14);
             break;
-        case 17:
+        case 15:
             SetPointSize(buf.ReadDouble());
             break;
-        case 18:
+        case 16:
             SetPointType(buf.ReadInt());
             break;
-        case 19:
+        case 17:
             SetPointSizeVarEnabled(buf.ReadBool());
             break;
-        case 20:
+        case 18:
             SetPointSizeVar(buf.ReadString());
             break;
-        case 21:
+        case 19:
             SetPointSizePixels(buf.ReadInt());
             break;
         }
@@ -521,23 +475,12 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         str = str + "\n";
         str = str + stringToString("colorTableName", colorTableName, indent) + "\n";
         str = str + boolToString("invertColorTable", invertColorTable, indent) + "\n";
-        str = str + boolToString("filledFlag", filledFlag, indent) + "\n";
         str = str + boolToString("legendFlag", legendFlag, indent) + "\n";
         str = str + intToString("lineStyle", lineStyle, indent) + "\n";
         str = str + intToString("lineWidth", lineWidth, indent) + "\n";
         str = str + indent + "singleColor = {" + singleColor.Red() + ", " + singleColor.Green() + ", " + singleColor.Blue() + ", " + singleColor.Alpha() + "}\n";
         str = str + indent + "multiColor = {\n" + multiColor.toString(indent + "    ") + indent + "}\n";
         str = str + stringVectorToString("boundaryNames", boundaryNames, indent) + "\n";
-        str = str + indent + "boundaryType = ";
-        if(boundaryType == BOUNDARY_TYPE_DOMAIN)
-            str = str + "BOUNDARY_TYPE_DOMAIN";
-        if(boundaryType == BOUNDARY_TYPE_GROUP)
-            str = str + "BOUNDARY_TYPE_GROUP";
-        if(boundaryType == BOUNDARY_TYPE_MATERIAL)
-            str = str + "BOUNDARY_TYPE_MATERIAL";
-        if(boundaryType == BOUNDARY_TYPE_UNKNOWN)
-            str = str + "BOUNDARY_TYPE_UNKNOWN";
-        str = str + "\n";
         str = str + doubleToString("opacity", opacity, indent) + "\n";
         str = str + boolToString("wireframe", wireframe, indent) + "\n";
         str = str + boolToString("drawInternal", drawInternal, indent) + "\n";
@@ -545,24 +488,7 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
         str = str + boolToString("cleanZonesOnly", cleanZonesOnly, indent) + "\n";
         str = str + indent + "mixedColor = {" + mixedColor.Red() + ", " + mixedColor.Green() + ", " + mixedColor.Blue() + ", " + mixedColor.Alpha() + "}\n";
         str = str + doubleToString("pointSize", pointSize, indent) + "\n";
-        str = str + indent + "pointType = ";
-        if(pointType == POINTTYPE_BOX)
-            str = str + "POINTTYPE_BOX";
-        if(pointType == POINTTYPE_AXIS)
-            str = str + "POINTTYPE_AXIS";
-        if(pointType == POINTTYPE_ICOSAHEDRON)
-            str = str + "POINTTYPE_ICOSAHEDRON";
-        if(pointType == POINTTYPE_OCTAHEDRON)
-            str = str + "POINTTYPE_OCTAHEDRON";
-        if(pointType == POINTTYPE_TETRAHEDRON)
-            str = str + "POINTTYPE_TETRAHEDRON";
-        if(pointType == POINTTYPE_SPHEREGEOMETRY)
-            str = str + "POINTTYPE_SPHEREGEOMETRY";
-        if(pointType == POINTTYPE_POINT)
-            str = str + "POINTTYPE_POINT";
-        if(pointType == POINTTYPE_SPHERE)
-            str = str + "POINTTYPE_SPHERE";
-        str = str + "\n";
+        str = str + intToString("pointType", pointType, indent) + "\n";
         str = str + boolToString("pointSizeVarEnabled", pointSizeVarEnabled, indent) + "\n";
         str = str + stringToString("pointSizeVar", pointSizeVar, indent) + "\n";
         str = str + intToString("pointSizePixels", pointSizePixels, indent) + "\n";
@@ -574,14 +500,12 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
     private int                colorType;
     private String             colorTableName;
     private boolean            invertColorTable;
-    private boolean            filledFlag;
     private boolean            legendFlag;
     private int                lineStyle;
     private int                lineWidth;
     private ColorAttribute     singleColor;
     private ColorAttributeList multiColor;
     private Vector             boundaryNames; // vector of String objects
-    private int                boundaryType;
     private double             opacity;
     private boolean            wireframe;
     private boolean            drawInternal;
@@ -589,7 +513,7 @@ public class FilledBoundaryAttributes extends AttributeSubject implements Plugin
     private boolean            cleanZonesOnly;
     private ColorAttribute     mixedColor;
     private double             pointSize;
-    private int                pointType;
+    private int pointType;
     private boolean            pointSizeVarEnabled;
     private String             pointSizeVar;
     private int                pointSizePixels;

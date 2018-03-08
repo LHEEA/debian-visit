@@ -74,9 +74,6 @@ public class QueryAttributes extends AttributeSubject
     public final static int VARTYPE_CURVE = 9;
     public final static int VARTYPE_UNKNOWN = 10;
 
-    public final static int DATATYPE_ACTUALDATA = 0;
-    public final static int DATATYPE_ORIGINALDATA = 1;
-
 
     public QueryAttributes()
     {
@@ -120,7 +117,7 @@ public class QueryAttributes extends AttributeSubject
 
     public QueryAttributes(QueryAttributes obj)
     {
-        super(QueryAttributes_numAdditionalAtts);
+        super(obj);
 
         int i;
 

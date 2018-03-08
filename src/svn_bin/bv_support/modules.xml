@@ -21,13 +21,15 @@
             <lib name="conduit"/>
             <lib name="cgns"/>
             <lib name="eavl"/>
-            <lib name="visus"/>
             <lib name="fastbit"/>
+            <lib name="fastquery"/>
             <lib name="gdal"/>
+            <lib name="glu"/>
             <lib name="h5part"/>
             <lib name="hdf4"/>
             <lib name="hdf5"/>
             <lib name="icet"/>
+            <lib name="llvm"/>
             <lib name="manta"/>
 <!--        <lib name="mdsplus"/>    Removed for now by Allen Sanderson-->
             <lib name="mfem"/>
@@ -37,12 +39,15 @@
             <lib name="mxml"/>
             <lib name="nektarpp"/>
             <lib name="netcdf"/>
+            <lib name="pidx"/>
             <lib name="openssl"/>
+            <lib name="openswr"/>
             <lib name="pyside"/>
-            <lib name="uintah"/>
             <lib name="silo"/>
             <lib name="szip"/>
             <lib name="tcmalloc"/>
+            <lib name="uintah"/>
+            <lib name="visus"/>
             <lib name="vtkm"/>
             <lib name="xdmf"/>
             <lib name="zlib"/>
@@ -68,19 +73,24 @@
             <lib name="conduit"/>
             <lib name="cgns"/>
             <lib name="gdal"/>
+            <lib name="glu"/>
             <lib name="fastbit"/>
+            <lib name="fastquery"/>
             <lib name="hdf5"/>
             <lib name="h5part"/>
+            <lib name="llvm"/>
             <lib name="mpich"/>
             <lib name="mxml"/>
             <lib name="netcdf"/>
             <lib name="nektarpp"/>
             <lib name="openssl"/>
+            <lib name="openswr"/>
+            <lib name="pidx"/>
             <lib name="pyside"/>
             <lib name="silo"/>
             <lib name="szip"/>
-            <lib name="visus"/>
             <lib name="uintah"/>
+            <lib name="visus"/>
             <lib name="xdmf"/>
             <lib name="zlib"/>
         </group>
@@ -98,46 +108,56 @@
         <group name="all-io" comment="Build all available I/O libraries" enabled="no">
             <lib name="adios"/>
 <!--        <lib name="advio"/>    Removed by Allen Sanderson-->
+            <lib name="boost"/> <!-- required by nektarpp -->
             <lib name="boxlib"/>
             <lib name="ccmio"/>
             <lib name="cfitsio"/>
             <lib name="conduit"/>
+            <lib name="mfem"/>
             <lib name="cgns"/>
             <lib name="fastbit"/>
+            <lib name="fastquery"/>
             <lib name="gdal"/>
             <lib name="h5part"/>
             <lib name="hdf5"/>
             <lib name="mxml"/>
             <lib name="netcdf"/>
             <lib name="nektarpp"/>
+            <lib name="pidx"/>
             <lib name="silo"/>
             <lib name="szip"/>
-            <lib name="visus"/>
             <lib name="uintah"/>
+            <lib name="visus"/>
             <lib name="xdmf"/>
+            <lib name="zlib"/> <!-- required by nektarpp -->
         </group>
 
         <!-- dbio-only-->
         <group name="dbio-only" comment="Disables EVERYTHING but I/O." enabled="no">
             <lib name="adios"/>
             <lib name="advio"/>
+            <lib name="boost"/> <!-- required by nektarpp -->
             <lib name="boxlib"/>
             <lib name="ccmio"/>
             <lib name="cfitsio"/>
             <lib name="conduit"/>
+            <lib name="mfem"/>
             <lib name="cgns"/>
             <lib name="fastbit"/>
+            <lib name="fastquery"/>
             <lib name="gdal"/>
             <lib name="h5part"/>
             <lib name="hdf5"/>
             <lib name="mxml"/>
             <lib name="netcdf"/>
             <lib name="nektarpp"/>
+            <lib name="pidx"/>
             <lib name="silo"/>
             <lib name="szip"/>
             <lib name="visus"/>
             <lib name="uintah"/>
             <lib name="xdmf"/>
+            <lib name="zlib"/> <!-- required by nektarpp -->
             <lib name="no-mesa"/>
             <lib name="no-qt"/>
             <lib name="no-qwt"/>
@@ -148,8 +168,11 @@
             #all the optional non io libraries
         -->
         <group name="nonio" comment="Build non I/O libraries" enabled="no">
+            <lib name="glu"/>
             <lib name="icet"/>
+            <lib name="llvm"/>
             <lib name="mesa"/>
+            <lib name="openswr"/>
         </group>
 
         <!--
@@ -184,9 +207,12 @@
             <lib name="boost"/>
             <lib name="szip"/>
             <lib name="netcdf"/>
+            <lib name="glu"/>
             <lib name="hdf5"/>
             <lib name="icet"/>
+            <lib name="llvm"/>
             <lib name="mpich"/>
+            <lib name="openswr"/>
             <lib name="pyqt"/>
             <lib name="uintah"/>
             <lib name="damaris"/>
@@ -248,8 +274,11 @@
         </group>
         <!-- #all the optional non io libraries -->
         <group name="nonio" comment="Build non I/O libraries" enabled="no">
+            <lib name="glu"/>
             <lib name="icet"/>
+            <lib name="llvm"/>
             <lib name="mesa"/>
+            <lib name="openswr"/>
         </group>
         
         <!-- you have to mangle both vtk and visit, otherwise the

@@ -569,13 +569,12 @@ SplitValues(const std::string &buff, char delim)
 {
     vector<std::string> output;
     
-    std::string tmp="";
-    for (size_t i=0; i<buff.length(); i++)
+    std::string tmp = "";
+    for (size_t i=0; i<buff.length(); ++i)
     {
         if (buff[i] == delim)
         {
-            if (!tmp.empty())
-                output.push_back(tmp);
+            output.push_back(tmp);
             tmp = "";
         }
         else
@@ -583,8 +582,8 @@ SplitValues(const std::string &buff, char delim)
             tmp += buff[i];
         }
     }
-    if (!tmp.empty())
-        output.push_back(tmp);
+
+    output.push_back(tmp);
 
     return output;
 }

@@ -1,19 +1,16 @@
 function bv_mfem_initialize
 {
     export DO_MFEM="no"
-    export ON_MFEM="off"
 }
 
 function bv_mfem_enable
 {
     DO_MFEM="yes"
-    ON_MFEM="on"
 }
 
 function bv_mfem_disable
 {
     DO_MFEM="no"
-    ON_MFEM="off"
 }
 
 function bv_mfem_depends_on
@@ -25,10 +22,12 @@ function bv_mfem_depends_on
 
 function bv_mfem_info
 {
-    export MFEM_VERSION=${MFEM_VERSION:-"3.1"}
+    export MFEM_VERSION=${MFEM_VERSION:-"3.3"}
     export MFEM_FILE=${MFEM_FILE:-"mfem-${MFEM_VERSION}.tgz"}
     export MFEM_BUILD_DIR=${MFEM_BUILD_DIR:-"mfem-${MFEM_VERSION}"}
-    export MFEM_URL=${MFEM_URL:-"https://goo.gl/xrScXn"}
+    export MFEM_URL=${MFEM_URL:-"http://goo.gl/Vrpsns"}
+    export MFEM_MD5_CHECKSUM="7c6d66af6d48fb096133d6001fe684d0"
+    export MFEM_SHA256_CHECKSUM="b17bd452593aada93dc0fee748fcfbbf4f04ce3e7d77fdd0341cc9103bcacd0b"
 }
 
 function bv_mfem_print
@@ -41,12 +40,6 @@ function bv_mfem_print
 function bv_mfem_print_usage
 {
     printf "%-15s %s [%s]\n" "--mfem" "Build mfem support" "$DO_MFEM"
-}
-
-function bv_mfem_graphical
-{
-    local graphical_out="mfem     $MFEM_VERSION($MFEM_FILE)      $ON_MFEM"
-    echo "$graphical_out"
 }
 
 function bv_mfem_host_profile

@@ -80,6 +80,8 @@ PySelectionProperties_ToString(const SelectionProperties *atts, const char *pref
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%ssource = \"%s\"\n", prefix, atts->GetSource().c_str());
     str += tmpStr;
+    SNPRINTF(tmpStr, 1000, "%shost = \"%s\"\n", prefix, atts->GetHost().c_str());
+    str += tmpStr;
     const char *selectionType_names = "BasicSelection, CumulativeQuerySelection";
     switch (atts->GetSelectionType())
     {
@@ -214,6 +216,11 @@ PySelectionProperties_ToString(const SelectionProperties *atts, const char *pref
 
     SNPRINTF(tmpStr, 1000, "%shistogramNumBins = %d\n", prefix, atts->GetHistogramNumBins());
     str += tmpStr;
+    if(atts->GetHistogramAutoScaleNumBins())
+        SNPRINTF(tmpStr, 1000, "%shistogramAutoScaleNumBins = 1\n", prefix);
+    else
+        SNPRINTF(tmpStr, 1000, "%shistogramAutoScaleNumBins = 0\n", prefix);
+    str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%shistogramStartBin = %d\n", prefix, atts->GetHistogramStartBin());
     str += tmpStr;
     SNPRINTF(tmpStr, 1000, "%shistogramEndBin = %d\n", prefix, atts->GetHistogramEndBin());
@@ -277,6 +284,30 @@ SelectionProperties_GetSource(PyObject *self, PyObject *args)
 {
     SelectionPropertiesObject *obj = (SelectionPropertiesObject *)self;
     PyObject *retval = PyString_FromString(obj->data->GetSource().c_str());
+    return retval;
+}
+
+/*static*/ PyObject *
+SelectionProperties_SetHost(PyObject *self, PyObject *args)
+{
+    SelectionPropertiesObject *obj = (SelectionPropertiesObject *)self;
+
+    char *str;
+    if(!PyArg_ParseTuple(args, "s", &str))
+        return NULL;
+
+    // Set the host in the object.
+    obj->data->SetHost(std::string(str));
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+SelectionProperties_GetHost(PyObject *self, PyObject *args)
+{
+    SelectionPropertiesObject *obj = (SelectionPropertiesObject *)self;
+    PyObject *retval = PyString_FromString(obj->data->GetHost().c_str());
     return retval;
 }
 
@@ -708,6 +739,30 @@ SelectionProperties_GetHistogramNumBins(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
+SelectionProperties_SetHistogramAutoScaleNumBins(PyObject *self, PyObject *args)
+{
+    SelectionPropertiesObject *obj = (SelectionPropertiesObject *)self;
+
+    int ival;
+    if(!PyArg_ParseTuple(args, "i", &ival))
+        return NULL;
+
+    // Set the histogramAutoScaleNumBins in the object.
+    obj->data->SetHistogramAutoScaleNumBins(ival != 0);
+
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+/*static*/ PyObject *
+SelectionProperties_GetHistogramAutoScaleNumBins(PyObject *self, PyObject *args)
+{
+    SelectionPropertiesObject *obj = (SelectionPropertiesObject *)self;
+    PyObject *retval = PyInt_FromLong(obj->data->GetHistogramAutoScaleNumBins()?1L:0L);
+    return retval;
+}
+
+/*static*/ PyObject *
 SelectionProperties_SetHistogramStartBin(PyObject *self, PyObject *args)
 {
     SelectionPropertiesObject *obj = (SelectionPropertiesObject *)self;
@@ -787,6 +842,8 @@ PyMethodDef PySelectionProperties_methods[SELECTIONPROPERTIES_NMETH] = {
     {"GetName", SelectionProperties_GetName, METH_VARARGS},
     {"SetSource", SelectionProperties_SetSource, METH_VARARGS},
     {"GetSource", SelectionProperties_GetSource, METH_VARARGS},
+    {"SetHost", SelectionProperties_SetHost, METH_VARARGS},
+    {"GetHost", SelectionProperties_GetHost, METH_VARARGS},
     {"SetSelectionType", SelectionProperties_SetSelectionType, METH_VARARGS},
     {"GetSelectionType", SelectionProperties_GetSelectionType, METH_VARARGS},
     {"SetIdVariableType", SelectionProperties_SetIdVariableType, METH_VARARGS},
@@ -811,6 +868,8 @@ PyMethodDef PySelectionProperties_methods[SELECTIONPROPERTIES_NMETH] = {
     {"GetHistogramType", SelectionProperties_GetHistogramType, METH_VARARGS},
     {"SetHistogramNumBins", SelectionProperties_SetHistogramNumBins, METH_VARARGS},
     {"GetHistogramNumBins", SelectionProperties_GetHistogramNumBins, METH_VARARGS},
+    {"SetHistogramAutoScaleNumBins", SelectionProperties_SetHistogramAutoScaleNumBins, METH_VARARGS},
+    {"GetHistogramAutoScaleNumBins", SelectionProperties_GetHistogramAutoScaleNumBins, METH_VARARGS},
     {"SetHistogramStartBin", SelectionProperties_SetHistogramStartBin, METH_VARARGS},
     {"GetHistogramStartBin", SelectionProperties_GetHistogramStartBin, METH_VARARGS},
     {"SetHistogramEndBin", SelectionProperties_SetHistogramEndBin, METH_VARARGS},
@@ -849,6 +908,8 @@ PySelectionProperties_getattr(PyObject *self, char *name)
         return SelectionProperties_GetName(self, NULL);
     if(strcmp(name, "source") == 0)
         return SelectionProperties_GetSource(self, NULL);
+    if(strcmp(name, "host") == 0)
+        return SelectionProperties_GetHost(self, NULL);
     if(strcmp(name, "selectionType") == 0)
         return SelectionProperties_GetSelectionType(self, NULL);
     if(strcmp(name, "BasicSelection") == 0)
@@ -901,6 +962,8 @@ PySelectionProperties_getattr(PyObject *self, char *name)
 
     if(strcmp(name, "histogramNumBins") == 0)
         return SelectionProperties_GetHistogramNumBins(self, NULL);
+    if(strcmp(name, "histogramAutoScaleNumBins") == 0)
+        return SelectionProperties_GetHistogramAutoScaleNumBins(self, NULL);
     if(strcmp(name, "histogramStartBin") == 0)
         return SelectionProperties_GetHistogramStartBin(self, NULL);
     if(strcmp(name, "histogramEndBin") == 0)
@@ -925,6 +988,8 @@ PySelectionProperties_setattr(PyObject *self, char *name, PyObject *args)
         obj = SelectionProperties_SetName(self, tuple);
     else if(strcmp(name, "source") == 0)
         obj = SelectionProperties_SetSource(self, tuple);
+    else if(strcmp(name, "host") == 0)
+        obj = SelectionProperties_SetHost(self, tuple);
     else if(strcmp(name, "selectionType") == 0)
         obj = SelectionProperties_SetSelectionType(self, tuple);
     else if(strcmp(name, "idVariableType") == 0)
@@ -949,6 +1014,8 @@ PySelectionProperties_setattr(PyObject *self, char *name, PyObject *args)
         obj = SelectionProperties_SetHistogramType(self, tuple);
     else if(strcmp(name, "histogramNumBins") == 0)
         obj = SelectionProperties_SetHistogramNumBins(self, tuple);
+    else if(strcmp(name, "histogramAutoScaleNumBins") == 0)
+        obj = SelectionProperties_SetHistogramAutoScaleNumBins(self, tuple);
     else if(strcmp(name, "histogramStartBin") == 0)
         obj = SelectionProperties_SetHistogramStartBin(self, tuple);
     else if(strcmp(name, "histogramEndBin") == 0)

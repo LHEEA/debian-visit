@@ -62,6 +62,12 @@ class MapNode;
 // Creation:   June 9, 2011 
 //
 // Modifications:
+//   Matt Larsen, December 12, 2016 
+//   added GetElementRange to detect if a range of picks has been entered in 
+//   the pick window.
+//
+//   Matt Larsen, June 17, 2017 
+//   added GetElementLabel to support label picks
 //
 // ****************************************************************************
 
@@ -86,6 +92,8 @@ private:
     bool                 GetPoint(double *pt);
     bool                 GetDomain(int *);
     bool                 GetElement(int *);
+    bool                 GetElementRange(std::string &);
+    bool                 GetElementLabel(std::string &);
     int                  GetPlotType(void);
     int                  GetElementType(void);
     bool                 GetTimePreservesCoord(void);

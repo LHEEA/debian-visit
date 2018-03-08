@@ -84,6 +84,7 @@ class H5PartCommonPluginInfo : public virtual CommonDatabasePluginInfo, public v
                                                     int nList, int nBlock);
     virtual DBOptionsAttributes *GetReadOptions() const;
     virtual DBOptionsAttributes *GetWriteOptions() const;
+    virtual std::string               GetLicense() const;
 };
 
 class H5PartMDServerPluginInfo : public virtual MDServerDatabasePluginInfo, public virtual H5PartCommonPluginInfo

@@ -1,7 +1,6 @@
 function bv_cmake_initialize
 {
     export DO_CMAKE="yes"
-    export ON_CMAKE="on"
     export FORCE_CMAKE="no"
     export USE_SYSTEM_CMAKE="no"
     add_extra_commandline_args "cmake" "system-cmake" 0 "Use cmake found on system"
@@ -12,14 +11,12 @@ function bv_cmake_initialize
 function bv_cmake_enable
 {
     DO_CMAKE="yes"
-    ON_CMAKE="on"
     FORCE_CMAKE="yes"
 }
 
 function bv_cmake_disable
 {
     DO_CMAKE="no"
-    ON_CMAKE="off"
     FORCE_CMAKE="no"
 }
 
@@ -99,10 +96,10 @@ function bv_cmake_bin_cmake_dir
 
 function bv_cmake_info
 {
-    export CMAKE_FILE=${CMAKE_FILE:-"cmake-3.0.2.tar.gz"}
-    export CMAKE_VERSION=${CMAKE_VERSION:-"3.0.2"}
-    export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-3.0.2"}
-    export CMAKE_MD5_CHECKSUM="db4c687a31444a929d2fdc36c4dfb95f"
+    export CMAKE_FILE=${CMAKE_FILE:-"cmake-3.8.1.tar.gz"}
+    export CMAKE_VERSION=${CMAKE_VERSION:-"3.8.1"}
+    export CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR:-"cmake-3.8.1"}
+    export CMAKE_MD5_CHECKSUM="e8ef820ddf7a650845252bca846696e7"
     export CMAKE_SHA256_CHECKSUM=""
 }
 
@@ -163,6 +160,36 @@ function bv_cmake_dry_run
 #                          Function 5, build_cmake                            #
 # *************************************************************************** #
 
+function apply_cmake_patch_5
+{
+    patch -p0 <<\EOF
+*** cmake-3.8.1/Source/kwsys/SystemInformation.cxx	Tue May  2 05:59:43 2017
+--- cmake-3.8.1-new/Source/kwsys/SystemInformation.cxx	Thu Jun 29 11:18:38 2017
+***************
+*** 4805,4811 ****
+    std::string lastArg = command.substr(start + 1, command.size() - start - 1);
+    args.push_back(lastArg.c_str());
+  
+!   args.push_back(0);
+  
+    std::string buffer = this->RunProcess(args);
+  
+--- 4805,4811 ----
+    std::string lastArg = command.substr(start + 1, command.size() - start - 1);
+    args.push_back(lastArg.c_str());
+  
+!   args.push_back(nullptr);
+  
+    std::string buffer = this->RunProcess(args);
+EOF
+    if [[ $? != 0 ]] ; then
+        warn "Unable to apply patch 5 to cmake."
+        return 1
+    else
+        return 0
+    fi
+}
+
 function apply_cmake_patch_4
 {
     patch -p0 <<\EOF
@@ -202,7 +229,7 @@ function apply_cmake_patch_4
      }
 EOF
     if [[ $? != 0 ]] ; then
-        warn "Unable to apply patch 4 to cmake."
+        warn "Unable to apply patch 4 ${CMAKE_VERSION} to cmake."
         return 1
     else
         return 0
@@ -356,9 +383,16 @@ function apply_cmake_patch
         fi
     fi
 
+    CXX_COMPILER_BASENAME=$(basename ${CXX_COMPILER})
+    if [[ "${CMAKE_VERSION}" == "3.8.1" &&  "${CXX_COMPILER_BASENAME}" == "icpc" ]]; then
+        apply_cmake_patch_5
+        if [[ $? != 0 ]] ; then
+            return 1
+        fi
+    fi
+
     return 0
 }
-
 
 function build_cmake
 {
@@ -460,7 +494,7 @@ function bv_cmake_build
         if [[ $? == 0 ]] ; then
             info "Skipping CMake build.  CMake is already installed."
         else
-            info "Building CMake (~2 minutes)"
+            info "Building CMake (~5 minutes)"
             build_cmake
             if [[ $? != 0 ]] ; then
                 error "Unable to build or install CMake.  Bailing out."
