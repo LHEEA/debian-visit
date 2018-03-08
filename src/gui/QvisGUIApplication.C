@@ -58,13 +58,6 @@
 #include <QStyleFactory>
 #include <QTranslator>
 
-#if defined(Q_WS_MACX) || defined(Q_OS_MAC)
-// On MacOS X, we manage the printer options window instead of letting
-// Qt do it when we use the Mac or Aqua style.
-#include <Carbon/Carbon.h>
-#include <QStyle>
-#endif
-
 #include <QMenuBar>
 #include <QTimer>
 #include <QvisGUIApplication.h>
@@ -238,12 +231,6 @@
 #define BEGINSWITHQUOTE(A) (A[0] == '\'' || A[0] == '\"')
 #define ENDSWITHQUOTE(A) (A[strlen(A)-1] == '\'' || A[strlen(A)-1] == '\"')
 #define HASSPACE(A) (strstr(A, " ") != NULL)
-
-// We do this so that the strings command on the .o file
-// can tell us whether or not DEBUG_MEMORY_LEAKS was turned on
-#ifdef DEBUG_MEMORY_LEAKS
-static const char *dummy_string1 = "DEBUG_MEMORY_LEAKS";
-#endif
 
 // Some internal prototypes.
 static void QPrinterToPrinterAttributes(QPrinter *, PrinterAttributes *);
@@ -681,11 +668,6 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
     applicationStyle(), applicationLocale("default"), loadFile(), sessionFile(), 
     sessionDir(), movieArguments()
 {
-#ifdef DEBUG_MEMORY_LEAKS
-    // ensure dummy_string1 cannot optimized away
-    char const *dummy = dummy_string1; dummy++;
-#endif
-
     completeInit = visitTimer->StartTimer();
     int total = visitTimer->StartTimer();
 
@@ -1000,105 +982,6 @@ QvisGUIApplication::QvisGUIApplication(int &argc, char **argv, ViewerProxy *prox
 }
 
 // ****************************************************************************
-// Method: QvisGUIApplication::DestructorHelper
-//
-// Purpose: A function to refactor destructor logic and control fast exit
-//     behavior
-//
-// Programmer: Mark C. Miller, Thu Jun 22 14:01:25 PDT 2017
-// ****************************************************************************
-
-void
-QvisGUIApplication::DestructorHelper(bool fastExit)
-{
-#if !defined(_WIN32) && !defined(__APPLE__)
-    if (!fastExit)
-    {
-        // Delete the windows.
-        for(WindowBaseMap::iterator pos = otherWindows.begin();
-            pos != otherWindows.end(); ++pos)
-        {
-            delete pos->second;
-        }
-        for(size_t i = 0; i < plotWindows.size(); ++i)
-        {
-            if(plotWindows[i] != 0)
-                delete plotWindows[i];
-        }
-        for(size_t i = 0; i < operatorWindows.size(); ++i)
-        {
-            if(operatorWindows[i] != 0)
-                delete operatorWindows[i];
-        }
-    }
-#endif
-
-    // Delete the file server
-    if (!fastExit)
-    {
-        delete fileServer;
-        fileServer = 0;
-    }
-
-    // Close down the viewer and delete it.
-    if(viewerIsAlive)
-    {
-        if(viewerInitiatedQuit)
-        {
-            debug1 << "Quitting because viewer told us to." << endl;
-        }
-        else
-        {
-            if(closeAllClients)
-            {
-                debug1 << "Telling viewer to close." << endl;
-                GetViewerProxy()->Close();
-            }
-            else
-            {
-                debug1 << "Telling viewer to detach this GUI." << endl;
-                GetViewerProxy()->Detach();
-            }
-        }
-    }
-
-    if (!fastExit)
-    {
-        delete GetViewerProxy();
-
-        // Delete the status subject that is used for the status bar.
-        delete statusSubject;
-        statusSubject = 0;
-
-        // Delete the socket notifiers.
-        delete fromViewer;
-
-        // Delete the application
-        if(!inheritedGUI)
-            delete mainApp;
-
-        // Delete the args for QT
-        for (size_t i = 0 ; i < (size_t)qt_argc ; i++)
-        {
-            if (qt_argv[i])
-                free(qt_argv[i]);
-        }
-        delete [] qt_argv;
-
-        // Delete the printer object.
-        delete printer;
-        delete printerObserver;
-
-        delete syncObserver;
-        delete systemSettings;
-        delete localSettings;
-    }
-
-    if (fastExit)
-        exit(0); // HOOKS_IGNORE
-}
-
-// ****************************************************************************
 // Method: QvisGUIApplication::~QvisGUIApplication
 //
 // Purpose: 
@@ -1135,11 +1018,88 @@ QvisGUIApplication::DestructorHelper(bool fastExit)
 //   Hank Childs, Thu Dec  4 10:17:36 PST 2008
 //   Commit fix for memory leak contributed by David Camp of UC Davis.
 //
+//   Kathleen Biagas, Wed Oct 4 11:10:32 MST 2017
+//   Removed Win32 restriction on deleting Windows.  With Qt 5, if the command
+//   window is open at exit, the gui will segv and open a windows message box
+//   stating that the gui exited abnormally.  I could only delete that window,
+//   but deleting all of them seems to cause no harm (with Qt 4 and Qt 5).
+//
 // ****************************************************************************
 
 QvisGUIApplication::~QvisGUIApplication()
 {
-    DestructorHelper();
+#if !defined(__APPLE__)
+    // Delete the windows.
+    for(WindowBaseMap::iterator pos = otherWindows.begin();
+        pos != otherWindows.end(); ++pos)
+    {
+        delete pos->second;
+    }
+    for(size_t i = 0; i < plotWindows.size(); ++i)
+    {
+        if(plotWindows[i] != 0)
+            delete plotWindows[i];
+    }
+    for(size_t i = 0; i < operatorWindows.size(); ++i)
+    {
+        if(operatorWindows[i] != 0)
+            delete operatorWindows[i];
+    }
+#endif
+
+    // Delete the file server
+    delete fileServer;
+    fileServer = 0;
+
+    // Close down the viewer and delete it.
+    if(viewerIsAlive)
+    {
+        if(viewerInitiatedQuit)
+        {
+            debug1 << "Quitting because viewer told us to." << endl;
+        }
+        else
+        {
+            if(closeAllClients)
+            {
+                debug1 << "Telling viewer to close." << endl;
+                GetViewerProxy()->Close();
+            }
+            else
+            {
+                debug1 << "Telling viewer to detach this GUI." << endl;
+                GetViewerProxy()->Detach();
+            }
+        }
+    }
+    delete GetViewerProxy();
+
+    // Delete the status subject that is used for the status bar.
+    delete statusSubject;
+    statusSubject = 0;
+
+    // Delete the socket notifiers.
+    delete fromViewer;
+
+    // Delete the application
+    if(!inheritedGUI)
+        delete mainApp;
+
+    // Delete the args for QT
+    for (size_t i = 0 ; i < (size_t)qt_argc ; i++)
+    {
+        if (qt_argv[i])
+            free(qt_argv[i]);
+    }
+    delete [] qt_argv;
+
+    // Delete the printer object.
+    delete printer;
+    delete printerObserver;
+
+    delete syncObserver;
+    delete systemSettings;
+    delete localSettings;
 }
 
 // ****************************************************************************
@@ -2079,10 +2039,6 @@ QvisGUIApplication::Exec()
 //    David Camp, Thu Aug  8 08:50:06 PDT 2013
 //    Added the restore from last session feature. 
 //
-//    Mark C. Miller, Thu Jun  8 14:54:25 PDT 2017
-//    Just immediately exit(0) instead of trying to cleanup nicely. This
-//    can impact valgrind analysis so compile with DEBUG_MEMORY_LEAKS to
-//    turn off this behavior.
 // ****************************************************************************
 
 void
@@ -2148,12 +2104,7 @@ QvisGUIApplication::Quit()
         SaveSessionFile(restoreFile, host);
     }
 
-#ifdef DEBUG_MEMORY_LEAKS
     mainApp->quit();
-#else
-    bool const fastExit = true;
-    DestructorHelper(fastExit); 
-#endif
 }
 
 // ****************************************************************************
@@ -6944,220 +6895,73 @@ QvisGUIApplication::SaveWindow()
 //   I renamed this method to PrintWindow and I made all platforms print if
 //   the print dialog is accepted.
 //
+//   Kevin Griffin, Tue Sep 19 16:48:21 PDT 2017
+//   Removed the OS X specific coding since the PMSessionPrintDialog method 
+//   has been deprecated and removed and the QPrinter object is now adequate
+//   for printing on OS X.
+//
 // ****************************************************************************
     
 void
 QvisGUIApplication::PrintWindow()
 {
     PrinterAttributes *p = GetViewerState()->GetPrinterAttributes();
-#if QT_VERSION < QT_VERSION_CHECK(5, 0, 0)
-#if (defined(Q_WS_MACX) || defined(Q_OS_MAC)) && !defined(VISIT_MAC_NO_CARBON)
+    // Each time through, clear out the printer's save to filename.
+    bool setupPrinter = true;
+    p->SetOutputToFile(false);
+    p->SetOutputToFileName("");
+    
     //
-    // If we're on MacOS X and the Mac application style is being used, manage
-    // the printer setup ourselves since the QPrinter object does not return
-    // enough information when it uses the native MacOS X printer dialog. Here
-    // we use the native MacOS X printer dialog but we get what we need out
-    // of it.
+    // If we've never set up the printer options, set them up now using
+    // Qt's printer object and printer dialog.
     //
-    if(qApp->style()->inherits("QMacStyle"))
+    if(printer == 0)
     {
-        PMPageFormat pformat;
-        PMPrintSettings psettings;
-        PMPrintSession psession;
-        int nObjectsToFree = 0;
-        bool okayToPrint = true;
-    
-        TRY
-        {
-            if(PMCreateSession(&psession) != kPMNoError)
-            {
-                EXCEPTION0(VisItException);
-            }
-            nObjectsToFree = 1;
+        // Create a new printer object.
+        printer = new QPrinter;
         
-            if(PMCreatePrintSettings(&psettings) != kPMNoError)
-            {
-                EXCEPTION0(VisItException);
-            }
-            nObjectsToFree = 2;
-            if(PMSessionDefaultPrintSettings(psession, psettings) != kPMNoError)
-            {
-                EXCEPTION0(VisItException);
-            }
-        
-            if(PMCreatePageFormat(&pformat) != kPMNoError)
-            {
-                EXCEPTION0(VisItException);
-            }
-            nObjectsToFree = 3;
-            if(PMSessionDefaultPageFormat(psession, pformat) != kPMNoError)
-            {
-                EXCEPTION0(VisItException);
-            }
-    
-            //
-            // Show the MacOS X printer window and allow the user to select
-            // the printer to use when printing images in VisIt.
-            //
-            Boolean accepted = false;
-            if(PMSessionPrintDialog(psession, psettings, pformat, &accepted) == kPMNoError &&
-               accepted == true)
-            {       
-                // Get the name of the printer to use for printing the image.
-                CFArrayRef printerList = NULL;
-                CFIndex currentIndex;
-                PMPrinter currentPrinter;
-                if(PMSessionCreatePrinterList(psession, &printerList, &currentIndex,
-                   &currentPrinter) == kPMNoError)
-                {
-                    if(printerList != NULL)
-                    {
-                        const void *pData = CFArrayGetValueAtIndex(printerList,
-                            currentIndex);
-                        if(pData != NULL)
-                        {
-                            CFStringRef pName = (CFStringRef)pData;
-                            char buf[1000]; buf[0] = '\0';
-                            CFStringGetCString(pName, buf, 1000,
-                                kCFStringEncodingMacRoman);
-                            p->SetPrinterName(buf);
-                        }
-                        else
-                        {
-                            debug4 << "Could not find printer name" << endl;
-                            CFRelease(printerList);
-                            EXCEPTION0(VisItException);
-                        }
-                    
-                        // Free the printerList
-                        CFRelease(printerList);
-                    }
-                    else
-                    {
-                        debug4 << "Could not return the list of printer names"
-                               << endl;
-                        EXCEPTION0(VisItException);
-                    }
-                }
-
-                // Get the options from the psettings object.
-                PMOrientation orient;
-                PMGetOrientation(pformat, &orient);
-                p->SetPortrait(orient == kPMPortrait || orient == kPMReversePortrait);
-        
-                // Set the number of copies
-                UInt32 ncopies = 1;
-                PMGetCopies(psettings, &ncopies);
-                p->SetNumCopies(int(ncopies));
-     
-                // Set some of the last properties
-                p->SetOutputToFile(false);
-                p->SetOutputToFileName("");
-                p->SetPrintColor(true);
-                p->SetCreator(GetViewerProxy()->GetLocalUserName());
-
-                // Tell the viewer what the properties are.
-                if(printerObserver != 0)             
-                    printerObserver->SetUpdate(false);
-                p->Notify();
-            }
-            else
-                debug4 << "User cancelled the printer options window." << endl;
-        }
-        CATCH(VisItException)
+        // If the printer attributes have no printer name then set the
+        // printer object's name into the printer attributes.
+        p->SetCreator("VisIt");
+        if(p->GetPrinterName() == "")
         {
-            Error(tr("VisIt encountered an error while setting up printer options."));
-            okayToPrint = false;
-        }
-        ENDTRY
-    
-        //
-        // Free the PM objects that we created.
-        //
-        switch(nObjectsToFree)
-        {
-        case 3:
-            PMRelease(pformat);
-            // Fall through
-        case 2:
-            PMRelease(psettings);
-            // Fall through
-        case 1:
-            PMRelease(psession);       
-        }
-    
-        //
-        // Tell the viewer to print the image because the MacOS X printer
-        // dialog has the word "Print" to click when you're done setting
-        // options. This says to me that MacOS X applications expect to
-        // print once the options are set.
-        //
-        if(okayToPrint)
-            GetViewerMethods()->PrintWindow();
-    }
-    else
-    {
-#endif
-        // Each time through, clear out the printer's save to filename.
-        bool setupPrinter = true;
-        p->SetOutputToFile(false);
-        p->SetOutputToFileName("");
-
-        //
-        // If we've never set up the printer options, set them up now using
-        // Qt's printer object and printer dialog.
-        //
-        if(printer == 0)
-        {
-            // Create a new printer object.
-            printer = new QPrinter;
-
-            // If the printer attributes have no printer name then set the
-            // printer object's name into the printer attributes.
-            p->SetCreator("VisIt");
-            if(p->GetPrinterName() == "")
-            {
-                p->SetPrinterName(printer->printerName().toStdString());
-                p->Notify();
-            }
-
-            // Create an observer for the printer attributes that will copy
-            // their values into the printer object when there are changes.
-            printerObserver = new ObserverToCallback(p,
-                UpdatePrinterAttributes, (void *)printer);
-
-            // Indicate that we need to set up the printer.
-            setupPrinter = true;
-        }
-
-        // Store the printer attributes into the printer object.
-        if(setupPrinter)
-            PrinterAttributesToQPrinter(p, printer);
-
-        // Execute the printer dialog
-        QPrintDialog printDialog(printer, mainWin);
-        if(printDialog.exec() == QDialog::Accepted)
-        {
-            //
-            // Send all of the Qt printer options to the viewer
-            //
-            QPrinterToPrinterAttributes(printer, p);
-            p->SetCreator("VisIt");
-            printerObserver->SetUpdate(false);
+            p->SetPrinterName(printer->printerName().toStdString());
             p->Notify();
-
-            //
-            // Tell the viewer to print the image. All print dialogs I've seen
-            // for Qt 4 have "Print" as the button that accepts the Print dialog.
-            // This says to me that applications expect to print once the options
-            // are set.
-            //
-            GetViewerMethods()->PrintWindow();
         }
-#if (defined(Q_WS_MACX) || defined(Q_OS_MAC)) && !defined(VISIT_MAC_NO_CARBON)
+        
+        // Create an observer for the printer attributes that will copy
+        // their values into the printer object when there are changes.
+        printerObserver = new ObserverToCallback(p,
+                                                 UpdatePrinterAttributes, (void *)printer);
+        
+        // Indicate that we need to set up the printer.
+        setupPrinter = true;
     }
-#endif
-#endif
+    
+    // Store the printer attributes into the printer object.
+    if(setupPrinter)
+        PrinterAttributesToQPrinter(p, printer);
+    
+    // Execute the printer dialog
+    QPrintDialog printDialog(printer, mainWin);
+    if(printDialog.exec() == QDialog::Accepted)
+    {
+        //
+        // Send all of the Qt printer options to the viewer
+        //
+        QPrinterToPrinterAttributes(printer, p);
+        p->SetCreator("VisIt");
+        printerObserver->SetUpdate(false);
+        p->Notify();
+        
+        //
+        // Tell the viewer to print the image. All print dialogs I've seen
+        // for Qt 4 have "Print" as the button that accepts the Print dialog.
+        // This says to me that applications expect to print once the options
+        // are set.
+        //
+        GetViewerMethods()->PrintWindow();
+    }
 }
 
 // ****************************************************************************
@@ -7235,6 +7039,9 @@ QPrinterToPrinterAttributes(QPrinter *printer, PrinterAttributes *p)
 //   Brad Whitlock, Mon May 24 13:42:17 PDT 2010
 //   Only allow valid printer names.
 //
+//   Kathleen Biagas, Tues Sep 12 10:27:13 MST 2017 
+//   Add less expensive call to availablePrinterNames for Qt version >= 5.3.
+//
 // ****************************************************************************
 
 static void
@@ -7242,6 +7049,7 @@ PrinterAttributesToQPrinter(PrinterAttributes *p, QPrinter *printer)
 {
     // Only set the printer name if it is a valid name.
     QString printerName(p->GetPrinterName().c_str());
+#if QT_VERSION < QT_VERSION_CHECK(5, 3, 0)
     QList<QPrinterInfo> availablePrinters(QPrinterInfo::availablePrinters());
     for(int i = 0; i < availablePrinters.size(); ++i)
     {
@@ -7251,6 +7059,18 @@ PrinterAttributesToQPrinter(PrinterAttributes *p, QPrinter *printer)
             break;
         }
     }
+#else
+    // less expensive call introduced in Qt 5.3
+    QStringList availablePrinters(QPrinterInfo::availablePrinterNames());
+    for(int i = 0; i < availablePrinters.size(); ++i)
+    {
+        if(availablePrinters[i] == printerName)
+        {
+            printer->setPrinterName(printerName);
+            break;
+        }
+    }
+#endif
 
     printer->setPrintProgram(p->GetPrintProgram().c_str());
     printer->setCreator(p->GetCreator().c_str());

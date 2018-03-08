@@ -1,7 +1,6 @@
 function bv_hdf5_initialize
 {
     export DO_HDF5="no"
-    export ON_HDF5="off"
     export USE_SYSTEM_HDF5="no"
     add_extra_commandline_args "hdf5" "alt-hdf5-dir" 1 "Use alternative directory for hdf5"
 }
@@ -9,13 +8,11 @@ function bv_hdf5_initialize
 function bv_hdf5_enable
 {
     DO_HDF5="yes"
-    ON_HDF5="on"
 }
 
 function bv_hdf5_disable
 {
     DO_HDF5="no"
-    ON_HDF5="off"
 }
 
 function bv_hdf5_alt_hdf5_dir
@@ -78,12 +75,6 @@ function bv_hdf5_print_usage
 {
     printf "%-15s %s [%s]\n" "--hdf5" "Build HDF5" "${DO_HDF5}"
     printf "%-15s %s [%s]\n" "--alt-hdf5-dir" "Use HDF5 from an alternative directory"
-}
-
-function bv_hdf5_graphical
-{
-    local graphical_out="HDF5     $HDF5_VERSION($HDF5_FILE)      $ON_HDF5"
-    echo $graphical_out
 }
 
 function bv_hdf5_host_profile
@@ -639,7 +630,10 @@ function build_hdf5
         cf_szip="--with-szlib=${sz_dir}"
     fi
 
-    if [[ "$FC_COMPILER" == "no" ]] ; then
+    # Disable Fortran on Darwin since it causes HDF5 builds to fail.
+    if [[ "$OPSYS" == "Darwin" ]]; then
+        cf_fortranargs=""
+    elif [[ "$FC_COMPILER" == "no" ]] ; then
         cf_fortranargs=""
     else
         cf_fortranargs="FC=\"$FC_COMPILER\" F77=\"$FC_COMPILER\" FCFLAGS=\"$FCFLAGS\" FFLAGS=\"$FCFLAGS\" --enable-fortran"
@@ -704,13 +698,13 @@ function build_hdf5
         fi
         #
         # Install into the VisIt third party location.
-        # Avoid building all the test clients by cd src/hl
+        #
+        # Install all targets until we can figure out
+        # how to avoid installing just the tests.
         #
         info "Installing $bt HDF5 . . ."
-        info "(cd src; $MAKE install)"
-        (cd src; $MAKE install)
-        info "(cd hl; $MAKE install)"
-        (cd hl; $MAKE install)
+        $MAKE install
+
         if [[ $? != 0 ]] ; then
             warn "$bt HDF5 install failed.  Giving up"
             return 1

@@ -53,6 +53,9 @@
 /* Define if you have the FastBit library. */
 #cmakedefine HAVE_LIBFASTBIT 
 
+/* Define if you have the FastQuery library. */
+#cmakedefine HAVE_LIBFASTQUERY
+
 /* Define if you have the GLEW library. */
 #cmakedefine HAVE_LIBGLEW
 
@@ -276,7 +279,7 @@
 
 /* Plugin version macro */
 #define VISIT_PLUGIN_VERSION_NAME(A,B) A##B
-#ifdef _WIN32
+#ifdef WIN32
 /* We need the extern "C" on Windows. */
 #define VISIT_PLUGIN_VERSION(NAME, EXPORTMACRO) extern "C" EXPORTMACRO const char *VISIT_PLUGIN_VERSION_NAME(NAME,VisItPluginVersion) = VISIT_VERSION;
 #else

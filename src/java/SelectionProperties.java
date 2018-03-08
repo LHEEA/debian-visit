@@ -58,7 +58,7 @@ import java.lang.Double;
 
 public class SelectionProperties extends AttributeSubject
 {
-    private static int SelectionProperties_numAdditionalAtts = 17;
+    private static int SelectionProperties_numAdditionalAtts = 19;
 
     // Enum values
     public final static int SELECTIONTYPE_BASICSELECTION = 0;
@@ -84,6 +84,7 @@ public class SelectionProperties extends AttributeSubject
 
         name = new String("");
         source = new String("");
+        host = new String("localhost");
         selectionType = SELECTIONTYPE_BASICSELECTION;
         idVariableType = IDVARIABLETYPE_USEZONEIDFORID;
         idVariable = new String("");
@@ -96,6 +97,7 @@ public class SelectionProperties extends AttributeSubject
         combineRule = COMBINATIONTYPE_COMBINEOR;
         histogramType = HISTOGRAMTYPE_HISTOGRAMTIME;
         histogramNumBins = 10;
+        histogramAutoScaleNumBins = false;
         histogramStartBin = 0;
         histogramEndBin = 9;
         histogramVariable = new String("");
@@ -107,6 +109,7 @@ public class SelectionProperties extends AttributeSubject
 
         name = new String("");
         source = new String("");
+        host = new String("localhost");
         selectionType = SELECTIONTYPE_BASICSELECTION;
         idVariableType = IDVARIABLETYPE_USEZONEIDFORID;
         idVariable = new String("");
@@ -119,6 +122,7 @@ public class SelectionProperties extends AttributeSubject
         combineRule = COMBINATIONTYPE_COMBINEOR;
         histogramType = HISTOGRAMTYPE_HISTOGRAMTIME;
         histogramNumBins = 10;
+        histogramAutoScaleNumBins = false;
         histogramStartBin = 0;
         histogramEndBin = 9;
         histogramVariable = new String("");
@@ -126,12 +130,13 @@ public class SelectionProperties extends AttributeSubject
 
     public SelectionProperties(SelectionProperties obj)
     {
-        super(SelectionProperties_numAdditionalAtts);
+        super(obj);
 
         int i;
 
         name = new String(obj.name);
         source = new String(obj.source);
+        host = new String(obj.host);
         selectionType = obj.selectionType;
         idVariableType = obj.idVariableType;
         idVariable = new String(obj.idVariable);
@@ -159,6 +164,7 @@ public class SelectionProperties extends AttributeSubject
         combineRule = obj.combineRule;
         histogramType = obj.histogramType;
         histogramNumBins = obj.histogramNumBins;
+        histogramAutoScaleNumBins = obj.histogramAutoScaleNumBins;
         histogramStartBin = obj.histogramStartBin;
         histogramEndBin = obj.histogramEndBin;
         histogramVariable = new String(obj.histogramVariable);
@@ -210,6 +216,7 @@ public class SelectionProperties extends AttributeSubject
         // Create the return value
         return ((name.equals(obj.name)) &&
                 (source.equals(obj.source)) &&
+                (host.equals(obj.host)) &&
                 (selectionType == obj.selectionType) &&
                 (idVariableType == obj.idVariableType) &&
                 (idVariable.equals(obj.idVariable)) &&
@@ -222,6 +229,7 @@ public class SelectionProperties extends AttributeSubject
                 (combineRule == obj.combineRule) &&
                 (histogramType == obj.histogramType) &&
                 (histogramNumBins == obj.histogramNumBins) &&
+                (histogramAutoScaleNumBins == obj.histogramAutoScaleNumBins) &&
                 (histogramStartBin == obj.histogramStartBin) &&
                 (histogramEndBin == obj.histogramEndBin) &&
                 (histogramVariable.equals(obj.histogramVariable)));
@@ -240,114 +248,128 @@ public class SelectionProperties extends AttributeSubject
         Select(1);
     }
 
+    public void SetHost(String host_)
+    {
+        host = host_;
+        Select(2);
+    }
+
     public void SetSelectionType(int selectionType_)
     {
         selectionType = selectionType_;
-        Select(2);
+        Select(3);
     }
 
     public void SetIdVariableType(int idVariableType_)
     {
         idVariableType = idVariableType_;
-        Select(3);
+        Select(4);
     }
 
     public void SetIdVariable(String idVariable_)
     {
         idVariable = idVariable_;
-        Select(4);
+        Select(5);
     }
 
     public void SetVariables(Vector variables_)
     {
         variables = variables_;
-        Select(5);
+        Select(6);
     }
 
     public void SetVariableMins(Vector variableMins_)
     {
         variableMins = variableMins_;
-        Select(6);
+        Select(7);
     }
 
     public void SetVariableMaxs(Vector variableMaxs_)
     {
         variableMaxs = variableMaxs_;
-        Select(7);
+        Select(8);
     }
 
     public void SetMinTimeState(int minTimeState_)
     {
         minTimeState = minTimeState_;
-        Select(8);
+        Select(9);
     }
 
     public void SetMaxTimeState(int maxTimeState_)
     {
         maxTimeState = maxTimeState_;
-        Select(9);
+        Select(10);
     }
 
     public void SetTimeStateStride(int timeStateStride_)
     {
         timeStateStride = timeStateStride_;
-        Select(10);
+        Select(11);
     }
 
     public void SetCombineRule(int combineRule_)
     {
         combineRule = combineRule_;
-        Select(11);
+        Select(12);
     }
 
     public void SetHistogramType(int histogramType_)
     {
         histogramType = histogramType_;
-        Select(12);
+        Select(13);
     }
 
     public void SetHistogramNumBins(int histogramNumBins_)
     {
         histogramNumBins = histogramNumBins_;
-        Select(13);
+        Select(14);
+    }
+
+    public void SetHistogramAutoScaleNumBins(boolean histogramAutoScaleNumBins_)
+    {
+        histogramAutoScaleNumBins = histogramAutoScaleNumBins_;
+        Select(15);
     }
 
     public void SetHistogramStartBin(int histogramStartBin_)
     {
         histogramStartBin = histogramStartBin_;
-        Select(14);
+        Select(16);
     }
 
     public void SetHistogramEndBin(int histogramEndBin_)
     {
         histogramEndBin = histogramEndBin_;
-        Select(15);
+        Select(17);
     }
 
     public void SetHistogramVariable(String histogramVariable_)
     {
         histogramVariable = histogramVariable_;
-        Select(16);
+        Select(18);
     }
 
     // Property getting methods
-    public String GetName() { return name; }
-    public String GetSource() { return source; }
-    public int    GetSelectionType() { return selectionType; }
-    public int    GetIdVariableType() { return idVariableType; }
-    public String GetIdVariable() { return idVariable; }
-    public Vector GetVariables() { return variables; }
-    public Vector GetVariableMins() { return variableMins; }
-    public Vector GetVariableMaxs() { return variableMaxs; }
-    public int    GetMinTimeState() { return minTimeState; }
-    public int    GetMaxTimeState() { return maxTimeState; }
-    public int    GetTimeStateStride() { return timeStateStride; }
-    public int    GetCombineRule() { return combineRule; }
-    public int    GetHistogramType() { return histogramType; }
-    public int    GetHistogramNumBins() { return histogramNumBins; }
-    public int    GetHistogramStartBin() { return histogramStartBin; }
-    public int    GetHistogramEndBin() { return histogramEndBin; }
-    public String GetHistogramVariable() { return histogramVariable; }
+    public String  GetName() { return name; }
+    public String  GetSource() { return source; }
+    public String  GetHost() { return host; }
+    public int     GetSelectionType() { return selectionType; }
+    public int     GetIdVariableType() { return idVariableType; }
+    public String  GetIdVariable() { return idVariable; }
+    public Vector  GetVariables() { return variables; }
+    public Vector  GetVariableMins() { return variableMins; }
+    public Vector  GetVariableMaxs() { return variableMaxs; }
+    public int     GetMinTimeState() { return minTimeState; }
+    public int     GetMaxTimeState() { return maxTimeState; }
+    public int     GetTimeStateStride() { return timeStateStride; }
+    public int     GetCombineRule() { return combineRule; }
+    public int     GetHistogramType() { return histogramType; }
+    public int     GetHistogramNumBins() { return histogramNumBins; }
+    public boolean GetHistogramAutoScaleNumBins() { return histogramAutoScaleNumBins; }
+    public int     GetHistogramStartBin() { return histogramStartBin; }
+    public int     GetHistogramEndBin() { return histogramEndBin; }
+    public String  GetHistogramVariable() { return histogramVariable; }
 
     // Write and read methods.
     public void WriteAtts(CommunicationBuffer buf)
@@ -357,34 +379,38 @@ public class SelectionProperties extends AttributeSubject
         if(WriteSelect(1, buf))
             buf.WriteString(source);
         if(WriteSelect(2, buf))
-            buf.WriteInt(selectionType);
+            buf.WriteString(host);
         if(WriteSelect(3, buf))
-            buf.WriteInt(idVariableType);
+            buf.WriteInt(selectionType);
         if(WriteSelect(4, buf))
-            buf.WriteString(idVariable);
+            buf.WriteInt(idVariableType);
         if(WriteSelect(5, buf))
-            buf.WriteStringVector(variables);
+            buf.WriteString(idVariable);
         if(WriteSelect(6, buf))
-            buf.WriteDoubleVector(variableMins);
+            buf.WriteStringVector(variables);
         if(WriteSelect(7, buf))
-            buf.WriteDoubleVector(variableMaxs);
+            buf.WriteDoubleVector(variableMins);
         if(WriteSelect(8, buf))
-            buf.WriteInt(minTimeState);
+            buf.WriteDoubleVector(variableMaxs);
         if(WriteSelect(9, buf))
-            buf.WriteInt(maxTimeState);
+            buf.WriteInt(minTimeState);
         if(WriteSelect(10, buf))
-            buf.WriteInt(timeStateStride);
+            buf.WriteInt(maxTimeState);
         if(WriteSelect(11, buf))
-            buf.WriteInt(combineRule);
+            buf.WriteInt(timeStateStride);
         if(WriteSelect(12, buf))
-            buf.WriteInt(histogramType);
+            buf.WriteInt(combineRule);
         if(WriteSelect(13, buf))
-            buf.WriteInt(histogramNumBins);
+            buf.WriteInt(histogramType);
         if(WriteSelect(14, buf))
-            buf.WriteInt(histogramStartBin);
+            buf.WriteInt(histogramNumBins);
         if(WriteSelect(15, buf))
-            buf.WriteInt(histogramEndBin);
+            buf.WriteBool(histogramAutoScaleNumBins);
         if(WriteSelect(16, buf))
+            buf.WriteInt(histogramStartBin);
+        if(WriteSelect(17, buf))
+            buf.WriteInt(histogramEndBin);
+        if(WriteSelect(18, buf))
             buf.WriteString(histogramVariable);
     }
 
@@ -399,48 +425,54 @@ public class SelectionProperties extends AttributeSubject
             SetSource(buf.ReadString());
             break;
         case 2:
-            SetSelectionType(buf.ReadInt());
+            SetHost(buf.ReadString());
             break;
         case 3:
-            SetIdVariableType(buf.ReadInt());
+            SetSelectionType(buf.ReadInt());
             break;
         case 4:
-            SetIdVariable(buf.ReadString());
+            SetIdVariableType(buf.ReadInt());
             break;
         case 5:
-            SetVariables(buf.ReadStringVector());
+            SetIdVariable(buf.ReadString());
             break;
         case 6:
-            SetVariableMins(buf.ReadDoubleVector());
+            SetVariables(buf.ReadStringVector());
             break;
         case 7:
-            SetVariableMaxs(buf.ReadDoubleVector());
+            SetVariableMins(buf.ReadDoubleVector());
             break;
         case 8:
-            SetMinTimeState(buf.ReadInt());
+            SetVariableMaxs(buf.ReadDoubleVector());
             break;
         case 9:
-            SetMaxTimeState(buf.ReadInt());
+            SetMinTimeState(buf.ReadInt());
             break;
         case 10:
-            SetTimeStateStride(buf.ReadInt());
+            SetMaxTimeState(buf.ReadInt());
             break;
         case 11:
-            SetCombineRule(buf.ReadInt());
+            SetTimeStateStride(buf.ReadInt());
             break;
         case 12:
-            SetHistogramType(buf.ReadInt());
+            SetCombineRule(buf.ReadInt());
             break;
         case 13:
-            SetHistogramNumBins(buf.ReadInt());
+            SetHistogramType(buf.ReadInt());
             break;
         case 14:
-            SetHistogramStartBin(buf.ReadInt());
+            SetHistogramNumBins(buf.ReadInt());
             break;
         case 15:
-            SetHistogramEndBin(buf.ReadInt());
+            SetHistogramAutoScaleNumBins(buf.ReadBool());
             break;
         case 16:
+            SetHistogramStartBin(buf.ReadInt());
+            break;
+        case 17:
+            SetHistogramEndBin(buf.ReadInt());
+            break;
+        case 18:
             SetHistogramVariable(buf.ReadString());
             break;
         }
@@ -451,6 +483,7 @@ public class SelectionProperties extends AttributeSubject
         String str = new String();
         str = str + stringToString("name", name, indent) + "\n";
         str = str + stringToString("source", source, indent) + "\n";
+        str = str + stringToString("host", host, indent) + "\n";
         str = str + indent + "selectionType = ";
         if(selectionType == SELECTIONTYPE_BASICSELECTION)
             str = str + "SELECTIONTYPE_BASICSELECTION";
@@ -491,6 +524,7 @@ public class SelectionProperties extends AttributeSubject
             str = str + "HISTOGRAMTYPE_HISTOGRAMVARIABLE";
         str = str + "\n";
         str = str + intToString("histogramNumBins", histogramNumBins, indent) + "\n";
+        str = str + boolToString("histogramAutoScaleNumBins", histogramAutoScaleNumBins, indent) + "\n";
         str = str + intToString("histogramStartBin", histogramStartBin, indent) + "\n";
         str = str + intToString("histogramEndBin", histogramEndBin, indent) + "\n";
         str = str + stringToString("histogramVariable", histogramVariable, indent) + "\n";
@@ -499,22 +533,24 @@ public class SelectionProperties extends AttributeSubject
 
 
     // Attributes
-    private String name;
-    private String source;
-    private int    selectionType;
-    private int    idVariableType;
-    private String idVariable;
-    private Vector variables; // vector of String objects
-    private Vector variableMins; // vector of Double objects
-    private Vector variableMaxs; // vector of Double objects
-    private int    minTimeState;
-    private int    maxTimeState;
-    private int    timeStateStride;
-    private int    combineRule;
-    private int    histogramType;
-    private int    histogramNumBins;
-    private int    histogramStartBin;
-    private int    histogramEndBin;
-    private String histogramVariable;
+    private String  name;
+    private String  source;
+    private String  host;
+    private int     selectionType;
+    private int     idVariableType;
+    private String  idVariable;
+    private Vector  variables; // vector of String objects
+    private Vector  variableMins; // vector of Double objects
+    private Vector  variableMaxs; // vector of Double objects
+    private int     minTimeState;
+    private int     maxTimeState;
+    private int     timeStateStride;
+    private int     combineRule;
+    private int     histogramType;
+    private int     histogramNumBins;
+    private boolean histogramAutoScaleNumBins;
+    private int     histogramStartBin;
+    private int     histogramEndBin;
+    private String  histogramVariable;
 }
 

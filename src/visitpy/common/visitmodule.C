@@ -930,6 +930,10 @@ void PickleInit()
 //    Jeremy Meredith, Thu Oct 25 10:05:37 EDT 2007
 //    Added support for pre-2.5 versions of Python.
 //
+//    Kathleen Biagas, Fri Feb 17 2017
+//    Allow Enums to be represented by string, add range check for enum
+//    specified as int.
+//
 // ****************************************************************************
 bool
 FillDBOptionsFromDictionary(PyObject *obj, DBOptionsAttributes &opts)
@@ -974,7 +978,10 @@ FillDBOptionsFromDictionary(PyObject *obj, DBOptionsAttributes &opts)
         }
         if (index == -1)
         {
-            sprintf(msg, "There was no '%s' in the DB options.", name.c_str());
+            if (opts.IsObsolete(name))
+                sprintf(msg, "'%s' is an Obsolete option.", name.c_str());
+            else
+                sprintf(msg, "There was no '%s' in the DB options.", name.c_str());
             VisItErrorFunc(msg);
             return false;
         }
@@ -1036,13 +1043,80 @@ FillDBOptionsFromDictionary(PyObject *obj, DBOptionsAttributes &opts)
             }
             break;
           case DBOptionsAttributes::Enum:
+            // If you modify this section, also check the Enum case in
+            // CreateDictionaryFromDBOptions
             if (PyInt_Check(value))
-                opts.SetEnum(name, PyInt_AS_LONG(value));
+            {
+                // Perform a range check
+                stringVector enumStrings = opts.GetEnumStrings(name);
+                int ival = PyInt_AS_LONG(value);
+                if(ival < 0 || ival >= (int)enumStrings.size())
+                {
+                    sprintf(msg,"'%d' is not a valid enum for '%s'."
+                            "\nValid options are in the range of [0,%d]."
+                            "\nYou can also use the following names: ",
+                            ival, name.c_str(), (int)enumStrings.size()-1);
+                    std::string errorMsg(msg);
+                    for (size_t i = 0; i < enumStrings.size(); ++i)
+                    {
+                        errorMsg += (std::string("\'") +
+                                    enumStrings[i] +
+                                    std::string("\'"));
+                        if (i < enumStrings.size() -1)
+                            errorMsg += ", ";
+                    }
+                    VisItErrorFunc(errorMsg.c_str());
+                    return false;
+                } 
+                else
+                {
+                    opts.SetEnum(name, ival);
+                }
+            }
             else
             {
-                sprintf(msg, "Expected int to set enum '%s'", name.c_str());
-                VisItErrorFunc(msg);
-                return false;
+                if (PyString_Check(value))
+                {
+                    std::string sval(PyString_AS_STRING(value));
+                    size_t rpos = sval.find("#");
+                    if (rpos != std::string::npos)
+                        sval = sval.erase(rpos-1); // remove the space before #
+                    stringVector enumStrings = opts.GetEnumStrings(name);
+                    bool found = false;
+                    for (size_t i = 0; i < enumStrings.size() && !found; ++i)
+                    {
+                        if (sval == enumStrings[i])
+                        {
+                            opts.SetEnum(name, (int)i);
+                            found = true;
+                        }
+                    }
+                    if (!found) 
+                    {
+                        sprintf(msg,"'%s' is not a valid enum string for '%s'."
+                                "\nValid options are in the range of [0,%d]."
+                                "\nYou can also use the following names: ",
+                                sval.c_str(), name.c_str(),
+                                (int)enumStrings.size()-1);
+                        std::string errorMsg(msg);
+                        for (size_t i = 0; i < enumStrings.size(); ++i)
+                        {
+                            errorMsg += (std::string("\'") +
+                                        enumStrings[i] +
+                                        std::string("\'"));
+                            if (i < enumStrings.size() -1)
+                                errorMsg += ", ";
+                        }
+                        VisItErrorFunc(errorMsg.c_str());
+                        return false;
+                    }
+                }
+                else
+                {
+                    sprintf(msg, "Expected int or string to set enum '%s'", name.c_str());
+                    VisItErrorFunc(msg);
+                    return false;
+                }
             }
             break;
         }
@@ -1070,6 +1144,9 @@ FillDBOptionsFromDictionary(PyObject *obj, DBOptionsAttributes &opts)
 //
 //    Jeremy Meredith, Tue Apr 29 15:18:13 EDT 2008
 //    Fixing ABW bug.
+//
+//    Kathleen Biagas, Fri Feb 17 2017
+//    Allow Enums to be represented by string.
 //
 // ****************************************************************************
 PyObject *
@@ -1100,7 +1177,22 @@ CreateDictionaryFromDBOptions(DBOptionsAttributes &opts)
             PyDict_SetItemString(dict,name,PyString_FromString(opts.GetString(name).c_str()));
             break;
           case DBOptionsAttributes::Enum:
-            PyDict_SetItemString(dict,name,PyInt_FromLong(opts.GetEnum(name)));
+            // If you modify this section, also check the Enum case in
+            // FillDBOptionsFromDictionary
+            int enumIndex = opts.GetEnum(name);
+            stringVector enumStrings = opts.GetEnumStrings(name);
+            std::string itemString(enumStrings[enumIndex]);
+            if (enumStrings.size() > 1)
+            {
+                itemString += " # Options are: ";
+                for (size_t i = 0; i < enumStrings.size(); ++i)
+                {
+                    itemString += enumStrings[i];
+                    if (i != enumStrings.size()-1)
+                        itemString += ", ";
+                }
+            }
+            PyDict_SetItemString(dict,name,PyString_FromString(itemString.c_str()));
             break;
         }
         delete[] name;
@@ -8960,6 +9052,9 @@ visit_GetPickOutput(PyObject *self, PyObject *args)
 // Programmer: Kathleen Biagas 
 // Creation:   September 22, 2011
 //
+// Modifications:
+//  Matt Larsen Aug 21, 2017:
+//  adding the ability to get the output of a pick through a range of elements
 // ****************************************************************************
 
 STATIC PyObject *
@@ -8968,10 +9063,18 @@ visit_GetPickOutputObject(PyObject *self, PyObject *args)
     ENSURE_VIEWER_EXISTS();
     PickAttributes *pa = GetViewerState()->GetPickAttributes();
     std::string pickOut;
-    pa->CreateXMLString(pickOut);
-    XMLNode xml_node(pickOut);
-    MapNode node(xml_node);
-    return PyMapNode_Wrap(node);
+    if(pa->GetHasRangeOutput())
+    {
+        MapNode node = pa->GetRangeOutput();
+        return PyMapNode_Wrap(node);
+    }
+    else
+    {
+        pa->CreateXMLString(pickOut);
+        XMLNode xml_node(pickOut);
+        MapNode node(xml_node);
+        return PyMapNode_Wrap(node);
+    }
 }
 
 
@@ -12436,7 +12539,6 @@ visit_ZonePick(PyObject *self, PyObject *args, PyObject *kwargs)
         return NULL;
     }
     pickParams["query_name"] = std::string("Pick");
-
     if (!suppressQueryOutputState)
         ToggleSuppressQueryOutput_NoLogging(true);
 
@@ -13417,6 +13519,9 @@ visit_PickByZone_deprecated(PyObject *self, PyObject *args)
 //   Kathleen Biagas, Wed Jan  9 08:55:03 PST 2013
 //   Use new helper method that doesn't log the SuppressQueryOutput call.
 //
+//   Matt Larsen, Mon Dec  12 09:23:11 PST 2016
+//   Allow pick only by range and not specify element id. 
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13454,13 +13559,157 @@ visit_PickByZone(PyObject *self, PyObject *args, PyObject *kwargs)
             return NULL;
         }
     }
-    if (!pickParams.HasEntry("element"))
+    if (!pickParams.HasEntry("element") && 
+        !pickParams.HasEntry("pick_range") )
     {
-        VisItErrorFunc("PickByZone: requires \"element\" argument.");
+        VisItErrorFunc("PickByZone: requires \"element\" or \"pick_range\" argument.");
         return NULL;
     } 
     pickParams["query_name"] = std::string("Pick");
+    
     pickParams["pick_type"] = std::string("DomainZone");
+
+    ParseTimePickOptions(pickParams);
+
+    if (!suppressQueryOutputState)
+        ToggleSuppressQueryOutput_NoLogging(true);
+
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(pickParams);
+    MUTEX_UNLOCK();
+    Synchronize();
+
+    if (!suppressQueryOutputState)
+        ToggleSuppressQueryOutput_NoLogging(false);
+
+    return visit_GetPickOutputObject(self, args);
+}
+
+
+// ****************************************************************************
+// Function: visit_PickByZoneLabel
+//
+// Purpose:
+//   Tells the viewer to do PickByZoneLabel.
+//
+// Notes:
+//
+// Programmer: Matt Larsen (Based on pick on PickByZone)
+// Creation:   April 12, 2017
+//
+// Modifications
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_PickByZoneLabel(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool parse_success = true;
+    MapNode pickParams;
+
+    // parse arguments.  First check if first arg (if present) is
+    // a python dictionary object
+    // If not, check for named args (kwargs).
+    if (PyTuple_Size(args) > 0)
+    {
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,0), pickParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("PickByZoneLabel:  could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, pickParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc("PickByZoneLabel:  could not parse keyword arguments.");
+            return NULL;
+        }
+    }
+    if ( !pickParams.HasEntry("element_label") )
+    {
+        VisItErrorFunc("PickByZoneLabel: requires \"element_name\" argument.");
+        return NULL;
+    } 
+    pickParams["query_name"] = std::string("Pick");
+    
+    pickParams["pick_type"] = std::string("ZoneLabel");
+    pickParams["element"] = 0;
+
+    ParseTimePickOptions(pickParams);
+
+    if (!suppressQueryOutputState)
+        ToggleSuppressQueryOutput_NoLogging(true);
+
+    MUTEX_LOCK();
+        GetViewerMethods()->Query(pickParams);
+    MUTEX_UNLOCK();
+    Synchronize();
+
+    if (!suppressQueryOutputState)
+        ToggleSuppressQueryOutput_NoLogging(false);
+
+    return visit_GetPickOutputObject(self, args);
+}
+
+// ****************************************************************************
+// Function: visit_PickByNodeLabel
+//
+// Purpose:
+//   Tells the viewer to do PickByNodeLabel.
+//
+// Notes:
+//
+// Programmer: Matt Larsen (Based on pick on PickByNode)
+// Creation:   April 12, 2017
+//
+// Modifications
+//
+// ****************************************************************************
+
+STATIC PyObject *
+visit_PickByNodeLabel(PyObject *self, PyObject *args, PyObject *kwargs)
+{
+    ENSURE_VIEWER_EXISTS();
+
+    bool parse_success = true;
+    MapNode pickParams;
+
+    // parse arguments.  First check if first arg (if present) is
+    // a python dictionary object
+    // If not, check for named args (kwargs).
+    if (PyTuple_Size(args) > 0)
+    {
+        parse_success = PyDict_To_MapNode(PyTuple_GetItem(args,0), pickParams); 
+        if (!parse_success)
+        {
+           VisItErrorFunc("PickByNodeLabel:  could not parse dictionary argument.");
+           return NULL;
+        }
+    }
+    else if (kwargs != NULL)
+    {
+        parse_success = PyDict_To_MapNode(kwargs, pickParams); 
+        if (!parse_success)
+        {
+            VisItErrorFunc("PickByNodeLabel:  could not parse keyword arguments.");
+            return NULL;
+        }
+    }
+    if ( !pickParams.HasEntry("element_label") )
+    {
+        VisItErrorFunc("PickByNodeLabel: requires \"element_name\" argument.");
+        return NULL;
+    } 
+    pickParams["query_name"] = std::string("Pick");
+    
+    pickParams["pick_type"] = std::string("NodeLabel");
+    pickParams["element"] = 0;
+
     ParseTimePickOptions(pickParams);
 
     if (!suppressQueryOutputState)
@@ -13567,6 +13816,9 @@ visit_PickByGlobalZone_deprecated(PyObject *self, PyObject *args)
 //   Kathleen Biagas, Wed Jan  9 08:55:03 PST 2013
 //   Use new helper method that doesn't log the SuppressQueryOutput call.
 //
+//   Matt Larsen, Mon Dec  12 09:23:11 PST 2016
+//   Allow pick only by range and not specify element id. 
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13604,7 +13856,7 @@ visit_PickByGlobalZone(PyObject *self, PyObject *args, PyObject *kwargs)
             return NULL;
         }
     }
-    if (!pickParams.HasEntry("element"))
+    if (!pickParams.HasEntry("element") && !pickParams.HasEntry("pick_range"))
     {
         VisItErrorFunc("PickByGlobalZone: requires \"element\" argument.");
         return NULL;
@@ -13729,6 +13981,9 @@ visit_PickByNode_deprecated(PyObject *self, PyObject *args)
 //   Kathleen Biagas, Wed Jan  9 08:55:03 PST 2013
 //   Use new helper method that doesn't log the SuppressQueryOutput call.
 //
+//   Matt Larsen, Mon Dec  12 09:23:11 PST 2016
+//   Allow pick only by range and not specify element id. 
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13766,11 +14021,12 @@ visit_PickByNode(PyObject *self, PyObject *args, PyObject *kwargs)
             return NULL;
         }
     }
-    if (!pickParams.HasEntry("element"))
+    if (!pickParams.HasEntry("element") && !pickParams.HasEntry("pick_range"))
     {
         VisItErrorFunc("PickByNode: requires \"element\" argument.");
         return NULL;
-    } 
+    }
+  
     pickParams["query_name"] = std::string("Pick");
     pickParams["pick_type"] = std::string("DomainNode");
 
@@ -13882,6 +14138,9 @@ visit_PickByGlobalNode_deprecated(PyObject *self, PyObject *args)
 //   Kathleen Biagas, Wed Jan  9 08:55:03 PST 2013
 //   Use new helper method that doesn't log the SuppressQueryOutput call.
 //
+//   Matt Larsen, Mon Dec  12 09:23:11 PST 2016
+//   Allow pick only by range and not specify element id. 
+//
 // ****************************************************************************
 
 STATIC PyObject *
@@ -13919,7 +14178,7 @@ visit_PickByGlobalNode(PyObject *self, PyObject *args, PyObject *kwargs)
             return NULL;
         }
     }
-    if (!pickParams.HasEntry("element"))
+    if (!pickParams.HasEntry("element") && !pickParams.HasEntry("pick_range"))
     {
         VisItErrorFunc("PickByGlobalNode:  requires \"element\" argument.");
         return NULL;
@@ -17259,6 +17518,8 @@ AddProxyMethods()
     AddMethod("Pick", visit_ZonePick, visit_ZonePick_doc);
     AddMethod("PickByNode", visit_PickByNode, visit_PickByNode_doc);
     AddMethod("PickByZone", visit_PickByZone, visit_PickByZone_doc);
+    AddMethod("PickByZoneLabel", visit_PickByZoneLabel, visit_PickByZoneLabel_doc);
+    AddMethod("PickByNodeLabel", visit_PickByNodeLabel, visit_PickByNodeLabel_doc);
     AddMethod("PickByGlobalNode", visit_PickByGlobalNode,
                                                    visit_PickByGlobalNode_doc);
     AddMethod("PickByGlobalZone", visit_PickByGlobalZone,
@@ -17279,7 +17540,7 @@ AddProxyMethods()
     AddMethod("RemoveLastOperator", visit_RemoveLastOperator,
                                                      visit_RemoveOperator_doc);
     AddMethod("RemoveOperator", visit_RemoveOperator,visit_RemoveOperator_doc);
-    AddMethod("RenamePickLabel", visit_RenamePickLabel, visit_RenamePickLabel_doc);
+    AddMethod("ReenamePickLabel", visit_RenamePickLabel, visit_RenamePickLabel_doc);
     AddMethod("ReOpenDatabase", visit_ReOpenDatabase,visit_ReOpenDatabase_doc);
     AddMethod("ReplaceDatabase", visit_ReplaceDatabase,
                                                     visit_ReplaceDatabase_doc);

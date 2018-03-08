@@ -42,6 +42,7 @@
 #include <snprintf.h>
 #include <ColorAttribute.h>
 #include <PyColorAttributeList.h>
+#include <GlyphTypes.h>
 
 // ****************************************************************************
 // Module: PySubsetAttributes
@@ -104,11 +105,6 @@ PySubsetAttributes_ToString(const SubsetAttributes *atts, const char *prefix)
     else
         SNPRINTF(tmpStr, 1000, "%sinvertColorTable = 0\n", prefix);
     str += tmpStr;
-    if(atts->GetFilledFlag())
-        SNPRINTF(tmpStr, 1000, "%sfilledFlag = 1\n", prefix);
-    else
-        SNPRINTF(tmpStr, 1000, "%sfilledFlag = 0\n", prefix);
-    str += tmpStr;
     if(atts->GetLegendFlag())
         SNPRINTF(tmpStr, 1000, "%slegendFlag = 1\n", prefix);
     else
@@ -148,38 +144,6 @@ PySubsetAttributes_ToString(const SubsetAttributes *atts, const char *prefix)
         SNPRINTF(tmpStr, 1000, ")\n");
         str += tmpStr;
     }
-    const char *subsetType_names = "Domain, Group, Material, EnumScalar, Mesh, "
-        "Unknown";
-    switch (atts->GetSubsetType())
-    {
-      case SubsetAttributes::Domain:
-          SNPRINTF(tmpStr, 1000, "%ssubsetType = %sDomain  # %s\n", prefix, prefix, subsetType_names);
-          str += tmpStr;
-          break;
-      case SubsetAttributes::Group:
-          SNPRINTF(tmpStr, 1000, "%ssubsetType = %sGroup  # %s\n", prefix, prefix, subsetType_names);
-          str += tmpStr;
-          break;
-      case SubsetAttributes::Material:
-          SNPRINTF(tmpStr, 1000, "%ssubsetType = %sMaterial  # %s\n", prefix, prefix, subsetType_names);
-          str += tmpStr;
-          break;
-      case SubsetAttributes::EnumScalar:
-          SNPRINTF(tmpStr, 1000, "%ssubsetType = %sEnumScalar  # %s\n", prefix, prefix, subsetType_names);
-          str += tmpStr;
-          break;
-      case SubsetAttributes::Mesh:
-          SNPRINTF(tmpStr, 1000, "%ssubsetType = %sMesh  # %s\n", prefix, prefix, subsetType_names);
-          str += tmpStr;
-          break;
-      case SubsetAttributes::Unknown:
-          SNPRINTF(tmpStr, 1000, "%ssubsetType = %sUnknown  # %s\n", prefix, prefix, subsetType_names);
-          str += tmpStr;
-          break;
-      default:
-          break;
-    }
-
     SNPRINTF(tmpStr, 1000, "%sopacity = %g\n", prefix, atts->GetOpacity());
     str += tmpStr;
     if(atts->GetWireframe())
@@ -200,35 +164,35 @@ PySubsetAttributes_ToString(const SubsetAttributes *atts, const char *prefix)
         "SphereGeometry, Point, Sphere";
     switch (atts->GetPointType())
     {
-      case SubsetAttributes::Box:
+      case Box:
           SNPRINTF(tmpStr, 1000, "%spointType = %sBox  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
-      case SubsetAttributes::Axis:
+      case Axis:
           SNPRINTF(tmpStr, 1000, "%spointType = %sAxis  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
-      case SubsetAttributes::Icosahedron:
+      case Icosahedron:
           SNPRINTF(tmpStr, 1000, "%spointType = %sIcosahedron  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
-      case SubsetAttributes::Octahedron:
+      case Octahedron:
           SNPRINTF(tmpStr, 1000, "%spointType = %sOctahedron  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
-      case SubsetAttributes::Tetrahedron:
+      case Tetrahedron:
           SNPRINTF(tmpStr, 1000, "%spointType = %sTetrahedron  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
-      case SubsetAttributes::SphereGeometry:
+      case SphereGeometry:
           SNPRINTF(tmpStr, 1000, "%spointType = %sSphereGeometry  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
-      case SubsetAttributes::Point:
+      case Point:
           SNPRINTF(tmpStr, 1000, "%spointType = %sPoint  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
-      case SubsetAttributes::Sphere:
+      case Sphere:
           SNPRINTF(tmpStr, 1000, "%spointType = %sSphere  # %s\n", prefix, prefix, pointType_names);
           str += tmpStr;
           break;
@@ -335,30 +299,6 @@ SubsetAttributes_GetInvertColorTable(PyObject *self, PyObject *args)
 {
     SubsetAttributesObject *obj = (SubsetAttributesObject *)self;
     PyObject *retval = PyInt_FromLong(obj->data->GetInvertColorTable()?1L:0L);
-    return retval;
-}
-
-/*static*/ PyObject *
-SubsetAttributes_SetFilledFlag(PyObject *self, PyObject *args)
-{
-    SubsetAttributesObject *obj = (SubsetAttributesObject *)self;
-
-    int ival;
-    if(!PyArg_ParseTuple(args, "i", &ival))
-        return NULL;
-
-    // Set the filledFlag in the object.
-    obj->data->SetFilledFlag(ival != 0);
-
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-/*static*/ PyObject *
-SubsetAttributes_GetFilledFlag(PyObject *self, PyObject *args)
-{
-    SubsetAttributesObject *obj = (SubsetAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(obj->data->GetFilledFlag()?1L:0L);
     return retval;
 }
 
@@ -782,40 +722,6 @@ SubsetAttributes_GetSubsetNames(PyObject *self, PyObject *args)
 }
 
 /*static*/ PyObject *
-SubsetAttributes_SetSubsetType(PyObject *self, PyObject *args)
-{
-    SubsetAttributesObject *obj = (SubsetAttributesObject *)self;
-
-    int ival;
-    if(!PyArg_ParseTuple(args, "i", &ival))
-        return NULL;
-
-    // Set the subsetType in the object.
-    if(ival >= 0 && ival < 6)
-        obj->data->SetSubsetType(SubsetAttributes::Subset_Type(ival));
-    else
-    {
-        fprintf(stderr, "An invalid subsetType value was given. "
-                        "Valid values are in the range of [0,5]. "
-                        "You can also use the following names: "
-                        "Domain, Group, Material, EnumScalar, Mesh, "
-                        "Unknown.");
-        return NULL;
-    }
-
-    Py_INCREF(Py_None);
-    return Py_None;
-}
-
-/*static*/ PyObject *
-SubsetAttributes_GetSubsetType(PyObject *self, PyObject *args)
-{
-    SubsetAttributesObject *obj = (SubsetAttributesObject *)self;
-    PyObject *retval = PyInt_FromLong(long(obj->data->GetSubsetType()));
-    return retval;
-}
-
-/*static*/ PyObject *
 SubsetAttributes_SetOpacity(PyObject *self, PyObject *args)
 {
     SubsetAttributesObject *obj = (SubsetAttributesObject *)self;
@@ -944,9 +850,10 @@ SubsetAttributes_SetPointType(PyObject *self, PyObject *args)
     if(!PyArg_ParseTuple(args, "i", &ival))
         return NULL;
 
-    // Set the pointType in the object.
     if(ival >= 0 && ival < 8)
-        obj->data->SetPointType(SubsetAttributes::PointType(ival));
+    {
+        obj->data->SetPointType(GlyphType(ival));
+    }
     else
     {
         fprintf(stderr, "An invalid pointType value was given. "
@@ -1051,8 +958,6 @@ PyMethodDef PySubsetAttributes_methods[SUBSETATTRIBUTES_NMETH] = {
     {"GetColorTableName", SubsetAttributes_GetColorTableName, METH_VARARGS},
     {"SetInvertColorTable", SubsetAttributes_SetInvertColorTable, METH_VARARGS},
     {"GetInvertColorTable", SubsetAttributes_GetInvertColorTable, METH_VARARGS},
-    {"SetFilledFlag", SubsetAttributes_SetFilledFlag, METH_VARARGS},
-    {"GetFilledFlag", SubsetAttributes_GetFilledFlag, METH_VARARGS},
     {"SetLegendFlag", SubsetAttributes_SetLegendFlag, METH_VARARGS},
     {"GetLegendFlag", SubsetAttributes_GetLegendFlag, METH_VARARGS},
     {"SetLineStyle", SubsetAttributes_SetLineStyle, METH_VARARGS},
@@ -1065,8 +970,6 @@ PyMethodDef PySubsetAttributes_methods[SUBSETATTRIBUTES_NMETH] = {
     {"GetMultiColor", SubsetAttributes_GetMultiColor, METH_VARARGS},
     {"SetSubsetNames", SubsetAttributes_SetSubsetNames, METH_VARARGS},
     {"GetSubsetNames", SubsetAttributes_GetSubsetNames, METH_VARARGS},
-    {"SetSubsetType", SubsetAttributes_SetSubsetType, METH_VARARGS},
-    {"GetSubsetType", SubsetAttributes_GetSubsetType, METH_VARARGS},
     {"SetOpacity", SubsetAttributes_SetOpacity, METH_VARARGS},
     {"GetOpacity", SubsetAttributes_GetOpacity, METH_VARARGS},
     {"SetWireframe", SubsetAttributes_SetWireframe, METH_VARARGS},
@@ -1126,8 +1029,6 @@ PySubsetAttributes_getattr(PyObject *self, char *name)
         return SubsetAttributes_GetColorTableName(self, NULL);
     if(strcmp(name, "invertColorTable") == 0)
         return SubsetAttributes_GetInvertColorTable(self, NULL);
-    if(strcmp(name, "filledFlag") == 0)
-        return SubsetAttributes_GetFilledFlag(self, NULL);
     if(strcmp(name, "legendFlag") == 0)
         return SubsetAttributes_GetLegendFlag(self, NULL);
     if(strcmp(name, "lineStyle") == 0)
@@ -1149,21 +1050,6 @@ PySubsetAttributes_getattr(PyObject *self, char *name)
         return SubsetAttributes_GetMultiColor(self, NULL);
     if(strcmp(name, "subsetNames") == 0)
         return SubsetAttributes_GetSubsetNames(self, NULL);
-    if(strcmp(name, "subsetType") == 0)
-        return SubsetAttributes_GetSubsetType(self, NULL);
-    if(strcmp(name, "Domain") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Domain));
-    if(strcmp(name, "Group") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Group));
-    if(strcmp(name, "Material") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Material));
-    if(strcmp(name, "EnumScalar") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::EnumScalar));
-    if(strcmp(name, "Mesh") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Mesh));
-    if(strcmp(name, "Unknown") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Unknown));
-
     if(strcmp(name, "opacity") == 0)
         return SubsetAttributes_GetOpacity(self, NULL);
     if(strcmp(name, "wireframe") == 0)
@@ -1177,21 +1063,21 @@ PySubsetAttributes_getattr(PyObject *self, char *name)
     if(strcmp(name, "pointType") == 0)
         return SubsetAttributes_GetPointType(self, NULL);
     if(strcmp(name, "Box") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Box));
+        return PyInt_FromLong(long(Box));
     if(strcmp(name, "Axis") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Axis));
+        return PyInt_FromLong(long(Axis));
     if(strcmp(name, "Icosahedron") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Icosahedron));
+        return PyInt_FromLong(long(Icosahedron));
     if(strcmp(name, "Octahedron") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Octahedron));
+        return PyInt_FromLong(long(Octahedron));
     if(strcmp(name, "Tetrahedron") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Tetrahedron));
+        return PyInt_FromLong(long(Tetrahedron));
     if(strcmp(name, "SphereGeometry") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::SphereGeometry));
+        return PyInt_FromLong(long(SphereGeometry));
     if(strcmp(name, "Point") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Point));
+        return PyInt_FromLong(long(Point));
     if(strcmp(name, "Sphere") == 0)
-        return PyInt_FromLong(long(SubsetAttributes::Sphere));
+        return PyInt_FromLong(long(Sphere));
 
     if(strcmp(name, "pointSizeVarEnabled") == 0)
         return SubsetAttributes_GetPointSizeVarEnabled(self, NULL);
@@ -1200,6 +1086,35 @@ PySubsetAttributes_getattr(PyObject *self, char *name)
     if(strcmp(name, "pointSizePixels") == 0)
         return SubsetAttributes_GetPointSizePixels(self, NULL);
 
+    // Try and handle legacy fields
+
+    // subsetType and it's possible enumerations
+    // these should have been internal all along ...
+    if (strcmp(name, "subsetType") == 0)
+    {
+        return PyInt_FromLong(0L);
+    }
+    else if (strcmp(name, "Domain") == 0)
+    {
+        return PyInt_FromLong(0L);
+    }
+    else if (strcmp(name, "Group") == 0)
+    {
+        return PyInt_FromLong(0L);
+    }
+    else if (strcmp(name, "Material") == 0)
+    {
+        return PyInt_FromLong(0L);
+    }
+    else if (strcmp(name, "Unknown") == 0)
+    {
+        return PyInt_FromLong(0L);
+    }
+    // filledFlag -- hasn't been used in a LONG time
+    else if (strcmp(name, "filledFlag") == 0)
+    {
+        return PyInt_FromLong(0L);
+    }
     return Py_FindMethod(PySubsetAttributes_methods, self, name);
 }
 
@@ -1219,8 +1134,6 @@ PySubsetAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = SubsetAttributes_SetColorTableName(self, tuple);
     else if(strcmp(name, "invertColorTable") == 0)
         obj = SubsetAttributes_SetInvertColorTable(self, tuple);
-    else if(strcmp(name, "filledFlag") == 0)
-        obj = SubsetAttributes_SetFilledFlag(self, tuple);
     else if(strcmp(name, "legendFlag") == 0)
         obj = SubsetAttributes_SetLegendFlag(self, tuple);
     else if(strcmp(name, "lineStyle") == 0)
@@ -1233,8 +1146,6 @@ PySubsetAttributes_setattr(PyObject *self, char *name, PyObject *args)
         obj = SubsetAttributes_SetMultiColor(self, tuple);
     else if(strcmp(name, "subsetNames") == 0)
         obj = SubsetAttributes_SetSubsetNames(self, tuple);
-    else if(strcmp(name, "subsetType") == 0)
-        obj = SubsetAttributes_SetSubsetType(self, tuple);
     else if(strcmp(name, "opacity") == 0)
         obj = SubsetAttributes_SetOpacity(self, tuple);
     else if(strcmp(name, "wireframe") == 0)
@@ -1254,6 +1165,21 @@ PySubsetAttributes_setattr(PyObject *self, char *name, PyObject *args)
     else if(strcmp(name, "pointSizePixels") == 0)
         obj = SubsetAttributes_SetPointSizePixels(self, tuple);
 
+    // Try and handle legacy fields
+    if(obj == NULL)
+    {
+        if(strcmp(name, "filledFlag") == 0)
+        {
+            Py_INCREF(Py_None);
+            obj = Py_None;
+        }
+        // internal only, shouldn't be set by scripts
+        else if(strcmp(name, "subsetType") == 0)
+        {
+            Py_INCREF(Py_None);
+            obj = Py_None;
+        }
+    }
     if(obj != NULL)
         Py_DECREF(obj);
 

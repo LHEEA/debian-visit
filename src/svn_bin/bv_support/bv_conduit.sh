@@ -1,19 +1,16 @@
 function bv_conduit_initialize
 {
     export DO_CONDUIT="no"
-    export ON_CONDUIT="off"
 }
 
 function bv_conduit_enable
 {
     DO_CONDUIT="yes"
-    ON_CONDUIT="on"
 }
 
 function bv_conduit_disable
 {
     DO_CONDUIT="no"
-    ON_CONDUIT="off"
 }
 
 function bv_conduit_depends_on
@@ -29,12 +26,12 @@ function bv_conduit_depends_on
 
 function bv_conduit_info
 {
-    export CONDUIT_VERSION=${CONDUIT_VERSION:-"685b5c5"}
-    export CONDUIT_FILE=${SILO_FILE:-"conduit-${CONDUIT_VERSION}.tar.gz"}
-    export CONDUIT_COMPATIBILITY_VERSION=${CONDUIT_COMPATIBILITY_VERSION:-"685b5c5"}
+    export CONDUIT_VERSION=${CONDUIT_VERSION:-"v0.3.0"}
+    export CONDUIT_FILE=${CONDUIT_FILE:-"conduit-${CONDUIT_VERSION}-src-with-blt.tar.gz"}
+    export CONDUIT_COMPATIBILITY_VERSION=${CONDUIT_COMPATIBILITY_VERSION:-"v0.3.0"}
     export CONDUIT_BUILD_DIR=${CONDUIT_BUILD_DIR:-"conduit-${CONDUIT_VERSION}"}
-    export CONDUIT_MD5_CHECKSUM="c84210afd373ecdf830868a3cce6080d"
-    export CONDUIT_SHA256_CHECKSUM="a95e186a6ac146ab2e83bdd458a1e972f7a45d5780d92c0bb42f615ece499316"
+    export CONDUIT_MD5_CHECKSUM="6396f1d1ca16594d7c66d4535d4f898e"
+    export CONDUIT_SHA256_CHECKSUM="52e9cf5720560e5f7492876c39ef2ea20ae73187338361d2744bdf67567da155"
 }
 
 function bv_conduit_print
@@ -48,12 +45,6 @@ function bv_conduit_print
 function bv_conduit_print_usage
 {
     printf "%-15s %s [%s]\n" "--conduit"   "Build Conduit" "$DO_CONDUIT"
-}
-
-function bv_conduit_graphical
-{
-    local graphical_out="Conduit    $CONDUIT_VERSION($CONDUIT_FILE)    $ON_CONDUIT"
-    echo $graphical_out
 }
 
 function bv_conduit_host_profile
@@ -80,7 +71,7 @@ function bv_conduit_ensure
         ensure_built_or_ready "conduit" $CONDUIT_VERSION $CONDUIT_BUILD_DIR $CONDUIT_FILE
         if [[ $? != 0 ]] ; then
             ANY_ERRORS="yes"
-            DO_SILO="no"
+            DO_CONDUIT="no"
             error "Unable to build Conduit.  ${CONDUIT_FILE} not found."
         fi
     fi
@@ -158,7 +149,8 @@ function build_conduit
     else
         cfg_opts="${cfg_opts} -DBUILD_SHARED_LIBS:BOOL=ON"
     fi
-    #cfg_opts="${cfg_opts} -DENABLE_TESTS:BOOL=false"
+    
+    cfg_opts="${cfg_opts} -DENABLE_TESTS:BOOL=false"
     cfg_opts="${cfg_opts} -DENABLE_DOCS:BOOL=false"
     cfg_opts="${cfg_opts} -DCMAKE_C_COMPILER:STRING=${C_COMPILER}"
     cfg_opts="${cfg_opts} -DCMAKE_CXX_COMPILER:STRING=${CXX_COMPILER}"
@@ -187,10 +179,16 @@ function build_conduit
         cfg_opts="${cfg_opts} -DENABLE_FORTRAN:BOOL=ON"
         cfg_opts="${cfg_opts} -DCMAKE_Fortran_COMPILER:STRING=${FC_COMPILER}"
     fi
+    
+    #
+    # Conduit Relay MPI Support
+    #
 
-    #
-    # TODO: Conduit, Relay MPI Support
-    #
+    if [[ "$PAR_COMPILER" != "" ]] ; then
+        cfg_opts="${cfg_opts} -DENABLE_MPI:BOOL=ON"
+        cfg_opts="${cfg_opts} -DMPI_C_COMPILER:STRING=${PAR_COMPILER}"
+        cfg_opts="${cfg_opts} -DMPI_CXX_COMPILER:STRING=${PAR_COMPILER}"
+    fi
     
     
     CMAKE_BIN="${CMAKE_INSTALL}/cmake"

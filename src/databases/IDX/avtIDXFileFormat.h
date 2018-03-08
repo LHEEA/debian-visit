@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-* Copyright (c) 2000 - 2017, Lawrence Livermore National Security, LLC
+* Copyright (c) 2000 - 2015, Lawrence Livermore National Security, LLC
 * Produced at the Lawrence Livermore National Laboratory
 * LLNL-CODE-442911
 * All rights reserved.
@@ -46,13 +46,19 @@
 #include <avtMTMDFileFormat.h>
 
 #include <vector>
+#include <DBOptionsAttributes.h>
+#include <visit_idx_io.h>
+#include <string>
+#include <LevelInfo.h>
+#include <vtkXMLDataElement.h>
 
-#include <visus.h>
-#include <visuscpp/db/dataset/visus_db_dataset.h>
-#include <visuscpp/kernel/mvc/visus_builtin_object.h>
-#include <visuscpp/dataflow/visus_dataflow.h>
-#include <visuscpp/db/nodes/visus_db_querynode.h>
-#include <visuscpp/dataflow/visus_dataflownode.h>
+#ifdef USE_VISUS
+  #include <visus_idx_io.h>
+#else
+  #include <pidx_idx_io.h>
+#endif
+
+typedef std::string String;
 
 // ****************************************************************************
 //  Class: avtIDXFileFormat
@@ -65,12 +71,15 @@
 //
 // ****************************************************************************
 
-class DummyNode;
-struct avtView3D;
-class avtIDXFileFormat : public avtMTMDFileFormat, public Object
+struct gidx_info{
+    String url;
+    int log_time;
+};
+
+class avtIDXFileFormat : public avtMTMDFileFormat
 {
   public:
-                       avtIDXFileFormat(const char *);
+                       avtIDXFileFormat(const char *, DBOptionsAttributes* attrs);
     virtual           ~avtIDXFileFormat();
 
     //
@@ -82,14 +91,6 @@ class avtIDXFileFormat : public avtMTMDFileFormat, public Object
     //                                     DestructorFunction &);
     //
 
-    //
-    // If you know the times and cycle numbers, overload this function.
-    // Otherwise, VisIt will make up some reasonable ones for you.
-    //
-    // virtual void        GetCycles(std::vector<int> &);
-    // virtual void        GetTimes(std::vector<double> &);
-    //
-
     virtual int            GetNTimesteps(void);
 
     virtual const char    *GetType(void)   { return "IDX"; };
@@ -98,33 +99,55 @@ class avtIDXFileFormat : public avtMTMDFileFormat, public Object
 
     virtual vtkDataSet    *GetMesh(int, int, const char *);
     virtual vtkDataArray  *GetVar(int, int, const char *);
+    //virtual vtkDataArray  *GetVar(int timestate, const char *varname);
     virtual vtkDataArray  *GetVectorVar(int, int, const char *);
 
-//    virtual void GetCycles(std::vector<int> &);
-    virtual void GetTimes(std::vector<double> &);
+    virtual void           GetCycles(std::vector<int> &);
+    virtual void           GetTimes(std::vector<double> &);
     
-    virtual void           FreeUpResources(void); 
+    virtual void           FreeUpResources(void);
+    virtual void           ActivateTimestep(int ts);
+
+    virtual bool     HasInvariantMetaData(void) const { return false; };
+    virtual bool     HasInvariantSIL(void) const { return false; };
 
   protected:
 
-    std::string             filename;
-    int                     nprocs;
-    int                     rank;
-    int                     dim;         //2d or 3d
-    static int              num_instances;
+    std::string                   dataset_filename;
+    std::string                   metadata_filename;
+    int                           nprocs;
+    int                           rank;
+    int                           dim;         //2d or 3d
 
-    Visus::UniquePtr<Visus::Application> app;
-    Visus::UniquePtr<Visus::Dataflow>    dataflow;
-    Visus::UniquePtr<Visus::Access>      access;
-    Visus::SharedPtr<Visus::Dataset>     dataset;
-    std::vector<Visus::Box>              boxes;
-    std::vector<int*>                    boxes_bounds;
-    bool multibox;
-    
-    void calculateBoundsAndExtents();
+    bool use_extracells;
+    bool use_raw;
+    bool is_gidx;
+    int sfc_offset[3];
+    std::vector<gidx_info> gidx_datasets;
+    bool uintah_metadata;
+
+  private:
+
+    IDX_IO* reader;
+    bool reverse_endian;
+    std::map<std::string, void_ref_ptr> mesh_boundaries;
+    std::map<std::string, void_ref_ptr> mesh_domains;
+
+    LevelInfo level_info;
+
+    std::vector<double> timeIndex;
+    std::vector<int> logTimeIndex;
+
+    vtkDataArray* queryToVtk(int timestate, int domain, const char *varname);
+
+    void createBoxes();
+    void createTimeIndex();
+    void computeDomainBoundaries(const char* meshname, int timestate);
+    void SetUpDomainConnectivity(const char* meshname);
+
     void loadBalance();
 
-    VISUS_DECLARE_BINDABLE(avtIDXFileFormat);
+
 };
 
 

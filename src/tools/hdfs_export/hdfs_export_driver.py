@@ -36,7 +36,7 @@ from hdfs_export_utils import *
 # Based heavily on original code written by Cyrus Harrison for JSON export
 #
 
-def export(outdir,keybase,user,dbfile,tidx,mesh,var_list,compress=False):
+def export(outdir,keybase,user,dbfile,tidx,mesh,var_list,compressCmd="gzip -6"):
     result = AddPlot("Mesh", mesh)
     if result != 1:
         result = AddPlot("Curve", mesh)
@@ -46,9 +46,11 @@ def export(outdir,keybase,user,dbfile,tidx,mesh,var_list,compress=False):
     DrawPlots()
     tval = query("Time")
     cval = query("Cycle")
-    kargs = {"keybase":keybase,"outdir":outdir,"user":user,"dbfile":dbfile,"mesh":mesh,"time":tval,"cycle":cval}
+    kargs = {"keybase":keybase,"outdir":outdir,"user":user,
+        "dbfile":dbfile,"mesh":mesh,"time":tval,"cycle":cval,
+        "compressCmd":compressCmd}
     sdir   = os.path.split(os.path.abspath(__visit_source_file__))[0]
-    PythonQuery(file=(pjoin(sdir,"hdfs_export.vpq")),vars=var_list,args=[kargs,compress])
+    PythonQuery(file=(pjoin(sdir,"hdfs_export.vpq")),vars=var_list,args=[kargs])
     DeleteAllPlots()
 
 def main():
@@ -89,7 +91,7 @@ def main():
                 continue
             curve = md.GetCurves(c).name
             var_list = [curve, curve.replace("Scalar_Curves/","")]
-            descendOutDir(outDir,keyBase,curve.replace('/','~'))
+            descendOutDir(outDir,keyBase,curve.replace('/','~'),[1,1,1])
             print "[Exporting curve %s for time index %d]" %(curve,tidx)
             export(outDir,keyBase,user,dbfile,tidx,curve,var_list)
             ascendOutDir(outDir,keyBase)
@@ -99,8 +101,15 @@ def main():
             if md.GetMeshes(m).hideFromGUI == 1:
                 continue
             mesh = md.GetMeshes(m).name
-            descendOutDir(outDir,keyBase,mesh.replace('/','~'))
+            mdata = [md.GetMeshes(m).numBlocks,md.GetMeshes(m).spatialDimension,md.GetMeshes(m).topologicalDimension]
+            # num blocks, spatial dim, topo dim, extents?
+            descendOutDir(outDir,keyBase,mesh.replace('/','~'),mdata)
             var_list = ["__foo__"] # work-around mesh name overwriting first var
+            # add vars for global nodes and zones, handle if missing in vpq
+            DefineScalarExpression("%s_global_nodeids"%mesh.replace('/','~'), "global_nodeid(<%s>)"%mesh)
+            DefineScalarExpression("%s_global_zoneids"%mesh.replace('/','~'), "global_zoneid(<%s>)"%mesh)
+            var_list.append("%s_global_nodeids"%mesh.replace('/','~'))
+            var_list.append("%s_global_zoneids"%mesh.replace('/','~'))
             for i in range(md.GetNumScalars()):
                 if md.GetScalars(i).validVariable == 0:
                     continue

@@ -37,16 +37,13 @@
 *****************************************************************************/
 
 // ************************************************************************* //
-//                             avtH5PartOptions.h                              //
+//                             avtH5PartOptions.h                            //
 // ************************************************************************* //
 
 #ifndef AVT_H5Part_OPTIONS_H
 #define AVT_H5Part_OPTIONS_H
 
 class DBOptionsAttributes;
-
-#include <string>
-
 
 // ****************************************************************************
 //  Functions: avtH5PartOptions
@@ -61,6 +58,5 @@ class DBOptionsAttributes;
 
 DBOptionsAttributes *GetH5PartReadOptions(void);
 DBOptionsAttributes *GetH5PartWriteOptions(void);
-
 
 #endif

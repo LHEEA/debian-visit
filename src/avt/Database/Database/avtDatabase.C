@@ -963,15 +963,15 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
             //
             if (smd->hasDataExtents)
             {
-                double extents[6]; // 6 is probably too much, but better to be safe
+                double extents[2];
                 extents[0] = smd->minDataExtents;
                 extents[1] = smd->maxDataExtents;
-    
+
                 atts.GetOriginalDataExtents(var_list[i])->Set(extents);
             }
             else
             {
-                double extents[6]; // 6 is probably too much, but better to be safe
+                double extents[2];
                 if (GetExtentsFromAuxiliaryData(spec, var_list[i],
                         AUXILIARY_DATA_DATA_EXTENTS, extents))
                 {
@@ -979,7 +979,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
                 }
             }
         }
-    
+
         const avtVectorMetaData *vmd = GetMetaData(ts)->GetVector(var_list[i]);
         if (vmd != NULL)
         {
@@ -990,7 +990,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
             atts.SetVariableDimension(vmd->varDim, var_list[i]);
             atts.SetCentering(vmd->centering, var_list[i]);
             atts.SetVariableType(AVT_VECTOR_VAR, var_list[i]);
-    
+
             //
             // Note that we are using the spatial extents as both the spatial 
             // extents and as the global spatial extents (the spatial extents 
@@ -998,14 +998,14 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
             //
             if (vmd->hasDataExtents)
             {
-                double extents[6]; // 6 is probably too much, but better to be safe
+                double extents[2];
                 extents[0] = vmd->minDataExtents;
                 extents[1] = vmd->maxDataExtents;
                 atts.GetOriginalDataExtents(var_list[i])->Set(extents);
             }
             else
             {
-                double extents[6]; // 6 is probably too much, but better to be safe
+                double extents[2];
                 if (GetExtentsFromAuxiliaryData(spec, var_list[i],
                         AUXILIARY_DATA_DATA_EXTENTS, extents))
                 {
@@ -1025,7 +1025,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
             atts.SetCentering(tmd->centering, var_list[i]);
             atts.SetVariableType(AVT_TENSOR_VAR, var_list[i]);
         }
-    
+
         const avtSymmetricTensorMetaData *stmd = 
                                    GetMetaData(ts)->GetSymmTensor(var_list[i]);
         if (stmd != NULL)
@@ -1081,7 +1081,7 @@ avtDatabase::PopulateDataObjectInformation(avtDataObject_p &dob,
             atts.SetYLabel(cmd->yLabel);
             if (cmd->hasDataExtents)
             {
-                double extents[6]; // 6 is probably too much, but better to be safe
+                double extents[2];
                 extents[0] = cmd->minDataExtents;
                 extents[1] = cmd->maxDataExtents;
                 atts.GetOriginalDataExtents(var_list[i])->Set(extents);
@@ -2399,6 +2399,11 @@ avtDatabase::NumStagesForFetch(avtDataRequest_p)
 //    Jim Eliot, Wed 18 Nov 11:30:58 GMT 2015
 //    Fixed bug (2461) with reading DOS formatted files which uses '\'r
 //    newline character
+//
+//    Burlen Loring, Fri Apr 28 10:21:30 PDT 2017
+//    Don't count key words when determining if the file count evenly divides
+//    the block count.
+//
 // ****************************************************************************
 
 bool
@@ -2423,8 +2428,9 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
     vector<char *>  list;
     char  str_auto[1024];
     char  str_with_dir[2048];
-    int   count = 0;
-    int   badCount = 0;
+    int   goodCount = 0; // number of valid lines, keywords and files
+    int   badCount = 0; // number of empty and comment lines
+    int   fileCount = 0; // number of non empty, non comment, non keyword, lines
     int   bang_nBlocks = -1;
     bool failed = false;
     while (!ifile.eof() && !failed && badCount < 10000)
@@ -2457,7 +2463,7 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
         if (str_auto[0] != '\0' && str_auto[0] != '#')
         {
             char *bnbp = strstr(str_auto, "!NBLOCKS ");
-            if (bnbp && bnbp == str_auto && !count)
+            if (bnbp && bnbp == str_auto && !goodCount)
             {
                 errno = 0;
                 bang_nBlocks = strtol(str_auto + strlen("!NBLOCKS "), 0, 10);
@@ -2471,7 +2477,7 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
 
                 if (bang_nBlocksp)
                     *bang_nBlocksp = bang_nBlocks;
- 
+
                 continue;
             }
 
@@ -2479,6 +2485,8 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
             if (str_auto[0] == VISIT_SLASH_CHAR || str_auto[0] == '!' ||
                 (str_auto_len > 2 && str_auto[1] == ':'))
             {
+                // already have an absolute path like /something or C:\something,
+                // or a keyword like !SOMETHING
                 strcpy(str_with_dir, str_auto);
             }
             else
@@ -2486,8 +2494,13 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
                 sprintf(str_with_dir, "%s%s", dir, str_auto);
             }
             char *str_heap = CXX_strdup(str_with_dir);
-            list.push_back(str_heap); 
-            ++count;
+            list.push_back(str_heap);
+            ++goodCount;
+
+            // lines of the file starting with ! are keywords and
+            // are not part of the block count
+            if (str_auto[0] != '!')
+                ++fileCount;
         }
         else
             ++badCount;
@@ -2495,10 +2508,11 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
 
     if (bang_nBlocks > 0 && !failed)
     {
-        if (count % bang_nBlocks)
+        if (fileCount % bang_nBlocks)
         {
             failed = true;
-            debug1 << "File count of " << count << " not evenly divided by !NBLOCKS value of " << bang_nBlocks << endl;
+            debug1 << "File count of " << fileCount << " not evenly divided by "
+                "!NBLOCKS value of " << bang_nBlocks << endl;
         }
     }
 
@@ -2512,7 +2526,7 @@ avtDatabase::GetFileListFromTextFile(const char *textfile,
     }
     else
     {
-        filelist = new char*[count];
+        filelist = new char*[goodCount];
         filelistN = 0;
         for (it = list.begin() ; it != list.end() ; ++it)
         {

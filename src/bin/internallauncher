@@ -507,6 +507,9 @@ class JobSubmitter_salloc(JobSubmitter):
         if self.parallel.nn != None:
             parcmd = parcmd + ["--ntasks-per-node=%s" % self.PPN()]
 
+        if self.parallel.launchargs != None:
+            parcmd = parcmd + self.parallel.launchargs
+
         parcmd = parcmd + ["srun","-N1","-n1","--preserve-env","--mpi=none", "mpirun"]
 
         if self.parallel.nn != None:
@@ -1650,6 +1653,7 @@ class GeneralArguments(object):
         self.hw_accel = False
         self.osmesa   = False
         self.hosttoip = False
+        self.startdir = None
 
     def ParseArguments(self, i, args):
         if i >= len(args):
@@ -1729,6 +1733,9 @@ class GeneralArguments(object):
             # Number of threads. Some launchers want to know this number, ie depth.
             self.threads = args[i+1]
             self.arguments = self.arguments + [args[i]] + [args[i+1]]
+            n = 2
+        elif args[i] == "-startdir":
+            self.startdir = args[i+1]
             n = 2
         else:
             self.arguments = self.arguments + [args[i]]
@@ -2943,6 +2950,28 @@ class MainLauncher(object):
                         os.mkdir(path)
 
     ############################################################################
+    # Method: SetStartDir
+    #
+    # Purpose: Change the current directory so a component will be started in
+    #          the new directory (so its logs, timings, etc will be there).
+    #
+    # Arguments:
+    #
+    # Programmer: Brad Whitlock
+    # Date: Fri Jul 28 13:05:07 PDT 2017
+    #
+    # Modifications:
+    #
+    ############################################################################
+
+    def SetStartDir(self):
+       if self.generalArgs.startdir != None:
+           try:
+               os.chdir(self.generalArgs.startdir)
+           except:
+               self.warning("Could not change directory to " + self.generalArgs.startdir)
+
+    ############################################################################
     # Method: NewConsole
     #
     # Purpose: Launch VisIt in a new console window.
@@ -3460,6 +3489,7 @@ def internallauncher(launcher, visitdir, visitprogram, visitver, visitpluginver,
     launcher.Customize()
     launcher.SetupEnvironment()
     launcher.MakeUserDirectories(visitpluginver, supportedarches)
+    launcher.SetStartDir()
 
     if "-help" in visitargs or "--help" in visitargs:
         launcher.PrintUsage(0)

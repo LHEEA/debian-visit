@@ -49,21 +49,21 @@
 
 static const char *PickType_strings[] = {
 "Zone", "Node", "CurveZone", 
-"CurveNode", "DomainZone", "DomainNode"
-};
+"CurveNode", "DomainZone", "DomainNode", 
+"ZoneLabel", "NodeLabel"};
 
 std::string
 PickAttributes::PickType_ToString(PickAttributes::PickType t)
 {
     int index = int(t);
-    if(index < 0 || index >= 6) index = 0;
+    if(index < 0 || index >= 8) index = 0;
     return PickType_strings[index];
 }
 
 std::string
 PickAttributes::PickType_ToString(int t)
 {
-    int index = (t < 0 || t >= 6) ? 0 : t;
+    int index = (t < 0 || t >= 8) ? 0 : t;
     return PickType_strings[index];
 }
 
@@ -71,7 +71,7 @@ bool
 PickAttributes::PickType_FromString(const std::string &s, PickAttributes::PickType &val)
 {
     val = PickAttributes::Zone;
-    for(int i = 0; i < 6; ++i)
+    for(int i = 0; i < 8; ++i)
     {
         if(s == PickType_strings[i])
         {
@@ -218,15 +218,18 @@ void PickAttributes::Init()
     elementIsGhost = false;
     requiresGlyphPick = false;
     locationSuccessful = false;
+    useLabelAsPickLetter = false;
     showGlobalIds = false;
     globalElement = -1;
     elementIsGlobal = false;
     showPickLetter = true;
+    hasRangeOutput = false;
     reusePickLetter = false;
     ghostType = 0;
     hasMixedGhostTypes = -1;
     linesData = false;
     showPickHighlight = false;
+    notifyEnabled = true;
     inputTopoDim = -1;
     meshCoordType = XY;
     createSpreadsheet = false;
@@ -338,16 +341,21 @@ void PickAttributes::Copy(const PickAttributes &obj)
     elementIsGhost = obj.elementIsGhost;
     requiresGlyphPick = obj.requiresGlyphPick;
     locationSuccessful = obj.locationSuccessful;
+    useLabelAsPickLetter = obj.useLabelAsPickLetter;
     showGlobalIds = obj.showGlobalIds;
     globalElement = obj.globalElement;
     globalIncidentElements = obj.globalIncidentElements;
     elementIsGlobal = obj.elementIsGlobal;
     showPickLetter = obj.showPickLetter;
+    hasRangeOutput = obj.hasRangeOutput;
+    rangeOutput = obj.rangeOutput;
+    elementLabel = obj.elementLabel;
     reusePickLetter = obj.reusePickLetter;
     ghostType = obj.ghostType;
     hasMixedGhostTypes = obj.hasMixedGhostTypes;
     linesData = obj.linesData;
     showPickHighlight = obj.showPickHighlight;
+    notifyEnabled = obj.notifyEnabled;
     inputTopoDim = obj.inputTopoDim;
     meshCoordType = obj.meshCoordType;
     createSpreadsheet = obj.createSpreadsheet;
@@ -605,16 +613,21 @@ PickAttributes::operator == (const PickAttributes &obj) const
             (elementIsGhost == obj.elementIsGhost) &&
             (requiresGlyphPick == obj.requiresGlyphPick) &&
             (locationSuccessful == obj.locationSuccessful) &&
+            (useLabelAsPickLetter == obj.useLabelAsPickLetter) &&
             (showGlobalIds == obj.showGlobalIds) &&
             (globalElement == obj.globalElement) &&
             (globalIncidentElements == obj.globalIncidentElements) &&
             (elementIsGlobal == obj.elementIsGlobal) &&
             (showPickLetter == obj.showPickLetter) &&
+            (hasRangeOutput == obj.hasRangeOutput) &&
+            (rangeOutput == obj.rangeOutput) &&
+            (elementLabel == obj.elementLabel) &&
             (reusePickLetter == obj.reusePickLetter) &&
             (ghostType == obj.ghostType) &&
             (hasMixedGhostTypes == obj.hasMixedGhostTypes) &&
             (linesData == obj.linesData) &&
             (showPickHighlight == obj.showPickHighlight) &&
+            (notifyEnabled == obj.notifyEnabled) &&
             (inputTopoDim == obj.inputTopoDim) &&
             (meshCoordType == obj.meshCoordType) &&
             (createSpreadsheet == obj.createSpreadsheet) &&
@@ -820,16 +833,21 @@ PickAttributes::SelectAll()
     Select(ID_elementIsGhost,              (void *)&elementIsGhost);
     Select(ID_requiresGlyphPick,           (void *)&requiresGlyphPick);
     Select(ID_locationSuccessful,          (void *)&locationSuccessful);
+    Select(ID_useLabelAsPickLetter,        (void *)&useLabelAsPickLetter);
     Select(ID_showGlobalIds,               (void *)&showGlobalIds);
     Select(ID_globalElement,               (void *)&globalElement);
     Select(ID_globalIncidentElements,      (void *)&globalIncidentElements);
     Select(ID_elementIsGlobal,             (void *)&elementIsGlobal);
     Select(ID_showPickLetter,              (void *)&showPickLetter);
+    Select(ID_hasRangeOutput,              (void *)&hasRangeOutput);
+    Select(ID_rangeOutput,                 (void *)&rangeOutput);
+    Select(ID_elementLabel,                (void *)&elementLabel);
     Select(ID_reusePickLetter,             (void *)&reusePickLetter);
     Select(ID_ghostType,                   (void *)&ghostType);
     Select(ID_hasMixedGhostTypes,          (void *)&hasMixedGhostTypes);
     Select(ID_linesData,                   (void *)&linesData);
     Select(ID_showPickHighlight,           (void *)&showPickHighlight);
+    Select(ID_notifyEnabled,               (void *)&notifyEnabled);
     Select(ID_inputTopoDim,                (void *)&inputTopoDim);
     Select(ID_meshCoordType,               (void *)&meshCoordType);
     Select(ID_createSpreadsheet,           (void *)&createSpreadsheet);
@@ -1010,6 +1028,12 @@ PickAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAd
     // elementIsGhost is not persistent and should not be saved.
     // requiresGlyphPick is not persistent and should not be saved.
     // locationSuccessful is not persistent and should not be saved.
+    if(completeSave || !FieldsEqual(ID_useLabelAsPickLetter, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("useLabelAsPickLetter", useLabelAsPickLetter));
+    }
+
     if(completeSave || !FieldsEqual(ID_showGlobalIds, &defaultObject))
     {
         addToParent = true;
@@ -1025,11 +1049,25 @@ PickAttributes::CreateNode(DataNode *parentNode, bool completeSave, bool forceAd
         node->AddNode(new DataNode("showPickLetter", showPickLetter));
     }
 
+    if(completeSave || !FieldsEqual(ID_hasRangeOutput, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("hasRangeOutput", hasRangeOutput));
+    }
+
+    // rangeOutput is not persistent and should not be saved.
+    if(completeSave || !FieldsEqual(ID_elementLabel, &defaultObject))
+    {
+        addToParent = true;
+        node->AddNode(new DataNode("elementLabel", elementLabel));
+    }
+
     // reusePickLetter is not persistent and should not be saved.
     // ghostType is not persistent and should not be saved.
     // hasMixedGhostTypes is not persistent and should not be saved.
     // linesData is not persistent and should not be saved.
     // showPickHighlight is not persistent and should not be saved.
+    // notifyEnabled is not persistent and should not be saved.
     // inputTopoDim is not persistent and should not be saved.
     // meshCoordType is not persistent and should not be saved.
     if(completeSave || !FieldsEqual(ID_createSpreadsheet, &defaultObject))
@@ -1156,6 +1194,8 @@ PickAttributes::SetFromNode(DataNode *parentNode)
     // elementIsGhost is not persistent and was not saved.
     // requiresGlyphPick is not persistent and was not saved.
     // locationSuccessful is not persistent and was not saved.
+    if((node = searchNode->GetNode("useLabelAsPickLetter")) != 0)
+        SetUseLabelAsPickLetter(node->AsBool());
     if((node = searchNode->GetNode("showGlobalIds")) != 0)
         SetShowGlobalIds(node->AsBool());
     // globalElement is not persistent and was not saved.
@@ -1163,11 +1203,17 @@ PickAttributes::SetFromNode(DataNode *parentNode)
     // elementIsGlobal is not persistent and was not saved.
     if((node = searchNode->GetNode("showPickLetter")) != 0)
         SetShowPickLetter(node->AsBool());
+    if((node = searchNode->GetNode("hasRangeOutput")) != 0)
+        SetHasRangeOutput(node->AsBool());
+    // rangeOutput is not persistent and was not saved.
+    if((node = searchNode->GetNode("elementLabel")) != 0)
+        SetElementLabel(node->AsString());
     // reusePickLetter is not persistent and was not saved.
     // ghostType is not persistent and was not saved.
     // hasMixedGhostTypes is not persistent and was not saved.
     // linesData is not persistent and was not saved.
     // showPickHighlight is not persistent and was not saved.
+    // notifyEnabled is not persistent and was not saved.
     // inputTopoDim is not persistent and was not saved.
     // meshCoordType is not persistent and was not saved.
     if((node = searchNode->GetNode("createSpreadsheet")) != 0)
@@ -1561,6 +1607,13 @@ PickAttributes::SetLocationSuccessful(bool locationSuccessful_)
 }
 
 void
+PickAttributes::SetUseLabelAsPickLetter(bool useLabelAsPickLetter_)
+{
+    useLabelAsPickLetter = useLabelAsPickLetter_;
+    Select(ID_useLabelAsPickLetter, (void *)&useLabelAsPickLetter);
+}
+
+void
 PickAttributes::SetShowGlobalIds(bool showGlobalIds_)
 {
     showGlobalIds = showGlobalIds_;
@@ -1596,6 +1649,27 @@ PickAttributes::SetShowPickLetter(bool showPickLetter_)
 }
 
 void
+PickAttributes::SetHasRangeOutput(bool hasRangeOutput_)
+{
+    hasRangeOutput = hasRangeOutput_;
+    Select(ID_hasRangeOutput, (void *)&hasRangeOutput);
+}
+
+void
+PickAttributes::SetRangeOutput(const MapNode &rangeOutput_)
+{
+    rangeOutput = rangeOutput_;
+    Select(ID_rangeOutput, (void *)&rangeOutput);
+}
+
+void
+PickAttributes::SetElementLabel(const std::string &elementLabel_)
+{
+    elementLabel = elementLabel_;
+    Select(ID_elementLabel, (void *)&elementLabel);
+}
+
+void
 PickAttributes::SetReusePickLetter(bool reusePickLetter_)
 {
     reusePickLetter = reusePickLetter_;
@@ -1628,6 +1702,13 @@ PickAttributes::SetShowPickHighlight(bool showPickHighlight_)
 {
     showPickHighlight = showPickHighlight_;
     Select(ID_showPickHighlight, (void *)&showPickHighlight);
+}
+
+void
+PickAttributes::SetNotifyEnabled(bool notifyEnabled_)
+{
+    notifyEnabled = notifyEnabled_;
+    Select(ID_notifyEnabled, (void *)&notifyEnabled);
 }
 
 void
@@ -2166,6 +2247,12 @@ PickAttributes::GetLocationSuccessful() const
 }
 
 bool
+PickAttributes::GetUseLabelAsPickLetter() const
+{
+    return useLabelAsPickLetter;
+}
+
+bool
 PickAttributes::GetShowGlobalIds() const
 {
     return showGlobalIds;
@@ -2202,6 +2289,36 @@ PickAttributes::GetShowPickLetter() const
 }
 
 bool
+PickAttributes::GetHasRangeOutput() const
+{
+    return hasRangeOutput;
+}
+
+const MapNode &
+PickAttributes::GetRangeOutput() const
+{
+    return rangeOutput;
+}
+
+MapNode &
+PickAttributes::GetRangeOutput()
+{
+    return rangeOutput;
+}
+
+const std::string &
+PickAttributes::GetElementLabel() const
+{
+    return elementLabel;
+}
+
+std::string &
+PickAttributes::GetElementLabel()
+{
+    return elementLabel;
+}
+
+bool
 PickAttributes::GetReusePickLetter() const
 {
     return reusePickLetter;
@@ -2229,6 +2346,12 @@ bool
 PickAttributes::GetShowPickHighlight() const
 {
     return showPickHighlight;
+}
+
+bool
+PickAttributes::GetNotifyEnabled() const
+{
+    return notifyEnabled;
 }
 
 int
@@ -2467,6 +2590,18 @@ void
 PickAttributes::SelectGlobalIncidentElements()
 {
     Select(ID_globalIncidentElements, (void *)&globalIncidentElements);
+}
+
+void
+PickAttributes::SelectRangeOutput()
+{
+    Select(ID_rangeOutput, (void *)&rangeOutput);
+}
+
+void
+PickAttributes::SelectElementLabel()
+{
+    Select(ID_elementLabel, (void *)&elementLabel);
 }
 
 void
@@ -2767,16 +2902,21 @@ PickAttributes::GetFieldName(int index) const
     case ID_elementIsGhost:              return "elementIsGhost";
     case ID_requiresGlyphPick:           return "requiresGlyphPick";
     case ID_locationSuccessful:          return "locationSuccessful";
+    case ID_useLabelAsPickLetter:        return "useLabelAsPickLetter";
     case ID_showGlobalIds:               return "showGlobalIds";
     case ID_globalElement:               return "globalElement";
     case ID_globalIncidentElements:      return "globalIncidentElements";
     case ID_elementIsGlobal:             return "elementIsGlobal";
     case ID_showPickLetter:              return "showPickLetter";
+    case ID_hasRangeOutput:              return "hasRangeOutput";
+    case ID_rangeOutput:                 return "rangeOutput";
+    case ID_elementLabel:                return "elementLabel";
     case ID_reusePickLetter:             return "reusePickLetter";
     case ID_ghostType:                   return "ghostType";
     case ID_hasMixedGhostTypes:          return "hasMixedGhostTypes";
     case ID_linesData:                   return "linesData";
     case ID_showPickHighlight:           return "showPickHighlight";
+    case ID_notifyEnabled:               return "notifyEnabled";
     case ID_inputTopoDim:                return "inputTopoDim";
     case ID_meshCoordType:               return "meshCoordType";
     case ID_createSpreadsheet:           return "createSpreadsheet";
@@ -2863,16 +3003,21 @@ PickAttributes::GetFieldType(int index) const
     case ID_elementIsGhost:              return FieldType_bool;
     case ID_requiresGlyphPick:           return FieldType_bool;
     case ID_locationSuccessful:          return FieldType_bool;
+    case ID_useLabelAsPickLetter:        return FieldType_bool;
     case ID_showGlobalIds:               return FieldType_bool;
     case ID_globalElement:               return FieldType_int;
     case ID_globalIncidentElements:      return FieldType_intVector;
     case ID_elementIsGlobal:             return FieldType_bool;
     case ID_showPickLetter:              return FieldType_bool;
+    case ID_hasRangeOutput:              return FieldType_bool;
+    case ID_rangeOutput:                 return FieldType_MapNode;
+    case ID_elementLabel:                return FieldType_string;
     case ID_reusePickLetter:             return FieldType_bool;
     case ID_ghostType:                   return FieldType_int;
     case ID_hasMixedGhostTypes:          return FieldType_int;
     case ID_linesData:                   return FieldType_bool;
     case ID_showPickHighlight:           return FieldType_bool;
+    case ID_notifyEnabled:               return FieldType_bool;
     case ID_inputTopoDim:                return FieldType_int;
     case ID_meshCoordType:               return FieldType_enum;
     case ID_createSpreadsheet:           return FieldType_bool;
@@ -2959,16 +3104,21 @@ PickAttributes::GetFieldTypeName(int index) const
     case ID_elementIsGhost:              return "bool";
     case ID_requiresGlyphPick:           return "bool";
     case ID_locationSuccessful:          return "bool";
+    case ID_useLabelAsPickLetter:        return "bool";
     case ID_showGlobalIds:               return "bool";
     case ID_globalElement:               return "int";
     case ID_globalIncidentElements:      return "intVector";
     case ID_elementIsGlobal:             return "bool";
     case ID_showPickLetter:              return "bool";
+    case ID_hasRangeOutput:              return "bool";
+    case ID_rangeOutput:                 return "MapNode";
+    case ID_elementLabel:                return "string";
     case ID_reusePickLetter:             return "bool";
     case ID_ghostType:                   return "int";
     case ID_hasMixedGhostTypes:          return "int";
     case ID_linesData:                   return "bool";
     case ID_showPickHighlight:           return "bool";
+    case ID_notifyEnabled:               return "bool";
     case ID_inputTopoDim:                return "int";
     case ID_meshCoordType:               return "enum";
     case ID_createSpreadsheet:           return "bool";
@@ -3303,6 +3453,11 @@ PickAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (locationSuccessful == obj.locationSuccessful);
         }
         break;
+    case ID_useLabelAsPickLetter:
+        {  // new scope
+        retval = (useLabelAsPickLetter == obj.useLabelAsPickLetter);
+        }
+        break;
     case ID_showGlobalIds:
         {  // new scope
         retval = (showGlobalIds == obj.showGlobalIds);
@@ -3328,6 +3483,21 @@ PickAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
         retval = (showPickLetter == obj.showPickLetter);
         }
         break;
+    case ID_hasRangeOutput:
+        {  // new scope
+        retval = (hasRangeOutput == obj.hasRangeOutput);
+        }
+        break;
+    case ID_rangeOutput:
+        {  // new scope
+        retval = (rangeOutput == obj.rangeOutput);
+        }
+        break;
+    case ID_elementLabel:
+        {  // new scope
+        retval = (elementLabel == obj.elementLabel);
+        }
+        break;
     case ID_reusePickLetter:
         {  // new scope
         retval = (reusePickLetter == obj.reusePickLetter);
@@ -3351,6 +3521,11 @@ PickAttributes::FieldsEqual(int index_, const AttributeGroup *rhs) const
     case ID_showPickHighlight:
         {  // new scope
         retval = (showPickHighlight == obj.showPickHighlight);
+        }
+        break;
+    case ID_notifyEnabled:
+        {  // new scope
+        retval = (notifyEnabled == obj.notifyEnabled);
         }
         break;
     case ID_inputTopoDim:
@@ -4628,6 +4803,41 @@ PickAttributes::AddLine(const double *_c0, const double *_c1, const int &pos)
     cellCoordinates[pos*6+4] = _c1[1];
     cellCoordinates[pos*6+5] = _c1[2];
 
+}
+
+// ****************************************************************************
+// Method: PickAttributes::Notify
+//
+// Purpose: 
+//    Notifies the observers. This is an override of an inherented method that
+//    adds the ability to disable notification. This is desirable when picking 
+//    ranges of elements, possibly 100+, for visual reasons only and not to
+//    encur the overhead of waiting for all the tabs to appear in the GUI.
+//
+// Programmer:  Matt Larsen 
+// Creation:    December 12, 2016
+//
+// Modifications:
+//
+// ****************************************************************************
+//
+
+void
+PickAttributes::Notify()
+{
+    //
+    // Check to see if we want to notify the window
+    //
+
+    if(notifyEnabled)
+    {
+        // Call the base class's Notify method.
+        Subject::Notify();
+
+        // Now that all the Obsevrers have been called, unselect all the
+        // attributes.
+        UnSelectAll();
+    }
 }
 
 // ****************************************************************************

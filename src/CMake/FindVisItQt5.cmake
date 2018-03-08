@@ -41,7 +41,21 @@
 #   tells Qt where to find the plugins.
 #
 #   Kevin Griffin, Wed Nov 2 10:04:28 PDT 2016
-#   Added logic to install the correct MAC frameworks and static library.
+#   Added logic to install the correct OSX frameworks and static library.
+#
+#   Kevin Griffin, Wed May 17 13:23:24 PDT 2017
+#   Installed the platform plugins directory in the gui.app and viewer.app
+#   directories containing the gui and viewer executeables for OSX. Also 
+#   added missing frameworks, archives, and includes.
+#
+#   Eric Brugger, Thu Oct  5 15:11:39 PDT 2017
+#   Added Svg to the visit_qt_modules for all platforms. Previously, there
+#   was separate logic for adding it to Windows and Mac, but Linux also
+#   needs it.
+#
+#   Eric Brugger, Tue Oct 10 12:33:50 PDT 2017
+#   Added Concurrent to the visit_qt_modules for Linux. Previously,
+#   it was only adding it for Mac, but Linux also needs it.
 #
 #*****************************************************************************
 
@@ -56,14 +70,14 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 #set(QT5_INCLUDE_DIRS "")
 set(QT5_LIBRARIES "")
 
-set(visit_qt_modules Core Gui Widgets OpenGL Network PrintSupport Xml UiTools)
+set(visit_qt_modules Core Gui Widgets OpenGL Network PrintSupport Qml Svg Xml UiTools)
 
 if(LINUX)
-    set (visit_qt_modules ${visit_qt_modules} X11Extras)
+    set (visit_qt_modules ${visit_qt_modules} Concurrent X11Extras)
 endif()
 
-if(WIN32)
-    set (visit_qt_modules ${visit_qt_modules} Svg)
+if(APPLE)
+    set (visit_qt_modules ${visit_qt_modules} Concurrent)
 endif()
 
 set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${VISIT_QT_DIR}/lib/cmake)
@@ -84,6 +98,7 @@ foreach(mod ${visit_qt_modules})
       endif()
     endif()
     # headers
+    if(NOT APPLE)
     foreach(H ${Qt5${mod}_INCLUDE_DIRS})
       if(${H} MATCHES "/include/Qt")
         INSTALL(DIRECTORY ${H}
@@ -98,6 +113,7 @@ foreach(mod ${visit_qt_modules})
         )
       endif()
     endforeach()
+    endif(NOT APPLE)
   endif()
 endforeach()
 
@@ -114,7 +130,7 @@ set(QT_QTNETWORK_LIBRARY ${Qt5Network_LIBRARIES})
 set(QT_QTXML_LIBRARY ${Qt5Xml_LIBRARIES})
 
 # why is core not named the same as the others?
-set(QT_CORE_LIBRARY ${Qt5Core_LIBRARIES})
+set(QT_QTCORE_LIBRARY ${Qt5Core_LIBRARIES})
 
 if (LINUX)
     set(QT_QTX11EXTRAS_LIBRARY ${Qt5X11Extras_LIBRARIES})
@@ -138,14 +154,44 @@ if(NOT VISIT_QT_SKIP_INSTALL)
         Qt5::OpenGL
         Qt5::PrintSupport
         Qt5::Widgets
+        Qt5::Qml
+        Qt5::Svg
         Qt5::Xml
   )
   if(LINUX)
-      set(qt_libs_install ${qt_libs_install} Qt5::X11Extras)
+      set(qt_libs_install ${qt_libs_install} Qt5::Concurrent Qt5::X11Extras)
   endif()
-  if(WIN32)
-      set(qt_libs_install ${qt_libs_install} Qt5::Svg)
+  if(APPLE)
+      set(qt_libs_install ${qt_libs_install} Qt5::Concurrent)
   endif()
+
+  IF(APPLE)
+      file(GLOB QT_INCLUDES "${VISIT_QT_DIR}/include/Qt*")
+      FOREACH(H ${QT_INCLUDES})
+          INSTALL(DIRECTORY ${H}
+                  DESTINATION ${VISIT_INSTALLED_VERSION_INCLUDE}/qt/include
+                  FILE_PERMISSIONS OWNER_WRITE OWNER_READ
+                                     GROUP_WRITE GROUP_READ
+                                     WORLD_READ
+                  DIRECTORY_PERMISSIONS OWNER_WRITE OWNER_READ OWNER_EXECUTE
+                                          GROUP_WRITE GROUP_READ GROUP_EXECUTE
+                                          WORLD_READ WORLD_EXECUTE
+                  PATTERN ".svn" EXCLUDE
+          )
+      ENDFOREACH(H)
+
+      # Add Qt archives (lib*.a)
+      file(GLOB QT_ARCHIVES "${VISIT_QT_DIR}/lib/*.a")
+      FOREACH(T ${QT_ARCHIVES})
+          INSTALL(FILES ${T}
+              DESTINATION ${VISIT_INSTALLED_VERSION_ARCHIVES}
+              PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+                  GROUP_READ GROUP_WRITE GROUP_EXECUTE
+                  WORLD_READ             WORLD_EXECUTE
+              CONFIGURATIONS "" None Debug Release RelWithDebInfo MinSizeRel
+          )
+      ENDFOREACH(T)
+  ENDIF(APPLE)
 
   if(NOT APPLE)
       foreach(qtlib ${qt_libs_install})
@@ -179,9 +225,17 @@ if(NOT VISIT_QT_SKIP_INSTALL)
   if (WIN32)
       install(DIRECTORY ${VISIT_QT_DIR}/plugins/platforms
               DESTINATION ${VISIT_INSTALLED_VERSION_BIN}/qtplugins)
+      install(DIRECTORY ${VISIT_QT_DIR}/plugins/printsupport
+              DESTINATION ${VISIT_INSTALLED_VERSION_BIN}/qtplugins)
 
-      # We also need the platforms and the qt.conf in the build dir.
+      # We also need the platforms, print support and qt.conf in the build dir.
       file(COPY ${VISIT_QT_DIR}/plugins/platforms
+           DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ThirdParty/qtplugins
+           FILE_PERMISSIONS OWNER_READ OWNER_WRITE
+                            GROUP_READ GROUP_WRITE
+                            WORLD_READ
+      )
+      file(COPY ${VISIT_QT_DIR}/plugins/printsupport
            DESTINATION ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/ThirdParty/qtplugins
            FILE_PERMISSIONS OWNER_READ OWNER_WRITE
                             GROUP_READ GROUP_WRITE
@@ -191,6 +245,12 @@ if(NOT VISIT_QT_SKIP_INSTALL)
           file(WRITE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/${CFG}/qt.conf 
                "[Paths]\nPlugins=../ThirdParty/qtplugins\n")
       endforeach()
+  elseif(APPLE)
+      install(DIRECTORY ${VISIT_QT_DIR}/plugins/platforms
+              DESTINATION ${VISIT_INSTALLED_VERSION_BIN}/gui.app/Contents/MacOS)
+
+      install(DIRECTORY ${VISIT_QT_DIR}/plugins/platforms
+              DESTINATION ${VISIT_INSTALLED_VERSION_BIN}/viewer.app/Contents/MacOS)
   else()
       install(DIRECTORY ${VISIT_QT_DIR}/plugins/platforms
               DESTINATION ${VISIT_INSTALLED_VERSION_LIB}/qtplugins)

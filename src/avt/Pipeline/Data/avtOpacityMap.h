@@ -108,13 +108,17 @@ class PIPELINE_API avtOpacityMap
     void                         SetMax(double);
     double                       GetMin(void)     { return min; };
     double                       GetMax(void)     { return max; };
+    double                       GetMinVisibleScalar();
+    double                       GetMaxVisibleScalar();
+    
+    void                         computeVisibleRange();
 
     inline int                   Quantize(const double &);
     int                          GetNumberOfTableEntries(void)
                                                       { return tableEntries; };
 
     float                        QuantizeValF(const double &val);
-    int                         QueryTF(double scalarValue, double color[4]);
+    int                          QueryTF(double scalarValue, double color[4]);
 
   protected:
     RGBA                        *table;
@@ -123,6 +127,8 @@ class PIPELINE_API avtOpacityMap
 
     double                       max, min;
     double                       range, inverseRange, multiplier;
+    int                          minVisibleScalarIndex, maxVisibleScalarIndex;
+    double                       minVisibleScalar, maxVisibleScalar;    
 
     void                         SetIntermediateVars(void);
 
@@ -223,9 +229,13 @@ avtOpacityMap::QuantizeValF(const double &val){
 //
 //  Modifications:
 //
+//    Qi Wu, Tue Aug 8 12:47:52 MT 2017
+//    Fixed index overflow problem when the scalar value reaches its maximum
+//
 // ****************************************************************************
 inline int
-avtOpacityMap::QueryTF(double scalarValue, double color[4]){
+avtOpacityMap::QueryTF(double scalarValue, double color[4])
+{
     if (scalarValue <= min){
         int index = 0;
 
@@ -254,7 +264,7 @@ avtOpacityMap::QueryTF(double scalarValue, double color[4]){
     double colorLow[4], colorHigh[4];
     float indexPos, indexDiff;
 
-    indexPos  = (scalarValue-min)/(max-min) *tableEntries;    // multiplier = 1.0/(max-min) * tableEntries
+    indexPos  = (scalarValue-min)/(max-min) * (tableEntries-1);    // multiplier = 1.0/(max-min) * tableEntries
     indexLow  = (int)indexPos;
     indexHigh = (int)(indexPos+1.0);
 
@@ -281,5 +291,3 @@ avtOpacityMap::QueryTF(double scalarValue, double color[4]){
 }
 
 #endif
-
-

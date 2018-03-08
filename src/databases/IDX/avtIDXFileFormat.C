@@ -51,6 +51,7 @@
 #include <vtkCharArray.h>
 #include <vtkShortArray.h>
 #include <vtkIntArray.h>
+#include <vtkPointData.h>
 #include <vtkCellType.h>
 #include <vtkCellData.h>
 #include <vtkLongArray.h>
@@ -59,12 +60,14 @@
 #include <vtkUnsignedIntArray.h>
 #include <vtkUnsignedLongArray.h>
 #include <vtkSmartPointer.h>
+#include <DebugStream.h>
 #include <vtkHexahedron.h>
 #include <vtkUnstructuredGrid.h>
 #include <vtkRenderWindow.h>
 #include <vtkMatrix4x4.h>
 #include <vtkXMLDataElement.h>
 #include <vtkXMLDataParser.h>
+#include <vtkStreamingDemandDrivenPipeline.h>
 
 #include <vtkRectilinearGrid.h>
 #include <vtkStructuredGrid.h>
@@ -75,6 +78,7 @@
 #include <avtParallel.h>
 #include <avtDatabaseMetaData.h>
 #include <avtMultiresSelection.h>
+#include <avtStructuredDomainNesting.h>
 #include <avtCallback.h>
 #include <avtView2D.h>
 #include <avtView3D.h>
@@ -83,128 +87,357 @@
 #include <Expression.h>
 
 #include <InvalidVariableException.h>
+#include <dirent.h>
 
-#include <visuscpp/db/dataset/visus_db_dataset.h>
-#include <visuscpp/kernel/geometry/visus_position.h>
-#include <visuscpp/kernel/core/visus_path.h>
+#include "uintah_utils.h"
+#include "visit_idx_utils.h"
 
 #ifdef PARALLEL
 #include <avtParallel.h>
 #endif
 
-using std::string;
-using namespace Visus;
+typedef std::string String;
+
+#define USE_AMR 1
+
+using namespace VisitIDXIO;
+using namespace std;
 
 void avtIDXFileFormat::loadBalance(){
-    
-  //VisusInfo() << "Load balancing";
-    
+
     int maxdir = 0; // largest extent axis
     int maxextent = 0;
     int maxbox = 0;
     
-    for(int i=0; i < boxes.size(); i++){
-        Box& box = boxes.at(i);
-        
-        for(int j=0; j < 3; j++){
-            int extent = box.p2[j]-box.p1[j];
-            if(extent > maxextent){
-                maxdir = j;
-                maxextent = extent;
-                maxbox = i;
-            }
+    for(int i=0; i < level_info.patchInfo.size(); i++){
+      PatchInfo& box = level_info.patchInfo[i];
+      int box_low[3];
+      int box_high[3];
+
+      box.getBounds(box_low,box_high,"CC");
+
+      for(int j=0; j < 3; j++){
+        int extent = box_high[j]-box_low[j];
+        if(extent > maxextent){
+          maxdir = j;
+          maxextent = extent;
+          maxbox = i;
         }
+      }
     }
     
-    //VisusInfo() << "max dir " << maxdir << " max extent " << maxextent << " box " << maxbox;
+    //std::cout << "max dir " << maxdir << " max extent " << maxextent << " box " << maxbox;
+    //printf("NUM PROCS %d patches %d\n", nprocs, level_info.patchInfo.size());
+    std::vector<PatchInfo> newboxes;
+    int n = nprocs;
+    int b = level_info.patchInfo.size();
+    int c = b > n ? b/n : n/b; // how many patches per box
+    int d = b > n ? b%n : n%b;
+
+    //printf("Trying to use %d patches per core, res %d\n", c, d);
+
+    float h[b];
+    int res[b];
+    int slabs[b];
+    //  fprintf(stderr,"n %d b %d c %d d %d\n",n,b,c,d);
+
+//    if(d == 0){
+      for(int i=0; i<b; i++){
+        PatchInfo& box = level_info.patchInfo[i];
+        int box_low[3];
+        int box_high[3];
+
+        box.getBounds(box_low, box_high, "CC");
+
+        int extent = box_high[maxdir]-box_low[maxdir]+1;
     
-    int total_extent = 0;
-    int avg_ext = 0;
-    
-    for(int i=0; i < boxes.size(); i++){
-        Box& box = boxes.at(i);
-        
-        total_extent += box.p2[maxdir];
+#if 0
+        h[i] = ceil((float)extent/c);
+        slabs[i] = ceil((float)extent/h[i]);
+
+  if(c > slabs[i]) {
+            h[i] = floor((float)extent/c);
+            slabs[i] = floor((float)extent/h[i]);
+  }
+  
+  int diff = slabs[i]-c;
+  slabs[i] = c;
+  res[i] = extent%h[i] + diff*h[i];
+#else
+        h[i] = (float)extent/c;
+  slabs[i]=c;
+  res[i]=extent % int(h[i]*c);
+#endif  
+        //res[i] = extent%h[i];
+
+  //  printf("Even H[%d] = %d xslabs %d res %d\n", i, h[i], slabs[i], res[i]);
+
+      }
+#if 0
     }
-    
-    avg_ext = total_extent / nprocs;
-    int res_ext = total_extent % nprocs;
-    
-    //VisusInfo() << "tot ext " << total_extent << " avg ext " << avg_ext << " res ext " << res_ext;
-    
-    std::vector<Box> newboxes;
-    
-    for(int i=0; i < boxes.size(); i++){
-        Box& box = boxes.at(i);
-        
-        int loc_avg_ext = box.p2[maxdir] - box.p1[maxdir];
-        int loc_res = 0;
-        
-        if(loc_avg_ext > avg_ext){
-            loc_res = loc_avg_ext % avg_ext;
-            loc_avg_ext = avg_ext;
+    else{
+      // TODO sort boxes by height
+
+      for(int i=0; i<b; i++){
+        PatchInfo& box = level_info.patchInfo[i];
+        int box_low[3];
+        int box_high[3];
+
+        box.getBounds(box_low, box_high, "CC");
+
+        int extent = box_high[maxdir]-box_low[maxdir];
+
+        if(i <= d){
+    h[i] = ceil((float)extent/c);
+          slabs[i] = extent/h[i];
+          res[i] = extent%h[i];
         }
-        
-//        VisusInfo() << "local avg ext " << loc_avg_ext << " local res " << loc_res;
-        
-        int part_p1 = box.p1[maxdir];
-        int part_p2 = box.p1[maxdir] + loc_avg_ext;
-        
-        Point3d p1(box.p1);
-        Point3d p2(box.p2);
-        
-        //VisusInfo() << "Old box p1: " << p1 << " p2: "<< p2;
-        
-        while(part_p2 <= box.p2[maxdir]){
-            
-            p1[maxdir] = part_p1;
-            p2[maxdir] = part_p2;
-            
-            Box newbox(p1,p2);
-            newboxes.push_back(newbox);
-            
-            //VisusInfo() << "New box p1: " << p1 << " p2: "<< p2;
-            
-            part_p1 += loc_avg_ext;
-            part_p2 += loc_avg_ext;
-           
-        }
-        
-        if(loc_res > 0){
-            Box& boxres = newboxes.at(newboxes.size()-1);
-            boxres.p2[maxdir] += loc_res;
-//            VisusInfo() << "Residual " << loc_res <<" added to box "<< newboxes.size()-1 <<" p1: " << boxres.p1 << " p2: "<< boxres.p2;
+        else{
+          h[i] = ceil((float)extent/(c+1));
+          slabs[i] = extent/h[i];
+          res[i] = extent%h[i];
         }
 
-    }
-    
-    boxes.swap(newboxes);
+        //printf("Uneven H[%d] = %d res %d\n", i, h[i], res[i]);
+      }
 
-    VisusInfo() << "Total number of boxes/domains: " << boxes.size();
-    VisusInfo() << "----------Boxes----------";
-    for(int i=0; i< boxes.size(); i++){
-        VisusInfo() << i << " = "<< boxes.at(i).p1 << " , " << boxes.at(i).p2;
     }
-    VisusInfo() << "-------------------------";
-    
-}
+#endif
 
-// TODO consider the physical box
-void avtIDXFileFormat::calculateBoundsAndExtents(){
-    
-    // TODO deallocate this stuff
-    for(int i=0; i< boxes.size(); i++){
-        Box& box = boxes.at(i);
-        int* my_bounds = new int[3];
-            
-        my_bounds[0] = box.p2.x-box.p1.x;
-        my_bounds[1] = box.p2.y-box.p1.y;
-        my_bounds[2] = box.p2.z-box.p1.z;
-        
-        boxes_bounds.push_back(my_bounds);
-        
+    for(int i=0; i < b; i++){
+      PatchInfo& box = level_info.patchInfo[i];
+      int box_low[3];
+      int box_high[3];
+
+      int low[3];
+      int high[3];
+      int eCells[6];
+
+      box.getBounds(box_low,box_high,eCells,"CC");
+
+      memcpy(low, box_low, 3*sizeof(int));
+      memcpy(high, box_high, 3*sizeof(int));
+
+      int n_slabs = slabs[i];//floor((float)(box_high[maxdir]-box_low[maxdir]) / h[i]);
+
+      int residual = res[i];
+
+      //printf("n_slabs %d residual %d\n", n_slabs, res[i]);
+
+      int part_p1 = box_low[maxdir];
+      int part_p2 = box_low[maxdir] + h[i] -1;
+
+      int added_boxes = 0;
+      while(added_boxes < n_slabs){
+
+        low[maxdir] = part_p1 > 0 ? part_p1-1 : part_p1;
+        high[maxdir] = (part_p2 < box_high[maxdir]) ? part_p2+1 : part_p2;
+
+        PatchInfo newbox;
+
+        newbox.setBounds(low,high,eCells,"CC");
+        newboxes.push_back(newbox);
+        added_boxes++;
+
+        part_p1 = high[maxdir];
+        part_p2 = round(part_p1 + h[i]) -1;
+
+      }
+
+      if(residual > 0 || (high[maxdir] < box_high[maxdir])){
+        int lowr[3];
+        int highr[3];
+
+        PatchInfo& last = newboxes.back();
+        last.getBounds(lowr,highr,eCells,"CC");
+
+        highr[maxdir] = box_high[maxdir];//residual;
+
+        last.setBounds(lowr,highr,eCells,"CC");
+
+      }
+
     }
+
+    level_info.patchInfo.swap(newboxes);
+    // phyboxes.swap(newphyboxes);
+
+    if(rank == 0){
+      debug4 << "Total number of boxes/domains: " << level_info.patchInfo.size() << std::endl<< std::flush;
+      debug4 << "----------Boxes----------" << std::endl<< std::flush;
+      for(int i=0; i< level_info.patchInfo.size(); i++){
+        debug4 << i << " = "<<level_info.patchInfo[i].toString();
+            //boxes.at(i).p1 << " , " << boxes.at(i).p2 << " phy: "
+          //<< phyboxes.at(i).p1 << " , " << phyboxes.at(i).p2 << std::endl<< std::flush;
+      }
+      debug4 << "-------------------------" << std::endl<< std::flush;
+    }
+
+    if(level_info.patchInfo.size() % nprocs != 0){
+  fprintf(stderr,"ERROR: wrong domain decomposition, patches %d procs %d\n", level_info.patchInfo.size(), nprocs);
+      assert(false);
+    }
+  }
+
+  void avtIDXFileFormat::createBoxes(){
+
+    size_t found = dataset_filename.find_last_of("/\\");
+    String folder = dataset_filename.substr(0,found);
+
+    String upsfilename = "noupsfile.ups";
+    DIR *dir;
+    struct dirent *ent;
+    if ((dir = opendir (folder.c_str())) != NULL) {
+      /* print all the files and directories within directory */
+      while ((ent = readdir (dir)) != NULL) {
+        String name(ent->d_name);
+        if(name.substr(name.find_last_of(".") + 1) == "ups"){
+          upsfilename = name;
+          debug4 << ".ups file found " << upsfilename << std::endl;
+          upsfilename = folder + "/" +upsfilename;
+          break;
+        }
+      }
+      closedir (dir);
+    } else {
+      debug4 << "No .ups file found" << std::endl;
+    }
+
+    vtkSmartPointer<vtkXMLDataParser> parser = vtkSmartPointer<vtkXMLDataParser>::New();
+
+    upsfilename.replace(upsfilename.end()-3, upsfilename.end(),"ups");
+
+    uintah_metadata = false;
+
+    parser->SetFileName(upsfilename.c_str());
+
+    if (!parser->Parse()){
+      debug4 << "No .ups file found (Uintah only)" << std::endl;
+
+      parser->SetFileName(metadata_filename.c_str());
+
+      if (!parser->Parse()){
+        debug4 << "Single-box mode" << std::endl;
+      }
+    }else{
+      uintah_metadata = true;
+      debug4 << "Multi-box mode" << std::endl;
+    }
+
+    if(uintah_metadata){
+      parse_ups(parser, level_info, dim, use_extracells);
+    }
+    else{
+      Box log_box = reader->getLogicBox();
+      int low[3];
+      int high[3];
+      int eCells[6] = {0,0,0,0,0,0};
+
+      low[0] = log_box.p1[0];
+      low[1] = log_box.p1[1];
+      low[2] = log_box.p1[2];
+      high[0] = log_box.p2[0]-1;
+      high[1] = log_box.p2[1]-1;
+      high[2] = log_box.p2[2]-1;
+
+      PatchInfo box;
+      box.setBounds(low,high,eCells,"CC");
+      level_info.patchInfo.push_back(box);
+
+      for(int k=0; k<3; k++){
+        level_info.spacing[k]= 1.f;
+        level_info.anchor[k] = 0.f;
+      }
+
+      debug4 << "Single Box: ";
+      debug4 << level_info.patchInfo.back().toString();
+
+    }
+
+  }
+
+  void avtIDXFileFormat::createTimeIndex(){
+    timeIndex.clear();
+    logTimeIndex.clear();
+
+    vtkSmartPointer<vtkXMLDataParser> parser = vtkSmartPointer<vtkXMLDataParser>::New();
+    size_t folder_point = dataset_filename.find_last_of("/\\");
+    String folder = dataset_filename.substr(0,folder_point);
     
+    String udafilename = folder + "/index.xml";
+
+    parser->SetFileName(udafilename.c_str());
+    if (!parser->Parse()){
+      parser->SetFileName(metadata_filename.c_str());
+      if (!parser->Parse()){
+        debug5 << "No metadata XML file found " << udafilename << std::endl;
+
+        std::vector<double> times = reader->getTimes();
+
+        for(int i=0; i< times.size(); i++){
+          timeIndex.push_back(times.at(i));
+          logTimeIndex.push_back(times.at(i));
+        }
+
+        return;
+      }
+    }
+
+    debug4 << "Found metadata file" << std::endl;
+
+    vtkXMLDataElement *root = parser->GetRootElement();
+    vtkXMLDataElement *level = root->FindNestedElementWithName("timesteps");
+    if(level != NULL){
+      int ntimesteps = level->GetNumberOfNestedElements();
+
+      debug4 << "Found " << ntimesteps << " timesteps" << std::endl;
+
+      for(int i=0; i < ntimesteps; i++){
+
+        vtkXMLDataElement *xmltime = level->GetNestedElement(i);
+        String timestr(xmltime->GetAttribute("time"));
+        String logtimestr(xmltime->GetCharacterData());
+
+        debug4 << "time " << timestr << " index " << logtimestr << std::endl;
+        
+        double time = cdouble(timestr);
+        int logtime = cint(logtimestr);
+
+        logTimeIndex.push_back(logtime);
+
+        timeIndex.push_back(time);
+      }
+    }
+    else{
+      fprintf(stderr, "No timesteps field found in index.xml, no physical time available\n");
+
+      if(is_gidx)
+      {
+        for(int i=0; i< gidx_datasets.size(); i++){
+         timeIndex.push_back(gidx_datasets[i].log_time);
+         logTimeIndex.push_back(gidx_datasets[i].log_time);            
+       } 
+
+     }else
+     {
+      std::vector<double> times = reader->getTimes();
+
+      for(int i=0; i< times.size(); i++){
+        timeIndex.push_back(times.at(i));
+        logTimeIndex.push_back(times.at(i));            
+      }
+    }
+
+  }
+  
+  debug4 << "loaded " << timeIndex.size() << " timesteps"<< std::endl;
+  debug4 << reader->getNTimesteps() << " in the timesteps range of the IDX file" << std::endl;
+
+    //if(timeIndex.size() != reader->getNTimesteps())
+    //  std::cout << "ERROR: the timesteps in the IDX file and in the index.xml are not consistent!\n You will not be able to use the physical time"<< std::endl;
+
+  return;
+
 }
 
 // ****************************************************************************
@@ -215,126 +448,141 @@ void avtIDXFileFormat::calculateBoundsAndExtents(){
 //
 // ****************************************************************************
 
-int avtIDXFileFormat::num_instances=0;
-
-avtIDXFileFormat::avtIDXFileFormat(const char *filename)
+avtIDXFileFormat::avtIDXFileFormat(const char *filename, DBOptionsAttributes* attrs)
 : avtMTMDFileFormat(filename)
 {
-#ifdef PARALLEL
-    rank = PAR_Rank();
-    nprocs = PAR_Size();
+
+  for (int i=0; attrs!=0 && i<attrs->GetNumberOfOptions(); ++i) {
+       // printf("reading option %d %s\n",i, attrs->GetName(i).c_str() );
+    if (attrs->GetName(i) == "Big Endian") {
+      reverse_endian = attrs->GetBool("Big Endian");
+    }
+    else if (attrs->GetName(i) == "Use extra cells") {
+      use_extracells = attrs->GetBool("Use extra cells");
+    }else if (attrs->GetName(i) == "Use RAW format") {
+      use_raw = attrs->GetBool("Use RAW format");
+    }
+  }
+
+  debug4 << "--------------------------" << std::endl;
+  if(use_extracells)
+    debug4 << "Using extra cells" << std::endl;
+  else
+    debug4 << "Not using extra cells" << std::endl;
+
+  if(use_raw)
+    debug4 << "Using RAW format" << std::endl;
+  else
+    debug4 << "Not using RAW format" << std::endl;
+
+  if(reverse_endian)
+    debug4 << "Using Big Endian" << std::endl;
+  else
+    debug4 << "Using Little Endian" << std::endl;
+  debug4 << "--------------------------" << std::endl;
+
+// #ifdef PARALLEL
+  rank = PAR_Rank();
+  nprocs = PAR_Size();
+// #else
+//     rank = 0;
+//     nprocs = 1;
+// #endif
+  
+#ifdef USE_VISUS
+    reader = new VisusIDXIO(); // USE VISUS
 #else
-    rank = 0;
-    nprocs = 1;
+    reader = new PIDXIO(use_raw);     // USE PIDX
 #endif
     
-    VisusInfo() << "~~~PROC " << rank << " / " << nprocs;
-    
-    if (num_instances++<1)
-    {
-        app.reset(new Application);
-    }
+    dataset_filename = filename;
 
-    //dataflow
-    this->dataflow.reset(new Dataflow);
+    size_t folder_point = dataset_filename.find_last_of("/\\");
+    size_t ext_point = dataset_filename.find_last_of(".");
+    String extension = dataset_filename.substr(ext_point+1, dataset_filename.size());
+    is_gidx = extension.compare("gidx") == 0;
 
-    string name("file://"); name += Path(filename).toString();
+    memset(sfc_offset,0,sizeof(int)*3);
 
-    //try to open a dataset
-    dataset.reset(Dataset::loadDataset(name));
-    if (!dataset)
-    {
-        VisusError()<<"could not load "<<name;
-        VisusAssert(false); //<ctc> this shouldn't be done in the constructor: no way to fail if there is a problem.
-    }
-    
-//    VisusInfo() <<"dataset loaded";
-    dim=dataset->getDimension(); //<ctc> //NOTE: it doesn't work like we want. Instead, when a slice (or box) is added, the full data is read from disk then cropped to the desired subregion. Thus, I/O is never avoided.
-    
-    access.reset(dataset->createAccess());
+    if(dataset_filename.substr(folder_point+1,3).compare("SFC")==0){
+      const char* sfc_v = dataset_filename.substr(folder_point+4,1).c_str();
+      std::cout << "Use SFC "<< sfc_v << std::endl;
+      if(*sfc_v == 'X')
+       sfc_offset[0] = 1;
+     else if(*sfc_v == 'Y')
+      sfc_offset[1] = 1;
+    else if(*sfc_v == 'Z')
+      sfc_offset[2] = 1;
+  }
 
-    dim = dataset->getDimension();
-    
-    // TODO (if necessary) read only with rank 0 and then broadcast to the other processors
+  if(is_gidx){
+    debug4 << "Using GIDX file" << std::endl;
+
     vtkSmartPointer<vtkXMLDataParser> parser = vtkSmartPointer<vtkXMLDataParser>::New();
-    string upsfilename = Path(filename).toString();
-    upsfilename.replace(upsfilename.end()-3, upsfilename.end(),"ups");
-    
-    parser->SetFileName(upsfilename.c_str());
-    if (!parser->Parse())
-    {
-        VisusInfo()<< "No .ups file " << upsfilename;
-        multibox = false;
-        
-        VisusInfo() << "Single-box mode";
-    }else{
-        multibox = true;
-        VisusInfo() << "Multi-box mode";
-    }
 
-    if(multibox){
-        vtkXMLDataElement *root = parser->GetRootElement();
-        vtkXMLDataElement *level = root->FindNestedElementWithName("Grid")->FindNestedElementWithName("Level");
-        int nboxes = level->GetNumberOfNestedElements();
-        
-        VisusInfo() << "Found " << nboxes << " boxes";
-        
-        for(int i=0; i < nboxes; i++){
+    parser->SetFileName(dataset_filename.c_str());
+    if (parser->Parse()){
+      vtkXMLDataElement *root = parser->GetRootElement();
 
-            vtkXMLDataElement *xmlbox = level->GetNestedElement(i);
-            string lower(xmlbox->FindNestedElementWithName("lower")->GetCharacterData());
-            string upper(xmlbox->FindNestedElementWithName("upper")->GetCharacterData());
-            string extra_cells(xmlbox->FindNestedElementWithName("extraCells")->GetCharacterData());
-            string resolution(xmlbox->FindNestedElementWithName("resolution")->GetCharacterData());
-            
-            lower = lower.substr(1,lower.length()-2);
-            upper = upper.substr(1,upper.length()-2);
-            extra_cells = extra_cells.substr(1,extra_cells.length()-2);
-            resolution = resolution.substr(1,resolution.length()-2);
-            
-            //VisusInfo()<< "lower " << lower << " upper " << upper;
-            
-            Point3d p1;
-            Point3d p2;
-            int eCells[3];
-            int resdata[3];
-        
-            std::stringstream ress(resolution);
-            std::stringstream ss1(lower);
-            std::stringstream ss2(upper);
-            std::stringstream ssSpace(extra_cells);
-            std::string p1s, p2s, espace, res;
-            for (int k=0; k < 3; k++){
-                std::getline(ss1, p1s, ',');
-                std::getline(ss2, p2s, ',');
-                std::getline(ssSpace, espace, ',');
-                std::getline(ress, res, ',');
-                
-                eCells[k] = cint(espace);
-                resdata[k] = cint(res);
+      int ntimesteps = root->GetNumberOfNestedElements();
 
-                p1[k] = cfloat(p1s);
-                p2[k] = cfloat(p2s);
-                
-                p1[k] = p1[k] * resdata[k] * (p2[k]-p1[k]);
-                p2[k] = p1[k] + resdata[k] + eCells[k] +1;
+      debug4 << "Found " << ntimesteps << " timesteps in GIDX file" << std::endl;
+
+      for(int i=0; i < ntimesteps; i++){
+        vtkXMLDataElement *xmltime = root->GetNestedElement(i);
+        String urlstr(xmltime->GetAttribute("url"));
+        String timestr(xmltime->GetAttribute("log_time"));
+
+        gidx_info ginfo;
+        ginfo.url = urlstr.substr(7);
+        ginfo.log_time = cint(timestr.c_str());
+        gidx_datasets.push_back(ginfo);
+
+        debug5 << "added dataset " << ginfo.url << " time " << ginfo.log_time << std::endl;
+
+        logTimeIndex.push_back(ginfo.log_time);
+        timeIndex.push_back(ginfo.log_time);
+      }
+
+      if(ntimesteps > 0)
+            if (!reader->openDataset(gidx_datasets[0].url)) // open first dataset 
+            {
+              std::cerr << "Cannot load "<< filename << std::endl;
+              return;
             }
-            
-            VisusInfo() <<"Read box: p1 " << p1.toString() << " p2 "<< p2.toString();
-            
-            boxes.push_back(Box(p1,p2));
-            
+
+          }else{
+            std::cerr << "Cannot parse GIDX file " << dataset_filename << std::endl;
+          }
+
         }
-        
-    }
-    else{
-        boxes.push_back(dataset->getLogicBox().getGeometricBox());
-    }
-    
+        else
+        {
+          String folder = dataset_filename.substr(0,folder_point);
+          String dataset_name = dataset_filename.substr(folder_point,ext_point-folder_point);
+
+        // "Standard" IDX metadata file (not yet standardized)
+          metadata_filename = folder + dataset_name+"/"+dataset_name+".xml";
+
+          if (!reader->openDataset(filename))
+          {
+            std::cerr <<"Could not load "<<filename << std::endl;
+            return;
+          }
+        }
+
+    dim = reader->getDimension(); //<ctc> //NOTE: it doesn't work like we want. Instead, when a slice (or box) is added, the full data is read from disk then cropped to the desired subregion. Thus, I/O is never avoided.
+
+    createBoxes();
+
+    createTimeIndex();
+
+    int old_size = level_info.patchInfo.size();
+
+//#ifdef PARALLEL
     loadBalance();
-    calculateBoundsAndExtents();
-    
-}
+//#endif
+  }
 
 
 // ****************************************************************************
@@ -345,19 +593,18 @@ avtIDXFileFormat::avtIDXFileFormat(const char *filename)
 //
 // ****************************************************************************
 
-avtIDXFileFormat::~avtIDXFileFormat()
-{
-    VisusInfo()<<"(avtIDXFileFormat destructor)";
-    num_instances--;
+  avtIDXFileFormat::~avtIDXFileFormat()
+  {
+    debug5 <<"(avtIDXFileFormat destructor)" << std::endl;
 
-    disableSlots(this);
+    // for(int i=0; i < boxes_bounds.size(); i++)
+    //     if(boxes_bounds.at(i) != NULL)
+    //         delete [] boxes_bounds.at(i);
 
-    //call this as soon as possible!
-//    if (num_instances==0)
-//        ;//emitDestroySignal();
-    
-    //delete selectionsApplied; //don't think we own this...
-}
+    if(reader != NULL)
+      delete reader;
+
+  }
 
 // ****************************************************************************
 //  Method: avtIDXFileFormat::GetNTimesteps
@@ -370,13 +617,15 @@ avtIDXFileFormat::~avtIDXFileFormat()
 //
 // ****************************************************************************
 
-int
-avtIDXFileFormat::GetNTimesteps(void)
-{
-    int NTimesteps = dataset->getTimesteps()->getMax() - dataset->getTimesteps()->getMin();
-  
-    return std::max(1,NTimesteps); // Needs to return at least 1!!
-}
+  int
+  avtIDXFileFormat::GetNTimesteps(void)
+  {
+    if(timeIndex.size() == 0)
+      createTimeIndex();
+
+    //printf("Ntimesteps %d \n", timeIndex.size());
+    return timeIndex.size();// reader->getNTimesteps();
+  }
 
 
 // ****************************************************************************
@@ -393,12 +642,12 @@ avtIDXFileFormat::GetNTimesteps(void)
 //
 // ****************************************************************************
 
-void
-avtIDXFileFormat::FreeUpResources(void)
-{
-    VisusInfo()<<"avtIDXFileFormat::FreeUpResources...";
+  void
+  avtIDXFileFormat::FreeUpResources(void)
+  {
+    debug5 <<"avtIDXFileFormat::FreeUpResources..." << std::endl;
     //<ctc> todo... something (is destructor also called?)
-}
+  }
 
 
 //bool avtIDXFileFormat::CanCacheVariable(const char *var)
@@ -419,91 +668,282 @@ avtIDXFileFormat::FreeUpResources(void)
 //
 // ****************************************************************************
 
-void
-avtIDXFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
+  void
+  avtIDXFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
     int timestate) 
-{
-    VisusInfo() << rank << ": Meta data";
+  {
+    debug5 << rank << ": Meta data" << std::endl;
+
+    ActivateTimestep(timestate);
+
+    md->ClearMeshes();
+    md->ClearScalars(); 
+    md->ClearVectors();
+    md->ClearLabels();
 
     avtMeshMetaData *mesh = new avtMeshMetaData;
-    mesh->name = "Mesh";
+    mesh->name = "CC_Mesh";
+
+#if USE_AMR    
+    mesh->meshType = AVT_AMR_MESH;
+    mesh->topologicalDimension = dim;
+    mesh->spatialDimension = dim;
+
+    int totalPatches = level_info.patchInfo.size();
     
+    mesh->numBlocks = totalPatches;
+    
+    //mesh->blockOrigin = 0;
+    //mesh->LODs = reader->getMaxResolution();
+
+    mesh->blockTitle = "patches";
+    mesh->blockPieceName = "patch";
+
+    int numLevels = 1; // only 1 AMR level for now
+    mesh->numGroups = numLevels;
+    mesh->groupTitle = "levels";
+    mesh->groupPieceName = "level";
+
+    std::vector<int> groupIds(totalPatches);
+    std::vector<std::string> pieceNames(totalPatches);
+    
+    for (int i = 0; i < mesh->numBlocks; i++) {
+      char tmpName[64];
+      int level = 0; // only 1 level
+      int local_patch = i;
+      sprintf(tmpName,"level%d, patch%d", level, local_patch);
+
+      //printf("Setting id %d = %d name %s\n", i, level, tmpName);
+      groupIds[i] = level;
+      pieceNames[i] = tmpName;
+    }
+
+    mesh->blockNames = pieceNames;
+    mesh->groupIds = groupIds;
+
+    mesh->containsExteriorBoundaryGhosts = false;
+    
+    md->AddGroupInformation(numLevels, totalPatches, groupIds);
+#else
     mesh->meshType = AVT_RECTILINEAR_MESH;
-    
-    mesh->numBlocks = boxes.size();
+    int totalPatches = level_info.patchInfo.size();
+    mesh->numBlocks = totalPatches;
     mesh->blockOrigin = 0;
-    mesh->LODs = dataset->getMaxResolution();
+    mesh->cellOrigin = 1;
+    //mesh->LODs = reader->getMaxResolution();
     mesh->spatialDimension = dim;
     mesh->topologicalDimension = dim;
+    mesh->blockTitle = "blocks";
+    mesh->blockPieceName = "piece";//%06d";
+    mesh->groupPieceName = "global_index";
     
-    mesh->blockTitle = "box";
-    mesh->blockPieceName = "box";
+    /*mesh->groupTitle = "levels";
+    mesh->groupPieceName = "level";
+    mesh->blockTitle = "patches";
+    mesh->blockPieceName = "patch%06d";
+       
+    std::vector<int> groupIds(totalPatches);
+    std::vector<std::string> pieceNames(totalPatches);
     
-    // Set bounds and extents for SLIVR rendering
-    // TODO use the physical box (logic_to_physic)
-    mesh->hasSpatialExtents = true;
-    NdBox logicBox = dataset->getLogicBox();
-    mesh->minSpatialExtents[0] = logicBox.p1().x;
-    mesh->maxSpatialExtents[0] = logicBox.p2().x;
-    mesh->minSpatialExtents[1] = logicBox.p1().y;
-    mesh->maxSpatialExtents[1] = logicBox.p2().y;
-    mesh->minSpatialExtents[2] = logicBox.p1().z;
-    mesh->maxSpatialExtents[2] = logicBox.p2().z;
-    
-    mesh->hasLogicalBounds = true;
-    mesh->logicalBounds[0] = logicBox.p2().x - logicBox.p1().x;
-    mesh->logicalBounds[1] = logicBox.p2().y - logicBox.p1().y;
-    mesh->logicalBounds[2] = logicBox.p2().z - logicBox.p1().z;
-    
-    md->Add(mesh);
-    
-    //VisusInfo() << rank << ": Added mesh";
+    int numLevels = 1;
+    for (int i = 0; i < mesh->numBlocks; i++) {
+      char tmpName[64];
+      int level = 0; // only 1 level
+      int local_patch = i;
+      sprintf(tmpName,"level%d, patch%d", level, local_patch);
 
-    const std::vector<Field>& fields = dataset->getFields();
-    
-    int ndtype;
-    for (int i = 0; i < (int) fields.size(); i++)
-    {
-        std::string fieldname = fields[i].name;
-        
-        Field field = dataset->getFieldByName(fieldname);
-        ndtype=1;
-        if (field.dtype.isVector())
-            ndtype=field.dtype.ncomponents();
-        if (ndtype == 1)
-            md->Add(new avtScalarMetaData(fieldname,mesh->name,AVT_ZONECENT));
-        else
-            md->Add(new avtVectorMetaData(fieldname,mesh->name,AVT_ZONECENT,ndtype));
+      groupIds[i] = level;
+      pieceNames[i] = tmpName;
     }
-    
-    //VisusInfo() << rank << ": Added fields";
-        
-    avtRectilinearDomainBoundaries *rdb =
-    new avtRectilinearDomainBoundaries(true);
-    rdb->SetNumDomains(boxes.size());
-    
-    for (long long i = 0 ; i < boxes.size() ; i++)
-    {
-        int extents[6];
-        extents[0] = boxes.at(i).p1.x;
-        extents[1] = boxes.at(i).p2.x;
-        extents[2] = boxes.at(i).p1.y;
-        extents[3] = boxes.at(i).p2.y;
-        extents[4] = boxes.at(i).p1.z;
-        extents[5] = boxes.at(i).p2.z;
-        
-        rdb->SetIndicesForRectGrid(i, extents);
-    }
-    rdb->CalculateBoundaries();
-    
-    //VisusInfo() << rank << ": Calculated boundaries";
-    
-    void_ref_ptr vr = void_ref_ptr(rdb,
-                                   avtStructuredDomainBoundaries::Destruct);
-    cache->CacheVoidRef("any_mesh",                  AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1, vr);
+    //mesh->groupTitle = "levels";
+    //mesh->groupPieceName = "level";
+    mesh->numGroups = numLevels; // n AMR levels
+    mesh->containsExteriorBoundaryGhosts = false;
+    mesh->blockNames = pieceNames;
 
-    return;
+    md->AddGroupInformation(numLevels, totalPatches, groupIds);
+    */
+#endif
+    
+    int low[3],high[3];
+    level_info.getBounds(low,high,"CC_Mesh",use_extracells);
+
+    //this can be done once for everything because the spatial range is the same for all meshes
+    double box_min[3] = { level_info.anchor[0] + low[0] * level_info.spacing[0],
+      level_info.anchor[1] + low[1] * level_info.spacing[1],
+      level_info.anchor[2] + low[2] * level_info.spacing[2] };
+      double box_max[3] = { level_info.anchor[0] + high[0] * level_info.spacing[0],
+        level_info.anchor[1] + high[1] * level_info.spacing[1],
+        level_info.anchor[2] + high[2] * level_info.spacing[2] };
+        {
+          debug5 << "Dimensions " << dim <<std::endl;
+          char* debug_str = new char[1024];
+          sprintf(debug_str, "anchor %f %f %f spacing %f %f %f\n",level_info.anchor[0],level_info.anchor[1],level_info.anchor[2], level_info.spacing[0],level_info.spacing[1],level_info.spacing[2]);
+          debug5 << debug_str;
+          sprintf(debug_str, "global log %d %d %d - %d %d %d\n", low[0],low[1],low[2],high[0],high[1],high[2]);
+          debug5 << debug_str;
+          sprintf(debug_str, "global phy %f %f %f - %f %f %f\n", box_min[0],box_min[1],box_min[2],box_max[0],box_max[1],box_max[2]);
+          debug5 << debug_str;
+
+          delete [] debug_str;
+        }
+
+        int logical[3];
+        for (int i=0; i<3; i++)
+          logical[i] = high[i]-low[i];
+
+        mesh->hasSpatialExtents = true; 
+        mesh->minSpatialExtents[0] = box_min[0];
+        mesh->maxSpatialExtents[0] = box_max[0];
+        mesh->minSpatialExtents[1] = box_min[1];
+        mesh->maxSpatialExtents[1] = box_max[1];
+        mesh->minSpatialExtents[2] = box_min[2];
+        mesh->maxSpatialExtents[2] = box_max[2];
+
+        mesh->hasLogicalBounds = true;
+        mesh->logicalBounds[0] = logical[0];
+        mesh->logicalBounds[1] = logical[1];
+        mesh->logicalBounds[2] = logical[2];
+
+        md->Add(mesh);
+
+        md->AddDefaultSILRestrictionDescription(std::string("!TurnOnAll"));
+        md->SetCyclesAreAccurate(true);
+
+#ifdef PARALLEL // only PIDX
+   // md->SetFormatCanDoDomainDecomposition(true);
+#endif
+
+    //if(timestate == 0){
+        const std::vector<Field>& fields = reader->getFields();
+        debug5 << "adding " << fields.size() << "fields" << std::endl;
+        int ndtype;
+    // char testvar[128];
+    // sprintf(testvar, "AA_var_%d",timestate);
+    // AddScalarVarToMetaData(md, testvar, mesh->name, AVT_ZONECENT);
+        for (int i = 0; i < (int) fields.size(); i++)
+        {
+          const Field& field = fields[i];
+        // printf("adding field %s\n", field.name.c_str());
+          if (!field.isVector){
+            AddScalarVarToMetaData(md, field.name, mesh->name, AVT_ZONECENT);
+            //md->Add(new avtScalarMetaData(field.name,mesh->name,AVT_ZONECENT));
+          }
+          else
+            AddVectorVarToMetaData(md, field.name, mesh->name, AVT_ZONECENT,field.ncomponents);
+            //md->Add(new avtVectorMetaData(field.name,mesh->name,AVT_ZONECENT, field.ncomponents));
+        }
+
+        debug5 << rank << ": end meta" <<std::endl;
+      }
+
+      void
+      avtIDXFileFormat::SetUpDomainConnectivity(const char* meshname)
+      {
+        avtRectilinearDomainBoundaries *rdb =
+        new avtRectilinearDomainBoundaries(true);
+        int ndomains =level_info.patchInfo.size();
+        rdb->SetNumDomains(ndomains);
+        printf("Rect: Setting number of domains %d for mesh %s\n", ndomains, meshname);
+
+        for(int n=0; n < ndomains; n++) {
+          int low[3],high[3];
+          level_info.patchInfo[n].getBounds(low,high,meshname, use_extracells);
+
+          int e[6] = { low[0], high[0],
+           low[1], high[1],
+           low[2], high[2] };
+
+           rdb->SetIndicesForRectGrid(n, e);
+         }
+         rdb->CalculateBoundaries();
+         void_ref_ptr vr =
+         void_ref_ptr(rdb, avtStructuredDomainBoundaries::Destruct);
+         cache->CacheVoidRef("any_mesh",
+           AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, -1, -1, vr);
+
+        void_ref_ptr vrTmp = cache->GetVoidRef("any_mesh", // MUST be called any_mesh
+          AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
+          -1, -1);
+  if (*vrTmp == NULL )//|| *vrTmp != *this->mesh_boundaries[meshname])
+    fprintf(stderr,"pidx boundary mesh not registered\n");
+
+
 }
+
+bool overlap(const int& a,const int& b,const int& p,const int& q)
+{return ((a)<=(q) && (b)>=(p));}
+
+void avtIDXFileFormat::computeDomainBoundaries(const char* meshname, int timestate){
+  //if (!avtDatabase::OnlyServeUpMetaData() && level_info.patchInfo.size()>0 ){
+
+  avtRectilinearDomainBoundaries *rdb =
+  new avtRectilinearDomainBoundaries(true);
+  rdb->SetNumDomains(level_info.patchInfo.size());
+  //printf("Setting number of domains %d for mesh %s\n", level_info.patchInfo.size(), meshname);
+    // for (long long i = 0 ; i < level_info.patchInfo.size() ; i++)
+    // {
+    //     int low[3],high[3];
+
+    //     level_info.patchInfo[i].getBounds(low,high,meshname, use_extracells);
+
+    //     int e[6] = { low[0], high[0],
+    //                low[1], high[1],
+    //                low[2], high[2] };
+
+    //     rdb->SetIndicesForAMRPatch(i,0,e);//SetIndicesForRectGrid(i, e);
+    // }
+
+  for(int domain=0; domain < level_info.patchInfo.size(); domain++){
+    int low[3], high[3];
+    level_info.patchInfo[domain].getBounds(low,high,meshname,use_extracells);
+
+    int e[6] = { low[0], high[0],
+     low[1], high[1],
+     low[2], high[2] };
+
+      //rdb->SetExtents(domain, e);
+      rdb->SetIndicesForAMRPatch(domain,0,e);//SetIndicesForRectGrid(i, e);
+
+    // for(int b=0; b < level_info.patchInfo.size(); b++){
+    //   int tlow[3], thigh[3];
+    //   level_info.patchInfo[b].getBounds(tlow,thigh,meshname,use_extracells);
+
+    //   if (b == domain) continue;
+      
+    //   if(overlap(low[0],high[0],tlow[0],thigh[0])&&
+    //      overlap(low[1],high[1],tlow[1],thigh[1])&&
+    //      overlap(low[2],high[2],tlow[2],thigh[2]))
+    //   {
+    //     int neig_low[3] = {max(low[0],tlow[0]),max(low[1],tlow[1]),max(low[2],tlow[2])};
+    //     int neig_high[3] = {min(high[0],thigh[0]),min(high[1],thigh[1]),min(high[2],thigh[2])};
+
+    //     rdb->AddNeighbor(domain, domain, b,
+    //                              neig_low, neig_high);
+
+    //     //printf("%d add neighbour %d [%d %d %d, %d %d %d]\n", domain, b, neig_low[0],neig_low[1],neig_low[2], neig_high[0],neig_high[1],neig_high[2]);
+
+    //   }
+    // }
+    }
+
+    rdb->CalculateBoundaries();
+
+    this->mesh_boundaries[meshname] = void_ref_ptr(rdb,
+     avtStructuredDomainBoundaries::Destruct);
+    cache->CacheVoidRef("any_mesh", AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION, timestate, -1, this->mesh_boundaries[meshname]);
+
+    void_ref_ptr vrTmp = cache->GetVoidRef("any_mesh", // MUST be called any_mesh
+      AUXILIARY_DATA_DOMAIN_BOUNDARY_INFORMATION,
+      timestate, -1);
+    if (*vrTmp == NULL || *vrTmp != *this->mesh_boundaries[meshname])
+      fprintf(stderr,"pidx boundary mesh not registered\n");
+
+    //canDoStreaming = false;
+
+    //printf("%d: DONE compute domain boundary\n", rank);
+
+  }
 
 
 // ****************************************************************************
@@ -528,86 +968,585 @@ avtIDXFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md,
 //
 // ****************************************************************************
 
-vtkDataSet *
-avtIDXFileFormat::GetMesh(int timestate, int domain, const char *meshname)
-{
-    //VisusInfo()<< rank << ": start getMesh "<< meshname << " domain " << domain;
-    
-    Box slice_box;
-    
-    int* my_bounds = NULL;
-    int* my_extents = NULL;
+  vtkDataSet *
+  avtIDXFileFormat::GetMesh(int timestate, int domain, const char *meshname)
+  {
+    debug5 << rank << ": start getMesh "<< meshname << " domain " << domain << std::endl;   
 
-    slice_box = boxes.at(domain);
-    my_bounds = boxes_bounds.at(domain);
-    
+    Box slice_box;
+
     vtkRectilinearGrid *rgrid = vtkRectilinearGrid::New();
-    int dims[3];
+    int my_dims[3];
     float *arrayX;
     float *arrayZ;
     float *arrayY;
     vtkFloatArray *coordsX;
     vtkFloatArray *coordsY;
     vtkFloatArray *coordsZ;
-    
-    int my_dims[3];
-    
-    my_dims[0] = my_bounds[0]+1;
-    my_dims[1] = my_bounds[1]+1;
-    my_dims[2] = my_bounds[2]+1;
-    
-//    VisusInfo() << rank << ": dims " << my_dims[0] << " " << my_dims[1] << " " << my_dims[2];
-//    VisusInfo() << rank << ": extent " << slice_box.p1.toString() << " " << slice_box.p2.toString();
-    
-    rgrid->SetDimensions(my_dims[0], my_dims[1], my_dims[2]);
-    
-    coordsX = vtkFloatArray::New();
-    coordsX->SetNumberOfTuples(my_dims[0]);
-    arrayX = (float *) coordsX->GetVoidPointer(0);
-    
-    for (int i = 0; i < my_dims[0]; i++)
-        arrayX[i] = slice_box.p1.x +i;
-    rgrid->SetXCoordinates(coordsX);
-    
-    coordsY = vtkFloatArray::New();
-    coordsY->SetNumberOfTuples(my_dims[1]);
-    arrayY = (float *) coordsY->GetVoidPointer(0);
-    for (int i = 0; i < my_dims[1]; i++)
-        arrayY[i] = slice_box.p1.y +i;
-    rgrid->SetYCoordinates(coordsY);
-    
-    coordsZ = vtkFloatArray::New();
-    coordsZ->SetNumberOfTuples(my_dims[2]);
-    arrayZ = (float *) coordsZ->GetVoidPointer(0);
-    for (int i = 0; i < my_dims[2]; i++)
-        arrayZ[i] = slice_box.p1.z +i;
-    rgrid->SetZCoordinates(coordsZ);
-    
-    //VisusInfo() << "end mesh";
-    
-    return rgrid;
-    
-}
 
-//void
-//avtIDXFileFormat::GetCycles(std::vector<int> &cycles)
-//{
-//    int ncycles, *vals = 0;
-//    ncycles = OPEN FILE AND READ THE NUMBER OF CYCLES;
-//    READ ncycles INTEGER VALUES INTO THE vals ARRAY;
-//    // Store the cycles in the vector.
-//    for(int i = 0; i < ncycles; ++i)
-//        cycles.push_back(vals[i]);
-//    delete [] vals;
-//}
+    int glow[3], ghigh[3];
+    level_info.getBounds(glow,ghigh,meshname,use_extracells);
 
-void
-avtIDXFileFormat::GetTimes(std::vector<double> &times)
-{
-    std::vector<double> tsteps = dataset->getTimesteps()->asVector();
-    times.swap(tsteps);
-}
+    //get patch bounds
+    int low[3], high[3];
+    level_info.patchInfo[domain].getBounds(low,high,meshname,use_extracells);
 
+    for(int k=0; k<3; k++){
+      int offset = 2; // always one for non-node-centered
+      // if (high[k] == ghigh[k]) 
+      //   offset = 0;
+      // if(k==0){
+      //   offset = 2;
+      //   // if(high[k] == ghigh[k]) 
+      //   //   offset = 0;
+      // }
+
+      my_dims[k] = high[k]-low[k]+offset; // for NON-nodeCentered no +1 ??(patch end is on high boundary)
+
+      // if(use_extracells && uintah_metadata)
+      //   my_dims[k]--;
+    }
+
+    debug5 << rank << ": dims " << my_dims[0] << " " << my_dims[1] << " " << my_dims[2] << std::endl;
+
+    rgrid->SetDimensions(my_dims);
+
+    // printf("global %d %d %d - %d %d %d local %d %d %d - %d %d %d\n",glow[0],glow[1],glow[2],ghigh[0],ghigh[1],ghigh[2],low[0],low[1],low[2],high[0],high[1],high[2]);
+    // printf("cellspacing %f %f %f\n", level_info.spacing[0],level_info.spacing[1],level_info.spacing[2]);
+
+    for (int c=0; c<3; c++) {
+      vtkFloatArray *coords = vtkFloatArray::New(); 
+      coords->SetNumberOfTuples(my_dims[c]); 
+      float *array = (float *)coords->GetVoidPointer(0); 
+
+      for (int i=0; i < my_dims[c]; i++)
+      {
+        // Face centered data gets shifted towards -inf by half a cell.
+        // Boundary patches are special shifted to preserve global domain.
+        // Internal patches are always just shifted.
+       float face_offset= 0;
+
+       if (sfc_offset[c]) 
+       {
+         if (i==0)
+            if (low[c]==glow[c]) // patch is on low boundary
+              face_offset += 0.0;
+            else
+              face_offset += -0.5;       // patch boundary is internal to the domain
+           else if (i==my_dims[c]-1)
+            if (high[c]==ghigh[c]-1) // patch is on high boundary (added -1)
+            //if (levelInfo.periodic[c])  // periodic means one less value in the face-centered direction
+            //  face_offset += 0.0;
+                  //else
+             face_offset += -1;
+            else                        // patch boundary is internal to the domain
+              face_offset += -0.5;
+            else
+             face_offset += -0.5;
+         }
+         else{
+
+           if (i==my_dims[c]-1)
+            if (high[c]==ghigh[c])
+              face_offset += -1.0;
+          }
+
+          array[i] = level_info.anchor[c] + (i + low[c] + face_offset) * level_info.spacing[c];
+
+         // if(i==0)
+         //   printf("low %d[%d]: %f\n", domain,c, array[i]);
+         // if(i==my_dims[c]-1)
+         //   printf("high %d[%d]: %f\n", domain,c, array[i]);
+        }
+
+        switch(c) {
+          case 0:
+          rgrid->SetXCoordinates(coords); break;
+          case 1:
+          rgrid->SetYCoordinates(coords); break;
+          case 2:
+          rgrid->SetZCoordinates(coords); break;
+        }
+
+        coords->Delete();
+      }
+
+
+#if 1
+      int nCells = rgrid->GetNumberOfCells();
+      int *blanks = new int[nCells];
+      memset(blanks, 0, nCells*sizeof(int));
+
+    // int nNodes = rgrid->GetNumberOfPoints();
+    // int *blanksN = new int[nNodes];
+    // memset(blanksN, 0, nNodes*sizeof(int));
+
+    unsigned char realVal = 0, ghost = 0;//, ghostN = 0, noghostN = 0;
+
+    avtGhostData::AddGhostZoneType(ghost, DUPLICATED_ZONE_INTERNAL_TO_PROBLEM);
+    vtkUnsignedCharArray *ghostCells = vtkUnsignedCharArray::New();
+    ghostCells->SetName("avtGhostZones");
+    ghostCells->Allocate(nCells);
+
+    // avtGhostData::AddGhostNodeType(ghostN,
+    //                                     DUPLICATED_NODE);
+    // avtGhostData::RemoveGhostNodeType(noghostN,
+    //                                     DUPLICATED_NODE);//NODE_NOT_APPLICABLE_TO_PROBLEM);
+    // vtkUnsignedCharArray *ghostNodes = vtkUnsignedCharArray::New();
+    // ghostNodes->SetName("avtGhostNodes");
+    // ghostNodes->Allocate(nNodes);
+
+    int dim_block[3] = {my_dims[0]-1,my_dims[1]-1,my_dims[2]-1};
+
+    //printf("NCELLS %d dims %d %d %d\n", nCells, dim_block[0],dim_block[1],dim_block[2]);
+
+    for(int b=0; b < level_info.patchInfo.size(); b++){
+      if (b == domain) continue;
+
+      int tlow[3], thigh[3];
+      level_info.patchInfo[b].getBounds(tlow,thigh,meshname,use_extracells);
+
+      int count_ghost = 0;
+
+      bool over[3] = {overlap(low[0],high[0],tlow[0],thigh[0]),
+        overlap(low[1],high[1],tlow[1],thigh[1]),
+        overlap(low[2],high[2],tlow[2],thigh[2])};
+
+        if(over[0] && over[1] && over[2])
+        {
+          int neig_low[3];
+          int neig_high[3];
+
+          for(int d=0; d < 3; d++){
+            int maxv = max(low[d],tlow[d]);
+            int minv = min(high[d],thigh[d]);
+          // if(!over[d]){
+          //   neig_low[d] = maxv;
+          //   neig_high[d] = minv;
+          // }
+          // else{
+            if(low[d] < tlow[d]){
+              neig_low[d] = maxv+1;
+              neig_high[d] = minv;
+            }
+            else{
+              neig_low[d] = maxv;
+              neig_high[d] = minv-1;
+            }
+
+            if(minv == ghigh[d])
+              neig_high[d] = minv;
+
+            if(maxv == glow[d])
+              neig_low[d] = maxv;
+          // }
+          }
+
+      // int neig_low[3];
+      // int neig_high[3];
+
+      // for(int d=0; d < 3; d++){
+      //   if(overlap(low[d],high[d],tlow[d],thigh[d]))
+      //   {
+      //     int maxv = max(low[d],tlow[d]);
+      //     int minv = min(high[d],thigh[d]);
+
+      //     if(low[d] < tlow[d]){
+      //       neig_low[d] = maxv+1;
+      //       neig_high[d] = minv;
+      //     }
+      //     else{
+      //       neig_low[d] = maxv;
+      //       neig_high[d] = minv-1;
+      //     }
+      //   }
+      //   else{
+      //     neig_low[d] = low[d];
+      //     neig_high[d] = high[d];
+      //   }
+
+      // }
+        // int neig_low[3] = {max(low[0],tlow[0]+1),max(low[1],tlow[1]+1),max(low[2],tlow[2]+1)};
+        // int neig_high[3] = {min(high[0],thigh[0]),min(high[1],thigh[1]),min(high[2],thigh[2])};
+
+        //printf("%d->%d Ghost zone [%d %d %d, %d %d %d]\n", domain, b, neig_low[0],neig_low[1],neig_low[2], neig_high[0],neig_high[1],neig_high[2]);
+          for(int k=neig_low[2]; k <= neig_high[2]; k++)
+            for(int j=neig_low[1]; j <= neig_high[1]; j++)
+              for(int i=neig_low[0]; i <= neig_high[0]; i++){
+
+                int ii = i - low[0];
+                int jj = j - low[1];
+                int kk = k - low[2];
+
+                blanks[(ii) + dim_block[0] * ((jj) + dim_block[1] * (kk))] = 1;
+
+              //blanksN[ii + (dim_block[0]+1) * (jj + (dim_block[1]+1) * kk)] = 1;
+                count_ghost++;
+              }
+            }
+
+      //printf("%d found %d ghosts %d\n", domain, count_ghost, ghost);
+          }
+
+          for (int i = 0; i < nCells; i++) {
+            if (!blanks[i]){
+              ghostCells->InsertNextValue(realVal);
+
+            }
+            else{
+              ghostCells->InsertNextValue(ghost);
+
+            }
+
+      // if(!blanksN[i]){
+      //   ghostNodes->InsertNextValue(noghostN);
+      // }
+      // else
+      //   ghostNodes->InsertNextValue(ghostN);
+
+          }
+
+          rgrid->GetCellData()->AddArray(ghostCells);
+    //rgrid->GetPointData()->AddArray(ghostNodes);
+
+          vtkStreamingDemandDrivenPipeline::SetUpdateGhostLevel(
+            rgrid->GetInformation(), 0);
+          ghostCells->Delete();
+    // ghostNodes->Delete();
+
+          delete [] blanks;
+#endif
+
+#if USE_AMR
+    //computeDomainBoundaries(meshname, timestate);
+#else
+          SetUpDomainConnectivity(meshname);
+#endif
+
+          debug5 << rank << ": end mesh" << std::endl;
+          return rgrid;
+
+        }
+
+        void
+        avtIDXFileFormat::GetCycles(std::vector<int> &cycles)
+        {
+
+          for(int i = 0; i < reader->getNTimesteps(); ++i)
+            cycles.push_back(i);
+        }
+
+        void
+        avtIDXFileFormat::GetTimes(std::vector<double> &times)
+        {
+          times.swap(timeIndex);
+        }
+
+        vtkDataArray* avtIDXFileFormat::queryToVtk(int timestate, int domain, const char *varname){
+
+          Box my_box;
+          int low[3];
+          int high[3];
+          level_info.patchInfo[domain].getBounds(low,high,"CC_Mesh", use_extracells);
+
+          debug5 << "read data " << level_info.patchInfo[domain].toString();
+          for(int k=0; k<3; k++){
+ //      if(uintah_metadata && use_extracells){
+  // low[k]++;
+  // //high[k]++;
+ //      }
+            my_box.p1[k] = low[k];
+            my_box.p2[k] = high[k];
+          }
+
+          unsigned char* data = reader->getData(my_box, timestate, varname);
+
+          debug5 << rank << ": read data done" << std::endl;
+    /*
+    std::ofstream out;
+    char outname[128];
+    sprintf(outname, "out_%d_p1_%d_%d_%d_p2_%d_%d_%d.raw", domain,low[0],low[1],low[2],high[0],high[1],high[2]);
+    out.open(outname);
+
+    uint buffer_size = sizeof(float)*(my_box.p2.x-my_box.p1.x+1)*(my_box.p2.y-my_box.p1.y+1)*(my_box.p2.z-my_box.p1.z+1);
+    printf("dumping domain %d size %d\n", domain, buffer_size);
+  
+    //  for(int i = 0; i< exp_size/sizeof(float); i++){
+    //    //if((double)data[i] != 0.0)
+    //      printf("d %f\n", (float)data[i]);
+    //  }
+  
+    out.write((const char*)data, buffer_size);
+    out.close();
+    */
+          if(data == NULL){
+            std::cerr << " NO DATA " << std::endl;
+            return NULL;
+          }
+
+          Field field = reader->getCurrField();
+          DTypes type = field.type;
+
+          int my_bounds[3];
+          for(int k=0; k<3; k++)
+           my_bounds [k] = high[k]-low[k]+1;
+
+         int ztuples = (dim == 2) ? 1 : (my_bounds[2]);
+         long long ntuples = (my_bounds[0])*(my_bounds[1])*ztuples;
+
+         int ncomponents = 1;
+
+         bool isVector = field.isVector;
+
+   // printf("is vector? %d\n", isVector);
+
+         if(isVector)
+        ncomponents = 3; // Visit wants 3 components vectors
+
+      long long ntotal = ntuples * ncomponents;
+
+    // do not reverse endianess if data is compressed
+      reverse_endian = reverse_endian * !reader->isCompressed();
+
+      if(type == VisitIDXIO::IDX_UINT8){
+        vtkUnsignedCharArray*rv = vtkUnsignedCharArray::New();
+        rv->SetNumberOfComponents(ncomponents); //<ctc> eventually handle vector data, since visit can actually render it!
+        
+        if(isVector && dim < 3){
+
+          unsigned char* newdata = convertTo3Components<unsigned char>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((unsigned char*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned char>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else
+            rv->SetArray((unsigned char*)data,ncomponents*ntuples,1/*delete when done*/,vtkDataArrayTemplate<unsigned char>::VTK_DATA_ARRAY_FREE);
+          return rv;
+      }
+      else if(type == VisitIDXIO::IDX_UINT16){
+
+        vtkUnsignedShortArray *rv = vtkUnsignedShortArray::New();
+        rv->SetNumberOfComponents(ncomponents);
+        
+        if(isVector && dim < 3){
+
+          unsigned short* newdata = convertTo3Components<unsigned short>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((unsigned short*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned short>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else
+          rv->SetArray((unsigned short*)data,ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned short>::VTK_DATA_ARRAY_FREE);
+        
+        if(reverse_endian){
+          unsigned short *buff = (unsigned short *) rv->GetVoidPointer(0);
+          for (long long i = 0 ; i < ntotal ; i++)
+          {
+            int tmp;
+            int16_Reverse_Endian(buff[i], (unsigned char *) &tmp);
+            buff[i] = tmp;
+          }
+        }
+
+        return rv;
+      }
+      else if(type == VisitIDXIO::IDX_UINT32){
+        vtkUnsignedIntArray *rv = vtkUnsignedIntArray::New();
+        rv->SetNumberOfComponents(ncomponents);
+        
+        if(isVector && dim < 3){
+
+          unsigned int* newdata = convertTo3Components<unsigned int>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((unsigned int*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned int>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else
+          rv->SetArray((unsigned int*)data,ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned int>::VTK_DATA_ARRAY_FREE);
+        
+        if(reverse_endian){
+          unsigned int *buff = (unsigned int *) rv->GetVoidPointer(0);
+          for (long long i = 0 ; i < ntotal ; i++)
+          {
+            int tmp;
+            int32_Reverse_Endian(buff[i], (unsigned char *) &tmp);
+            buff[i] = tmp;
+          }
+        }
+        
+        return rv;
+      }
+      else if(type == VisitIDXIO::IDX_INT8){
+        vtkCharArray*rv = vtkCharArray::New();
+        rv->SetNumberOfComponents(ncomponents);
+        
+        if(isVector && dim < 3){
+
+          char* newdata = convertTo3Components<char>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((char*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<char>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else
+          rv->SetArray((char*)data,ncomponents*ntuples,1,vtkDataArrayTemplate<char>::VTK_DATA_ARRAY_FREE);
+        
+        return rv;
+      }
+      else if(type == VisitIDXIO::IDX_INT16){
+        vtkShortArray *rv = vtkShortArray::New();
+        rv->SetNumberOfComponents(ncomponents);
+        
+        if(isVector && dim < 3){
+
+          short* newdata = convertTo3Components<short>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((short*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<short>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else
+          rv->SetArray((short*)data,ncomponents*ntuples,1,vtkDataArrayTemplate<short>::VTK_DATA_ARRAY_FREE);
+        
+        if(reverse_endian){
+          short *buff = (short *) rv->GetVoidPointer(0);
+          for (long long i = 0 ; i < ntotal ; i++)
+          {
+            int tmp;
+            int16_Reverse_Endian(buff[i], (unsigned char *) &tmp);
+            buff[i] = tmp;
+          }
+        }
+        
+        return rv;
+      }
+      else if(type == VisitIDXIO::IDX_INT32){
+        vtkIntArray *rv = vtkIntArray::New();
+        rv->SetNumberOfComponents(ncomponents);
+        
+        if(isVector && dim < 3){
+
+          int* newdata = convertTo3Components<int>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((int*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<int>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else
+          rv->SetArray((int*)data,ncomponents*ntuples,1,vtkDataArrayTemplate<int>::VTK_DATA_ARRAY_FREE);
+        
+        if(reverse_endian){
+          int *buff = (int *) rv->GetVoidPointer(0);
+          for (long long i = 0 ; i < ntotal ; i++)
+          {
+            int tmp;
+            int32_Reverse_Endian(buff[i], (unsigned char *) &tmp);
+            buff[i] = tmp;
+          }
+        }
+        
+        return rv;
+      }
+      else if(type == VisitIDXIO::IDX_INT64){
+        vtkLongArray *rv = vtkLongArray::New();
+        rv->SetNumberOfComponents(ncomponents);
+
+        // ?? is it correct to use long here ??
+        if(isVector && dim < 3){
+
+          long* newdata = convertTo3Components<long>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((long*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<long>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else
+          rv->SetArray((long*)data,ncomponents*ntuples,1,vtkDataArrayTemplate<long>::VTK_DATA_ARRAY_FREE);
+        
+        if(reverse_endian){
+          long *buff = (long *) rv->GetVoidPointer(0);
+          for (long long i = 0 ; i < ntotal ; i++)
+          {
+            long tmp;
+            double64_Reverse_Endian(buff[i], (unsigned char *) &tmp);
+            buff[i] = tmp;
+          }
+        }
+        
+        return rv;
+      }
+      else if(type == VisitIDXIO::IDX_FLOAT32){
+      //  printf("FLOAT32 creating array ncomp %d tuples %d \n", ncomponents, ntuples);
+        vtkFloatArray *rv = vtkFloatArray::New();
+        rv->SetNumberOfComponents(ncomponents);
+        
+        if(isVector && dim < 3){
+          float* newdata = convertTo3Components<float>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((float*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<int>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else{
+          rv->SetArray((float*)data,ncomponents*ntuples,1,vtkDataArrayTemplate<int>::VTK_DATA_ARRAY_FREE);
+        }
+        
+        if(reverse_endian){
+          float *buff = (float *) rv->GetVoidPointer(0);
+
+          float min_value = 99999999999999.f;
+          float max_value = -99999999999999.f;
+
+          for (long long i = 0 ; i < ntotal ; i++)
+          {
+            float tmp;
+            float32_Reverse_Endian(buff[i], (unsigned char *) &tmp);
+            buff[i] = tmp;
+
+            float value = buff[i];
+            if(value < min_value)
+              min_value = value;
+
+            if(value > max_value)
+              max_value = value;
+          }
+          printf("range %f , %f\n", min_value, max_value);
+
+        }
+        return rv;
+      }
+      else if(type == VisitIDXIO::IDX_FLOAT64){
+
+      //printf("DOUBLE creating array ncomp %d \n", ncomponents);
+        vtkDoubleArray *rv = vtkDoubleArray::New();
+        rv->SetNumberOfComponents(ncomponents);
+        
+        if(isVector && dim < 3){
+
+          double* newdata = convertTo3Components<double>(data, field.ncomponents, 3, ntuples);
+          rv->SetArray((double*)newdata,ncomponents*ntuples,1,vtkDataArrayTemplate<double>::VTK_DATA_ARRAY_FREE);
+
+          delete data;
+        }
+        else{
+         // printf("DOUBLE converting %d \n", ncomponents*ntuples);
+          rv->SetArray((double*)data,ncomponents*ntuples,1,vtkDataArrayTemplate<double>::VTK_DATA_ARRAY_FREE);
+        }
+
+        if(reverse_endian){
+          double *buff = (double *) rv->GetVoidPointer(0);
+          for (unsigned long long i = 0 ; i < ntotal ; i++)
+          {
+            double tmp;
+            double64_Reverse_Endian(buff[i], (unsigned char *) &tmp);
+            buff[i] = tmp;
+          }
+        }
+
+        return rv;
+      }else{
+
+        fprintf(stderr, "Type %d not found\n", type);
+      }
+
+      debug5 << rank << ": done data loading" << std::endl;
+      return NULL;
+    }
 
 // ****************************************************************************
 //  Method: avtIDXFileFormat::GetVar
@@ -630,160 +1569,24 @@ avtIDXFileFormat::GetTimes(std::vector<double> &times)
 //
 // ****************************************************************************
 
-vtkDataArray *
-avtIDXFileFormat::GetVar(int timestate, int domain, const char *varname)
-{
-    
-  //VisusInfo()<< rank << ": start getvar " << varname << " domain "<< domain;
+    vtkDataArray *
+    avtIDXFileFormat::GetVar(int timestate, int domain, const char *varname)
+    {
+  // get correspondig logic time
+      debug5 << "Requested index time " << timestate << " using logical time (IDX) " << logTimeIndex[timestate] << std::endl;
 
-    if (!dataset->getTimesteps()->containsTimestep(timestate))
-        return NULL;
-    
-    NdBox my_box;
-    int zp2 = (dim == 2) ? 1 : boxes.at(domain).p2.z;
-    
-    NdPoint p1(boxes.at(domain).p1.x,boxes.at(domain).p1.y,boxes.at(domain).p1.z);
-    NdPoint p2(boxes.at(domain).p2.x,boxes.at(domain).p2.y,zp2,1,1);
-    my_box.setP1(p1);
-    my_box.setP2(p2);
+      if(is_gidx){
+        reader->openDataset(gidx_datasets[timestate].url);
+      }
 
-    //VisusInfo() << rank << ": Box query " << my_box.p1().toString() << " p2 " << my_box.p2().toString() << " variable " << varname << " time " << timestate;
+      timestate = logTimeIndex[timestate];
+      return queryToVtk(timestate, domain, varname);
 
-    int hr = dataset->getMaxResolution();
-    
-    // TODO Check memory deallocation (it doesn't work for multiple boxes if I use SharedPtr or UniquePtr)
-    Query* box_query = new Query(dataset.get(),'r');
-//    UniquePtr<Query> box_query(new Query(dataset.get(),'r'));
-    box_query->setLogicPosition(my_box);
-    box_query->setField(dataset->getFieldByName(varname));
-
-    box_query->setTime(timestate);
-    
-    box_query->setStartResolution(0);
-    box_query->addEndResolution(hr);
-    box_query->setMaxResolution(hr);
-
-// -------- This can be used for lower resolution queries
-//    box_query->addEndResolution(sres);
-//    box_query->addEndResolution(hr);
-//    box_query->setMergeMode(Query::InterpolateSamples);
-// --------
-    
-    box_query->setAccess(access.get());
-    box_query->begin();
-
-    VisusReleaseAssert(!box_query->end());
-    VisusReleaseAssert(box_query->execute());
-    
-// -------- This can be used for lower resolution queries
-//    box_query->next();
-//    VisusReleaseAssert(!box_query->end());
-// --------
-    
-//    printf("idx query result (dim %dx%dx%d) = %lld:\n", box_query->getBuffer()->getWidth(), box_query->getBuffer()->getHeight(), box_query->getBuffer()->getDepth(), box_query->getBuffer()->c_size());
-
-    SharedPtr<Array> data = box_query->getBuffer();
-
-    Field field = dataset->getFieldByName(varname);
-
-    int* my_bounds = boxes_bounds.at(domain);
-    int ztuples = (dim == 2) ? 1 : (my_bounds[2]);
-    long ntuples = (my_bounds[0])*(my_bounds[1])*ztuples;
-    
-    int ncomponents=1;
-    
-    // if( data->c_ptr() != NULL)
-    //     VisusInfo()<< rank << ": size data bytes " << data->c_size();
-    
-    // VisusInfo() << rank << ": size array " << ncomponents*ntuples;
-    
-    if (field.dtype==DTypes::UINT8)
-    {
-        vtkUnsignedCharArray*rv = vtkUnsignedCharArray::New();
-        rv->SetNumberOfComponents(ncomponents); //<ctc> eventually handle vector data, since visit can actually render it!
-       
-        // TODO check this unmanaged in the new ViSUS
-        // data->unmanaged=true; //giving the data to VisIt which will delete it when it's no longer needed
-        rv->SetArray((unsigned char*)data->c_ptr(),ncomponents*ntuples,1/*delete when done*/,vtkDataArrayTemplate<unsigned char>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype==DTypes::UINT16)
-    {
-        vtkUnsignedShortArray *rv = vtkUnsignedShortArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-       
-        rv->SetArray((unsigned short*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned short>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype==DTypes::UINT32)
-    {
-        vtkUnsignedIntArray *rv = vtkUnsignedIntArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-       
-        rv->SetArray((unsigned int*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned int>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype==DTypes::UINT32)
-    {
-        vtkUnsignedLongArray *rv = vtkUnsignedLongArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-      
-        rv->SetArray((unsigned long*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned long>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype==DTypes::INT8)
-    {
-        vtkCharArray*rv = vtkCharArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-      //  data->unmanaged=true;
-        rv->SetArray((char*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<char>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype==DTypes::INT16)
-    {
-        vtkShortArray *rv = vtkShortArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-      //  data->unmanaged=true;
-        rv->SetArray((short*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<short>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype==DTypes::INT32)
-    {
-        vtkIntArray *rv = vtkIntArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-    
-        rv->SetArray((int*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<int>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype==DTypes::INT64)
-    {
-        vtkLongArray *rv = vtkLongArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-     
-        rv->SetArray((long*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<long>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype==DTypes::FLOAT32)
-    {
-        vtkFloatArray *rv = vtkFloatArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        
-        rv->SetArray((float*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<int>::VTK_DATA_ARRAY_FREE);
-        
-        return rv;
-    }
-    if (field.dtype==DTypes::FLOAT64)
-    {
-        vtkDoubleArray *rv = vtkDoubleArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        
-        rv->SetArray((double*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<double>::VTK_DATA_ARRAY_FREE);
-        return rv;
     }
 
-    return NULL;
-}
-
+    void avtIDXFileFormat::ActivateTimestep(int ts){
+    //printf("Activate timestep\n");
+    }
 
 // ****************************************************************************
 //  Method: avtIDXFileFormat::GetVectorVar
@@ -806,242 +1609,10 @@ avtIDXFileFormat::GetVar(int timestate, int domain, const char *varname)
 //
 // ****************************************************************************
 
-vtkDataArray *
-avtIDXFileFormat::GetVectorVar(int timestate, int domain, const char *varname)
-{
+    vtkDataArray *
+    avtIDXFileFormat::GetVectorVar(int timestate, int domain, const char *varname)
+    {
+      timestate = logTimeIndex[timestate];
+      return queryToVtk(timestate, domain, varname);
 
-  //VisusInfo()<< rank << ": start getVectorVar " << varname << " domain "<< domain;
-    
-    if (!dataset->getTimesteps()->containsTimestep(timestate))
-        return NULL;
-    
-    NdBox my_box;
-    int zp2 = (dim == 2) ? 1 : boxes.at(domain).p2.z;
-    
-    NdPoint p1(boxes.at(domain).p1.x,boxes.at(domain).p1.y,boxes.at(domain).p1.z);
-    NdPoint p2(boxes.at(domain).p2.x,boxes.at(domain).p2.y,zp2,1,1);
-    
-    my_box.setP1(p1);
-    my_box.setP2(p2);
-    
-    //VisusInfo()<<"Box query " << my_box.p1().toString() << " p2 " << my_box.p2().toString();
-    
-    int hr = dataset->getMaxResolution();
-    
-    // TODO Check memory deallocation (it doesn't work for multiple boxes if I use SharedPtr or UniquePtr)
-    Query* box_query = new Query(dataset.get(),'r');
-    //    UniquePtr<Query> box_query(new Query(dataset.get(),'r'));
-    box_query->setLogicPosition(my_box);
-    box_query->setField(dataset->getFieldByName(varname));
-    box_query->setTime(timestate);
-    
-    box_query->setStartResolution(0);
-    box_query->addEndResolution(hr);
-    box_query->setMaxResolution(hr);
-    
-    // -------- This can be used for lower resolution queries
-    //    box_query->addEndResolution(sres);
-    //    box_query->addEndResolution(hr);
-    //    box_query->setMergeMode(Query::InterpolateSamples);
-    // --------
-    
-    box_query->setAccess(access.get());
-    box_query->begin();
-    VisusReleaseAssert(!box_query->end());
-    VisusReleaseAssert(box_query->execute());
-    
-    // -------- This can be used for lower resolution queries
-    //    box_query->next();
-    //    VisusReleaseAssert(!box_query->end());
-    // --------
-    
- //   printf("idx query result (dim %dx%dx%d) = %lld:\n", box_query->getBuffer()->getWidth(), box_query->getBuffer()->getHeight(), box_query->getBuffer()->getDepth(), box_query->getBuffer()->c_size());
-    
-    SharedPtr<Array> original_data = box_query->getBuffer();
-    
-    Field field = dataset->getFieldByName(varname);
-    
-    int* my_bounds = boxes_bounds.at(domain);
-    int ztuples = (dim == 2) ? 1 : (my_bounds[2]);
-    long ntuples = (my_bounds[0])*(my_bounds[1])*ztuples;
-    
-    int ncomponents = 3; // Visit works fine only with 3 components
-    
-    Array* data = original_data.get();
-    
-    if(dim == 2)
-        data = new Array();
-    
-    // if( data->c_ptr() != NULL)
-    //     VisusInfo()<< "size data bytes " << data->c_size();
-    
-    // VisusInfo() << "size array " << ncomponents*ntuples;
-    
-    if (field.dtype.isVectorOf(DTypes::UINT8))
-    {
-        vtkUnsignedCharArray*rv = vtkUnsignedCharArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-        // TODO check this unmanaged with the new ViSUS
-        //data->unmanaged=true;
-        
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::UINT8_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((unsigned char*)data->c_ptr(),ncomponents*ntuples,1/*delete when done*/,vtkDataArrayTemplate<unsigned char>::VTK_DATA_ARRAY_FREE);
-        return rv;
     }
-    if (field.dtype.isVectorOf(DTypes::UINT16))
-    {
-        vtkUnsignedShortArray *rv = vtkUnsignedShortArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-        
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::UINT16_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((unsigned short*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned short>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype.isVectorOf(DTypes::UINT32))
-    {
-        vtkUnsignedLongArray *rv = vtkUnsignedLongArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::UINT32_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((unsigned long*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<unsigned long>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype.isVectorOf(DTypes::INT8))
-    {
-        vtkCharArray*rv = vtkCharArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-        
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::INT8_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((char*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<char>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype.isVectorOf(DTypes::INT16))
-    {
-        vtkShortArray *rv = vtkShortArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-        
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::INT16_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((short*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<short>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype.isVectorOf(DTypes::INT32))
-    {
-        vtkIntArray *rv = vtkIntArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-        
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::INT32_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((int*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<int>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype.isVectorOf(DTypes::INT64))
-    {
-        vtkLongArray *rv = vtkLongArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-        
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::INT64_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((long*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<long>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-    if (field.dtype.isVectorOf(DTypes::FLOAT32))
-    {
-        vtkFloatArray *rv = vtkFloatArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-        
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::FLOAT32_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((float*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<float>::VTK_DATA_ARRAY_FREE);
-        
-        return rv;
-    }
-    if (field.dtype.isVectorOf(DTypes::FLOAT64))
-    {
-        vtkDoubleArray *rv = vtkDoubleArray::New();
-        rv->SetNumberOfComponents(ncomponents);
-        rv->SetNumberOfTuples(ntuples);
-        
-        if(dim == 2){
-            if(!Array::convertTo(*data, *original_data, DTypes::FLOAT64_RGB)){
-                VisusInfo() << "Cast to 3d vector failed";
-                return NULL;
-            }
-            
-            original_data.reset();
-        }
-        
-        rv->SetArray((double*)data->c_ptr(),ncomponents*ntuples,1,vtkDataArrayTemplate<double>::VTK_DATA_ARRAY_FREE);
-        return rv;
-    }
-
-    return NULL;
-}

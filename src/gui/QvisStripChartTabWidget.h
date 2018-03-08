@@ -40,7 +40,9 @@
 
 #include <QString>
 #include <QVector>
+#include <QTabBar>
 #include <QTabWidget>
+
 
 class QScrollArea;
 class QvisStripChart;
@@ -81,6 +83,17 @@ private:
 // holds and keeps properly associate all the strip chart infomation.
 typedef QVector<SC_NamesTabsIndex> SC_NamesVector;
 
+
+class QvisTabBar : public QTabBar
+{                                                          
+    Q_OBJECT
+public:
+  QvisTabBar(QWidget *parent=0);
+
+public slots:
+  void mouseDoubleClickEvent(QMouseEvent *e);
+};
+
 // ****************************************************************************
 // Class: QvisStripChartTabWidget
 //
@@ -109,13 +122,20 @@ public:
     // void setEnableLogScale( bool enable );
     // bool getEnableLogScale();
 
-    void setTabLabel(unsigned int tabIndex, const QString &newLabel);
-    void setCurveTitle(int unsigned tabIndex, int unsigned cruveIndex,
+    void setCurveTitle(const int unsigned curveIndex, const QString &newTitle);
+    
+    void clearAll     (const unsigned int tabIndex);
+    void setTabLabel  (const unsigned int tabIndex, const QString &newLabel);
+    void setCurveTitle(const unsigned int tabIndex,
+                       const unsigned int curveIndex,
                        const QString &newTitle);
     
-    void addDataPoint(int unsigned tabIndex, int unsigned cruveIndex,
-                      double x, double y);
-  
+    void addDataPoint(const unsigned int tabIndex,
+                      const unsigned int curveIndex,
+                      const double x, const double y);
+
+    unsigned int getCurrentStripChart() { return currentStripChart; };
+                                                                        
 public slots:
     void pick();
     void zoom();
@@ -127,7 +147,7 @@ public slots:
 
 private:
     // index of the currently displayed strip chart
-    int currentStripChart;
+    unsigned int currentStripChart;
 
     // array of maxStripCharts
     QvisStripChart *stripCharts[MAX_STRIP_CHARTS];

@@ -77,7 +77,7 @@ public class BoundaryOpAttributes extends AttributeSubject implements Plugin
 
     public BoundaryOpAttributes(BoundaryOpAttributes obj)
     {
-        super(BoundaryOpAttributes_numAdditionalAtts);
+        super(obj);
 
         smoothingLevel = obj.smoothingLevel;
 

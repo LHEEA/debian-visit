@@ -68,6 +68,9 @@
 #   Kathleen Biagas, Mon Oct 31 15:23:31 PDT 2016
 #   Add ZLIB_LIB to link libraries for visitcommon on Windows.
 #
+#   Kathleen Biagas, Tue Dec 20 15:43:20 PST 2016
+#   Added GlyphTypes.
+#
 #****************************************************************************/
 
 SET(COMM_SOURCES
@@ -240,6 +243,7 @@ state/GaussianControlPoint.C
 state/GaussianControlPointList.C
 state/GlobalAttributes.C
 state/GlobalLineoutAttributes.C
+state/GlyphTypes.C
 state/LaunchProfile.C
 state/LaunchRPC.C
 state/MachineProfile.C
@@ -357,16 +361,16 @@ IF(WIN32)
 ELSE(WIN32)
     TARGET_LINK_LIBRARIES(visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
     ADD_EXECUTABLE(StringHelpers_test utility/StringHelpers_test.C)
-    TARGET_LINK_LIBRARIES(StringHelpers_test visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    TARGET_LINK_LIBRARIES(StringHelpers_test ${VISIT_EXE_LINKER_FLAGS} visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
     ADD_EXECUTABLE(Utility_test utility/Utility_test.C)
-    TARGET_LINK_LIBRARIES(Utility_test visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    TARGET_LINK_LIBRARIES(Utility_test ${VISIT_EXE_LINKER_FLAGS} visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
     ADD_EXECUTABLE(Namescheme_test utility/Namescheme_test.C)
-    TARGET_LINK_LIBRARIES(Namescheme_test visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    TARGET_LINK_LIBRARIES(Namescheme_test ${VISIT_EXE_LINKER_FLAGS} visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
     ADD_EXECUTABLE(MRUCache_test utility/MRUCache_test.C)
     ADD_EXECUTABLE(exprconfig expr/ExprConfig.C)
-    TARGET_LINK_LIBRARIES(exprconfig visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    TARGET_LINK_LIBRARIES(exprconfig ${VISIT_EXE_LINKER_FLAGS} visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
     ADD_EXECUTABLE(exprtest expr/test.C)
-    TARGET_LINK_LIBRARIES(exprtest visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
+    TARGET_LINK_LIBRARIES(exprtest ${VISIT_EXE_LINKER_FLAGS} visitcommon ${ZLIB_LIB} ${CMAKE_THREAD_LIBS} ${DL_LIB})
     ADD_CUSTOM_TARGET(init)
     ADD_DEPENDENCIES(init exprconfig)
     ADD_CUSTOM_COMMAND(TARGET init POST_BUILD COMMAND exprconfig ExprInit.C

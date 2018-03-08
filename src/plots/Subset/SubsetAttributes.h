@@ -39,6 +39,7 @@
 #ifndef SUBSETATTRIBUTES_H
 #define SUBSETATTRIBUTES_H
 #include <string>
+#include <GlyphTypes.h>
 #include <AttributeSubject.h>
 
 #include <ColorAttribute.h>
@@ -66,7 +67,6 @@ public:
     {
         Domain,
         Group,
-        Material,
         EnumScalar,
         Mesh,
         Unknown
@@ -76,17 +76,6 @@ public:
         ColorBySingleColor,
         ColorByMultipleColors,
         ColorByColorTable
-    };
-    enum PointType
-    {
-        Box,
-        Axis,
-        Icosahedron,
-        Octahedron,
-        Tetrahedron,
-        SphereGeometry,
-        Point,
-        Sphere
     };
 
     // These constructors are for objects of this class
@@ -124,7 +113,6 @@ public:
     void SetColorType(ColoringMethod colorType_);
     void SetColorTableName(const std::string &colorTableName_);
     void SetInvertColorTable(bool invertColorTable_);
-    void SetFilledFlag(bool filledFlag_);
     void SetLegendFlag(bool legendFlag_);
     void SetLineStyle(int lineStyle_);
     void SetLineWidth(int lineWidth_);
@@ -137,7 +125,7 @@ public:
     void SetDrawInternal(bool drawInternal_);
     void SetSmoothingLevel(int smoothingLevel_);
     void SetPointSize(double pointSize_);
-    void SetPointType(PointType pointType_);
+    void SetPointType(GlyphType pointType_);
     void SetPointSizeVarEnabled(bool pointSizeVarEnabled_);
     void SetPointSizeVar(const std::string &pointSizeVar_);
     void SetPointSizePixels(int pointSizePixels_);
@@ -147,7 +135,6 @@ public:
     const std::string        &GetColorTableName() const;
           std::string        &GetColorTableName();
     bool                     GetInvertColorTable() const;
-    bool                     GetFilledFlag() const;
     bool                     GetLegendFlag() const;
     int                      GetLineStyle() const;
     int                      GetLineWidth() const;
@@ -163,7 +150,7 @@ public:
     bool                     GetDrawInternal() const;
     int                      GetSmoothingLevel() const;
     double                   GetPointSize() const;
-    PointType                GetPointType() const;
+    GlyphType                GetPointType() const;
     bool                     GetPointSizeVarEnabled() const;
     const std::string        &GetPointSizeVar() const;
           std::string        &GetPointSizeVar();
@@ -184,11 +171,6 @@ public:
 protected:
     static std::string ColoringMethod_ToString(int);
 public:
-    static std::string PointType_ToString(PointType);
-    static bool PointType_FromString(const std::string &, PointType &);
-protected:
-    static std::string PointType_ToString(int);
-public:
 
     // Keyframing methods
     virtual std::string               GetFieldName(int index) const;
@@ -199,13 +181,13 @@ public:
     // User-defined methods
     bool ChangesRequireRecalculation(const SubsetAttributes &obj);
     virtual bool VarChangeRequiresReset(void);
+    virtual void ProcessOldVersions(DataNode *parentNode, const char *configVersion);
 
     // IDs that can be used to identify fields in case statements
     enum {
         ID_colorType = 0,
         ID_colorTableName,
         ID_invertColorTable,
-        ID_filledFlag,
         ID_legendFlag,
         ID_lineStyle,
         ID_lineWidth,
@@ -229,7 +211,6 @@ private:
     int                colorType;
     std::string        colorTableName;
     bool               invertColorTable;
-    bool               filledFlag;
     bool               legendFlag;
     int                lineStyle;
     int                lineWidth;
@@ -242,7 +223,7 @@ private:
     bool               drawInternal;
     int                smoothingLevel;
     double             pointSize;
-    int                pointType;
+    GlyphType          pointType;
     bool               pointSizeVarEnabled;
     std::string        pointSizeVar;
     int                pointSizePixels;
@@ -251,6 +232,6 @@ private:
     static const char *TypeMapFormatString;
     static const private_tmfs_t TmfsStruct;
 };
-#define SUBSETATTRIBUTES_TMFS "isbbbiiaas*idbbidibsi"
+#define SUBSETATTRIBUTES_TMFS "isbbiiaas*idbbidibsi"
 
 #endif

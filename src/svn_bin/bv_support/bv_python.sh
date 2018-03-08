@@ -1,25 +1,24 @@
 function bv_python_initialize
 {
     export DO_PYTHON="yes"
-    export ON_PYTHON="on"
     export FORCE_PYTHON="no"
     export USE_SYSTEM_PYTHON="no"
+    export BUILD_MPI4PY="no"
     export VISIT_PYTHON_DIR=${VISIT_PYTHON_DIR:-""}
     add_extra_commandline_args "python" "system-python" 0 "Using system python"
     add_extra_commandline_args "python" "alt-python-dir" 1 "Using alternate python directory"
+    add_extra_commandline_args "python" "mpi4py" 0 "Build mpi4py"
 }
 
 function bv_python_enable
 {
     DO_PYTHON="yes"
-    ON_PYTHON="on"
     FORCE_PYTHON="yes"
 }
 
 function bv_python_disable
 {
     DO_PYTHON="no"
-    ON_PYTHON="off"
     FORCE_PYTHON="no"
 }
 
@@ -95,6 +94,12 @@ function bv_python_system_python
     python_set_vars_helper #set vars..
 }
 
+function bv_python_mpi4py
+{
+    echo "configuring for building mpi4py"
+    export BUILD_MPI4PY="yes"
+}
+
 function bv_python_alt_python_dir
 {
     echo "Using alternate python directory"
@@ -108,18 +113,22 @@ function bv_python_alt_python_dir
     PYTHON_CONFIG_COMMAND="$PYTHON_ALT_DIR/bin/python-config"
     PYTHON_FILE=""
     python_set_vars_helper #set vars..
-
 }
 
 
 function bv_python_depends_on
 {
+    local depends_on=""
+
     if [[ "$DO_OPENSSL" == "yes" ]] ; then
-        echo "openssl"
-    else
-        echo ""
+        depends_on="openssl"
     fi
 
+    if [[ "$DO_ZLIB" == "yes" ]] ; then
+        depends_on="$depends_on zlib"
+    fi
+
+    echo $depends_on
 }
 
 function bv_python_info
@@ -150,9 +159,17 @@ function bv_python_info
     export SETUPTOOLS_FILE=${SETUPTOOLS_FILE:-"setuptools-28.0.0.tar.gz"}
     export SETUPTOOLS_BUILD_DIR=${SETUPTOOLS_BUILD_DIR:-"setuptools-28.0.0"}
 
+    export CYTHON_URL=${CYTHON_URL:-"https://pypi.python.org/packages/c6/fe/97319581905de40f1be7015a0ea1bd336a756f6249914b148a17eefa75dc/"}
+    export CYTHON_FILE=${CYTHON_FILE:-"Cython-0.25.2.tar.gz"}
+    export CYTHON_BUILD_DIR=${CYTHON_BUILD_DIR:-"Cython-0.25.2"}
+
     export NUMPY_URL=${NUMPY_URL:-"https://pypi.python.org/packages/16/f5/b432f028134dd30cfbf6f21b8264a9938e5e0f75204e72453af08d67eb0b/"}
     export NUMPY_FILE=${NUMPY_FILE:-"numpy-1.11.2.tar.gz"}
     export NUMPY_BUILD_DIR=${NUMPY_BUILD_DIR:-"numpy-1.11.2"}
+
+    export MPI4PY_URL=${MPI4PY_URL:-"https://pypi.python.org/pypi/mpi4py"}
+    export MPI4PY_FILE=${MPI4PY_FILE:-"mpi4py-2.0.0.tar.gz"}
+    export MPI4PY_BUILD_DIR=${MPI4PY_BUILD_DIR:-"mpi4py-2.0.0"}
 }
 
 function bv_python_print
@@ -168,6 +185,7 @@ function bv_python_print_usage
     printf "%-15s %s [%s]\n" "--python" "Build Python" "built by default unless --no-thirdparty flag is used"
     printf "%-15s %s [%s]\n" "--system-python" "Use the system installed Python"
     printf "%-15s %s [%s]\n" "--alt-python-dir" "Use Python from an alternative directory"
+    printf "%-15s %s [%s]\n" "--mpi4py" "Build mpi4py with Python"
 }
 
 function bv_python_host_profile
@@ -345,11 +363,17 @@ function build_python
     if [[ "$DO_OPENSSL" == "yes" ]]; then
         OPENSSL_INCLUDE="$VISITDIR/openssl/$OPENSSL_VERSION/$VISITARCH/include"
         OPENSSL_LIB="$VISITDIR/openssl/$OPENSSL_VERSION/$VISITARCH/lib"
-        PYTHON_LDFLAGS="${PYTHON_LDFLAGS} -L ${OPENSSL_LIB}"
-        PYTHON_CPPFLAGS="-I ${OPENSSL_INCLUDE}"
+        PYTHON_LDFLAGS="${PYTHON_LDFLAGS} -L${OPENSSL_LIB}"
+        PYTHON_CPPFLAGS="${PTYHON_CPPFLAGS} -I${OPENSSL_INCLUDE}"
     fi
-    
-    
+
+    if [[ "$DO_ZLIB" == "yes" ]]; then
+        PY_ZLIB_INCLUDE="$VISITDIR/zlib/$ZLIB_VERSION/$VISITARCH/include"
+        PY_ZLIB_LIB="$VISITDIR/zlib/$ZLIB_VERSION/$VISITARCH/lib"
+        PYTHON_LDFLAGS="${PYTHON_LDFLAGS} -L${PY_ZLIB_LIB}"
+        PYTHON_CPPFLAGS="${PYTHON_CPPFLAGS} -I${PY_ZLIB_INCLUDE}"
+    fi
+
     if [[ "$OPSYS" == "AIX" ]]; then
         info "Configuring Python (AIX): ./configure OPT=\"$PYTHON_OPT\" CXX=\"$cxxCompiler\" CC=\"$cCompiler\"" \
              "--prefix=\"$PYTHON_PREFIX_DIR\" --disable-ipv6"
@@ -365,6 +389,7 @@ function build_python
                     ${PYTHON_SHARED} \
                     --prefix="$PYTHON_PREFIX_DIR" --disable-ipv6
     fi
+
     if [[ $? != 0 ]] ; then
         warn "Python configure failed.  Giving up"
         return 1
@@ -634,6 +659,45 @@ function build_seedme
 }
 
 # *************************************************************************** #
+#                                  build_mpi4py                               #
+# *************************************************************************** #
+function build_mpi4py
+{
+    # download
+    if ! test -f ${MPI4PY_FILE} ; then
+        download_file ${MPI4PY_FILE}
+        if [[ $? != 0 ]] ; then
+            warn "Could not download ${MPI4PY_FILE}"
+            return 1
+        fi
+    fi
+
+    # extract
+    if ! test -d ${MPI4PY_BUILD_DIR} ; then
+        info "Extracting mpi4py ..."
+        uncompress_untar ${MPI4PY_FILE}
+        if test $? -ne 0 ; then
+            warn "Could not extract ${MPI4PY_FILE}"
+            return 1
+        fi
+    fi
+
+    # install
+    pushd $MPI4PY_BUILD_DIR > /dev/null
+    info "Installing mpi4py (~ 2 min) ..."
+    ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
+    popd > /dev/null
+
+    # fix the perms
+    if [[ "$DO_GROUP" == "yes" ]] ; then
+        chmod -R ug+w,a+rX "$VISITDIR/python"
+        chgrp -R ${GROUP} "$VISITDIR/python"
+    fi
+
+    return 0
+}
+
+# *************************************************************************** #
 #                                  build_numpy                                #
 # *************************************************************************** #
 function build_numpy
@@ -643,6 +707,14 @@ function build_numpy
         download_file ${SETUPTOOLS_FILE}
         if [[ $? != 0 ]] ; then
             warn "Could not download ${SETUPTOOLS_FILE}"
+            return 1
+        fi
+    fi
+
+    if ! test -f ${CYTHON_FILE} ; then
+        download_file ${CYTHON_FILE}
+        if [[ $? != 0 ]] ; then
+            warn "Could not download ${CYTHON_FILE}"
             return 1
         fi
     fi
@@ -665,6 +737,15 @@ function build_numpy
         fi
     fi
 
+    if ! test -d ${CYTHON_BUILD_DIR} ; then
+        info "Extracting cython ..."
+        uncompress_untar ${CYTHON_FILE}
+        if test $? -ne 0 ; then
+            warn "Could not extract ${CYTHON_FILE}"
+            return 1
+        fi
+    fi
+
     if ! test -d ${NUMPY_BUILD_DIR} ; then
         info "Extracting numpy ..."
         uncompress_untar ${NUMPY_FILE}
@@ -681,6 +762,11 @@ function build_numpy
     ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
     popd > /dev/null
 
+    pushd $CYTHON_BUILD_DIR > /dev/null
+    info "Installing cython (~ 2 min) ..."
+    ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
+    popd > /dev/null
+
     pushd $NUMPY_BUILD_DIR > /dev/null
     info "Installing numpy (~ 2 min) ..."
     ${PYHOME}/bin/python ./setup.py install --prefix="${PYHOME}"
@@ -692,7 +778,6 @@ function build_numpy
         chgrp -R ${GROUP} "$VISITDIR/python"
     fi
 
-    info "Done with numpy."
     return 0
 }
 
@@ -747,6 +832,15 @@ function bv_python_build
                 warn "numpy build failed."
             fi
             info "Done building the numpy module."
+
+            if [[ "$BUILD_MPI4PY" == "yes" ]]; then
+                info "Building the mpi4py module"
+                build_mpi4py
+                if [[ $? != 0 ]] ; then
+                    warn "mpi4py build failed."
+                fi
+                info "Done building the mpi4py module"
+            fi
 
             info "Building the pyparsing module"
             build_pyparsing
