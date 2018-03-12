@@ -1,8 +1,6 @@
-Index: visit/src/avt/Pipeline/CMakeLists.txt
-===================================================================
---- visit.orig/src/avt/Pipeline/CMakeLists.txt
-+++ visit/src/avt/Pipeline/CMakeLists.txt
-@@ -266,7 +266,7 @@ ADD_LIBRARY(avtpipeline_ser ${ALL_SOURCE
+--- a/src/avt/Pipeline/CMakeLists.txt
++++ b/src/avt/Pipeline/CMakeLists.txt
+@@ -266,7 +266,7 @@
                                             visit_vtk lightweight_visit_vtk vtkCommonCore 
                                             vtkCommonDataModel vtkFiltersGeometry 
                                             vtkRenderingOpenGL vtkRenderingFreeType 
@@ -11,7 +9,7 @@ Index: visit/src/avt/Pipeline/CMakeLists.txt
                                             ${ZLIB_LIB} ${EAVL_LIB} ${VTKM_LIB})
  
  IF(HAVE_LIB_R)
-@@ -285,7 +285,6 @@ IF(VISIT_PARALLEL)
+@@ -285,7 +285,6 @@
                                                visit_vtk lightweight_visit_vtk vtkCommonCore 
                                                vtkCommonDataModel vtkFiltersGeometry 
                                                vtkRenderingOpenGL vtkRenderingFreeType 
@@ -19,11 +17,9 @@ Index: visit/src/avt/Pipeline/CMakeLists.txt
                                                vtkInteractionStyle ${ZLIB_LIB} 
                                                ${EAVL_LIB} ${VTKM_LIB})
      IF(HAVE_LIB_R)
-Index: visit/src/avt/Plotter/CMakeLists.txt
-===================================================================
---- visit.orig/src/avt/Plotter/CMakeLists.txt
-+++ visit/src/avt/Plotter/CMakeLists.txt
-@@ -226,9 +226,9 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECT
+--- a/src/avt/Plotter/CMakeLists.txt
++++ b/src/avt/Plotter/CMakeLists.txt
+@@ -226,9 +226,9 @@
  #********************************* SERIAL ************************************
  ADD_LIBRARY(avtplotter_ser ${AVTPLOTTER_SOURCES})
  IF(HAVE_LIB_R)
@@ -35,7 +31,7 @@ Index: visit/src/avt/Plotter/CMakeLists.txt
  ENDIF(HAVE_LIB_R)
  # Add vtk defines
  ADD_TARGET_DEFINITIONS(avtplotter_ser "${VTK_DEFINITIONS}")
-@@ -249,9 +249,9 @@ VISIT_INSTALL_TARGETS(avtplotter_ser)
+@@ -249,9 +249,9 @@
  IF(VISIT_PARALLEL)
      ADD_PARALLEL_LIBRARY(avtplotter_par ${AVTPLOTTER_SOURCES})
      IF(HAVE_LIB_R)
@@ -47,11 +43,9 @@ Index: visit/src/avt/Plotter/CMakeLists.txt
      ENDIF(HAVE_LIB_R)
      # Add vtk defines
      ADD_TARGET_DEFINITIONS(avtplotter_par "${VTK_DEFINITIONS}")
-Index: visit/src/avt/View/CMakeLists.txt
-===================================================================
---- visit.orig/src/avt/View/CMakeLists.txt
-+++ visit/src/avt/View/CMakeLists.txt
-@@ -56,7 +56,7 @@ ${VTK_INCLUDE_DIRS}
+--- a/src/avt/View/CMakeLists.txt
++++ b/src/avt/View/CMakeLists.txt
+@@ -56,7 +56,7 @@
  LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY} ${VTK_LIBRARY_DIRS})
  
  ADD_LIBRARY(avtview ${AVTVIEW_SOURCES})
@@ -60,11 +54,9 @@ Index: visit/src/avt/View/CMakeLists.txt
  
  # Add vtk definitions
  ADD_TARGET_DEFINITIONS(avtview "${VTK_DEFINITIONS}")
-Index: visit/src/tools/DataManualExamples/Simulations/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/DataManualExamples/Simulations/CMakeLists.txt
-+++ visit/src/tools/DataManualExamples/Simulations/CMakeLists.txt
-@@ -139,7 +139,7 @@ IF(VISIT_STATIC AND VISIT_ENABLE_XDB)
+--- a/src/tools/DataManualExamples/Simulations/CMakeLists.txt
++++ b/src/tools/DataManualExamples/Simulations/CMakeLists.txt
+@@ -139,7 +139,7 @@
  ENDIF(VISIT_STATIC AND VISIT_ENABLE_XDB)
  
  SET(VTK_LIBS vtkCommonCore vtkImagingCore vtkRenderingCore vtkIOLegacy vtkIOPLY
@@ -73,11 +65,9 @@ Index: visit/src/tools/DataManualExamples/Simulations/CMakeLists.txt
               vtkFiltersHybrid vtkFiltersModeling vtkGeovisCore)
  IF(ICET_FOUND)
      LINK_DIRECTORIES(${ICET_LIBRARY_DIR})
-Index: visit/src/tools/annotations/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/annotations/CMakeLists.txt
-+++ visit/src/tools/annotations/CMakeLists.txt
-@@ -54,9 +54,9 @@ ADD_EXECUTABLE(time_annotation time_anno
+--- a/src/tools/annotations/CMakeLists.txt
++++ b/src/tools/annotations/CMakeLists.txt
+@@ -54,9 +54,9 @@
  # Specify the libraries to link against
  TARGET_LINK_LIBRARIES(text2polys vtkIOLegacy)
  IF(HAVE_LIB_R)
@@ -89,11 +79,9 @@ Index: visit/src/tools/annotations/CMakeLists.txt
  ENDIF(HAVE_LIB_R)
  # add vtk definitions
  ADD_TARGET_DEFINITIONS(time_annotation "${VTK_DEFINITIONS}")
-Index: visit/src/tools/diagnostics/osmesatest/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/diagnostics/osmesatest/CMakeLists.txt
-+++ visit/src/tools/diagnostics/osmesatest/CMakeLists.txt
-@@ -67,7 +67,6 @@ vtkIOImage
+--- a/src/tools/diagnostics/osmesatest/CMakeLists.txt
++++ b/src/tools/diagnostics/osmesatest/CMakeLists.txt
+@@ -67,7 +67,6 @@
  vtkRenderingCore
  vtkRenderingOpenGL
  vtkRenderingFreeType 
@@ -101,11 +89,9 @@ Index: visit/src/tools/diagnostics/osmesatest/CMakeLists.txt
  vtkInteractionStyle 
  )
  
-Index: visit/src/visit_vtk/full/CMakeLists.txt
-===================================================================
---- visit.orig/src/visit_vtk/full/CMakeLists.txt
-+++ visit/src/visit_vtk/full/CMakeLists.txt
-@@ -130,9 +130,9 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECT
+--- a/src/visit_vtk/full/CMakeLists.txt
++++ b/src/visit_vtk/full/CMakeLists.txt
+@@ -130,9 +130,9 @@
  ADD_LIBRARY(visit_vtk ${VISIT_VTK_SOURCES})
  
  IF(HAVE_LIB_R)
@@ -117,26 +103,22 @@ Index: visit/src/visit_vtk/full/CMakeLists.txt
  ENDIF(HAVE_LIB_R)
  # Add vtk definitions
  ADD_TARGET_DEFINITIONS(visit_vtk "${VTK_DEFINITIONS}")
-Index: visit/src/vtkqt/CMakeLists.txt
-===================================================================
---- visit.orig/src/vtkqt/CMakeLists.txt
-+++ visit/src/vtkqt/CMakeLists.txt
-@@ -64,9 +64,9 @@ ADD_LIBRARY(vtkqt ${VTKQT_SOURCES})
+--- a/src/vtkqt/CMakeLists.txt
++++ b/src/vtkqt/CMakeLists.txt
+@@ -76,9 +76,9 @@
  
  # Specify the libraries to link against on Windows & Mac
  IF(HAVE_LIB_R)
--    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
-+    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
+-        TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
++        TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY} vtkFiltersStatisticsGnuR)
  ELSE(HAVE_LIB_R)
--    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
-+    TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
+-         TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL vtkRenderingFreeTypeOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
++         TARGET_LINK_LIBRARIES(vtkqt vtkCommonCore vtkGUISupportQtOpenGL vtkIOImage vtkRenderingOpenGL ${QT_QTCORE_LIBRARY} ${QT_QTGUI_LIBRARY} ${QT_QTOPENGL_LIBRARY} ${OPENGL_gl_LIBRARY})
  ENDIF(HAVE_LIB_R)
- # Add vtk definitions
- ADD_TARGET_DEFINITIONS(vtkqt "${VTK_DEFINITIONS}")
-Index: visit/src/tools/diagnostics/osmesatest/osmesavtktest.cpp
-===================================================================
---- visit.orig/src/tools/diagnostics/osmesatest/osmesavtktest.cpp
-+++ visit/src/tools/diagnostics/osmesatest/osmesavtktest.cpp
+ 
+ IF(APPLE)
+--- a/src/tools/diagnostics/osmesatest/osmesavtktest.cpp
++++ b/src/tools/diagnostics/osmesatest/osmesavtktest.cpp
 @@ -1,5 +1,5 @@
  // This junk is needed to make VTK work on startup.
 -#define vtkRenderingCore_AUTOINIT 4(vtkInteractionStyle,vtkRenderingFreeType,vtkRenderingFreeTypeOpenGL,vtkRenderingOpenGL)

@@ -1,7 +1,5 @@
-Index: visit/src/CMake/FindGFortran.cmake
-===================================================================
---- visit.orig/src/CMake/FindGFortran.cmake
-+++ visit/src/CMake/FindGFortran.cmake
+--- a/src/CMake/FindGFortran.cmake
++++ b/src/CMake/FindGFortran.cmake
 @@ -42,4 +42,4 @@
  
  INCLUDE(${VISIT_SOURCE_DIR}/CMake/SetUpThirdParty.cmake)

@@ -1,8 +1,6 @@
-Index: visit/src/gui/CMakeLists.txt
-===================================================================
---- visit.orig/src/gui/CMakeLists.txt
-+++ visit/src/gui/CMakeLists.txt
-@@ -393,6 +393,7 @@ ${QT_QTNETWORK_INCLUDE_DIR}
+--- a/src/gui/CMakeLists.txt
++++ b/src/gui/CMakeLists.txt
+@@ -393,6 +393,7 @@
  ${QT_QTXML_INCLUDE_DIR} 
  ${QT_QTUITOOLS_INCLUDE_DIR}
  ${QWT_INCLUDE_DIR}
@@ -10,11 +8,9 @@ Index: visit/src/gui/CMakeLists.txt
  )
  
  LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECTORY}
-Index: visit/src/tools/annotations/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/annotations/CMakeLists.txt
-+++ visit/src/tools/annotations/CMakeLists.txt
-@@ -54,9 +54,9 @@ ADD_EXECUTABLE(time_annotation time_anno
+--- a/src/tools/annotations/CMakeLists.txt
++++ b/src/tools/annotations/CMakeLists.txt
+@@ -54,9 +54,9 @@
  # Specify the libraries to link against
  TARGET_LINK_LIBRARIES(text2polys vtkIOLegacy)
  IF(HAVE_LIB_R)
@@ -26,11 +22,9 @@ Index: visit/src/tools/annotations/CMakeLists.txt
  ENDIF(HAVE_LIB_R)
  # add vtk definitions
  ADD_TARGET_DEFINITIONS(time_annotation "${VTK_DEFINITIONS}")
-Index: visit/src/visit_vtk/full/CMakeLists.txt
-===================================================================
---- visit.orig/src/visit_vtk/full/CMakeLists.txt
-+++ visit/src/visit_vtk/full/CMakeLists.txt
-@@ -130,9 +130,9 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECT
+--- a/src/visit_vtk/full/CMakeLists.txt
++++ b/src/visit_vtk/full/CMakeLists.txt
+@@ -130,9 +130,9 @@
  ADD_LIBRARY(visit_vtk ${VISIT_VTK_SOURCES})
  
  IF(HAVE_LIB_R)
@@ -42,11 +36,9 @@ Index: visit/src/visit_vtk/full/CMakeLists.txt
  ENDIF(HAVE_LIB_R)
  # Add vtk definitions
  ADD_TARGET_DEFINITIONS(visit_vtk "${VTK_DEFINITIONS}")
-Index: visit/src/tools/imagetools/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/imagetools/CMakeLists.txt
-+++ visit/src/tools/imagetools/CMakeLists.txt
-@@ -62,10 +62,10 @@ ${VISIT_SOURCE_DIR}/visit_vtk/full
+--- a/src/tools/imagetools/CMakeLists.txt
++++ b/src/tools/imagetools/CMakeLists.txt
+@@ -62,10 +62,10 @@
  )
  
  ADD_EXECUTABLE(visit_composite  ${VISIT_COMPOSITE_SOURCES})
@@ -59,11 +51,9 @@ Index: visit/src/tools/imagetools/CMakeLists.txt
  
  # Installation targets
  VISIT_INSTALL_TARGETS(visit_composite visit_transition)
-Index: visit/src/mdserver/main/CMakeLists.txt
-===================================================================
---- visit.orig/src/mdserver/main/CMakeLists.txt
-+++ visit/src/mdserver/main/CMakeLists.txt
-@@ -141,10 +141,7 @@ TARGET_LINK_LIBRARIES(mdserver
+--- a/src/mdserver/main/CMakeLists.txt
++++ b/src/mdserver/main/CMakeLists.txt
+@@ -142,10 +142,7 @@
      visit_verdict 
      vtkCommonCore
      vtkIOCore 
@@ -75,11 +65,9 @@ Index: visit/src/mdserver/main/CMakeLists.txt
      ${ZLIB_LIB} 
      ${CMAKE_THREAD_LIBS} 
      ${DL_LIB}
-Index: visit/src/tools/dataserver/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/dataserver/CMakeLists.txt
-+++ visit/src/tools/dataserver/CMakeLists.txt
-@@ -70,10 +70,7 @@ ${VTK_LIBRARY_DIRS}
+--- a/src/tools/dataserver/CMakeLists.txt
++++ b/src/tools/dataserver/CMakeLists.txt
+@@ -70,10 +70,7 @@
  )
  
  SET(VTK_EXTRA_LIBS
@@ -91,11 +79,9 @@ Index: visit/src/tools/dataserver/CMakeLists.txt
  ${VTK_FREETYPE_LIBRARIES}
  vtkftgl
  )
-Index: visit/src/avt/IVP/CMakeLists.txt
-===================================================================
---- visit.orig/src/avt/IVP/CMakeLists.txt
-+++ visit/src/avt/IVP/CMakeLists.txt
-@@ -126,12 +126,12 @@ LINK_DIRECTORIES(${LIBRARY_OUTPUT_DIRECT
+--- a/src/avt/IVP/CMakeLists.txt
++++ b/src/avt/IVP/CMakeLists.txt
+@@ -125,12 +125,12 @@
  
  #********************************* SERIAL ************************************
  ADD_LIBRARY(avtivp_ser ${AVTIVP_SOURCES})
@@ -110,11 +96,9 @@ Index: visit/src/avt/IVP/CMakeLists.txt
 +	TARGET_LINK_LIBRARIES(avtivp_par avtfilters_par lightweight_visit_vtk visit_vtk avtmath avtview avtpipeline_par avtdatabase_par avtdbatts visitcommon vtkCommonCore vtkFiltersCore nek5000_interp ${NEKTAR++_LIB} ${NEKTAR++_LIBRARIES} ${NEKTAR++_TP_LIBRARIES} ${VTK_LIBRARIES})
      VISIT_INSTALL_TARGETS(avtivp_par)
  ENDIF(VISIT_PARALLEL)
-Index: visit/src/tools/protocol/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/protocol/CMakeLists.txt
-+++ visit/src/tools/protocol/CMakeLists.txt
-@@ -76,12 +76,8 @@ ${ALL_THIRDPARTY_IO_LIBRARY_DIR}
+--- a/src/tools/protocol/CMakeLists.txt
++++ b/src/tools/protocol/CMakeLists.txt
+@@ -76,12 +76,8 @@
  )
  
  SET(VTK_EXTRA_LIBS
@@ -128,55 +112,51 @@ Index: visit/src/tools/protocol/CMakeLists.txt
  )
  
  ADD_EXECUTABLE(visitprotocol dump_protocol.C ${STATIC_SOURCES})
-Index: visit/src/tools/avtexamples/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/avtexamples/CMakeLists.txt
-+++ visit/src/tools/avtexamples/CMakeLists.txt
-@@ -103,6 +103,7 @@ visitcommon
+--- a/src/tools/avtexamples/CMakeLists.txt
++++ b/src/tools/avtexamples/CMakeLists.txt
+@@ -103,6 +103,7 @@
  visit_vtk
  ${ALL_THIRDPARTY_IO_LIB} 
  ${VTK_EXTRA_LIBS}
 +${VTK_LIBRARIES}
  ${MESA_LIBS}
- ${GL_LIBS}
+ ${OPENGL_LIBRARIES}
  ${CMAKE_THREAD_LIBS} 
-@@ -129,6 +130,7 @@ visitcommon
+@@ -129,6 +130,7 @@
  visit_vtk
  ${ALL_THIRDPARTY_IO_LIB} 
  ${VTK_EXTRA_LIBS}
 +${VTK_LIBRARIES}
  ${MESA_LIBS}
- ${GL_LIBS}
+ ${OPENGL_LIBRARIES}
  ${CMAKE_THREAD_LIBS} 
-@@ -151,6 +153,7 @@ visitcommon
+@@ -151,6 +153,7 @@
  visit_vtk
  ${ALL_THIRDPARTY_IO_LIB} 
  ${VTK_EXTRA_LIBS}
 +${VTK_LIBRARIES}
  ${MESA_LIBS}
- ${GL_LIBS}
+ ${OPENGL_LIBRARIES}
  ${CMAKE_THREAD_LIBS} 
-@@ -177,6 +180,7 @@ visitcommon
+@@ -177,6 +180,7 @@
  visit_vtk
  ${ALL_THIRDPARTY_IO_LIB} 
  ${VTK_EXTRA_LIBS}
 +${VTK_LIBRARIES}
  ${MESA_LIBS}
- ${GL_LIBS}
+ ${OPENGL_LIBRARIES}
  ${CMAKE_THREAD_LIBS} 
-@@ -204,6 +208,7 @@ visitcommon
+@@ -204,6 +208,7 @@
  visit_vtk
  ${ALL_THIRDPARTY_IO_LIB} 
  ${VTK_EXTRA_LIBS}
 +${VTK_LIBRARIES}
  ${MESA_LIBS}
- ${GL_LIBS}
+ ${OPENGL_LIBRARIES}
  ${CMAKE_THREAD_LIBS} 
-Index: visit/src/tools/convert/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/convert/CMakeLists.txt
-+++ visit/src/tools/convert/CMakeLists.txt
-@@ -105,11 +105,8 @@ ${ICET_LIBRARY_DIR}
+--- a/src/tools/convert/CMakeLists.txt
++++ b/src/tools/convert/CMakeLists.txt
+@@ -105,11 +105,8 @@
  )
  
  SET(VTK_EXTRA_LIBS
@@ -189,11 +169,9 @@ Index: visit/src/tools/convert/CMakeLists.txt
  )
  
  IF(VISIT_STATIC)
-Index: visit/src/viewer/main/CMakeLists.txt
-===================================================================
---- visit.orig/src/viewer/main/CMakeLists.txt
-+++ visit/src/viewer/main/CMakeLists.txt
-@@ -297,11 +297,8 @@ TARGET_LINK_LIBRARIES(viewer_exe
+--- a/src/viewer/main/CMakeLists.txt
++++ b/src/viewer/main/CMakeLists.txt
+@@ -297,11 +297,8 @@
      ${viewer_exe_IPlot}
      ${viewer_exe_VPlot}
      viewer
@@ -206,11 +184,9 @@ Index: visit/src/viewer/main/CMakeLists.txt
  )
  
  # If we're building statically then the viewer can't be linked until the plugin
-Index: visit/src/sim/V2/runtime/CMakeLists.txt
-===================================================================
---- visit.orig/src/sim/V2/runtime/CMakeLists.txt
-+++ visit/src/sim/V2/runtime/CMakeLists.txt
-@@ -160,7 +160,7 @@ ${ICET_LIBRARY_DIR}
+--- a/src/sim/V2/runtime/CMakeLists.txt
++++ b/src/sim/V2/runtime/CMakeLists.txt
+@@ -160,7 +160,7 @@
  )
  
  ADD_LIBRARY(simV2runtime_ser ${LIBSIM_RUNTIME_SOURCES} ${LIBSIM_STATIC_SOURCES})
@@ -219,11 +195,9 @@ Index: visit/src/sim/V2/runtime/CMakeLists.txt
  
  IF(NOT APPLE)
      SET_TARGET_PROPERTIES(simV2runtime_ser PROPERTIES INSTALL_RPATH "$ORIGIN")
-Index: visit/src/engine/main/CMakeLists.txt
-===================================================================
---- visit.orig/src/engine/main/CMakeLists.txt
-+++ visit/src/engine/main/CMakeLists.txt
-@@ -194,11 +194,8 @@ TARGET_LINK_LIBRARIES(engine_ser_exe
+--- a/src/engine/main/CMakeLists.txt
++++ b/src/engine/main/CMakeLists.txt
+@@ -195,11 +195,8 @@
      ${engine_ser_exe_EPlot_ser}
      engine_ser 
      visit_verdict 
@@ -236,7 +210,7 @@ Index: visit/src/engine/main/CMakeLists.txt
      ${ALL_THIRDPARTY_IO_LIB}
      ${TCMALLOC_LIB}
      ${CMAKE_THREAD_LIBS} 
-@@ -297,11 +294,8 @@ IF(VISIT_PARALLEL)
+@@ -298,11 +295,8 @@
          ${engine_par_exe_EPlot_par}
          engine_par
          visit_verdict 
@@ -249,11 +223,9 @@ Index: visit/src/engine/main/CMakeLists.txt
          ${ALL_THIRDPARTY_IO_LIB}
          ${ICET_STATIC_LIB}
          ${TCMALLOC_LIB}
-Index: visit/src/tools/embedviewer/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/embedviewer/CMakeLists.txt
-+++ visit/src/tools/embedviewer/CMakeLists.txt
-@@ -180,6 +180,7 @@ visit_verdict
+--- a/src/tools/embedviewer/CMakeLists.txt
++++ b/src/tools/embedviewer/CMakeLists.txt
+@@ -180,6 +180,7 @@
  visit_vtk
  vtkqt
  ${VIEWER_QT_LIBS}
@@ -261,11 +233,9 @@ Index: visit/src/tools/embedviewer/CMakeLists.txt
  )
  
  TARGET_LINK_LIBRARIES(embedded ${EMBEDDED_VIEWER_LIBS})
-Index: visit/src/tools/mcurvit/CMakeLists.txt
-===================================================================
---- visit.orig/src/tools/mcurvit/CMakeLists.txt
-+++ visit/src/tools/mcurvit/CMakeLists.txt
-@@ -108,14 +108,7 @@ ${QT_QTGUI_INCLUDE_DIR}
+--- a/src/tools/mcurvit/CMakeLists.txt
++++ b/src/tools/mcurvit/CMakeLists.txt
+@@ -108,14 +108,7 @@
  ${QT_QTXML_INCLUDE_DIR}
  )
  
