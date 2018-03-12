@@ -1,12 +1,13 @@
-visit (2.13-1~bpo9+1) UNRELEASED; urgency=low
+visit (2.13-1~bpo9+1) stretch-backports; urgency=low
 
   * New upstream release 2.13
      - update patches
      - New build dep.: libqt5svg5-dev
   * Enable hardening flags 
   * patch to build with GDAL
+  * Build VisiIt with thread support 
 
- -- Adrien Grellier <adrien.grellier@ec-nantes.fr>  Wed, 14 Feb 2018 14:25:45 +0100
+ -- Adrien Grellier <adrien.grellier@ec-nantes.fr>  Mon, 09 Apr 2018 11:41:01 +0200
 
 visit (2.12.3-1~bpo9+1) stretch; urgency=low
 
